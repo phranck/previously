@@ -1,0 +1,57 @@
+# Design drafts for the web admin tool
+
+Three one-page drafts of the interface that configures Previous from a browser, plus the tools that fetch the pictures one of them uses.
+
+| File | What it is |
+|---|---|
+| `mockup-nextstep.html` | A NeXTSTEP workspace. Machines and disks are things you pick up and drop on one another. |
+| `mockup-backplane.html` | The back of the cube. Changing the configuration means seating a card or fitting memory. |
+| `mockup-console.html` | An instrument. It answers one question in five seconds: is the machine running? |
+
+Open any of them in a browser. They need no server and no build step.
+
+## Where the pictures come from
+
+The NeXTSTEP draft draws nothing by hand. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
+
+Four tools do that work:
+
+| Tool | What it does |
+|---|---|
+| `ufs.py` | Reads a NeXT UFS filesystem: 4.3BSD FFS, big endian, behind a `dlV3` disk label. |
+| `nxtiff.py` | Decodes NeXT's TIFFs, which no current library reads: two bits per sample, alpha in its own plane, and a second copy of each picture at four bits per colour channel. |
+| `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `parts/`. |
+| `build.py` | Bakes everything in `parts/` into the mockup as data URIs, so it stays one file. |
+
+`parts/` is committed, so the draft works without running any of this. Run it again when a picture needs to change:
+
+```bash
+python3 extract.py ~/nextstep/NS33_2GB.dd screenshot.png
+python3 build.py
+```
+
+`extract.py` needs two things that are not in this repository. The first is a NeXTSTEP 3.3 disk image, which the paper PAP-NXR-001 says where to get. The second is a screenshot of NeXTSTEP 3.3 at its own resolution of 1120 by 832, because the pixel bounds in `extract.py` are that screenshot's and nothing else will line up.
+
+## What the interface is built from
+
+The NeXTSTEP draft is a set of custom elements that plug into one another:
+
+```html
+<nx-window name="disks" title="Platten" x="172" y="366" w="300" h="220">
+  <nx-scroller>
+    <nx-shelf>
+      <nx-thing icon="winchester" label="NeXTSTEP 3.3" chosen></nx-thing>
+    </nx-shelf>
+  </nx-scroller>
+</nx-window>
+```
+
+`nx-window` builds its own title bar, close button and resize bar, and remembers where it is, how big it is and whether it is open. `fixed` takes the resize bar away, `flush` lets content run to the frame, `drop` makes it a target for dragging, and `closed` starts it shut.
+
+`nx-scroller` is the only rule in the stylesheet that hands out `overflow`. Anything that can scroll therefore sits inside one and wears NeXT's own scroller on its left, and the browser's native scrollbar cannot appear.
+
+The rest: `nx-menu` with `nx-menu-item`, `nx-dock` with `nx-tile`, `nx-shelf` with `nx-thing`, and `nx-portrait`, `nx-row` and `nx-field` for panels. They use the light DOM rather than a shadow root, so one stylesheet and one set of design tokens reach all of them.
+
+## A note on the icons
+
+The icons in `parts/` are NeXT's, and NeXT's assets belong to Apple. They are here because this repository is private and this is a personal machine standing on a personal desk. Anything that makes this repository public has to replace them first.
