@@ -1,0 +1,30 @@
+[Unit]
+Description=Web admin for the Previous emulator
+Documentation=https://github.com/phranck/nextstep-rpi
+# The configuration it reads lives in the emulator owner's home, so there is
+# no point starting before that user's home is available.
+After=network.target
+
+[Service]
+Type=simple
+# Runs as the user who owns the emulator, never as root. Reading previous.cfg
+# as anybody else would need permissions this service should not have.
+User=next
+Group=next
+ExecStart=/usr/bin/python3 -m nextstep_admin
+WorkingDirectory=/usr/lib/nextstep-admin
+Environment=PYTHONPATH=/usr/lib/nextstep-admin
+Restart=on-failure
+RestartSec=5
+
+# It reads one file and answers HTTP. Nothing else is any of its business.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

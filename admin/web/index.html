@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NeXTSTEP</title>
+<link rel="stylesheet" href="nextstep.css">
+</head>
+<body>
+
+<nx-menu name="menu" title="Cube" x="8" y="8">
+  <nx-menu-item opens="info" key="i">Info</nx-menu-item>
+</nx-menu>
+
+<nx-dock>
+  <nx-tile icon="Workspace" title="NeXT"></nx-tile>
+</nx-dock>
+
+<nx-window name="info" title="Info" fixed x="180" y="16" w="400" h="248">
+  <div class="info-body">
+    <nx-portrait>
+      <i class="art icon" id="info-icon" style="background-image: var(--root)"></i>
+      <span class="caption" id="info-caption">wird gelesen</span>
+    </nx-portrait>
+    <div class="readings">
+      <nx-row><label>Zustand</label><div class="state" id="info-state">&mdash;</div></nx-row>
+      <nx-row><label>Prozessor</label><nx-field id="info-cpu">&mdash;</nx-field></nx-row>
+      <nx-row><label>Speicher</label><nx-field id="info-ram">&mdash;</nx-field></nx-row>
+      <nx-row><label>Bildschirm</label><nx-field id="info-screen">&mdash;</nx-field></nx-row>
+      <nx-row><label>Platte</label><nx-field id="info-disk">&mdash;</nx-field></nx-row>
+    </div>
+  </div>
+</nx-window>
+
+<script src="nextstep.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
