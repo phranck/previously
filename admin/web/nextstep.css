@@ -99,6 +99,11 @@ body {
   font: var(--title-size)/1.4 var(--font);
   color: var(--black);
   overflow: hidden;
+  /* A workspace is not a document. The prefixed form is written out because
+     Safari has only understood the plain one since version 17, and nextstep.js
+     refuses the gesture outright for the browsers that begin a selection
+     anyway. */
+  -webkit-user-select: none;
   user-select: none;
   -webkit-font-smoothing: none;
 }
@@ -623,6 +628,7 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
   padding: 5px 7px;
   font: 12px/1.35 var(--mono);
   white-space: pre-wrap;
+  -webkit-user-select: text;
   user-select: text;
   cursor: text;
 }

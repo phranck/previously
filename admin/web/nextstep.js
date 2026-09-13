@@ -725,6 +725,19 @@ class NxAsk extends HTMLElement {
   }
 }
 
+/* --- the desk does not hold text -----------------------------------------
+
+   user-select says a selection may not begin inside an element. It does not
+   stop a browser that begins one anyway, and a drag across a shelf then leaves
+   every label it passed highlighted in the browser's own blue.
+
+   Refused here rather than in a stylesheet, because this holds whatever the
+   browser makes of the property. A terminal is the exception: reading
+   something out of it is the point of having one. */
+addEventListener("selectstart", (event) => {
+  if (!event.target.closest?.(".terminal")) event.preventDefault();
+});
+
 for (const [tag, type] of [
   ["nx-window", NxWindow], ["nx-menu", NxMenu], ["nx-menu-item", NxMenuItem],
   ["nx-tile", NxTile], ["nx-scroller", NxScroller],
