@@ -15,7 +15,7 @@ CONFIG_FILE = pathlib.Path("/etc/previously/config.ini")
 #: the default is expressed relative to that rather than to a name.
 DEFAULTS = {
     "address": "0.0.0.0",
-    "port": "8088",
+    "port": "2342",
     "previous_config": "~/.config/previous/previous.cfg",
     "kiosk_unit": "getty@tty1.service",
     # The secret a request carries before it may change anything. State the
