@@ -192,10 +192,16 @@ class NxWindow extends HTMLElement {
   place() {
     const saved = recall(this.name);
     const number = (key, attribute) => saved[key] ?? Number(this.getAttribute(attribute));
+    /* A window nobody can resize has no size of its own to remember, so its
+       markup decides. Otherwise a size saved before it was fixed, or before
+       its contents changed, would outlive both. */
+    const size = this.hasAttribute("fixed")
+      ? (_key, attribute) => Number(this.getAttribute(attribute))
+      : number;
     this.style.left = Math.min(number("x", "x"), Math.max(0, innerWidth - 90)) + "px";
     this.style.top = Math.min(number("y", "y"), Math.max(0, innerHeight - 40)) + "px";
-    this.style.width = number("w", "w") + "px";
-    this.style.height = number("h", "h") + "px";
+    this.style.width = size("w", "w") + "px";
+    this.style.height = size("h", "h") + "px";
     for (const [attribute, property] of [["min-w", "--win-min-w"], ["min-h", "--win-min-h"]]) {
       if (this.hasAttribute(attribute)) {
         this.style.setProperty(property, this.getAttribute(attribute) + "px");

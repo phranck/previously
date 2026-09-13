@@ -188,14 +188,21 @@ nx-menu-item {
 }
 nx-menu-item:last-child { box-shadow: none; }
 
-/* NeXTSTEP inverted an entry whilst the mouse was held on it, and did nothing
-   at all on hover. */
+/* The entry under the pointer takes the white a selection takes elsewhere in
+   here, and holding the mouse on it inverts it. Two steps rather than one, so
+   the pointer says where it is and the press says what is about to happen.
+
+   NeXTSTEP itself did only the second, and lit nothing on hover. It also had
+   one pointer and no trackpad. */
+nx-menu-item:hover { background: var(--white); }
 nx-menu-item:active { background: var(--black); color: var(--white); }
 
-/* An entry that would do nothing. NeXTSTEP greyed the lettering and left the
-   entry in place, so the menu keeps its shape and a reader sees that the thing
-   exists and is not available now. */
+/* An entry that would do nothing. The lettering greys and the entry stays in
+   place, so the menu keeps its shape and a reader sees that the thing exists
+   and is not available now. Nothing lights under the pointer, because nothing
+   would happen. */
 nx-menu-item[disabled] { color: var(--dark); }
+nx-menu-item[disabled]:hover,
 nx-menu-item[disabled]:active { background: none; color: var(--dark); }
 
 /* The place a picture goes, which every entry keeps whether it carries one or
