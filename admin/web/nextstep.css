@@ -428,9 +428,14 @@ nx-thing {
   display: grid;
   justify-items: center;
   align-content: start;
-  gap: 2px;
+  /* No gap: the two halves of a mark have to touch, or the window's grey shows
+     between them and one thing reads as two. */
+  gap: 0;
   padding: 2px;
   cursor: default;
+  /* What a mark is painted in. Nothing, until the thing is chosen or is the
+     one in force, and then both halves and the fillets take it from here. */
+  --mark: transparent;
 }
 
 /* The icon sits in a slot the size of hilite.tiff, so turning the selection on
@@ -440,6 +445,37 @@ nx-thing .slot {
   height: var(--slot-h);
   display: grid;
   place-items: center;
+  position: relative;
+  background: var(--mark);
+  /* The two halves are one shape, so only its outside is rounded. The slot's
+     lower corners lie inside that shape and stay square: rounding them would
+     cut notches out of the middle of the mark. */
+  border-radius: var(--hilite-radius) var(--hilite-radius) 0 0;
+}
+
+/* The two inner corners where the slot meets the wider name below it. Left
+   square they are the one sharp angle in a shape that is otherwise all curves,
+   so each is filled with a square of the mark's own colour that has its far
+   corner rounded away, which turns the angle into a concave curve.
+
+   They work because the slot has a fixed width and the name is never narrower
+   than it, so the step is always the same way round. */
+nx-thing .slot::before,
+nx-thing .slot::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: var(--hilite-radius);
+  height: var(--hilite-radius);
+  background: var(--mark);
+}
+nx-thing .slot::before {
+  left: calc(var(--hilite-radius) * -1);
+  border-top-left-radius: var(--hilite-radius);
+}
+nx-thing .slot::after {
+  right: calc(var(--hilite-radius) * -1);
+  border-top-right-radius: var(--hilite-radius);
 }
 nx-thing .icon { width: var(--icon); height: var(--icon); background-size: var(--icon); }
 
@@ -449,6 +485,14 @@ nx-thing .name {
   text-align: center;
   padding: 0 3px;
   max-width: 100%;
+  /* Always wider than the slot above it by at least the radius on each side,
+     so the step between the two always goes the same way and there is always a
+     real crook for the fillets to round. */
+  min-width: calc(var(--slot-w) + 2 * var(--hilite-radius));
+  box-sizing: border-box;
+  background: var(--mark);
+  /* Its upper corners lie inside the shape, for the same reason. */
+  border-radius: 0 0 var(--hilite-radius) var(--hilite-radius);
 }
 
 /* The machine the emulator is actually running. The same shape as a selection
@@ -458,23 +502,19 @@ nx-thing .name {
 
    Written before the selection below, so choosing the machine that is already
    running shows it as chosen. */
-nx-thing.current {
-  background: var(--in-force);
-  border-radius: var(--hilite-radius);
-}
+nx-thing.current { --mark: var(--in-force); }
 nx-thing.current .icon { opacity: .6; }
 nx-thing.current .name { font-weight: bold; }
 
-/* Selection is one white shape behind the icon and the name together, and the
+/* Selection is white behind the icon and white behind the name, and the
    lettering stays black. No second colour enters the interface.
 
-   One shape rather than two, because a gap of window grey between them reads
-   as two selections rather than one thing being chosen. The gap between the
-   icon and its name is inside the shape and therefore white as well. */
-nx-thing[chosen] {
-  background: var(--white);
-  border-radius: var(--hilite-radius);
-}
+   Two shapes that touch rather than one box around both. Each follows what it
+   is behind, so a short name gives a narrow one, and the pair reads as one
+   thing because nothing shows between them. A single rectangle around the two
+   would take in the window's grey on either side of the icon, which belongs to
+   the desk rather than to the machine that is chosen. */
+nx-thing[chosen] { --mark: var(--white); }
 
 /* Whilst a machine is being carried, the thing it came from dims. */
 nx-thing[lifting] { opacity: .45; }
