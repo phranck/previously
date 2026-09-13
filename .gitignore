@@ -1,1 +1,8 @@
 .DS_Store
+
+# The venv is for developing on a Mac, where pip is blocked by PEP 668. On the
+# Pi everything comes from Debian packages, so nothing here is ever deployed.
+admin/.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
