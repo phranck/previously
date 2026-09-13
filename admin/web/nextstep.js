@@ -176,6 +176,7 @@ class NxWindow extends HTMLElement {
     this.append(this.bar, this.pane);
 
     if (!this.hasAttribute("fixed")) this.addResizer();
+    if (this.hasAttribute("drop")) this.acceptDrops();
     this.place();
     this.wire(close);
   }
@@ -264,6 +265,35 @@ class NxWindow extends HTMLElement {
   close() {
     this.hidden = true;
     this.save();
+  }
+
+  /**
+   * Takes what is dropped on it, and says so whilst something is over it.
+   *
+   * Raises the same `nx-choose` a double click does, because carrying a thing
+   * here and double clicking it mean the same thing to whoever answers.
+   */
+  acceptDrops() {
+    this.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+      this.setAttribute("droppable", "");
+    });
+
+    /* Moving onto a child fires dragleave on the parent, so only a pointer
+       that has actually left the window counts. */
+    this.addEventListener("dragleave", (event) => {
+      if (!this.contains(event.relatedTarget)) this.removeAttribute("droppable");
+    });
+
+    this.addEventListener("drop", (event) => {
+      event.preventDefault();
+      this.removeAttribute("droppable");
+      this.dispatchEvent(new CustomEvent("nx-choose", {
+        bubbles: true,
+        detail: { value: event.dataTransfer.getData("text/plain") },
+      }));
+    });
   }
 
   /** The bar along the foot: a middle that takes the height and two ends that
@@ -527,6 +557,36 @@ class NxThing extends HTMLElement {
 
     this.append(slot, name);
     this.art = art;
+
+    if (this.hasAttribute("value")) this.carry();
+  }
+
+  /** @returns {string} What this thing hands over when it is used. */
+  get value() { return this.getAttribute("value"); }
+
+  /**
+   * Makes it liftable, and makes a double click mean the same as carrying it
+   * somewhere and letting go.
+   *
+   * Both raise `nx-choose`, which bubbles, so a page answers in one place
+   * however the thing was used.
+   */
+  carry() {
+    this.draggable = true;
+
+    this.addEventListener("dragstart", (event) => {
+      event.dataTransfer.setData("text/plain", this.value);
+      event.dataTransfer.effectAllowed = "copy";
+      this.setAttribute("lifting", "");
+    });
+
+    this.addEventListener("dragend", () => this.removeAttribute("lifting"));
+
+    this.addEventListener("dblclick", () => {
+      this.dispatchEvent(new CustomEvent("nx-choose", {
+        bubbles: true, detail: { value: this.value },
+      }));
+    });
   }
 
   /** @param {string} icon - Swap the picture without rebuilding the thing. */

@@ -307,7 +307,9 @@ async function drawMachines() {
     const thing = document.createElement("nx-thing");
     thing.setAttribute("icon", Art.Computer);
     thing.setAttribute("label", machine.name);
-    thing.dataset.machine = machine.id;
+    /* The value is what a drop, a double click and the button all hand over,
+       so there is one place the machine's name lives. */
+    thing.setAttribute("value", machine.id);
     return thing;
   }));
 
@@ -328,32 +330,47 @@ function markCurrent(name) {
   }
 }
 
-/** Wires the machine window. */
+/**
+ * Asks about a machine and changes to it when the answer is yes.
+ * @param {string} identifier - Which machine, as the catalogue names it.
+ */
+async function changeTo(identifier) {
+  const thing = document.querySelector(
+    `#machine-shelf nx-thing[value="${identifier}"]`);
+  if (!thing) return;
+
+  const name = thing.getAttribute("label");
+  const agreed = await document.getElementById("ask").ask({
+    title: "Maschine wechseln",
+    text: [
+      `Als ${name} starten?`,
+      "NeXTSTEP wird über den Ausschalter heruntergefahren, die Konfiguration geschrieben und die Maschine neu gestartet.",
+      "Kommt sie damit nicht hoch, wird die vorherige Konfiguration von selbst zurückgeschrieben.",
+    ],
+    icon: Art.Computer,
+    confirm: "Wechseln",
+  });
+  if (!agreed) return;
+
+  setBusy(true, `wechselt auf ${name}`);
+  const answer = await tell("/api/machine", { machine: identifier });
+  setBusy(false, answer === null
+    ? "keine Verbindung zum Dienst"
+    : answer.reason ?? "");
+  if (answer) drawStatus(answer);
+  refresh();
+}
+
+/** Wires the three ways to choose a machine. */
 function wireMachines() {
-  document.getElementById("machine-apply").addEventListener("click", async () => {
+  /* Carried onto the info window, or double clicked in the shelf. The kit
+     raises the same event for both, so this is one answer to two gestures. */
+  document.addEventListener("nx-choose",
+    (event) => changeTo(event.detail.value));
+
+  document.getElementById("machine-apply").addEventListener("click", () => {
     const chosen = document.querySelector("#machine-shelf nx-thing[chosen]");
-    if (!chosen) return;
-
-    const name = chosen.getAttribute("label");
-    const agreed = await document.getElementById("ask").ask({
-      title: "Maschine wechseln",
-      text: [
-        `Als ${name} starten?`,
-        "NeXTSTEP wird über den Ausschalter heruntergefahren, die Konfiguration geschrieben und die Maschine neu gestartet.",
-        "Kommt sie damit nicht hoch, wird die vorherige Konfiguration von selbst zurückgeschrieben.",
-      ],
-      icon: Art.Computer,
-      confirm: "Wechseln",
-    });
-    if (!agreed) return;
-
-    setBusy(true, `wechselt auf ${name}`);
-    const answer = await tell("/api/machine", { machine: chosen.dataset.machine });
-    setBusy(false, answer === null
-      ? "keine Verbindung zum Dienst"
-      : answer.reason ?? "");
-    if (answer) drawStatus(answer);
-    refresh();
+    if (chosen) changeTo(chosen.getAttribute("value"));
   });
 }
 
