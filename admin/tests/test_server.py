@@ -13,28 +13,15 @@ import urllib.request
 
 import pytest
 
+from conftest import settings_for
 from previously import server
-from previously.settings import Settings
 from previously.token import HEADER, Token
 
 
 @pytest.fixture
-def service(tmp_path):
+def service(tmp_path, readable_config):
     """A running service on a port the system picks, torn down afterwards."""
-    config_file = tmp_path / "previous.cfg"
-    config_file.write_text(
-        "[System]\nnMachineType = 1\nbTurbo = TRUE\nnCpuLevel = 4\n"
-        "nCpuFreq = 33\n\n[Memory]\nnMemoryBankSize0 = 64\n"
-    )
-    settings = Settings({
-        "address": "127.0.0.1",
-        "port": "0",
-        "previous_config": str(config_file),
-        "kiosk_unit": "does-not-exist.service",
-        "token_file": str(tmp_path / "token"),
-    })
-
-    server.Handler.settings = settings
+    server.Handler.settings = settings_for(tmp_path)
     server.Handler.token = Token.load(tmp_path / "token")
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)

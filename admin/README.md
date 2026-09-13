@@ -19,8 +19,10 @@ Nothing is fetched. Everything runs on what Debian ships: `python3`, `python3-py
 | `previously/config.py` | Reading `previous.cfg`, and knowing what its values mean |
 | `previously/kiosk.py` | Everything asked of systemd, and the whole privilege surface |
 | `previously/server.py` | Which addresses exist and what answers them |
+| `previously/token.py` | The one secret, and what a request may do without it |
+| `previously/tls.py` | Presenting a certificate, where one is configured |
 | `web/` | What the browser gets |
-| `packaging/` | The unit and the default configuration |
+| `packaging/` | The unit, the default configuration and the renewal hook |
 
 `kiosk.py` is one module because it is the whole privilege surface: reviewing what this tool may do to the machine means reading that one file.
 
@@ -32,7 +34,74 @@ Nothing is fetched. Everything runs on what Debian ships: `python3`, `python3-py
 
 The token is made on first start, lives in `/var/lib/previously/token` readable by the service alone, and is read once over SSH and typed into the interface, which keeps it. It is never in this repository, never in a URL and never in a log line.
 
-**There is no TLS, and that is a decision rather than an omission.** This tool is not meant to be reachable from the internet: no port is forwarded to it and nothing publishes it. On the home network the token stops an accident and a bored device; it does not stop somebody who is already on that network and reading traffic. Saying otherwise would be a security claim that is not true, which is worse than none. #12 has what it would take if that ever changes.
+**HTTPS is available and off until a certificate is configured.** Without one the token crosses the home network in the clear, where anybody already on that network can read it. With one they cannot. Nothing about this makes the tool safe to expose to the internet, and nothing here should be read as an invitation to forward a port to it.
+
+The next section says how to get a certificate for a machine that the internet cannot reach.
+
+## HTTPS with a Let's Encrypt certificate
+
+The service reads a certificate and a key from two paths and knows nothing else about them. Getting one is the operator's job, and how it is done depends on who runs the DNS, so this section describes the route rather than one provider's buttons.
+
+### Why the usual route does not work here
+
+Most guides prove control of a name by answering a request on port 80 from the outside. That is the HTTP-01 challenge, and it cannot work for a machine on a home network with nothing forwarded to it.
+
+The DNS-01 challenge proves the same thing by putting a value in DNS, which is a place Let's Encrypt can already reach. Their own documentation names this as the reason to use it: it validates "domain names whose webservers aren't exposed to the public internet" ([Let's Encrypt, Challenge Types](https://letsencrypt.org/docs/challenge-types/)). Nothing about the Pi has to be reachable from anywhere.
+
+### The machine needs a real name
+
+`cube.local` can never carry a certificate. `.local` belongs to multicast DNS and no public authority issues for it, so this is a wall rather than a difficulty.
+
+Give the machine a name under a domain you own, say `cube.example.org`, with an `A` record pointing at its address on the home network:
+
+```
+cube.example.org.   A   10.0.0.135
+```
+
+That record is public and answers with a private address, which is fine. On the home network it resolves and works. Everywhere else it points into a network the caller is not on, so nothing answers. What it does publish is which private range you use, which is not worth hiding.
+
+### Getting the certificate
+
+Whichever ACME client you prefer, the shape is the same: prove the name over DNS, then hand the result to the hook.
+
+```bash
+sudo certbot certonly --preferred-challenges dns \
+    --dns-<your-provider> --dns-<your-provider>-credentials /etc/letsencrypt/dns.ini \
+    -d cube.example.org \
+    --deploy-hook /usr/lib/previously/certificate-hook.sh
+```
+
+`certificate-hook.sh` copies the pair into `/etc/previously/tls/`, owned by the service user, and restarts the service. It runs again at every renewal, so nothing has to be remembered every sixty days.
+
+Then name them and restart:
+
+```ini
+[service]
+certificate = /etc/previously/tls/fullchain.pem
+private_key = /etc/previously/tls/privkey.pem
+```
+
+`fullchain.pem` rather than `cert.pem`, because it carries the intermediate certificate that browsers need.
+
+### If your DNS provider has no API
+
+This is the common case, and there is a way through that does not involve giving the Pi your registrar password. Delegate only the challenge record to a zone that does have an API, once, by hand:
+
+```
+_acme-challenge.cube.example.org.   CNAME   cube.acme.example-with-an-api.org.
+```
+
+Let's Encrypt follows that CNAME, so the ACME client only ever needs a credential for the second zone, and that zone holds nothing but challenge records. The registrar keeps your real domain and never needs an API at all. Let's Encrypt supports this explicitly: "you can use CNAME records or NS records to delegate answering the challenge to other DNS zones" ([Challenge Types](https://letsencrypt.org/docs/challenge-types/)).
+
+Do not put an account password on the Pi to avoid this. Some ACME clients offer providers that log into a customer portal and drive its web forms, which means the machine holds credentials to everything that account can reach, for the sake of one TXT record.
+
+### Dropping the port number
+
+Optional. `packaging/previously-443.conf` lets the service bind 443, so the address is `https://cube.example.org` with nothing after it. It grants one capability and restricts it to that one port. Without it, `https://cube.example.org:8088` works just as well.
+
+### What a certificate does not do
+
+It encrypts the connection and proves the name. It does not make this tool safe to expose to the internet, and it does not replace the token. Both answer different questions: the certificate says nobody is reading along, and the token says who may change something.
 
 ## The addresses
 
@@ -60,6 +129,7 @@ The stylesheet and the kit are taken from the draft rather than written again, s
 ```bash
 sudo cp -r previously web /usr/lib/previously/
 sudo cp packaging/config.ini /etc/previously/
+sudo cp packaging/certificate-hook.sh /usr/lib/previously/
 sudo cp packaging/previously.service /etc/systemd/system/
 sudo systemctl enable --now previously
 ```
