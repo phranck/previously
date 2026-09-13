@@ -151,6 +151,17 @@ function drawStatus(status) {
   else if (status.held) words = " ausgeschaltet";
   state.replaceChildren(lamp, document.createTextNode(words));
 
+  /* "kommt zurück" is done when it is back, and the note should not still be
+     saying it. So a note is kept until the machine is in a different state
+     than it was when the note was written, and then it goes. */
+  const nowState = `${status.running}/${status.held}/${status.configuration?.machine}`;
+  if (noteState === JUST_WRITTEN) {
+    noteState = nowState;
+  } else if (noteState !== null && noteState !== nowState) {
+    show("kiosk-note", "");
+    noteState = null;
+  }
+
   document.getElementById("kiosk-start").disabled = status.running;
   document.getElementById("kiosk-stop").disabled = !status.running;
   document.getElementById("kiosk-restart").disabled = !status.running;
@@ -234,6 +245,17 @@ async function operate(route, working) {
   refresh();
 }
 
+/** Written into noteState whilst a note is new and the state it describes has
+ *  not been seen yet. */
+const JUST_WRITTEN = Symbol("just written");
+
+/** What the machine looked like when the note under the readings was written,
+ *  JUST_WRITTEN before that has been seen, and null where there is no note.
+ *
+ *  The note says what was last asked for, so it has said everything it has to
+ *  say once the machine has moved on from the state it was written in. */
+let noteState = null;
+
 /**
  * Turns the buttons off while something is happening, and says what.
  * @param {boolean} busy
@@ -248,6 +270,7 @@ function setBusy(busy, note) {
   document.getElementById("machine-apply").disabled =
     busy || !document.querySelector("#machine-shelf nx-thing[chosen]");
   show("kiosk-note", note);
+  noteState = note ? JUST_WRITTEN : null;
 }
 
 /**

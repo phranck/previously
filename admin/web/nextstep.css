@@ -21,7 +21,7 @@
      Rollbalken-Rinne     Schachbrett aus #555555 und #aaaaaa, 1 px
      versenkte Fläche     aussen #555555, innen #000000 oben und links, weiss sonst
      erhabene Fläche      weiss oben und links, aussen #000000, innen #555555
-     Auswahl              hilite.tiff hinter dem Icon, weiss hinter dem Namen
+     Auswahl              eine weisse Flaeche hinter Icon und Namen, 5 px Radius
    --------------------------------------------------------------------------- */
 
 :root {
@@ -67,7 +67,16 @@
   --dock-marks: url("parts/dock-marks.png");
   --floppy: url("parts/floppy.png");
   --folder: url("parts/folder.png");
-  --hilite: url("parts/hilite.png");
+  /* NeXTSTEP's own selection was a white rounded shape, and this is the corner
+     it drew, read off hilite.tiff: white begins five pixels in on the first
+     row and reaches the edge on the sixth. */
+  --hilite-radius: 5px;
+
+  /* The one value outside the four above. It marks the configuration the
+     emulator is actually running, which is a thing NeXTSTEP had no idea of, so
+     there is no original to take a colour from. A shade under the window's own
+     grey, because it has to read as a state and not as a selection. */
+  --in-force: #999999;
   --net: url("parts/net.png");
   --optical: url("parts/optical.png");
   --root-color: url("parts/root-color.png");
@@ -442,10 +451,30 @@ nx-thing .name {
   max-width: 100%;
 }
 
-/* Selection is white behind the icon and white behind the name, and the
-   lettering stays black. No second colour enters the interface. */
-nx-thing[chosen] .slot { background-image: var(--hilite); background-size: 100% 100%; }
-nx-thing[chosen] .name { background: var(--white); }
+/* The machine the emulator is actually running. The same shape as a selection
+   so the two read as one language, in grey rather than white so they are never
+   confused, with the icon dimmed because this machine is a fact rather than
+   something to act on.
+
+   Written before the selection below, so choosing the machine that is already
+   running shows it as chosen. */
+nx-thing.current {
+  background: var(--in-force);
+  border-radius: var(--hilite-radius);
+}
+nx-thing.current .icon { opacity: .6; }
+nx-thing.current .name { font-weight: bold; }
+
+/* Selection is one white shape behind the icon and the name together, and the
+   lettering stays black. No second colour enters the interface.
+
+   One shape rather than two, because a gap of window grey between them reads
+   as two selections rather than one thing being chosen. The gap between the
+   icon and its name is inside the shape and therefore white as well. */
+nx-thing[chosen] {
+  background: var(--white);
+  border-radius: var(--hilite-radius);
+}
 
 /* Whilst a machine is being carried, the thing it came from dims. */
 nx-thing[lifting] { opacity: .45; }
@@ -601,12 +630,3 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
   padding: 3px 5px;
 }
 .panel .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
-
-/* The machine the emulator is set to. NeXTSTEP marked the current thing with a
-   frame rather than with the selection, so that a reader can see at once which
-   one is chosen and which one is in force. */
-nx-thing.current .slot {
-  outline: 1px solid var(--black);
-  outline-offset: 1px;
-}
-nx-thing.current .name { font-weight: bold; }
