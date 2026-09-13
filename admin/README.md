@@ -16,7 +16,9 @@ Nothing is fetched. Everything runs on what Debian ships: `python3`, `python3-py
 | | |
 |---|---|
 | `previously/settings.py` | What the service itself is configured with |
-| `previously/config.py` | Reading `previous.cfg`, and knowing what its values mean |
+| `previously/config.py` | Reading and writing `previous.cfg` |
+| `previously/machines.py` | Which machines exist, and what each one is in the file |
+| `previously/change.py` | Changing the machine without leaving it unable to start |
 | `previously/kiosk.py` | Everything this tool does to the machine, in one file |
 | `previously/server.py` | Which addresses exist and what answers them |
 | `previously/token.py` | The one secret, and what a request may do without it |
@@ -49,8 +51,22 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/kiosk/start` | Lets the emulated machine come back |
 | `POST /api/kiosk/stop` | Shuts it down properly and keeps it down |
 | `POST /api/kiosk/restart` | Both, in that order |
+| `GET /api/machines` | Which machines can be chosen |
+| `POST /api/machine` | Makes the emulated machine the one named |
 
 Every POST is checked for the token before anything looks at what was sent.
+
+## Changing which machine it is
+
+Choosing a NeXTcube Turbo is not one setting. It is a machine type, a processor level, a clock, whether the colour board is seated, which slot it speaks from, and four memory banks, and getting one of them wrong gives a machine that will not boot or is not the one that was asked for. `machines.py` holds the eleven that can be chosen and what each is in the file.
+
+Those values come from the eleven ready-made configurations in the project's Papers folder. Ten of their 195 keys differ between machines, and those ten are what gets written. Everything else in `previous.cfg`, including the disk it boots from, belongs to the installation rather than to the machine and is passed through untouched.
+
+**The order is fixed, because the risky part is not the writing.** Previous writes `previous.cfg` from memory when it exits, so a change made underneath a running emulator is thrown away by the emulator itself. And a machine it cannot run leaves a black screen with SSH as the only way back.
+
+So: shut the guest down properly, copy the file beside itself as `previous.cfg.bak`, write, let it come back, and watch long enough to know that it did. Anything that does not come back is put straight back the way it was.
+
+**Watching means two questions, not one.** A configuration Previous cannot run makes it exit at once, and the waiting console starts it again, so a machine that is broken looks exactly like one that is running. The age of the emulator process is what tells them apart.
 
 ## Switching the machine on and off
 

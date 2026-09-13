@@ -170,6 +170,7 @@ function drawStatus(status) {
   }
 
   show("info-caption", machine.machine);
+  markCurrent(machine.machine);
   show("info-cpu", machine.cpu);
   show("info-ram", `${machine.memory_mb} MB`);
   show("info-screen", machine.screen);
@@ -185,14 +186,18 @@ function drawStatus(status) {
 
 /**
  * Asks the service to do something to the emulator.
- * @param {string} route - One of Kiosk.
+ * @param {string} route - Where to send it.
+ * @param {object} [body] - What to send, where the route takes something.
  * @returns {Promise<object|null>} What it answered, or null on no contact.
  */
-async function tell(route) {
+async function tell(route, body) {
   const send = async () => fetch(route, {
     method: "POST",
     cache: "no-store",
-    headers: headers(),
+    headers: body
+      ? { ...headers(), "Content-Type": "application/json" }
+      : headers(),
+    body: body ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(OPERATION_TIMEOUT_MS),
   });
 
@@ -238,6 +243,10 @@ function setBusy(busy, note) {
   for (const id of ["kiosk-start", "kiosk-stop", "kiosk-restart"]) {
     document.getElementById(id).disabled = busy;
   }
+  /* The apply button also needs something chosen, so letting it go is not the
+     same as switching it on. */
+  document.getElementById("machine-apply").disabled =
+    busy || !document.querySelector("#machine-shelf nx-thing[chosen]");
   show("kiosk-note", note);
 }
 
@@ -279,11 +288,82 @@ function wireButtons() {
   });
 }
 
+/**
+ * Fills the shelf with the machines the service offers.
+ *
+ * The list comes from the service rather than from here, because what can be
+ * chosen is decided by what can be written, and keeping a second copy in the
+ * page is how the two come to disagree.
+ */
+async function drawMachines() {
+  const answer = await ask("/api/machines");
+  const shelf = document.getElementById("machine-shelf");
+  if (!answer) {
+    show("machine-note", "Liste nicht erreichbar");
+    return;
+  }
+
+  shelf.replaceChildren(...answer.machines.map((machine) => {
+    const thing = document.createElement("nx-thing");
+    thing.setAttribute("icon", Art.Computer);
+    thing.setAttribute("label", machine.name);
+    thing.dataset.machine = machine.id;
+    return thing;
+  }));
+
+  shelf.addEventListener("click", () => {
+    const chosen = shelf.querySelector("nx-thing[chosen]");
+    document.getElementById("machine-apply").disabled = !chosen;
+    show("machine-note", "");
+  });
+}
+
+/**
+ * Marks the machine the emulator is currently set to.
+ * @param {string|null} name - What /api/status called it.
+ */
+function markCurrent(name) {
+  for (const thing of document.querySelectorAll("#machine-shelf nx-thing")) {
+    thing.classList.toggle("current", thing.getAttribute("label") === name);
+  }
+}
+
+/** Wires the machine window. */
+function wireMachines() {
+  document.getElementById("machine-apply").addEventListener("click", async () => {
+    const chosen = document.querySelector("#machine-shelf nx-thing[chosen]");
+    if (!chosen) return;
+
+    const name = chosen.getAttribute("label");
+    const agreed = await document.getElementById("ask").ask({
+      title: "Maschine wechseln",
+      text: [
+        `Als ${name} starten?`,
+        "NeXTSTEP wird über den Ausschalter heruntergefahren, die Konfiguration geschrieben und die Maschine neu gestartet.",
+        "Kommt sie damit nicht hoch, wird die vorherige Konfiguration von selbst zurückgeschrieben.",
+      ],
+      icon: Art.Computer,
+      confirm: "Wechseln",
+    });
+    if (!agreed) return;
+
+    setBusy(true, `wechselt auf ${name}`);
+    const answer = await tell("/api/machine", { machine: chosen.dataset.machine });
+    setBusy(false, answer === null
+      ? "keine Verbindung zum Dienst"
+      : answer.reason ?? "");
+    if (answer) drawStatus(answer);
+    refresh();
+  });
+}
+
 /** Fetches the status and draws it. */
 async function refresh() {
   drawStatus(await ask("/api/status"));
 }
 
 wireButtons();
+wireMachines();
+drawMachines();
 refresh();
 setInterval(refresh, REFRESH_MS);

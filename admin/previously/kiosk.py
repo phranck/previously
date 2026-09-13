@@ -122,6 +122,22 @@ def emulator_is_running():
     return _ask(["pgrep", "-x", EMULATOR_PROCESS]) != ""
 
 
+def emulator_uptime_seconds():
+    """How long the emulator has been running.
+
+    @returns int, or None where it is not running.
+
+    Its own age rather than the unit's. The unit holds a login shell that
+    outlives any one emulator, so after a restart the unit is old and the
+    emulator is new. This is also what tells a machine that came up and stayed
+    up from one that is restarting over and over because it cannot run the
+    configuration it was given.
+    """
+    answer = _ask(["ps", "-o", "etimes=", "-C", EMULATOR_PROCESS])
+    ages = [int(line) for line in answer.split() if line.isdigit()]
+    return min(ages) if ages else None
+
+
 def press_power(sleep=time.sleep):
     """Presses the emulated power button and answers the panel it raises.
 

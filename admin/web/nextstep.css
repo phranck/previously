@@ -601,3 +601,12 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
   padding: 3px 5px;
 }
 .panel .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
+
+/* The machine the emulator is set to. NeXTSTEP marked the current thing with a
+   frame rather than with the selection, so that a reader can see at once which
+   one is chosen and which one is in force. */
+nx-thing.current .slot {
+  outline: 1px solid var(--black);
+  outline-offset: 1px;
+}
+nx-thing.current .name { font-weight: bold; }
