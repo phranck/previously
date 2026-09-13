@@ -17,13 +17,15 @@ Nothing is fetched. Everything runs on what Debian ships: `python3`, `python3-py
 |---|---|
 | `previously/settings.py` | What the service itself is configured with |
 | `previously/config.py` | Reading `previous.cfg`, and knowing what its values mean |
-| `previously/kiosk.py` | Everything asked of systemd, and the whole privilege surface |
+| `previously/kiosk.py` | Everything this tool does to the machine, in one file |
 | `previously/server.py` | Which addresses exist and what answers them |
 | `previously/token.py` | The one secret, and what a request may do without it |
 | `web/` | What the browser gets |
 | `packaging/` | The unit and the default configuration |
 
-`kiosk.py` is one module because it is the whole privilege surface: reviewing what this tool may do to the machine means reading that one file.
+`kiosk.py` is one module because it is the whole surface: reviewing what this tool may do to the machine means reading that one file.
+
+**It needs no privileges at all.** Reading state does not, because `systemctl is-active` answers any user. Switching the emulated machine on and off does not either, because it happens through one file rather than through systemd. The next section says why.
 
 ## What anybody on the network can reach
 
@@ -44,9 +46,28 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `GET /api/health` | Its version, and whether it can read `previous.cfg` |
 | `GET /api/status` | What the machine is set to, and whether the kiosk runs |
 | `GET /api/token` | Whether the token this request carried is the right one |
-| `POST /*` | Refused without the token. Nothing is routed here yet |
+| `POST /api/kiosk/start` | Lets the emulated machine come back |
+| `POST /api/kiosk/stop` | Shuts it down properly and keeps it down |
+| `POST /api/kiosk/restart` | Both, in that order |
 
-Nothing writes yet. Every route reads, and every POST is checked before it is looked at.
+Every POST is checked for the token before anything looks at what was sent.
+
+## Switching the machine on and off
+
+**Stopping means pressing the power button, not killing the emulator.** Previous maps the NeXT power button to F10, and pressing it starts an orderly shutdown inside NeXTSTEP, exactly as Power Off in the Logout panel does. Taking the emulator away instead leaves the guest's file system dirty, and it runs a check on the way back up. The key is sent with `wtype` through the Wayland protocol the kiosk's compositor implements.
+
+**Keeping it down is a file, not a systemd command.** `getty@tty1` restarts itself the instant a session ends, and the console's `~/.profile` starts the emulator. So when the guest powers off, a fresh emulator is booting a second later, and anything arriving after that to stop the unit would kill a guest that had just begun writing.
+
+`~/.profile` therefore waits on `/var/lib/previously/hold` rather than starting the emulator unconditionally:
+
+```sh
+while [ -f /var/lib/previously/hold ]; do sleep 2; done
+exec cage -- /usr/bin/previous
+```
+
+Stopping writes that file, presses F10 and waits for the guest to go. Starting removes the file, and the waiting console notices within two seconds. Nothing is killed, nothing races, and the service never needs a privilege it could misuse.
+
+**The warning before stopping is always shown and always says the same thing.** Previous exposes nothing about what the emulated machine is doing, so a warning that appeared only sometimes would teach the reader that its absence means safe, which cannot be known.
 
 ## Its own configuration
 

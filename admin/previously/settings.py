@@ -10,6 +10,12 @@ import pathlib
 
 CONFIG_FILE = pathlib.Path("/etc/previously/config.ini")
 
+#: The one place this service writes. The unit creates it through
+#: StateDirectory=, and its hardening leaves everything else read-only, so
+#: anything the service maintains itself lives here and the paths below are
+#: derived from this rather than stated again.
+STATE_DIRECTORY = "/var/lib/previously"
+
 #: Everything a fresh installation runs on. The emulator's configuration lives
 #: in the home of whoever owns it, which is the user this service runs as, so
 #: the default is expressed relative to that rather than to a name.
@@ -18,12 +24,12 @@ DEFAULTS = {
     "port": "2342",
     "previous_config": "~/.config/previous/previous.cfg",
     "kiosk_unit": "getty@tty1.service",
-    # The secret a request carries before it may change anything. State the
-    # service generates and maintains itself, so /var/lib rather than /etc,
-    # which holds what an administrator writes. The unit creates the directory
-    # through StateDirectory= and leaves /etc read-only, so a token under /etc
-    # could never be written at all.
-    "token_file": "/var/lib/previously/token",
+    "state_directory": STATE_DIRECTORY,
+    # The secret a request carries before it may change anything, and the file
+    # that holds the emulator down. Both are state the service maintains
+    # itself, so /var/lib rather than /etc, which holds what an administrator
+    # writes.
+    "token_file": STATE_DIRECTORY + "/token",
 }
 
 
@@ -49,6 +55,7 @@ class Settings:
         self.port = int(values["port"])
         self.previous_config = _path(values["previous_config"])
         self.kiosk_unit = values["kiosk_unit"]
+        self.state_directory = _path(values["state_directory"])
         self.token_file = _path(values["token_file"])
 
     @classmethod

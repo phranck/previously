@@ -3,13 +3,15 @@
 Built on http.server from the standard library, which is enough for a handful
 of routes on a single-user device and costs no interpreter, no pip and no venv.
 
-Nothing here writes anything. Every route reads.
+Reading is open. Everything that changes the machine arrives as a POST and
+is refused without the token, which token.py decides.
 """
 
 import http.server
 import json
 import mimetypes
 import pathlib
+import urllib.parse
 
 from . import config, kiosk
 from .token import HEADER
@@ -18,6 +20,15 @@ VERSION = "0.1.0"
 
 #: Where the browser's files live, beside the package rather than inside it.
 WEB_ROOT = pathlib.Path(__file__).resolve().parent.parent / "web"
+
+#: What a POST may ask of the emulator. A map rather than a chain of
+#: comparisons, so the set of things this service can be asked to do is one
+#: list somebody can read.
+KIOSK_OPERATIONS = {
+    "/api/kiosk/start": kiosk.start,
+    "/api/kiosk/stop": kiosk.stop,
+    "/api/kiosk/restart": kiosk.restart,
+}
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -50,13 +61,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """Routes a POST.
 
         Everything that arrives this way changes something, so the token is
-        checked before anything looks at what was sent. There is nothing to
-        route to yet: writing a configuration is #2 and controlling the kiosk
-        is #4, and both land here.
+        checked before anything looks at what was sent.
         """
         if not self._carries_the_token():
             return self._json({"error": "token required"}, status=403)
-        return self._json({"error": "not found"}, status=404)
+
+        route = urllib.parse.urlparse(self.path).path
+        operation = KIOSK_OPERATIONS.get(route)
+        if operation is None:
+            return self._json({"error": "not found"}, status=404)
+
+        finished, reason = operation(self.settings.state_directory)
+        return self._json(
+            {"ok": finished, "reason": reason, **self._status()},
+            status=200 if finished else 409,
+        )
 
     def log_error(self, format, *args):
         """Always written, whatever the request turned out to be.
@@ -96,11 +115,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
         }
 
     def _status(self):
-        """What the machine is set to and whether it is running."""
+        """What the machine is set to and whether it is running.
+
+        "running" is about the emulator, not about the unit, because that is
+        what somebody means by the question. The unit stays active either way:
+        what it holds is a login shell, and the emulator is its grandchild.
+        """
         unit = self.settings.kiosk_unit
-        running = kiosk.is_running(unit)
+        running = kiosk.emulator_is_running()
         answer = {
             "running": running,
+            "held": kiosk.is_held(self.settings.state_directory),
+            "console_active": kiosk.is_running(unit),
             "uptime_seconds": kiosk.uptime_seconds(unit) if running else None,
         }
         try:
