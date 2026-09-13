@@ -33,7 +33,7 @@ Nothing is fetched. Everything runs on what Debian ships: `python3`, `python3-py
 
 **Changing anything needs a token.** Writing a configuration, stopping the emulator, opening a shell: all of it is refused without one. Sitting at the machine and pressing F12 needs physical access to it. Being on the network does not, and that difference is what the token answers.
 
-The token is made on first start, lives in `/var/lib/previously/token` readable by the service alone, and is read once over SSH and typed into the interface, which keeps it. It is never in this repository, never in a URL and never in a log line.
+The token is made on first start and lives in `/var/lib/previously/token`, readable by the service alone. Read it once with `sudo cat /var/lib/previously/token` and type it into the panel the interface raises the first time something is refused. The browser keeps it from then on, and the menu has its own way back to it. It is never in this repository, never in a URL and never in a log line.
 
 **It speaks plain HTTP, and there is no TLS.** The token crosses the home network in the open, so somebody already inside that network and reading traffic can take it. That is not the threat the token is for. It is there so that nothing reaches this by accident, and so that a device with no business writing a configuration cannot.
 
@@ -54,7 +54,11 @@ Every POST is checked for the token before anything looks at what was sent.
 
 ## Switching the machine on and off
 
-**Stopping means pressing the power button, not killing the emulator.** Previous maps the NeXT power button to F10, and pressing it starts an orderly shutdown inside NeXTSTEP, exactly as Power Off in the Logout panel does. Taking the emulator away instead leaves the guest's file system dirty, and it runs a check on the way back up. The key is sent with `wtype` through the Wayland protocol the kiosk's compositor implements.
+**Stopping means pressing the power button, not killing the emulator.** Previous maps the NeXT power button to F10. Taking the emulator away instead leaves the guest's file system dirty, and it runs a check on the way back up.
+
+One key is not enough. NeXTSTEP answers the power key with a panel asking whether the machine should really switch off, so the return key follows it two seconds later to press that panel's default button.
+
+The keys go in through the X server with `xdotool`, because Previous runs as an X client under the kiosk's Xwayland. A Wayland virtual keyboard is not the way: it binds its protocol against the compositor and reports success, and the emulator never sees the key. Both directions were measured on the machine.
 
 **Keeping it down is a file, not a systemd command.** `getty@tty1` restarts itself the instant a session ends, and the console's `~/.profile` starts the emulator. So when the guest powers off, a fresh emulator is booting a second later, and anything arriving after that to stop the unit would kill a guest that had just begun writing.
 

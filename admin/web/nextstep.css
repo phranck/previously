@@ -587,3 +587,17 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
 .panel-body .icon { width: 48px; height: 48px; background-size: contain; }
 .panel-body p { margin: 0 0 8px; }
 .panel-body p:last-child { margin: 0; }
+
+/* The line a panel takes a token on. NeXT's text fields are white, sunken and
+   one line tall, and this is the same field the readings use, made editable. */
+.panel .entry {
+  width: 100%;
+  margin-top: 10px;
+  font: 12px var(--mono);
+  color: var(--black);
+  background: var(--white);
+  border: 1px solid var(--dark);
+  box-shadow: inset 1px 1px 0 var(--black);
+  padding: 3px 5px;
+}
+.panel .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }

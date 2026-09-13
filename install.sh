@@ -54,6 +54,9 @@ readonly PROFILE="${HOME}/.profile"
 # that tool's own state directory, which is the one place its systemd unit may
 # write, and the console's autostart below waits on it.
 readonly HOLD_FILE="/var/lib/previously/hold"
+
+# What login looks for before printing the message of the day.
+readonly HUSHLOGIN="${HOME}/.hushlogin"
 readonly CMDLINE="/boot/firmware/cmdline.txt"
 readonly CONFIG_TXT="/boot/firmware/config.txt"
 readonly AUTOLOGIN="/etc/systemd/system/getty@tty1.service.d/autologin.conf"
@@ -169,9 +172,9 @@ check_host() {
 # ---------------------------------------------------------------------------
 
 install_packages() {
-  info "Installing cage and 7zip"
+  info "Installing cage, 7zip and xdotool"
 
-  local wanted=(cage 7zip) missing=() package
+  local wanted=(cage 7zip xdotool) missing=() package
   for package in "${wanted[@]}"; do
     dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "ok installed" || missing+=("$package")
   done
@@ -367,9 +370,13 @@ enable_autologin() {
 }
 
 # ---------------------------------------------------------------------------
-# 8  Silence all four things that draw on the screen before NeXTSTEP does: the
+# 8  Silence all five things that draw on the screen before NeXTSTEP does: the
 #    firmware splash, the kernel logo and its messages, systemd's status list,
-#    and the blinking cursor of the text console.
+#    the blinking cursor of the text console, and the login banner.
+#
+#    The banner is the one that outlasts the boot. Since the console waits for
+#    the emulator rather than exiting, nothing overwrites what login printed,
+#    so it stays on screen for as long as the machine is switched off.
 # ---------------------------------------------------------------------------
 
 quieten_boot() {
@@ -400,6 +407,24 @@ quieten_boot() {
   fi
 
   sudo sed -i '1s/$/ quiet loglevel=0 logo.nologo vt.global_cursor_default=0 systemd.show_status=false/' "$CMDLINE"
+
+  quieten_login
+}
+
+# /etc/issue and /etc/motd, which agetty and login print before ~/.profile ever
+# runs. Stopped at the source rather than cleared afterwards, so there is no
+# flash of text to erase.
+quieten_login() {
+  if [[ ! -f "$HUSHLOGIN" ]]; then
+    touch "$HUSHLOGIN"
+    undo "let login print the message of the day again" \
+         "rm -f $(printf '%q' "$HUSHLOGIN")"
+  fi
+
+  if [[ -f "$AUTOLOGIN" ]] && ! grep -q -- '--noissue' "$AUTOLOGIN"; then
+    sudo sed -i 's/agetty --autologin/agetty --noissue --autologin/' "$AUTOLOGIN"
+    sudo systemctl daemon-reload
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -432,6 +457,7 @@ ${AUTOSTART_MARKER}
 # this unit restarts itself the moment a session ends and would bring a fresh
 # emulator up underneath whatever stopped the last one.
 if [ "\$XDG_VTNR" = 1 ] && [ -z "\$WAYLAND_DISPLAY" ]; then
+  clear
   while [ -f ${HOLD_FILE} ]; do sleep 2; done
   exec cage -- /usr/bin/previous
 fi

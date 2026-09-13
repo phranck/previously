@@ -31,7 +31,7 @@ def world(tmp_path, monkeypatch):
         def emulator_is_running(self):
             return self.emulator_running
 
-        def press_power(self):
+        def press_power(self, _sleep=None):
             self.power_pressed += 1
             return self.power_works
 
@@ -68,7 +68,7 @@ def test_stopping_holds_before_it_presses(tmp_path, world):
     back, which is the race this exists to avoid."""
     order = []
 
-    def record_press():
+    def record_press(_sleep=None):
         order.append("held" if kiosk.is_held(tmp_path) else "not held")
         world.emulator_running = False
         return True
@@ -195,3 +195,57 @@ def test_a_restart_that_cannot_shut_down_does_not_start_anything(tmp_path, world
     assert finished is False
     assert kiosk.is_held(tmp_path) is True
     assert "has not finished shutting down" in reason
+
+
+# -- the keys themselves -------------------------------------------------
+
+
+def test_the_power_button_is_two_keys(tmp_path, monkeypatch):
+    """NeXTSTEP does not switch off on the power key alone. It raises a panel
+    asking whether the machine should really go, and the second key answers it.
+    Sending only the first leaves the panel standing and the guest running,
+    which is what happened on the machine before this was understood."""
+    sent = []
+    monkeypatch.setattr(kiosk, "_press", lambda key: sent.append(key) or True)
+
+    assert kiosk.press_power(sleep=lambda _seconds: None) is True
+    assert sent == [kiosk.POWER_KEY, kiosk.CONFIRM_KEY]
+
+
+def test_the_panel_is_given_time_to_appear(tmp_path, monkeypatch):
+    """Answering before the panel is up sends the confirmation to whatever the
+    guest had in front instead."""
+    waited = []
+    monkeypatch.setattr(kiosk, "_press", lambda _key: True)
+
+    kiosk.press_power(sleep=lambda seconds: waited.append(seconds))
+
+    assert waited == [kiosk.PANEL_SECONDS]
+
+
+def test_a_power_key_that_does_not_arrive_sends_no_confirmation(tmp_path, monkeypatch):
+    """A stray return key would reach whatever the guest is showing."""
+    sent = []
+
+    def refuse(key):
+        sent.append(key)
+        return False
+
+    monkeypatch.setattr(kiosk, "_press", refuse)
+
+    assert kiosk.press_power(sleep=lambda _seconds: None) is False
+    assert sent == [kiosk.POWER_KEY]
+
+
+def test_no_x_server_means_no_key(tmp_path, monkeypatch):
+    """The emulator is not running, so there is nothing to press against."""
+    monkeypatch.setattr(kiosk, "X11_SOCKETS", str(tmp_path / "absent"))
+    assert kiosk._press(kiosk.POWER_KEY) is False
+
+
+def test_the_display_comes_from_the_socket(tmp_path, monkeypatch):
+    """Xwayland picks the number, so it is read rather than assumed."""
+    monkeypatch.setattr(kiosk, "X11_SOCKETS", str(tmp_path))
+    (tmp_path / "X7").touch()
+
+    assert kiosk._display() == ":7"
