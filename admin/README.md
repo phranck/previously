@@ -20,6 +20,7 @@ Nothing is fetched. Everything runs on what Debian ships: `python3`, `python3-py
 | `previously/machines.py` | Which machines exist, and what each one is in the file |
 | `previously/change.py` | Changing the machine without leaving it unable to start |
 | `previously/kiosk.py` | Everything this tool does to the machine, in one file |
+| `previously/pi.py` | What the board underneath is doing |
 | `previously/server.py` | Which addresses exist and what answers them |
 | `previously/token.py` | The one secret, and what a request may do without it |
 | `web/` | What the browser gets |
@@ -51,6 +52,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/kiosk/start` | Lets the emulated machine come back |
 | `POST /api/kiosk/stop` | Shuts it down properly and keeps it down |
 | `POST /api/kiosk/restart` | Both, in that order |
+| `GET /api/pi` | Temperature, power, sound, disk, and what the emulator costs |
 | `GET /api/machines` | Which machines can be chosen |
 | `POST /api/machine` | Makes the emulated machine the one named |
 
