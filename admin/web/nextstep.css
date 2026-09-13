@@ -109,6 +109,11 @@ body {
   -webkit-font-smoothing: none;
 }
 
+/* A custom element carries its own display, and that beats what the hidden
+   attribute means, so every one of them would need its own rule saying the
+   obvious. This says it once for all of them. */
+[hidden] { display: none; }
+
 /* Every picture in here is a bitmap at its own size, so it is never smoothed. */
 .art {
   background-position: center;
@@ -193,8 +198,9 @@ nx-menu-item:active { background: var(--black); color: var(--white); }
 nx-menu-item[disabled] { color: var(--dark); }
 nx-menu-item[disabled]:active { background: none; color: var(--dark); }
 
-/* The small picture an entry may carry, at the size NeXTSTEP put beside a line
-   of menu text rather than at icon size. */
+/* The place a picture goes, which every entry keeps whether it carries one or
+   not, so the words all begin at the same column. At the size NeXTSTEP put
+   beside a line of menu text rather than at icon size. */
 nx-menu-item .mark {
   width: 16px; height: 16px;
   background-size: contain;
@@ -271,9 +277,6 @@ nx-window {
   min-width: var(--win-min-w);
   min-height: var(--win-min-h);
 }
-/* The flex display above would otherwise beat the user agent's rule for the
-   hidden attribute, and a closed window would stay on screen. */
-nx-window[hidden] { display: none; }
 
 /* The bar is 19 px tall and sits on a one-pixel grey ledge, with two pixels of
    shadow beneath it. Drawing all three as one gradient keeps the three numbers
@@ -408,8 +411,6 @@ nx-scroller .knob::after {
 /* Both arrows sit at the foot of the bar, one above the other, and they go
    away with the knob when there is nothing to scroll. */
 nx-scroller .arrows { flex: 0 0 auto; }
-nx-scroller .arrows[hidden] { display: none; }
-
 nx-scroller .step {
   width: 100%;
   height: var(--scroller);
