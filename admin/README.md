@@ -5,7 +5,7 @@ A small service on the Pi that shows what the emulator is set to, from a browser
 ## Running it
 
 ```bash
-make run          # in the foreground, on port 8088
+make run          # in the foreground, on port 2342
 make check        # lint and tests, which is what a commit needs
 ```
 
@@ -107,7 +107,7 @@ Leave both paths empty and put it in front as usual. The service speaks plain HT
 
 ### Dropping the port number
 
-Optional, and it applies to any of the three. `packaging/previously-443.conf` lets the service bind 443, so the address carries no port. It grants one capability and restricts it to that one port. Without it, `:8088` over TLS works just as well.
+Optional, and it applies to any of the three. `packaging/previously-443.conf` lets the service bind 443, so the address carries no port. It grants one capability and restricts it to that one port. Without it, `:2342` over TLS works just as well.
 
 ### What no certificate does
 
