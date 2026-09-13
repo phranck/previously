@@ -40,6 +40,8 @@
   --tile: 104px;         /* the tile an icon and its name sit on */
   --slot-w: 66px;        /* hilite.tiff is 66 by 52, so the slot is too */
   --slot-h: 52px;
+  --slot-top: 2px;       /* air above the icon, inside the mark */
+  --name-air: 3px;       /* air above and below a name, inside the mark */
 
   --font: Helvetica, "Helvetica Neue", Arial, sans-serif;
   --mono: Menlo, "DejaVu Sans Mono", monospace;
@@ -442,7 +444,11 @@ nx-thing {
    changes a colour and never a size. */
 nx-thing .slot {
   width: var(--slot-w);
-  height: var(--slot-h);
+  /* Two pixels taller than the icon's box, spent above it, because the mark
+     otherwise sits closer to the icon at the top than at the sides. */
+  height: calc(var(--slot-h) + var(--slot-top));
+  padding-top: var(--slot-top);
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   position: relative;
@@ -467,15 +473,19 @@ nx-thing .slot::after {
   bottom: 0;
   width: var(--hilite-radius);
   height: var(--hilite-radius);
-  background: var(--mark);
 }
+/* A radial gradient rather than a border-radius. A rounded corner keeps the
+   disc and throws the rest away, which puts a bump in the crook instead of a
+   hollow. This keeps everything except the disc, which is the hollow. */
 nx-thing .slot::before {
   left: calc(var(--hilite-radius) * -1);
-  border-top-left-radius: var(--hilite-radius);
+  background: radial-gradient(circle at top left,
+    transparent var(--hilite-radius), var(--mark) 0);
 }
 nx-thing .slot::after {
   right: calc(var(--hilite-radius) * -1);
-  border-top-right-radius: var(--hilite-radius);
+  background: radial-gradient(circle at top right,
+    transparent var(--hilite-radius), var(--mark) 0);
 }
 nx-thing .icon { width: var(--icon); height: var(--icon); background-size: var(--icon); }
 
@@ -483,7 +493,9 @@ nx-thing .name {
   font-size: var(--icon-size);
   line-height: 1.3;
   text-align: center;
-  padding: 0 3px;
+  /* Air above and below the lettering, so a name on one line gets a mark with
+     some height to it rather than a strip the size of the type. */
+  padding: var(--name-air) 3px;
   max-width: 100%;
   /* Always wider than the slot above it by at least the radius on each side,
      so the step between the two always goes the same way and there is always a
@@ -491,8 +503,11 @@ nx-thing .name {
   min-width: calc(var(--slot-w) + 2 * var(--hilite-radius));
   box-sizing: border-box;
   background: var(--mark);
-  /* Its upper corners lie inside the shape, for the same reason. */
-  border-radius: 0 0 var(--hilite-radius) var(--hilite-radius);
+  /* All four, because the slot above is narrower: the upper corners stand out
+     on either side of it and are part of the outline. What is not part of it
+     is the stretch of top edge the slot covers, and the fillets round the two
+     places where the one meets the other. */
+  border-radius: var(--hilite-radius);
 }
 
 /* The machine the emulator is actually running. The same shape as a selection
