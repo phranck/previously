@@ -10,6 +10,7 @@
 
 <nx-menu name="menu" title="Cube" x="8" y="8">
   <nx-menu-item opens="info" key="i">Info</nx-menu-item>
+  <nx-menu-item opens="pi" key="p">Raspberry Pi</nx-menu-item>
   <nx-menu-item opens="machines" key="m">Maschinen</nx-menu-item>
   <nx-menu-item name="token" key="t">Token</nx-menu-item>
 </nx-menu>
@@ -37,6 +38,20 @@
     <button id="kiosk-stop">Ausschalten</button>
     <button id="kiosk-restart">Neu starten</button>
     <button id="kiosk-start" class="default">Einschalten</button>
+  </div>
+</nx-window>
+
+<nx-window name="pi" title="Raspberry Pi" x="600" y="16" w="360" h="316"
+           min-w="300" min-h="220" closed>
+  <div class="readings">
+    <nx-row><label>Maschine</label><nx-field id="pi-model">&mdash;</nx-field></nx-row>
+    <nx-row><label>Läuft</label><nx-field id="pi-uptime">&mdash;</nx-field></nx-row>
+    <nx-row><label>Temperatur</label><div class="state" id="pi-temp">&mdash;</div></nx-row>
+    <nx-row><label>Strom</label><div class="state" id="pi-power">&mdash;</div></nx-row>
+    <nx-row><label>Emulator</label><nx-field id="pi-emulator">&mdash;</nx-field></nx-row>
+    <nx-row><label>Ton</label><div class="state" id="pi-sound">&mdash;</div></nx-row>
+    <nx-row><label>Speicher</label><nx-field id="pi-memory">&mdash;</nx-field></nx-row>
+    <nx-row><label>Karte</label><nx-field id="pi-disk">&mdash;</nx-field></nx-row>
   </div>
 </nx-window>
 

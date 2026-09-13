@@ -13,7 +13,7 @@ import mimetypes
 import pathlib
 import urllib.parse
 
-from . import change, config, kiosk, machines
+from . import change, config, kiosk, machines, pi
 from .token import HEADER
 
 VERSION = "0.1.0"
@@ -53,6 +53,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(self._health())
         if route == "/api/status":
             return self._json(self._status())
+        if route == "/api/pi":
+            return self._json(pi.readings())
         if route == "/api/machines":
             return self._json({"machines": [
                 {"id": machine.identifier, "name": machine.name}
