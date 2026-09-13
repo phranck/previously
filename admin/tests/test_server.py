@@ -241,3 +241,45 @@ def test_an_error_is_logged_even_on_a_connection_that_served_a_file(capsys):
     handler.log_error("code %d, message %s", 400, "Bad request syntax")
 
     assert "Bad request syntax" in capsys.readouterr().err
+
+
+# -- changing the machine ------------------------------------------------
+
+
+def test_the_catalogue_is_open(service):
+    """Which machines exist costs nothing to know, so it reads like the rest."""
+    status, _, body = fetch(service + "/api/machines")
+    names = [machine["id"] for machine in json.loads(body)["machines"]]
+
+    assert status == 200
+    assert "nextcube-turbo" in names
+    assert len(names) == len(set(names))
+
+
+def test_changing_the_machine_needs_the_token(service):
+    request = urllib.request.Request(
+        service + "/api/machine", data=b'{"machine": "nextcube"}', method="POST")
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        urllib.request.urlopen(request, timeout=5)
+    assert raised.value.code == 403
+
+
+def test_a_request_that_is_not_readable_is_refused_before_anything_happens(service):
+    request = urllib.request.Request(
+        service + "/api/machine", data=b"this is not json", method="POST")
+    request.add_header(HEADER, server.Handler.token.value)
+
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        urllib.request.urlopen(request, timeout=5)
+    assert raised.value.code == 400
+
+
+def test_a_machine_that_does_not_exist_is_refused(service):
+    request = urllib.request.Request(
+        service + "/api/machine", data=b'{"machine": "amiga-2000"}', method="POST")
+    request.add_header(HEADER, server.Handler.token.value)
+
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        urllib.request.urlopen(request, timeout=5)
+    assert raised.value.code == 409
+    assert "keine Maschine" in json.loads(raised.value.read())["reason"]

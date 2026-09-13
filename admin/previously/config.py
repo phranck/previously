@@ -134,3 +134,98 @@ def _disk(parser):
             path = disks.get("szImageName%d" % slot, "")
             return path.rsplit("/", 1)[-1] or None
     return None
+
+
+def write(path, settings):
+    """Applies settings to the file, leaving everything else exactly as it was.
+
+    @param path - The configuration to change.
+    @param settings - Section name to key to value, as machines.settings_for
+      returns. Only these keys are touched.
+    @returns int, how many lines were changed.
+    @raises NotReadable where the file cannot be read or written.
+
+    Line by line rather than through configparser, which would rewrite the
+    whole file from its own idea of the format and drop anything it does not
+    model. Previous keeps 234 lines here and this tool understands ten of them,
+    so the other 224 are none of its business and are passed through untouched.
+
+    The section has to be tracked whilst walking, because the same key name
+    appears in more than one of them. nMemoryBankSize0 is the machine's first
+    memory bank under [Memory], and [Dimension] carries its own board memory
+    under names that begin the same way.
+    """
+    try:
+        lines = path.read_text().splitlines(keepends=True)
+    except OSError as error:
+        raise NotReadable("cannot read %s: %s" % (path, error)) from error
+
+    wanted = {section: dict(keys) for section, keys in settings.items()}
+    changed = 0
+    section = None
+    out = []
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            section = stripped[1:-1]
+        elif section in wanted and "=" in line:
+            key = line.split("=", 1)[0].strip()
+            if key in wanted[section]:
+                value = wanted[section].pop(key)
+                replacement = "%s = %s\n" % (key, value)
+                if replacement != line:
+                    changed += 1
+                line = replacement
+        out.append(line)
+
+    # Anything the file did not already carry. Previous writes every key it
+    # knows, so this is for a file somebody has trimmed by hand.
+    for name, remaining in wanted.items():
+        if remaining:
+            out.extend(_appended(name, remaining, out))
+            changed += len(remaining)
+
+    try:
+        path.write_text("".join(out))
+    except OSError as error:
+        raise NotReadable("cannot write %s: %s" % (path, error)) from error
+    return changed
+
+
+def _appended(name, keys, out):
+    """The lines for keys whose section did not hold them.
+
+    @param name - The section they belong to.
+    @param keys - What is left over.
+    @param out - The lines written so far, so an existing section is found.
+    @returns list of lines to add at the end.
+
+    Appended rather than inserted into the section where it sits, because a
+    file that is missing a key Previous always writes is a file somebody has
+    edited, and moving their lines about would be a second surprise.
+    """
+    lines = []
+    if "[%s]" % name not in "".join(out):
+        lines.append("\n[%s]\n" % name)
+    lines.extend("%s = %s\n" % (key, value) for key, value in keys.items())
+    return lines
+
+
+def back_up(path):
+    """Copies the file beside itself, so the last change can be undone.
+
+    @param path - The configuration.
+    @returns pathlib.Path of the copy.
+    @raises NotReadable where it cannot be made.
+
+    One generation, replaced on each write. What gets undone is always the last
+    change, and a directory of dated copies is a tidiness problem nobody asked
+    for.
+    """
+    copy = path.with_suffix(path.suffix + ".bak")
+    try:
+        copy.write_bytes(path.read_bytes())
+    except OSError as error:
+        raise NotReadable("cannot back up %s: %s" % (path, error)) from error
+    return copy

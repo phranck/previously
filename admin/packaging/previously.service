@@ -31,6 +31,12 @@ PrivateTmp=yes
 # and pressing the emulated power button means reaching it. Read only, and one
 # directory rather than the whole of /tmp.
 BindReadOnlyPaths=/tmp/.X11-unix
+
+# The one place in the home this service may write, which ProtectHome above
+# otherwise forbids. Previous keeps its configuration here and this tool's job
+# is to change it. The directory rather than the file, because the copy it
+# makes before every write is a second file beside the first.
+ReadWritePaths=-/home/next/.config/previous
 ProtectSystem=strict
 ProtectHome=read-only
 ProtectKernelTunables=yes

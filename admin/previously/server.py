@@ -13,7 +13,7 @@ import mimetypes
 import pathlib
 import urllib.parse
 
-from . import config, kiosk
+from . import change, config, kiosk, machines
 from .token import HEADER
 
 VERSION = "0.1.0"
@@ -53,6 +53,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(self._health())
         if route == "/api/status":
             return self._json(self._status())
+        if route == "/api/machines":
+            return self._json({"machines": [
+                {"id": machine.identifier, "name": machine.name}
+                for machine in machines.CATALOGUE
+            ]})
         if route == "/api/token":
             return self._json({"valid": self._carries_the_token()})
         return self._file(route)
@@ -67,11 +72,34 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json({"error": "token required"}, status=403)
 
         route = urllib.parse.urlparse(self.path).path
+
+        if route == "/api/machine":
+            return self._change_machine()
+
         operation = KIOSK_OPERATIONS.get(route)
         if operation is None:
             return self._json({"error": "not found"}, status=404)
 
         finished, reason = operation(self.settings.state_directory)
+        return self._json(
+            {"ok": finished, "reason": reason, **self._status()},
+            status=200 if finished else 409,
+        )
+
+    def _change_machine(self):
+        """Makes the emulated machine the one the request names.
+
+        The whole cycle lives in change.py: the guest is shut down properly,
+        the file is copied and written, the machine comes back, and anything
+        that does not come back is put straight back the way it was.
+        """
+        try:
+            body = json.loads(self.rfile.read(
+                int(self.headers.get("Content-Length") or 0)) or b"{}")
+        except (ValueError, OSError):
+            return self._json({"error": "unreadable request"}, status=400)
+
+        finished, reason = change.to_machine(body.get("machine"), self.settings)
         return self._json(
             {"ok": finished, "reason": reason, **self._status()},
             status=200 if finished else 409,
