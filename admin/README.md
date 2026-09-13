@@ -34,29 +34,29 @@ Nothing is fetched. Everything runs on what Debian ships: `python3`, `python3-py
 
 The token is made on first start, lives in `/var/lib/previously/token` readable by the service alone, and is read once over SSH and typed into the interface, which keeps it. It is never in this repository, never in a URL and never in a log line.
 
-**HTTPS is available and off until a certificate is configured.** Without one the token crosses the home network in the clear, where anything on that network can read it. With one it cannot. Nothing about this makes the tool safe to expose to the internet, and nothing here should be read as an invitation to forward a port to it.
+**It speaks plain HTTP, and for a tool on a home network that is the sensible way to run it.** The token crosses that network in the open, so somebody already inside it and reading traffic can take it. On a network you control that is not the threat the token is for: it is there so that nothing reaches this by accident, and so that a device with no business writing a configuration cannot.
 
-The next section says which certificate a machine can have, which depends on whether it has a name the internet can look up. Most do not, and there is an answer for those too.
+HTTPS is available for anybody whose situation is different, and the section below says what it takes. It is off unless a certificate is named, and nothing needs it.
 
-## Reaching it over HTTPS
+## HTTPS, for anybody who wants it
 
-Without a certificate the service speaks plain HTTP, and the token crosses the network where anything on it can read the token. With one, it cannot.
+**Not needed on a home network, and off unless configured.** Two paths in `config.ini` name a certificate and a key, and until they do the service speaks HTTP.
 
-Which certificate you can have depends on a single question: **is this machine's name one that the rest of the internet can look up?** For almost every Pi on a home network the answer is no, and the first section below is the one that applies.
+It is worth switching on where the network is not yours to trust: a shared flat, an office, a machine reached over a VPN from elsewhere. Exposing this to the internet is a different question that a certificate does not answer on its own.
 
-### A Pi on a home network, which is most of them
+Which certificate a machine can have turns on one thing: **is its name one that the rest of the internet can look up?**
 
-A public certificate authority issues nothing for `raspberrypi.local`, `pi.fritz.box` or `192.168.1.50`. There is nothing for them to verify: those names mean something inside one house and nothing outside it. This is how the trust system works rather than a gap in it, so no amount of configuration gets round it.
+### A name only your house knows
 
-What such a machine can have is a certificate it signs for itself:
+`raspberrypi.local`, `pi.fritz.box` and `192.168.1.50` mean something inside one house and nothing outside it. There is nothing for a public authority to verify, so none of them issues anything. That is the trust system working rather than a gap in it.
+
+Such a machine signs a certificate for itself:
 
 ```bash
 sudo /usr/lib/previously/self-signed-certificate.sh
 ```
 
-It reads every name the machine answers to and puts all of them in: the short name, the same name under `.local`, whatever the router's domain makes of it, and each address. Nothing is written down in advance, so this works on a machine called anything at all. Names it cannot discover are added as arguments.
-
-Then name the two files and restart:
+It reads every name the machine answers to and issues for all of them: the short name, the same name under `.local`, whatever the router's domain makes of it, and each address. Nothing is written down in advance, so it works on a machine called anything. Extra names go in as arguments.
 
 ```ini
 [service]
@@ -64,23 +64,21 @@ certificate = /etc/previously/tls/fullchain.pem
 private_key = /etc/previously/tls/privkey.pem
 ```
 
-**What you get and what you do not.** The connection is encrypted, so the token no longer crosses the network in the open. The certificate proves nothing about who is answering, because nobody vouched for it, so the browser warns the first time and the person who typed the address decides. That is the honest trade and it is worth knowing before accepting it: on a network you control, and an address you typed yourself, the warning is telling you something you already know.
+**The trade.** The connection is encrypted. The certificate proves nothing about who is answering, because nobody vouched for it, so the browser warns the first time on every device and somebody has to accept it. That warning is the cost, it recurs on each new device, and on a network you control it tells you nothing you did not already know. It lasts 825 days, which is the longest macOS and iOS accept from anybody.
 
-The certificate lasts 825 days, which is the longest macOS and iOS accept from anybody. Run the command again to make a new one.
+### A name the internet can look up
 
-### If you happen to own a domain
+Then there is no warning, and the machine still never has to be reachable from outside.
 
-Then the machine can have a certificate with no warning at all, from Let's Encrypt, and it still never has to be reachable from the internet.
-
-Point a name you control at the machine's address on the home network:
+Point a name you control at its address on the home network:
 
 ```
 cube.example.org.   A   10.0.0.135
 ```
 
-That record is public and answers with a private address, which is fine. Inside the house it resolves and works; everywhere else it points into a network the caller is not on, so nothing answers.
+The record is public and answers with a private address. Inside the house it resolves and works; everywhere else it points into a network the caller is not on.
 
-The usual way of proving a name, answering a request on port 80 from outside, cannot work here. The DNS-01 challenge proves the same thing through a DNS record instead, which is somewhere Let's Encrypt can already reach. Their documentation names this as the reason to use it: it validates "domain names whose webservers aren't exposed to the public internet" ([Challenge Types](https://letsencrypt.org/docs/challenge-types/)).
+Proving the name by answering on port 80 from outside cannot work here. The DNS-01 challenge proves it through a DNS record instead, somewhere Let's Encrypt can already reach. Their documentation names this as the reason to use it: it validates "domain names whose webservers aren't exposed to the public internet" ([Challenge Types](https://letsencrypt.org/docs/challenge-types/)).
 
 ```bash
 sudo certbot certonly --preferred-challenges dns \
@@ -89,7 +87,7 @@ sudo certbot certonly --preferred-challenges dns \
     --deploy-hook /usr/lib/previously/certificate-hook.sh
 ```
 
-`certificate-hook.sh` copies the pair into `/etc/previously/tls/`, owned by the service user, and restarts the service. It runs again at every renewal, so nothing has to be remembered every sixty days. Name the same two files in `config.ini` as above, with `fullchain.pem` rather than `cert.pem`, because it carries the intermediate certificate that browsers need.
+`certificate-hook.sh` copies the pair into `/etc/previously/tls/` owned by the service user and restarts the service, at every renewal, so nothing has to be remembered every sixty days. Name the same two files as above, with `fullchain.pem` rather than `cert.pem`, because it carries the intermediate certificate browsers need.
 
 **If your DNS provider has no API**, delegate only the challenge record to a zone that does, once, by hand:
 
@@ -97,21 +95,21 @@ sudo certbot certonly --preferred-challenges dns \
 _acme-challenge.cube.example.org.   CNAME   cube.acme.example-with-an-api.org.
 ```
 
-Let's Encrypt follows that CNAME, so the client only ever needs a credential for the second zone, and that zone holds nothing but challenge records. Let's Encrypt supports this explicitly: "you can use CNAME records or NS records to delegate answering the challenge to other DNS zones" ([Challenge Types](https://letsencrypt.org/docs/challenge-types/)).
+Let's Encrypt follows that CNAME, so the client only ever needs a credential for the second zone, and that zone holds nothing but challenge records. They support this explicitly: "you can use CNAME records or NS records to delegate answering the challenge to other DNS zones" ([Challenge Types](https://letsencrypt.org/docs/challenge-types/)).
 
 Do not put an account password on the machine to avoid this. Some ACME clients offer providers that log into a customer portal and drive its web forms, which puts credentials for everything that account can reach on a Pi, for the sake of one TXT record.
 
-### If you already run a reverse proxy
+### A reverse proxy in front
 
-Leave both paths empty and put it in front as usual. The service speaks plain HTTP and the proxy holds the certificate.
+Leave both paths empty. The service speaks HTTP and the proxy holds the certificate.
 
 ### Dropping the port number
 
-Optional, and it applies to any of the three. `packaging/previously-443.conf` lets the service bind 443, so the address carries no port. It grants one capability and restricts it to that one port. Without it, `:2342` over TLS works just as well.
+`packaging/previously-443.conf` lets the service bind 443, so the address carries no port. It grants one capability and restricts it to that one port.
 
-### What no certificate does
+### What none of it does
 
-None of this makes the tool safe to expose to the internet, and none of it replaces the token. A certificate says nobody is reading along. The token says who may change something.
+A certificate says nobody is reading along. It does not say who may change something, which is the token's job, and it does not make this safe to expose to the internet.
 
 ## The addresses
 
