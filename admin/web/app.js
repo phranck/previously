@@ -11,6 +11,13 @@
  *  not repay a faster poll than this. */
 const REFRESH_MS = 5000;
 
+/** Where the token is kept, so it is typed once rather than every visit. */
+const TOKEN_KEY = "previously:token";
+
+/** The header the service reads it from. Not a query parameter: a URL ends up
+ *  in logs, in history and in whatever somebody pastes into a chat window. */
+const TOKEN_HEADER = "X-Previously-Token";
+
 /** What the pictures are called, by what they mean rather than by their file. */
 const Art = {
   Computer: "root",
@@ -26,11 +33,32 @@ const Art = {
  */
 async function ask(route) {
   try {
-    const answer = await fetch(route, { cache: "no-store" });
+    const answer = await fetch(route, { cache: "no-store", headers: headers() });
     return answer.ok ? await answer.json() : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * The headers every request carries.
+ * @returns {object} The token where one is known, nothing otherwise.
+ */
+function headers() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  return token ? { [TOKEN_HEADER]: token } : {};
+}
+
+/**
+ * Keeps a token and reports whether the service accepts it.
+ * @param {string} token - What the user read out of /var/lib/previously/token.
+ * @returns {Promise<boolean>}
+ */
+async function useToken(token) {
+  localStorage.setItem(TOKEN_KEY, token.trim());
+  const answer = await ask("/api/token");
+  if (!answer?.valid) localStorage.removeItem(TOKEN_KEY);
+  return Boolean(answer?.valid);
 }
 
 /**

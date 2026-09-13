@@ -12,6 +12,7 @@ import mimetypes
 import pathlib
 
 from . import config, kiosk
+from .token import HEADER
 
 VERSION = "0.1.0"
 
@@ -28,6 +29,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     """
 
     settings = None
+    token = None
     server_version = "previously/" + VERSION
     #: Without this the base class announces the Python version to the network.
     sys_version = ""
@@ -40,7 +42,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(self._health())
         if route == "/api/status":
             return self._json(self._status())
+        if route == "/api/token":
+            return self._json({"valid": self._carries_the_token()})
         return self._file(route)
+
+    def do_POST(self):
+        """Routes a POST.
+
+        Everything that arrives this way changes something, so the token is
+        checked before anything looks at what was sent. There is nothing to
+        route to yet: writing a configuration is #2 and controlling the kiosk
+        is #4, and both land here.
+        """
+        if not self._carries_the_token():
+            return self._json({"error": "token required"}, status=403)
+        return self._json({"error": "not found"}, status=404)
 
     def log_error(self, format, *args):
         """Always written, whatever the request turned out to be.
@@ -94,6 +110,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             answer["error"] = str(error)
         return answer
 
+    def _carries_the_token(self):
+        """Whether this request carried the token.
+
+        False where the service has none, because a service that cannot read
+        its own secret should refuse every change rather than accept them all.
+        """
+        if self.token is None:
+            return False
+        return self.token.matches(self.headers.get(HEADER))
+
     # -- how anything is sent --------------------------------------------
 
     def _json(self, payload, status=200):
@@ -141,12 +167,14 @@ def safe_path(root, route):
     return candidate
 
 
-def serve(settings):
+def serve(settings, token=None):
     """Runs the service until it is stopped.
 
     @param settings - Settings, which says where to bind and what to read.
+    @param token - Token, or None. Without one, every change is refused.
     """
     Handler.settings = settings
+    Handler.token = token
     address = (settings.address, settings.port)
     with http.server.ThreadingHTTPServer(address, Handler) as httpd:
         print("previously %s on http://%s:%d"
