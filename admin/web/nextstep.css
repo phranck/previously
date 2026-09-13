@@ -21,7 +21,7 @@
      Rollbalken-Rinne     Schachbrett aus #555555 und #aaaaaa, 1 px
      versenkte Fläche     aussen #555555, innen #000000 oben und links, weiss sonst
      erhabene Fläche      weiss oben und links, aussen #000000, innen #555555
-     Auswahl              hilite.tiff hinter dem Icon, weiss hinter dem Namen
+     Auswahl              eine weisse Flaeche hinter Icon und Namen, 5 px Radius
    --------------------------------------------------------------------------- */
 
 :root {
@@ -67,7 +67,16 @@
   --dock-marks: url("parts/dock-marks.png");
   --floppy: url("parts/floppy.png");
   --folder: url("parts/folder.png");
-  --hilite: url("parts/hilite.png");
+  /* NeXTSTEP's own selection was a white rounded shape, and this is the corner
+     it drew, read off hilite.tiff: white begins five pixels in on the first
+     row and reaches the edge on the sixth. */
+  --hilite-radius: 5px;
+
+  /* The one value outside the four above. It marks the configuration the
+     emulator is actually running, which is a thing NeXTSTEP had no idea of, so
+     there is no original to take a colour from. A shade under the window's own
+     grey, because it has to read as a state and not as a selection. */
+  --in-force: #999999;
   --net: url("parts/net.png");
   --optical: url("parts/optical.png");
   --root-color: url("parts/root-color.png");
@@ -419,9 +428,14 @@ nx-thing {
   display: grid;
   justify-items: center;
   align-content: start;
-  gap: 2px;
+  /* No gap: the two halves of a mark have to touch, or the window's grey shows
+     between them and one thing reads as two. */
+  gap: 0;
   padding: 2px;
   cursor: default;
+  /* What a mark is painted in. Nothing, until the thing is chosen or is the
+     one in force, and then both halves and the fillets take it from here. */
+  --mark: transparent;
 }
 
 /* The icon sits in a slot the size of hilite.tiff, so turning the selection on
@@ -431,6 +445,37 @@ nx-thing .slot {
   height: var(--slot-h);
   display: grid;
   place-items: center;
+  position: relative;
+  background: var(--mark);
+  /* The two halves are one shape, so only its outside is rounded. The slot's
+     lower corners lie inside that shape and stay square: rounding them would
+     cut notches out of the middle of the mark. */
+  border-radius: var(--hilite-radius) var(--hilite-radius) 0 0;
+}
+
+/* The two inner corners where the slot meets the wider name below it. Left
+   square they are the one sharp angle in a shape that is otherwise all curves,
+   so each is filled with a square of the mark's own colour that has its far
+   corner rounded away, which turns the angle into a concave curve.
+
+   They work because the slot has a fixed width and the name is never narrower
+   than it, so the step is always the same way round. */
+nx-thing .slot::before,
+nx-thing .slot::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: var(--hilite-radius);
+  height: var(--hilite-radius);
+  background: var(--mark);
+}
+nx-thing .slot::before {
+  left: calc(var(--hilite-radius) * -1);
+  border-top-left-radius: var(--hilite-radius);
+}
+nx-thing .slot::after {
+  right: calc(var(--hilite-radius) * -1);
+  border-top-right-radius: var(--hilite-radius);
 }
 nx-thing .icon { width: var(--icon); height: var(--icon); background-size: var(--icon); }
 
@@ -440,12 +485,36 @@ nx-thing .name {
   text-align: center;
   padding: 0 3px;
   max-width: 100%;
+  /* Always wider than the slot above it by at least the radius on each side,
+     so the step between the two always goes the same way and there is always a
+     real crook for the fillets to round. */
+  min-width: calc(var(--slot-w) + 2 * var(--hilite-radius));
+  box-sizing: border-box;
+  background: var(--mark);
+  /* Its upper corners lie inside the shape, for the same reason. */
+  border-radius: 0 0 var(--hilite-radius) var(--hilite-radius);
 }
 
+/* The machine the emulator is actually running. The same shape as a selection
+   so the two read as one language, in grey rather than white so they are never
+   confused, with the icon dimmed because this machine is a fact rather than
+   something to act on.
+
+   Written before the selection below, so choosing the machine that is already
+   running shows it as chosen. */
+nx-thing.current { --mark: var(--in-force); }
+nx-thing.current .icon { opacity: .6; }
+nx-thing.current .name { font-weight: bold; }
+
 /* Selection is white behind the icon and white behind the name, and the
-   lettering stays black. No second colour enters the interface. */
-nx-thing[chosen] .slot { background-image: var(--hilite); background-size: 100% 100%; }
-nx-thing[chosen] .name { background: var(--white); }
+   lettering stays black. No second colour enters the interface.
+
+   Two shapes that touch rather than one box around both. Each follows what it
+   is behind, so a short name gives a narrow one, and the pair reads as one
+   thing because nothing shows between them. A single rectangle around the two
+   would take in the window's grey on either side of the icon, which belongs to
+   the desk rather than to the machine that is chosen. */
+nx-thing[chosen] { --mark: var(--white); }
 
 /* Whilst a machine is being carried, the thing it came from dims. */
 nx-thing[lifting] { opacity: .45; }
@@ -601,12 +670,3 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
   padding: 3px 5px;
 }
 .panel .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
-
-/* The machine the emulator is set to. NeXTSTEP marked the current thing with a
-   frame rather than with the selection, so that a reader can see at once which
-   one is chosen and which one is in force. */
-nx-thing.current .slot {
-  outline: 1px solid var(--black);
-  outline-offset: 1px;
-}
-nx-thing.current .name { font-weight: bold; }
