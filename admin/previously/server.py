@@ -42,10 +42,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(self._status())
         return self._file(route)
 
+    def log_error(self, format, *args):
+        """Always written, whatever the request turned out to be.
+
+        Deliberately not routed through log_message below. Something spoke to
+        this port and it was not a request this service could read, which is
+        the sort of thing the journal is for.
+        """
+        super().log_message(format, *args)
+
     def log_message(self, format, *args):
         """Quieter than the default, which writes a line per request to stderr
-        and therefore into the journal. A kiosk logs what went wrong."""
-        if not self.path.startswith("/api/"):
+        and therefore into the journal. A kiosk logs what went wrong.
+
+        path is set by parse_request, so a request that fails earlier reaches
+        this without one. Read defensively because the standard library decides
+        when to call this, and it calls it from places the request never got
+        past.
+        """
+        if not getattr(self, "path", "").startswith("/api/"):
             return
         super().log_message(format, *args)
 
