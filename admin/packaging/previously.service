@@ -1,6 +1,6 @@
 [Unit]
 Description=Web admin for the Previous emulator
-Documentation=https://github.com/phranck/nextstep-rpi
+Documentation=https://github.com/phranck/previously
 # The configuration it reads lives in the emulator owner's home, so there is
 # no point starting before that user's home is available.
 After=network.target
@@ -17,7 +17,13 @@ Environment=PYTHONPATH=/usr/lib/previously
 Restart=on-failure
 RestartSec=5
 
-# It reads one file and answers HTTP. Nothing else is any of its business.
+# Creates /var/lib/previously owned by this user, which is the one place the
+# service writes: the token it generates on first start. Everything else it
+# touches, it only reads.
+StateDirectory=previously
+StateDirectoryMode=0750
+
+# It reads a few files and answers HTTP. Nothing else is any of its business.
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict

@@ -18,6 +18,12 @@ DEFAULTS = {
     "port": "8088",
     "previous_config": "~/.config/previous/previous.cfg",
     "kiosk_unit": "getty@tty1.service",
+    # The secret a request carries before it may change anything. State the
+    # service generates and maintains itself, so /var/lib rather than /etc,
+    # which holds what an administrator writes. The unit creates the directory
+    # through StateDirectory= and leaves /etc read-only, so a token under /etc
+    # could never be written at all.
+    "token_file": "/var/lib/previously/token",
 }
 
 
@@ -36,6 +42,7 @@ class Settings:
             os.path.expanduser(values["previous_config"])
         )
         self.kiosk_unit = values["kiosk_unit"]
+        self.token_file = pathlib.Path(os.path.expanduser(values["token_file"]))
 
     @classmethod
     def load(cls, path=CONFIG_FILE):

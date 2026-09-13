@@ -13,7 +13,7 @@ from .token import Token
 def main():
     """Loads the settings and serves until stopped."""
     settings = Settings.load()
-    token = Token.load()
+    token = Token.load(settings.token_file)
     if token is None:
         # Not fatal: the service still answers everything that only reads, and
         # refuses everything that would change anything. Saying so here is the

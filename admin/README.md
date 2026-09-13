@@ -30,7 +30,7 @@ Nothing is fetched. Everything runs on what Debian ships: `python3`, `python3-py
 
 **Changing anything needs a token.** Writing a configuration, stopping the emulator, opening a shell: all of it is refused without one. Sitting at the machine and pressing F12 needs physical access to it. Being on the network does not, and that difference is what the token answers.
 
-The token is made at installation, lives in `/etc/previously/token` readable by the service alone, and is read once over SSH and typed into the interface, which keeps it. It is never in this repository, never in a URL and never in a log line.
+The token is made on first start, lives in `/var/lib/previously/token` readable by the service alone, and is read once over SSH and typed into the interface, which keeps it. It is never in this repository, never in a URL and never in a log line.
 
 **There is no TLS, and that is a decision rather than an omission.** This tool is not meant to be reachable from the internet: no port is forwarded to it and nothing publishes it. On the home network the token stops an accident and a bored device; it does not stop somebody who is already on that network and reading traffic. Saying otherwise would be a security claim that is not true, which is worse than none. #12 has what it would take if that ever changes.
 

@@ -15,12 +15,7 @@ for the person whose Pi it is.
 
 import hmac
 import os
-import pathlib
 import secrets
-
-#: Where the token lives. Written by the package at installation, or by this
-#: module on first start where no package put one there.
-TOKEN_FILE = pathlib.Path("/etc/previously/token")
 
 #: 32 bytes from the system's own source, hex encoded. Long enough that
 #: guessing is not a strategy, short enough to type once.
@@ -44,10 +39,12 @@ class Token:
         self.value = value
 
     @classmethod
-    def load(cls, path=TOKEN_FILE):
+    def load(cls, path):
         """Reads the token, making one where there is none.
 
-        @param path - Where to look.
+        @param path - Where to look. Required rather than defaulted here,
+          because the settings already answer where it lives and a default in
+          this file would be a second answer to that.
         @returns Token, or None where the file can be neither read nor made.
           That is not fatal: a service with no token refuses every change,
           which is the safe direction to fail in.

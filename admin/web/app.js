@@ -51,7 +51,7 @@ function headers() {
 
 /**
  * Keeps a token and reports whether the service accepts it.
- * @param {string} token - What the user read out of /etc/previously/token.
+ * @param {string} token - What the user read out of /var/lib/previously/token.
  * @returns {Promise<boolean>}
  */
 async function useToken(token) {

@@ -31,6 +31,7 @@ def service(tmp_path):
         "port": "0",
         "previous_config": str(config_file),
         "kiosk_unit": "does-not-exist.service",
+        "token_file": str(tmp_path / "token"),
     })
 
     server.Handler.settings = settings
