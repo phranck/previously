@@ -11,9 +11,9 @@ Type=simple
 # as anybody else would need permissions this service should not have.
 User=next
 Group=next
-ExecStart=/usr/bin/python3 -m nextstep_admin
-WorkingDirectory=/usr/lib/nextstep-admin
-Environment=PYTHONPATH=/usr/lib/nextstep-admin
+ExecStart=/usr/bin/python3 -m previously
+WorkingDirectory=/usr/lib/previously
+Environment=PYTHONPATH=/usr/lib/previously
 Restart=on-failure
 RestartSec=5
 

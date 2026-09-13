@@ -9,7 +9,7 @@ import textwrap
 
 import pytest
 
-from nextstep_admin import config
+from previously import config
 
 CUBE_TURBO_WITH_DIMENSION = textwrap.dedent("""
     [System]

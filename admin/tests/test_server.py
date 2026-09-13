@@ -13,8 +13,8 @@ import urllib.request
 
 import pytest
 
-from nextstep_admin import server
-from nextstep_admin.settings import Settings
+from previously import server
+from previously.settings import Settings
 
 
 @pytest.fixture

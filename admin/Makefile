@@ -15,13 +15,13 @@ help:
 	@echo 'check  lint and test, which is what a commit needs'
 
 run:
-	$(PYTHON) -m nextstep_admin
+	$(PYTHON) -m previously
 
 test:
 	$(PYTHON) -m pytest tests -q
 
 lint:
-	$(PYTHON) -m flake8 --max-line-length=100 nextstep_admin tests
+	$(PYTHON) -m flake8 --max-line-length=100 previously tests
 
 check: lint test
 

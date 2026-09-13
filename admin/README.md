@@ -15,10 +15,10 @@ Nothing is fetched. Everything runs on what Debian ships: `python3`, `python3-py
 
 | | |
 |---|---|
-| `nextstep_admin/settings.py` | What the service itself is configured with |
-| `nextstep_admin/config.py` | Reading `previous.cfg`, and knowing what its values mean |
-| `nextstep_admin/kiosk.py` | Everything asked of systemd, and the whole privilege surface |
-| `nextstep_admin/server.py` | Which addresses exist and what answers them |
+| `previously/settings.py` | What the service itself is configured with |
+| `previously/config.py` | Reading `previous.cfg`, and knowing what its values mean |
+| `previously/kiosk.py` | Everything asked of systemd, and the whole privilege surface |
+| `previously/server.py` | Which addresses exist and what answers them |
 | `web/` | What the browser gets |
 | `packaging/` | The unit and the default configuration |
 
@@ -35,7 +35,7 @@ Nothing writes yet. Every route reads.
 
 ## Its own configuration
 
-`/etc/nextstep-admin/config.ini`, with defaults that work unconfigured, so the package installs into a running state rather than into a file to edit. `packaging/config.ini` is that file with every default written out.
+`/etc/previously/config.ini`, with defaults that work unconfigured, so the package installs into a running state rather than into a file to edit. `packaging/config.ini` is that file with every default written out.
 
 ## The interface
 
@@ -46,10 +46,10 @@ The stylesheet and the kit are taken from the draft rather than written again, s
 ## Installing it on the Pi
 
 ```bash
-sudo cp -r nextstep_admin web /usr/lib/nextstep-admin/
-sudo cp packaging/config.ini /etc/nextstep-admin/
-sudo cp packaging/nextstep-admin.service /etc/systemd/system/
-sudo systemctl enable --now nextstep-admin
+sudo cp -r previously web /usr/lib/previously/
+sudo cp packaging/config.ini /etc/previously/
+sudo cp packaging/previously.service /etc/systemd/system/
+sudo systemctl enable --now previously
 ```
 
 This is the hand version. The package in #9 replaces it.

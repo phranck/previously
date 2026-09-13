@@ -2,7 +2,7 @@
 
 import textwrap
 
-from nextstep_admin.settings import DEFAULTS, Settings
+from previously.settings import DEFAULTS, Settings
 
 
 def test_a_missing_file_gives_a_working_configuration(tmp_path):

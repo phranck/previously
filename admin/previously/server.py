@@ -28,7 +28,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     """
 
     settings = None
-    server_version = "nextstep-admin/" + VERSION
+    server_version = "previously/" + VERSION
     #: Without this the base class announces the Python version to the network.
     sys_version = ""
 
@@ -134,6 +134,6 @@ def serve(settings):
     Handler.settings = settings
     address = (settings.address, settings.port)
     with http.server.ThreadingHTTPServer(address, Handler) as httpd:
-        print("nextstep-admin %s on http://%s:%d"
+        print("previously %s on http://%s:%d"
               % (VERSION, settings.address, settings.port), flush=True)
         httpd.serve_forever()

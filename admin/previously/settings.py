@@ -1,6 +1,6 @@
 """What the service itself is configured with.
 
-Read from /etc/nextstep-admin/config.ini, with defaults that work unconfigured
+Read from /etc/previously/config.ini, with defaults that work unconfigured
 so the package installs into a running state rather than into a file to edit.
 """
 
@@ -8,7 +8,7 @@ import configparser
 import os
 import pathlib
 
-CONFIG_FILE = pathlib.Path("/etc/nextstep-admin/config.ini")
+CONFIG_FILE = pathlib.Path("/etc/previously/config.ini")
 
 #: Everything a fresh installation runs on. The emulator's configuration lives
 #: in the home of whoever owns it, which is the user this service runs as, so

@@ -1,6 +1,6 @@
 """The entry point the systemd unit runs.
 
-    python3 -m nextstep_admin
+    python3 -m previously
 """
 
 import sys
