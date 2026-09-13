@@ -182,3 +182,75 @@ def test_the_token_route_says_whether_one_is_right(service):
     request.add_header(HEADER, server.Handler.token.value)
     with urllib.request.urlopen(request, timeout=5) as answer:
         assert json.loads(answer.read())["valid"] is True
+
+
+# -- what gets into the journal ------------------------------------------
+
+
+def handler_without_a_request():
+    """A handler that never got as far as parsing anything.
+
+    Built without __init__, because that method is where the standard library
+    reads the socket and handles the whole request, and what is under test here
+    is one method rather than a request.
+
+    It carries client_address and nothing else, which is the real state: that
+    one is set before the request is read, and path only after it parses.
+    """
+    handler = server.Handler.__new__(server.Handler)
+    handler.client_address = ("10.0.0.23", 54321)
+    return handler
+
+
+def test_a_request_that_never_parsed_is_logged_rather_than_raising(capsys):
+    """parse_request is what sets path, so anything failing before that reaches
+    the logger without one. Reading it there is what put twenty tracebacks in
+    the journal on the Pi."""
+    handler = handler_without_a_request()
+
+    handler.log_error("code %d, message %s", 400, "Bad request version")
+
+    assert "Bad request version" in capsys.readouterr().err
+
+
+def test_log_message_survives_a_request_that_never_parsed(capsys):
+    """The same attribute, reached the other way. log_message is handed to a
+    library that decides when to call it, so it has no business assuming how
+    far the request got."""
+    handler = handler_without_a_request()
+
+    handler.log_message("something happened")
+
+    # Whether it prints is the other tests' business. Not raising is this one's.
+
+
+def test_a_static_file_is_not_logged(capsys):
+    """The whole reason the override exists: a page load is a dozen files and
+    a kiosk should not write a line for each."""
+    handler = handler_without_a_request()
+    handler.path = "/nextstep.css"
+
+    handler.log_message("%s", "GET /nextstep.css")
+
+    assert capsys.readouterr().err == ""
+
+
+def test_an_api_request_is_logged(capsys):
+    handler = handler_without_a_request()
+    handler.path = "/api/status"
+
+    handler.log_message("%s", "GET /api/status")
+
+    assert "/api/status" in capsys.readouterr().err
+
+
+def test_an_error_is_logged_even_on_a_connection_that_served_a_file(capsys):
+    """path survives from one request to the next on a keep-alive connection,
+    so a malformed second request would be filtered out by its predecessor's
+    path. Errors do not go through that filter at all."""
+    handler = handler_without_a_request()
+    handler.path = "/index.html"
+
+    handler.log_error("code %d, message %s", 400, "Bad request syntax")
+
+    assert "Bad request syntax" in capsys.readouterr().err

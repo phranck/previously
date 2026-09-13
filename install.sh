@@ -52,6 +52,12 @@ readonly PROFILE="${HOME}/.profile"
 readonly CMDLINE="/boot/firmware/cmdline.txt"
 readonly CONFIG_TXT="/boot/firmware/config.txt"
 readonly AUTOLOGIN="/etc/systemd/system/getty@tty1.service.d/autologin.conf"
+readonly WIREPLUMBER_CONF="/etc/wireplumber/wireplumber.conf.d/50-nextstep.conf"
+# What a speaker is set to the first time it is seen. WirePlumber ships 0.064,
+# which is 40 per cent on a linear scale, and NeXTSTEP's own sounds peak at
+# about a third of full scale on top of that: together, inaudible. This is 85
+# per cent linear, cubed, because that is the scale the setting takes.
+readonly AUDIO_VOLUME="0.614"
 
 readonly AUTOSTART_MARKER="# >>> nextstep-rpi >>>"
 readonly AUTOSTART_END="# <<< nextstep-rpi <<<"
@@ -422,6 +428,64 @@ EOF
        "remove_autostart_block $(printf '%q' "$PROFILE")"
 }
 
+# ---------------------------------------------------------------------------
+# 10  Send sound to a speaker rather than to HDMI.
+#
+#     Raspberry Pi OS sets no audio default, so ALSA falls back to card 0, and
+#     on a Pi that is the first HDMI output. Anything plugged into USB stays
+#     silent. The emulator picks its output device once, through SDL, when it
+#     starts, and never asks again: unplugging a speaker therefore silences it
+#     until the emulator is restarted, even after plugging it back in.
+#
+#     A sound server answers both at once. PipeWire connects a client to itself
+#     rather than to a card, so it can move a stream when a device appears or
+#     goes away, and WirePlumber ranks a USB card above HDMI on its own, at
+#     priority 1009 against 1000. The emulator needs no configuration for this:
+#     SDL3 here is built with a PipeWire backend and prefers it when a server is
+#     running.
+#
+#     What is left to set is the volume a speaker starts at, because the stock
+#     value is too quiet to hear NeXTSTEP's own sounds through.
+# ---------------------------------------------------------------------------
+
+install_audio() {
+  info "Sending sound to a speaker"
+
+  local wanted=(pipewire wireplumber pipewire-alsa) missing=() package
+  for package in "${wanted[@]}"; do
+    dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "ok installed" || missing+=("$package")
+  done
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    sudo apt-get install -y -qq "${missing[@]}"
+    undo "remove ${missing[*]}" "sudo apt-get remove -y -qq ${missing[*]}"
+  else
+    skip "pipewire already installed"
+  fi
+
+  if [[ -f "$WIREPLUMBER_CONF" ]]; then
+    skip "volume already configured"
+    return
+  fi
+
+  sudo install -m 0755 -d "$(dirname "$WIREPLUMBER_CONF")"
+  sudo tee "$WIREPLUMBER_CONF" >/dev/null <<EOF
+# A speaker plugged into this machine starts loud enough to be heard.
+#
+# The stock value is 0.064, which is 40 per cent on a linear scale, and
+# NeXTSTEP's own sounds peak at about a third of full scale on top of that. The
+# two together are inaudible on a small speaker.
+#
+# This applies the first time a device is seen. After that the volume that was
+# set is remembered per device in ~/.local/state/wireplumber/default-routes.
+
+wireplumber.settings = {
+  device.routes.default-sink-volume = ${AUDIO_VOLUME}
+}
+EOF
+  undo "remove ${WIREPLUMBER_CONF}" "sudo rm -f $(printf '%q' "$WIREPLUMBER_CONF")"
+}
+
 main() {
   check_host
   install_packages
@@ -432,6 +496,7 @@ main() {
   enable_autologin
   quieten_boot
   install_autostart
+  install_audio
 
   COMPLETED=true
   local image
@@ -441,6 +506,7 @@ main() {
   skip "disk image:   ${image}"
   skip "config:       ${CONFIG_FILE}"
   skip "cmdline saved as ${CMDLINE}.nextstep-rpi.backup"
+  skip "sound:        through PipeWire, to a USB speaker where one is plugged in"
   skip ""
   skip "Log in at the Pi's own keyboard to check it before rebooting."
   skip "NeXTSTEP account: me, no password."
