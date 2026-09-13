@@ -24,12 +24,6 @@ DEFAULTS = {
     # through StateDirectory= and leaves /etc read-only, so a token under /etc
     # could never be written at all.
     "token_file": "/var/lib/previously/token",
-    # Empty means plain HTTP. A machine reachable only as cube.local cannot
-    # have a certificate, because no public authority issues for a name in
-    # .local, so an installation that has not been given a real name of its own
-    # has nothing to put here.
-    "certificate": "",
-    "private_key": "",
 }
 
 
@@ -40,18 +34,6 @@ def _path(value):
     @returns pathlib.Path
     """
     return pathlib.Path(os.path.expanduser(value.strip()))
-
-
-def _path_or_none(value):
-    """A configured path, or None where the key is empty.
-
-    @param value - What the file said, which for an unset key is "".
-    @returns pathlib.Path or None
-
-    An empty key and an absent key mean the same thing, which matters because
-    commenting a key out and clearing it are both things people do.
-    """
-    return _path(value) if value.strip() else None
 
 
 class Settings:
@@ -68,17 +50,6 @@ class Settings:
         self.previous_config = _path(values["previous_config"])
         self.kiosk_unit = values["kiosk_unit"]
         self.token_file = _path(values["token_file"])
-        self.certificate = _path_or_none(values["certificate"])
-        self.private_key = _path_or_none(values["private_key"])
-
-    @property
-    def scheme(self):
-        """"https" where a certificate is configured, "http" where none is.
-
-        @returns str, for building the address the service prints and the page
-          reports, so neither states a protocol of its own.
-        """
-        return "https" if self.certificate else "http"
 
     @classmethod
     def load(cls, path=CONFIG_FILE):

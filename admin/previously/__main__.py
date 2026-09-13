@@ -7,7 +7,6 @@ import sys
 
 from .server import serve
 from .settings import Settings
-from .tls import NotUsable
 from .token import Token
 
 
@@ -25,12 +24,6 @@ def main():
         serve(settings, token)
     except KeyboardInterrupt:
         return 0
-    except NotUsable as error:
-        # A certificate is configured and unusable. Starting without it would
-        # serve everything in the clear on a port somebody believes carries
-        # TLS, so nothing is bound at all.
-        print("certificate unusable, not starting: %s" % error, file=sys.stderr)
-        return 1
     except OSError as error:
         # The common one by far is the port being taken, and a traceback for
         # that tells the reader less than the sentence does.
