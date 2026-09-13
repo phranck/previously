@@ -260,9 +260,14 @@ nx-window .titlebar {
   background: linear-gradient(to bottom,
     var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
 }
+/* The bar is 19 rows whether it is active or not, and the two rows under it
+   are the shadow. On an active bar the first of those reads as grey against
+   black; on an inactive one it would be the bar's own colour and would simply
+   make the bar look a row taller, so it is black here. Measured off the real
+   File Viewer, whose grey bar ends after 19 rows with two black ones under it. */
 nx-window[inactive] .titlebar {
   background: linear-gradient(to bottom,
-    var(--dark) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
+    var(--dark) 0 19px, var(--black) 19px 21px);
 }
 
 /* Both window buttons are the originals, 15 by 15, bevel and glyph in one
@@ -857,8 +862,14 @@ class NxWindow extends HTMLElement {
     remember(this.name, state);
   }
 
-  /** Brings it forward and pushes every other window back. */
+  /**
+   * Brings it forward and pushes every other window back. Which window is in
+   * front is part of what the desk remembers, because exactly one is active at
+   * a time and a reload that made them all active would be a desk nobody has
+   * ever seen.
+   */
   raise() {
+    if (!this.hasAttribute("inactive") && this.style.zIndex) return;
     let highest = 10;
     for (const other of document.querySelectorAll("nx-window")) {
       highest = Math.max(highest, Number(other.style.zIndex) || 10);
@@ -866,6 +877,7 @@ class NxWindow extends HTMLElement {
     }
     this.style.zIndex = highest + 1;
     this.removeAttribute("inactive");
+    remember("desk", { front: this.name });
   }
 
   /** Shows it, in front. */
@@ -1335,9 +1347,27 @@ function drawTerminal() {
   pane.append(cursor);
 }
 
+/**
+ * Puts the front window back in front and every other one behind it.
+ *
+ * This runs after all the windows exist rather than inside any one of them,
+ * because being in front is a statement about all of them together. Without a
+ * remembered name, the last open window in the markup takes it, which is the
+ * one a reader would call the frontmost.
+ */
+function restoreFront() {
+  const windows = [...document.querySelectorAll("nx-window")];
+  for (const el of windows) el.setAttribute("inactive", "");
+  const remembered = recall("desk").front;
+  const open = windows.filter((el) => !el.hidden);
+  const front = open.find((el) => el.name === remembered) ?? open.at(-1);
+  front?.raise();
+}
+
 drawShelf();
 drawTerminal();
 apply(current);
+restoreFront();
 </script>
 
 </body>
