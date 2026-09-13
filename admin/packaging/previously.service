@@ -26,6 +26,11 @@ StateDirectoryMode=0750
 # It reads a few files and answers HTTP. Nothing else is any of its business.
 NoNewPrivileges=yes
 PrivateTmp=yes
+
+# The one hole in the private /tmp. The kiosk's X server keeps its socket there,
+# and pressing the emulated power button means reaching it. Read only, and one
+# directory rather than the whole of /tmp.
+BindReadOnlyPaths=/tmp/.X11-unix
 ProtectSystem=strict
 ProtectHome=read-only
 ProtectKernelTunables=yes

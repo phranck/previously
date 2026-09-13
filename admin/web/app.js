@@ -64,13 +64,41 @@ function headers() {
 /**
  * Keeps a token and reports whether the service accepts it.
  * @param {string} token - What the user read out of /var/lib/previously/token.
- * @returns {Promise<boolean>}
+ * @returns {Promise<boolean>} A wrong one is thrown away rather than kept, so
+ *   the next request fails for a reason somebody can act on.
  */
 async function useToken(token) {
   localStorage.setItem(TOKEN_KEY, token.trim());
   const answer = await ask("/api/token");
   if (!answer?.valid) localStorage.removeItem(TOKEN_KEY);
   return Boolean(answer?.valid);
+}
+
+/**
+ * Asks for the token until one is accepted or the panel is dismissed.
+ * @param {string} [why] - A first line saying what prompted the question.
+ * @returns {Promise<boolean>} Whether the service now accepts what we hold.
+ */
+async function askForToken(why) {
+  const panel = document.getElementById("ask");
+  let complaint = why;
+
+  for (;;) {
+    const typed = await panel.askFor({
+      title: "Token",
+      text: [
+        complaint,
+        "Auf dem Pi steht es in einer Datei, die nur der Dienst lesen darf:",
+        "sudo cat /var/lib/previously/token",
+      ].filter(Boolean),
+      icon: Art.Computer,
+      confirm: "Übernehmen",
+    });
+
+    if (typed === null) return false;
+    if (await useToken(typed)) return true;
+    complaint = "Das war nicht das Token dieser Maschine.";
+  }
 }
 
 /**
@@ -161,13 +189,25 @@ function drawStatus(status) {
  * @returns {Promise<object|null>} What it answered, or null on no contact.
  */
 async function tell(route) {
+  const send = async () => fetch(route, {
+    method: "POST",
+    cache: "no-store",
+    headers: headers(),
+    signal: AbortSignal.timeout(OPERATION_TIMEOUT_MS),
+  });
+
   try {
-    const answer = await fetch(route, {
-      method: "POST",
-      cache: "no-store",
-      headers: headers(),
-      signal: AbortSignal.timeout(OPERATION_TIMEOUT_MS),
-    });
+    let answer = await send();
+
+    /* Refused for want of a token. Ask for one and do what was asked, rather
+       than reporting a failure the reader would have to interpret. */
+    if (answer.status === 403) {
+      const accepted = await askForToken(
+        "Dieser Vorgang ändert etwas an der Maschine und braucht das Token.");
+      if (!accepted) return { ok: false, reason: "ohne Token abgebrochen" };
+      answer = await send();
+    }
+
     return await answer.json();
   } catch {
     return null;
@@ -222,8 +262,11 @@ function warn(what) {
   });
 }
 
-/** Wires the three buttons. */
+/** Wires the three buttons and the menu's own way to the token. */
 function wireButtons() {
+  document.querySelector('nx-menu-item[name="token"]')
+    ?.addEventListener("click", () => askForToken());
+
   document.getElementById("kiosk-start").addEventListener("click",
     () => operate(Kiosk.Start, "wird eingeschaltet"));
 

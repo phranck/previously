@@ -18,11 +18,20 @@ import time
 #: than one that fails, because the page waits with it.
 TIMEOUT_SECONDS = 5
 
-#: The key Previous maps to the NeXT power button. Pressing it starts an
-#: orderly shutdown inside the guest, exactly as the Logout panel's Power Off
-#: does. Taking the emulator away instead leaves the guest's file system dirty,
-#: which costs a file system check on the way back up.
+#: The key Previous maps to the NeXT power button, per its own manual. Taking
+#: the emulator away instead leaves the guest's file system dirty, which costs
+#: a file system check on the way back up.
 POWER_KEY = "F10"
+
+#: NeXTSTEP does not switch off on the power key alone. It puts up a panel
+#: asking "Wollen Sie den Computer wirklich ausschalten?", whose default button
+#: carries the return symbol. So the key is half of it and this is the other
+#: half.
+CONFIRM_KEY = "Return"
+
+#: How long the guest takes to put that panel up. Measured on the reference
+#: machine, where it was there well inside a second; two is that with room.
+PANEL_SECONDS = 2
 
 #: The emulator's process name. Whether it is running is the only honest
 #: signal that the guest has finished shutting down, because the unit stays
@@ -36,6 +45,11 @@ SHUTDOWN_TIMEOUT_SECONDS = 120
 
 #: How often to look while waiting.
 POLL_SECONDS = 1
+
+#: Where an X server puts its socket. The kiosk's Xwayland is the one this
+#: service talks to, and its display number comes from the name of the file
+#: it leaves here.
+X11_SOCKETS = "/tmp/.X11-unix"
 
 
 def is_running(unit):
@@ -108,24 +122,44 @@ def emulator_is_running():
     return _ask(["pgrep", "-x", EMULATOR_PROCESS]) != ""
 
 
-def press_power():
-    """Presses the emulated power button, starting an orderly shutdown.
+def press_power(sleep=time.sleep):
+    """Presses the emulated power button and answers the panel it raises.
 
-    @returns bool, whether the key reached the compositor.
+    @param sleep - Injected so a test does not wait in real time.
+    @returns bool, whether both keys were sent.
 
-    Sent with wtype through the Wayland virtual keyboard protocol, which the
-    cage compositor running the kiosk implements. The environment it needs is
-    worked out rather than assumed, because the socket's name is the
-    compositor's to choose.
+    Two keys, because one does not do it. The power key raises a panel asking
+    whether the machine should really switch off, and its default button is
+    the one the return key presses.
+
+    Sent through the X server. Previous runs as an X client under the kiosk's
+    Xwayland, so keys reach it through XTEST and not through Wayland. That was
+    measured rather than assumed, and measured in both directions: a Wayland
+    virtual keyboard binds its protocol against the compositor and reports
+    success, and the emulator never sees the key. If this ever stops working,
+    the first thing to check is whether Previous has become a Wayland client,
+    because then the whole route changes rather than the key names.
     """
-    environment = _compositor_environment()
-    if environment is None:
+    if not _press(POWER_KEY):
         return False
-    if shutil.which("wtype") is None:
+    sleep(PANEL_SECONDS)
+    return _press(CONFIRM_KEY)
+
+
+def _press(key):
+    """Sends one key to whatever the kiosk has in front.
+
+    @param key - An X keysym name, such as "F10".
+    @returns bool
+    """
+    display = _display()
+    if display is None or shutil.which("xdotool") is None:
         return False
+
+    environment = dict(os.environ, DISPLAY=display)
     try:
         result = subprocess.run(
-            ["wtype", "-k", POWER_KEY],
+            ["xdotool", "key", "--clearmodifiers", key],
             capture_output=True,
             text=True,
             timeout=TIMEOUT_SECONDS,
@@ -135,6 +169,23 @@ def press_power():
     except (OSError, subprocess.TimeoutExpired):
         return False
     return result.returncode == 0
+
+
+def _display():
+    """Which X display the kiosk is on.
+
+    @returns str such as ":0", or None where no X server is listening.
+
+    Found from the socket rather than taken from the environment, because this
+    service has no session of its own and the number is Xwayland's to choose.
+    """
+    try:
+        sockets = sorted(
+            name for name in os.listdir(X11_SOCKETS) if name.startswith("X")
+        )
+    except OSError:
+        return None
+    return ":" + sockets[0][1:] if sockets else None
 
 
 def stop(state_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
@@ -155,7 +206,7 @@ def stop(state_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
     if not emulator_is_running():
         return True, "the emulator was not running, and is now held down"
 
-    if not press_power():
+    if not press_power(sleep):
         hold_path(state_directory).unlink(missing_ok=True)
         return False, "the power button could not be pressed, so nothing was changed"
 
@@ -224,31 +275,6 @@ def _wait_for_shutdown(timeout, sleep):
             return True
         sleep(POLL_SECONDS)
     return not emulator_is_running()
-
-
-def _compositor_environment():
-    """The environment a Wayland client needs to reach the kiosk's compositor.
-
-    @returns dict, or None where no compositor is listening.
-
-    The socket is found rather than named, because which one cage opens is its
-    choice. The lock file beside it is not a socket and is skipped.
-    """
-    runtime = os.environ.get("XDG_RUNTIME_DIR") or "/run/user/%d" % os.getuid()
-    try:
-        names = sorted(
-            name for name in os.listdir(runtime)
-            if name.startswith("wayland-") and not name.endswith(".lock")
-        )
-    except OSError:
-        return None
-    if not names:
-        return None
-
-    environment = dict(os.environ)
-    environment["XDG_RUNTIME_DIR"] = runtime
-    environment["WAYLAND_DISPLAY"] = names[0]
-    return environment
 
 
 def _property(unit, name):

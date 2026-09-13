@@ -509,7 +509,10 @@ class NxAsk extends HTMLElement {
         <div class="pane">
           <div class="panel-body">
             <i class="art icon"></i>
-            <div class="words"></div>
+            <div class="words">
+              <div class="lines"></div>
+              <input class="entry" type="text" spellcheck="false" hidden>
+            </div>
           </div>
           <div class="buttons" style="padding-right:0">
             <button data-answer="no"></button>
@@ -527,6 +530,8 @@ class NxAsk extends HTMLElement {
        somebody who wants out of a question should not have to aim at a button. */
     this.keys = (event) => {
       if (event.key === "Escape") this.close(false);
+      const entry = this.querySelector(".entry");
+      if (event.key === "Enter" && !entry.hidden) this.close(true);
     };
   }
 
@@ -538,11 +543,12 @@ class NxAsk extends HTMLElement {
    * @param {string} [question.icon] - Which picture, by the name showArt knows.
    * @param {string} [question.confirm] - The wording on the acting button.
    * @param {string} [question.cancel] - The wording on the safe one.
+   * @param {boolean} [question.field] - Show a line to type into.
    * @returns {Promise<boolean>} True where the acting button was pressed.
    */
-  ask({ title, text, icon, confirm = "Ja", cancel = "Abbrechen" }) {
+  ask({ title, text, icon, confirm = "Ja", cancel = "Abbrechen", field = false }) {
     this.querySelector(".title").textContent = title;
-    this.querySelector(".words").replaceChildren(
+    this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {
         const paragraph = document.createElement("p");
         paragraph.textContent = line;
@@ -552,11 +558,28 @@ class NxAsk extends HTMLElement {
     this.querySelector('[data-answer="yes"]').textContent = confirm;
     this.querySelector('[data-answer="no"]').textContent = cancel;
 
+    const entry = this.querySelector(".entry");
+    entry.hidden = !field;
+    entry.value = "";
+
     this.toggleAttribute("data-open", true);
     addEventListener("keydown", this.keys);
-    this.querySelector('[data-answer="no"]').focus();
+    (field ? entry : this.querySelector('[data-answer="no"]')).focus();
 
     return new Promise((settle) => { this.settle = settle; });
+  }
+
+  /**
+   * Puts a question that needs something typed.
+   * @param {object} question - As ask, and the field is shown.
+   * @returns {Promise<string|null>} What was typed, or null where the panel was
+   *   dismissed. Empty counts as dismissed, because a blank answer is not one.
+   */
+  async askFor(question) {
+    const answered = await this.ask({ ...question, field: true });
+    if (!answered) return null;
+    const typed = this.querySelector(".entry").value.trim();
+    return typed || null;
   }
 
   /**
