@@ -7,13 +7,21 @@ import sys
 
 from .server import serve
 from .settings import Settings
+from .token import Token
 
 
 def main():
     """Loads the settings and serves until stopped."""
     settings = Settings.load()
+    token = Token.load()
+    if token is None:
+        # Not fatal: the service still answers everything that only reads, and
+        # refuses everything that would change anything. Saying so here is the
+        # one chance somebody has to notice.
+        print("no token could be read or written; every change will be refused",
+              file=sys.stderr)
     try:
-        serve(settings)
+        serve(settings, token)
     except KeyboardInterrupt:
         return 0
     except OSError as error:

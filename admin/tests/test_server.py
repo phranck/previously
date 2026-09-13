@@ -15,6 +15,7 @@ import pytest
 
 from previously import server
 from previously.settings import Settings
+from previously.token import HEADER, Token
 
 
 @pytest.fixture
@@ -33,6 +34,7 @@ def service(tmp_path):
     })
 
     server.Handler.settings = settings
+    server.Handler.token = Token.load(tmp_path / "token")
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -118,3 +120,64 @@ def test_safe_path_refuses_to_leave_its_root(tmp_path):
 
 def test_an_empty_path_means_the_index(tmp_path):
     assert server.safe_path(tmp_path, "/").name == "index.html"
+
+
+# -- what a request may do -----------------------------------------------
+
+
+def post(url, token=None):
+    """Sends a POST, with the token where one is given."""
+    request = urllib.request.Request(url, data=b"{}", method="POST")
+    if token is not None:
+        request.add_header(HEADER, token)
+    with urllib.request.urlopen(request, timeout=5) as answer:
+        return answer.status, answer.read()
+
+
+def test_reading_needs_no_token(service):
+    """Knowing which machine is configured costs nothing, so it is open."""
+    for route in ["/api/health", "/api/status"]:
+        status, _, _ = fetch(service + route)
+        assert status == 200
+
+
+def test_changing_anything_without_the_token_is_refused(service):
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        post(service + "/api/anything")
+    assert raised.value.code == 403
+
+
+def test_a_wrong_token_is_refused(service):
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        post(service + "/api/anything", token="not the token")
+    assert raised.value.code == 403
+
+
+def test_the_right_token_gets_past_the_check(service):
+    """Past the check and into a route that does not exist yet, which is a 404
+    rather than a 403. The difference is the whole point of the test."""
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        post(service + "/api/anything", token=server.Handler.token.value)
+    assert raised.value.code == 404
+
+
+def test_a_service_without_a_token_refuses_every_change(service):
+    kept = server.Handler.token
+    server.Handler.token = None
+    try:
+        with pytest.raises(urllib.error.HTTPError) as raised:
+            post(service + "/api/anything", token="anything at all")
+        assert raised.value.code == 403
+    finally:
+        server.Handler.token = kept
+
+
+def test_the_token_route_says_whether_one_is_right(service):
+    status, _, body = fetch(service + "/api/token")
+    assert status == 200
+    assert json.loads(body)["valid"] is False
+
+    request = urllib.request.Request(service + "/api/token")
+    request.add_header(HEADER, server.Handler.token.value)
+    with urllib.request.urlopen(request, timeout=5) as answer:
+        assert json.loads(answer.read())["valid"] is True
