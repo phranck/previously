@@ -22,6 +22,7 @@ const TOKEN_HEADER = "X-Previously-Token";
 const Art = {
   Computer: "root",
   ComputerColor: "root-color",
+  Editor: "defaultAppIcon",
 };
 
 /** What the buttons ask the service to do, by the route that does it. */
@@ -391,8 +392,69 @@ async function changeTo(identifier) {
   refresh();
 }
 
+/**
+ * Says that an application that is not built yet is not built yet.
+ * @param {string} name - What it will be called.
+ */
+function notYet(name) {
+  return document.getElementById("ask").ask({
+    title: name,
+    text: [
+      `${name} gibt es noch nicht.`,
+      "Sie soll die Maschine so einstellbar machen, wie Previous es erlaubt, und nicht als Textdatei. Das wird gerade besprochen.",
+    ],
+    icon: Art.Editor,
+    confirm: "Gut",
+    cancel: "Schliessen",
+  });
+}
+
+/**
+ * Opens the context menu for one machine.
+ * @param {HTMLElement} thing - The machine that was clicked.
+ * @param {number} x - Where the pointer was.
+ * @param {number} y
+ */
+function openMachineMenu(thing, x, y) {
+  const menu = document.querySelector('nx-menu[name="machine-menu"]');
+  /* Which machine this is about. The menu appears over whatever was clicked
+     and then goes away, so without a name it is an orphan. */
+  menu.querySelector(".title").textContent = thing.getAttribute("label");
+  const activate = menu.querySelector('nx-menu-item[name="activate"]');
+  const edit = menu.querySelector('nx-menu-item[name="edit"]');
+
+  /* The machine that is already running cannot be activated: it would shut
+     NeXTSTEP down, write the same values back and start it again, for
+     nothing. The entry stays, so the menu keeps its shape. */
+  activate.toggleAttribute("disabled", thing.hasAttribute("disabled"));
+
+  activate.onclick = () => {
+    if (activate.hasAttribute("disabled")) return;
+    menu.close();
+    changeTo(thing.getAttribute("value"));
+  };
+  edit.onclick = () => {
+    menu.close();
+    notYet("Config Editor");
+  };
+
+  menu.openAt(x, y);
+}
+
 /** Wires the three ways to choose a machine. */
 function wireMachines() {
+  /* A right click anywhere on a machine, rather than on the shelf, so the menu
+     is always about something. */
+  document.getElementById("machine-shelf").addEventListener("contextmenu", (event) => {
+    const thing = event.target.closest("nx-thing");
+    if (!thing) return;
+    event.preventDefault();
+    openMachineMenu(thing, event.clientX, event.clientY);
+  });
+
+  document.querySelector('nx-tile[name="editor"]')
+    ?.addEventListener("click", () => notYet("Config Editor"));
+
   /* Carried onto the info window, or double clicked in the shelf. The kit
      raises the same event for both, so this is one answer to two gestures. */
   document.addEventListener("nx-choose",

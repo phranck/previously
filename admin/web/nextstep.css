@@ -66,6 +66,7 @@
      says where each one was taken from. */
   --Workspace: url("parts/Workspace.png");
   --defaultUnixIcon: url("parts/defaultUnixIcon.png");
+  --defaultAppIcon: url("parts/defaultAppIcon.png");
   --dock-marks: url("parts/dock-marks.png");
   --floppy: url("parts/floppy.png");
   --folder: url("parts/folder.png");
@@ -170,7 +171,10 @@ nx-menu .title {
 }
 
 nx-menu-item {
-  justify-content: space-between;
+  /* Whatever an entry carries stays together on the left. The shortcut letter
+     takes itself to the right edge, which is what its own margin does. */
+  justify-content: flex-start;
+  gap: 0;
   border-top: 1px solid var(--white);
   /* One pixel of black at the very bottom, one of grey above it. The later
      shadow is painted under the earlier one, so black wins the last row. */
@@ -183,7 +187,32 @@ nx-menu-item:last-child { box-shadow: none; }
    at all on hover. */
 nx-menu-item:active { background: var(--black); color: var(--white); }
 
-nx-menu-item .key { font-size: 11px; }
+/* An entry that would do nothing. NeXTSTEP greyed the lettering and left the
+   entry in place, so the menu keeps its shape and a reader sees that the thing
+   exists and is not available now. */
+nx-menu-item[disabled] { color: var(--dark); }
+nx-menu-item[disabled]:active { background: none; color: var(--dark); }
+
+/* The small picture an entry may carry, at the size NeXTSTEP put beside a line
+   of menu text rather than at icon size. */
+nx-menu-item .mark {
+  width: 16px; height: 16px;
+  background-size: contain;
+  margin-right: 6px;
+  flex: 0 0 auto;
+}
+
+/* A menu that answers a right click stands above everything else. Its title
+   says which thing it is about, because unlike the main menu it appears over
+   whatever was clicked and then goes away again. */
+nx-menu[context] {
+  z-index: 80;
+}
+nx-menu[context] .title { cursor: default; }
+
+/* Pushed to the right edge on its own, so an entry carrying a picture keeps
+   the picture and its words together on the left. */
+nx-menu-item .key { font-size: 11px; margin-left: auto; }
 
 /* --- nx-dock ------------------------------------------------------------ */
 

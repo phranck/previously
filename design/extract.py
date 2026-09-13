@@ -45,6 +45,15 @@ ICONS = {
     "net": ("net", "the network"),
     "scsi": ("scsi", "a SCSI device"),
     "defaultUnixIcon": ("defaultUnixIcon", "a Unix program, which the console is"),
+    # NeXTSTEP's own icon for an application that brought none of its own.
+    # Configure.app, which configured a real NeXT's hardware and would have
+    # been the right picture for an editor of machine configurations, has no
+    # icon in this image: the installation carries its bundles and neither
+    # its executable nor its tiff. Searching the whole filesystem for one
+    # named after configuring found only PrintManager's. So this is what an
+    # application without a face of its own wore, which is what the config
+    # editor is until it has one.
+    "defaultAppIcon": ("defaultAppIcon", "an application, as NeXTSTEP drew one"),
     "Workspace": ("Workspace", "the NeXT wordmark on its cube"),
     "trash.1.alpha": ("trash", "the recycler, in the first of its four frames"),
     "hilite": ("hilite", "the white a selected icon sits on"),

@@ -374,6 +374,14 @@ class NxMenu extends HTMLElement {
     this.removeAttribute("title");
     this.prepend(title);
 
+    /* A menu that answers a right click is the same menu, put where the
+       pointer is and taken away again. It is not carried about and not
+       remembered, so it neither drags nor saves. */
+    if (this.hasAttribute("context")) {
+      this.hidden = true;
+      return;
+    }
+
     const name = this.getAttribute("name");
     const saved = recall(name);
     this.style.left = (saved.x ?? Number(this.getAttribute("x"))) + "px";
@@ -382,6 +390,41 @@ class NxMenu extends HTMLElement {
     draggable(this, title, {
       onSettled: () => remember(name, { x: this.offsetLeft, y: this.offsetTop }),
     });
+  }
+
+  /**
+   * Puts a context menu at the pointer and takes it away on the next click.
+   * @param {number} x - Where the pointer was, in the page.
+   * @param {number} y
+   */
+  openAt(x, y) {
+    this.hidden = false;
+    /* Measured after it is shown, because a hidden element has no size, and
+       kept inside the window so a menu near an edge is not half off it. */
+    const own = this.getBoundingClientRect();
+    this.style.left = Math.min(x, innerWidth - own.width - 2) + "px";
+    this.style.top = Math.min(y, innerHeight - own.height - 2) + "px";
+
+    const away = (event) => {
+      if (this.contains(event.target)) return;
+      this.close();
+    };
+    this.dismiss = () => {
+      removeEventListener("pointerdown", away, true);
+      removeEventListener("keydown", escape);
+    };
+    const escape = (event) => {
+      if (event.key === "Escape") this.close();
+    };
+    addEventListener("pointerdown", away, true);
+    addEventListener("keydown", escape);
+  }
+
+  /** Takes it away, and stops listening for what would have. */
+  close() {
+    this.hidden = true;
+    this.dismiss?.();
+    this.dismiss = null;
   }
 }
 
@@ -396,6 +439,12 @@ class NxMenuItem extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
+    if (this.hasAttribute("icon")) {
+      const art = document.createElement("i");
+      art.className = "art mark";
+      showArt(art, this.getAttribute("icon"));
+      this.prepend(art);
+    }
     if (this.hasAttribute("key")) {
       const key = document.createElement("span");
       key.className = "key";
@@ -405,6 +454,7 @@ class NxMenuItem extends HTMLElement {
     const target = this.getAttribute("opens");
     if (target) {
       this.addEventListener("click", () => {
+        if (this.hasAttribute("disabled")) return;
         document.querySelector(`nx-window[name="${target}"]`)?.open();
       });
     }
@@ -433,6 +483,7 @@ class NxTile extends HTMLElement {
     const target = this.getAttribute("opens");
     if (target) {
       this.addEventListener("click", () => {
+        if (this.hasAttribute("disabled")) return;
         document.querySelector(`nx-window[name="${target}"]`)?.open();
       });
     }

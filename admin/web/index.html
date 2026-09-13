@@ -17,6 +17,7 @@
 
 <nx-dock>
   <nx-tile icon="Workspace" title="NeXT"></nx-tile>
+  <nx-tile icon="defaultAppIcon" title="Config Editor" name="editor"></nx-tile>
 </nx-dock>
 
 <nx-window name="info" title="Info" fixed drop x="180" y="16" w="400" h="316">
@@ -65,6 +66,13 @@
     <button id="machine-apply" class="default" disabled>Wechseln</button>
   </div>
 </nx-window>
+
+<!-- What a right click on a machine offers. Put where the pointer is, and
+     taken away again, so it is not carried about and not remembered. -->
+<nx-menu name="machine-menu" context title="Maschine">
+  <nx-menu-item name="activate">Activate config</nx-menu-item>
+  <nx-menu-item name="edit" icon="defaultAppIcon">Edit config&hellip;</nx-menu-item>
+</nx-menu>
 
 <nx-ask id="ask"></nx-ask>
 
