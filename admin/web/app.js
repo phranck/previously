@@ -3,8 +3,8 @@
  * The kit in nextstep.js knows about windows and shelves and nothing about
  * emulators. Everything that knows what a NeXTcube is lives here.
  *
- * At this point it reads and shows. Nothing on this page changes anything on
- * the machine.
+ * Reading needs no token. The three buttons that switch the emulated machine
+ * on and off do, and the service refuses them without one.
  */
 
 /** How often the status is fetched. A machine whose job is to sit there does
@@ -23,6 +23,18 @@ const Art = {
   Computer: "root",
   ComputerColor: "root-color",
 };
+
+/** What the buttons ask the service to do, by the route that does it. */
+const Kiosk = {
+  Start: "/api/kiosk/start",
+  Stop: "/api/kiosk/stop",
+  Restart: "/api/kiosk/restart",
+};
+
+/** How long a shutdown may take before the page stops waiting for the answer.
+ *  Longer than the service's own patience with the guest, so the reason it
+ *  gives always arrives rather than being cut off by the browser. */
+const OPERATION_TIMEOUT_MS = 150000;
 
 /**
  * Fetches one of the service's answers.
@@ -102,10 +114,25 @@ function drawStatus(status) {
   const lamp = document.createElement("span");
   lamp.className = "lamp";
   if (!status.running) lamp.style.background = "var(--dark)";
-  state.replaceChildren(lamp,
-    document.createTextNode(status.running
-      ? ` läuft ${since(status.uptime_seconds)}`
-      : " angehalten"));
+
+  /* Three states, not two. Held down means somebody switched it off from here
+     and nothing will start it again; stopped without a hold means it went away
+     on its own, which is a different thing and worth saying differently. */
+  let words = " angehalten";
+  if (status.running) words = ` läuft ${since(status.uptime_seconds)}`;
+  else if (status.held) words = " ausgeschaltet";
+  state.replaceChildren(lamp, document.createTextNode(words));
+
+  document.getElementById("kiosk-start").disabled = status.running;
+  document.getElementById("kiosk-stop").disabled = !status.running;
+  document.getElementById("kiosk-restart").disabled = !status.running;
+
+  /* Without the console session there is nothing waiting to start the emulator
+     again, so switching it on would report success and do nothing. Saying so
+     here is the only place that failure becomes visible. */
+  if (!status.console_active) {
+    show("kiosk-note", "Die Konsole läuft nicht. Einschalten bleibt wirkungslos.");
+  }
 
   const machine = status.configuration;
   if (!machine) {
@@ -128,10 +155,92 @@ function drawStatus(status) {
     `var(--${colour ? Art.ComputerColor : Art.Computer})`;
 }
 
+/**
+ * Asks the service to do something to the emulator.
+ * @param {string} route - One of Kiosk.
+ * @returns {Promise<object|null>} What it answered, or null on no contact.
+ */
+async function tell(route) {
+  try {
+    const answer = await fetch(route, {
+      method: "POST",
+      cache: "no-store",
+      headers: headers(),
+      signal: AbortSignal.timeout(OPERATION_TIMEOUT_MS),
+    });
+    return await answer.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Runs one of the three operations and reports what came of it.
+ * @param {string} route - One of Kiosk.
+ * @param {string} working - What to say while it happens.
+ */
+async function operate(route, working) {
+  setBusy(true, working);
+  const answer = await tell(route);
+  setBusy(false, answer === null
+    ? "keine Verbindung zum Dienst"
+    : answer.reason ?? "");
+  if (answer) drawStatus(answer);
+  refresh();
+}
+
+/**
+ * Turns the buttons off while something is happening, and says what.
+ * @param {boolean} busy
+ * @param {string} note - What to show under the readings.
+ */
+function setBusy(busy, note) {
+  for (const id of ["kiosk-start", "kiosk-stop", "kiosk-restart"]) {
+    document.getElementById(id).disabled = busy;
+  }
+  show("kiosk-note", note);
+}
+
+/**
+ * The warning before the emulator goes away.
+ *
+ * Always asked and always worded the same, because Previous tells us nothing
+ * about what the guest is doing. A warning that appeared only sometimes would
+ * teach the reader that its absence means safe, which we cannot know.
+ * @param {string} what - The wording on the acting button.
+ * @returns {Promise<boolean>}
+ */
+function warn(what) {
+  return document.getElementById("ask").ask({
+    title: "NeXTSTEP anhalten",
+    text: [
+      "NeXTSTEP wird über den Ausschalter heruntergefahren, so wie über Power Off im Logout-Fenster.",
+      "Nicht gespeicherte Arbeit in laufenden Programmen geht dabei verloren. Der Dienst kann nicht sehen, woran die Maschine gerade arbeitet.",
+    ],
+    icon: Art.Computer,
+    confirm: what,
+  });
+}
+
+/** Wires the three buttons. */
+function wireButtons() {
+  document.getElementById("kiosk-start").addEventListener("click",
+    () => operate(Kiosk.Start, "wird eingeschaltet"));
+
+  document.getElementById("kiosk-stop").addEventListener("click", async () => {
+    if (await warn("Ausschalten")) operate(Kiosk.Stop, "fährt herunter");
+  });
+
+  document.getElementById("kiosk-restart").addEventListener("click", async () => {
+    if (await warn("Neu starten")) operate(Kiosk.Restart, "startet neu");
+  });
+}
+
 /** Fetches the status and draws it. */
 async function refresh() {
   drawStatus(await ask("/api/status"));
 }
 
+wireButtons();
 refresh();
 setInterval(refresh, REFRESH_MS);

@@ -16,7 +16,7 @@
   <nx-tile icon="Workspace" title="NeXT"></nx-tile>
 </nx-dock>
 
-<nx-window name="info" title="Info" fixed x="180" y="16" w="400" h="248">
+<nx-window name="info" title="Info" fixed x="180" y="16" w="400" h="316">
   <div class="info-body">
     <nx-portrait>
       <i class="art icon" id="info-icon" style="background-image: var(--root)"></i>
@@ -30,7 +30,15 @@
       <nx-row><label>Platte</label><nx-field id="info-disk">&mdash;</nx-field></nx-row>
     </div>
   </div>
+  <p class="note" id="kiosk-note"></p>
+  <div class="buttons">
+    <button id="kiosk-stop">Ausschalten</button>
+    <button id="kiosk-restart">Neu starten</button>
+    <button id="kiosk-start" class="default">Einschalten</button>
+  </div>
 </nx-window>
+
+<nx-ask id="ask"></nx-ask>
 
 <script src="nextstep.js"></script>
 <script src="app.js"></script>

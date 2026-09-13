@@ -49,6 +49,11 @@ readonly CONFIG_FILE="${CONFIG_DIR}/previous.cfg"
 # ~/.bashrc. Creating ~/.bash_profile would switch both off, including for SSH
 # sessions, which are the way back into a machine whose screen is taken.
 readonly PROFILE="${HOME}/.profile"
+
+# The admin tool holds the emulator down by creating this file. It lives in
+# that tool's own state directory, which is the one place its systemd unit may
+# write, and the console's autostart below waits on it.
+readonly HOLD_FILE="/var/lib/previously/hold"
 readonly CMDLINE="/boot/firmware/cmdline.txt"
 readonly CONFIG_TXT="/boot/firmware/config.txt"
 readonly AUTOLOGIN="/etc/systemd/system/getty@tty1.service.d/autologin.conf"
@@ -418,7 +423,16 @@ ${AUTOSTART_MARKER}
 # Hand the first console to Previous. XDG_VTNR carries the number of the text
 # console and is set only where one is actually behind the login, so an SSH
 # session falls through and stays the way in once the screen is taken.
+#
+# The wait is how the admin tool stops and starts the emulator without any
+# privileges at all: it creates ${HOLD_FILE} to hold it down and removes the
+# file to let it come back. Waiting rather than exiting matters twice. It keeps
+# the console from falling through to a shell prompt while the emulator is
+# held, and it avoids the race that stopping through systemd would have, since
+# this unit restarts itself the moment a session ends and would bring a fresh
+# emulator up underneath whatever stopped the last one.
 if [ "\$XDG_VTNR" = 1 ] && [ -z "\$WAYLAND_DISPLAY" ]; then
+  while [ -f ${HOLD_FILE} ]; do sleep 2; done
   exec cage -- /usr/bin/previous
 fi
 ${AUTOSTART_END}
