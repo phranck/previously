@@ -11,7 +11,7 @@ import json
 import mimetypes
 import pathlib
 
-from . import config, kiosk
+from . import config, kiosk, tls
 from .token import HEADER
 
 VERSION = "0.1.0"
@@ -170,13 +170,26 @@ def safe_path(root, route):
 def serve(settings, token=None):
     """Runs the service until it is stopped.
 
-    @param settings - Settings, which says where to bind and what to read.
+    @param settings - Settings, which says where to bind, what to read and
+      which certificate to present where one is configured.
     @param token - Token, or None. Without one, every change is refused.
+    @raises tls.NotUsable where a certificate is configured and cannot be used.
+      Nothing is bound in that case, so a broken certificate is a service that
+      does not come up rather than one quietly serving in the clear.
+
+    A client speaking plain HTTP to a TLS port needs no handling here. The
+    handshake fails inside get_request, socketserver catches OSError there, and
+    ssl.SSLError is one, so the attempt is dropped without a traceback.
     """
+    context = tls.context(settings.certificate, settings.private_key)
+
     Handler.settings = settings
     Handler.token = token
     address = (settings.address, settings.port)
     with http.server.ThreadingHTTPServer(address, Handler) as httpd:
-        print("previously %s on http://%s:%d"
-              % (VERSION, settings.address, settings.port), flush=True)
+        if context is not None:
+            httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+        print("previously %s on %s://%s:%d"
+              % (VERSION, settings.scheme, settings.address, settings.port),
+              flush=True)
         httpd.serve_forever()
