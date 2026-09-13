@@ -522,6 +522,7 @@ class NxShelf extends HTMLElement {
     this.addEventListener("click", (event) => {
       const thing = event.target.closest("nx-thing");
       if (!thing || !this.contains(thing)) return;
+      if (thing.hasAttribute("disabled")) return;
       this.choose(thing);
     });
   }
@@ -559,10 +560,25 @@ class NxThing extends HTMLElement {
     this.art = art;
 
     if (this.hasAttribute("value")) this.carry();
+    this.draggable = this.canBeUsed;
+  }
+
+  /** Watched so that switching a thing off takes its drag handle with it. */
+  static get observedAttributes() { return ["disabled"]; }
+
+  attributeChangedCallback() {
+    if (this.ready) this.draggable = this.canBeUsed;
   }
 
   /** @returns {string} What this thing hands over when it is used. */
   get value() { return this.getAttribute("value"); }
+
+  /** @returns {boolean} Whether it hands anything over at all. A thing can be
+   *  switched off because using it would do nothing, which is different from
+   *  having nothing to give. */
+  get canBeUsed() {
+    return this.hasAttribute("value") && !this.hasAttribute("disabled");
+  }
 
   /**
    * Makes it liftable, and makes a double click mean the same as carrying it
@@ -572,9 +588,10 @@ class NxThing extends HTMLElement {
    * however the thing was used.
    */
   carry() {
-    this.draggable = true;
-
     this.addEventListener("dragstart", (event) => {
+      /* Checked here rather than when this was wired, because a thing is
+         switched off and on again whilst the page is up. */
+      if (!this.canBeUsed) return event.preventDefault();
       event.dataTransfer.setData("text/plain", this.value);
       event.dataTransfer.effectAllowed = "copy";
       this.setAttribute("lifting", "");
@@ -583,6 +600,7 @@ class NxThing extends HTMLElement {
     this.addEventListener("dragend", () => this.removeAttribute("lifting"));
 
     this.addEventListener("dblclick", () => {
+      if (!this.canBeUsed) return;
       this.dispatchEvent(new CustomEvent("nx-choose", {
         bubbles: true, detail: { value: this.value },
       }));

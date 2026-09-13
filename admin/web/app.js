@@ -349,8 +349,15 @@ async function drawMachines() {
  */
 function markCurrent(name) {
   for (const thing of document.querySelectorAll("#machine-shelf nx-thing")) {
-    thing.classList.toggle("current", thing.getAttribute("label") === name);
+    const isCurrent = thing.getAttribute("label") === name;
+    thing.classList.toggle("current", isCurrent);
+    /* Switching to the machine that is already running would shut NeXTSTEP
+       down, write the same values back and start it again, for nothing. */
+    thing.toggleAttribute("disabled", isCurrent);
+    if (isCurrent) thing.removeAttribute("chosen");
   }
+  document.getElementById("machine-apply").disabled =
+    !document.querySelector("#machine-shelf nx-thing[chosen]");
 }
 
 /**
@@ -397,9 +404,94 @@ function wireMachines() {
   });
 }
 
-/** Fetches the status and draws it. */
+/**
+ * Says how long something has been running, the short way.
+ * @param {number|null} seconds
+ * @returns {string}
+ */
+function duration(seconds) {
+  if (seconds === null || seconds === undefined) return "—";
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days} Tage, ${hours} Std`;
+  if (hours > 0) return `${hours} Std ${minutes} Min`;
+  return `${minutes} Min`;
+}
+
+/**
+ * Puts a lamp and a sentence into a field.
+ * @param {string} id
+ * @param {boolean} well - Whether this reading is the good case.
+ * @param {string} words
+ */
+function showState(id, well, words) {
+  const lamp = document.createElement("span");
+  lamp.className = "lamp";
+  if (!well) lamp.style.background = "var(--dark)";
+  document.getElementById(id)
+    .replaceChildren(lamp, document.createTextNode(" " + words));
+}
+
+/**
+ * Draws what the board underneath is doing.
+ * @param {object|null} pi - What /api/pi answered, or null.
+ */
+function drawPi(pi) {
+  if (pi === null) {
+    show("pi-model", "nicht erreichbar");
+    return;
+  }
+
+  show("pi-model", pi.model ?? "—");
+  show("pi-uptime", duration(pi.uptime_seconds));
+
+  /* Above 80 degrees a Pi 5 begins to slow itself down, so that is where the
+     reading stops being a number and becomes a warning. */
+  const temperature = pi.temperature_c;
+  showState("pi-temp", temperature !== null && temperature < 80,
+    temperature === null ? "—" : `${temperature.toFixed(1)} °C`);
+
+  /* Two different things. Something happening now is a problem to act on, and
+     something that happened once may have been the moment a drive was plugged
+     in, which is worth knowing and not worth alarm. */
+  const throttling = pi.throttling;
+  if (!throttling) {
+    showState("pi-power", true, "—");
+  } else if (throttling.now.length) {
+    showState("pi-power", false, `jetzt: ${throttling.now.join(", ")}`);
+  } else if (throttling.since_boot.length) {
+    showState("pi-power", false, `seit dem Start: ${throttling.since_boot.join(", ")}`);
+  } else {
+    showState("pi-power", true, "in Ordnung");
+  }
+
+  /* Around 150 per cent of one core is ordinary with a NeXTdimension, because
+     two threads run, so the figure is stated without judging it. */
+  show("pi-emulator", pi.emulator
+    ? `${Math.round(pi.emulator.cpu_percent)} %, ${pi.emulator.memory_mb} MB, `
+      + duration(pi.emulator.uptime_seconds)
+    : "läuft nicht");
+
+  /* The one that looks like nothing: the card is there, the configuration
+     still names it, and the stream was closed when the speaker was moved. */
+  showState("pi-sound", Boolean(pi.sound?.playing),
+    pi.sound ? `${pi.sound.card}, ${pi.sound.playing ? "spielt" : "still"}` : "keine Karte");
+
+  show("pi-memory", pi.memory
+    ? `${pi.memory.available_mb} von ${pi.memory.total_mb} MB frei` : "—");
+  show("pi-disk", pi.disk
+    ? `${Math.round(pi.disk.free_mb / 1024)} GB frei, ${pi.disk.used_percent} % belegt`
+    : "—");
+}
+
+/** Fetches the status and draws it, and the board's readings where its window
+ *  is open. A window nobody is looking at costs nothing. */
 async function refresh() {
   drawStatus(await ask("/api/status"));
+
+  const window_ = document.querySelector('nx-window[name="pi"]');
+  if (window_ && !window_.hidden) drawPi(await ask("/api/pi"));
 }
 
 wireButtons();
