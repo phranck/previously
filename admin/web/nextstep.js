@@ -439,12 +439,12 @@ class NxMenuItem extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
-    if (this.hasAttribute("icon")) {
-      const art = document.createElement("i");
-      art.className = "art mark";
-      showArt(art, this.getAttribute("icon"));
-      this.prepend(art);
-    }
+    /* Every entry gets the place, whether it has a picture for it or not, so
+       the words all begin at the same column. */
+    const art = document.createElement("i");
+    art.className = "art mark";
+    if (this.hasAttribute("icon")) showArt(art, this.getAttribute("icon"));
+    this.prepend(art);
     if (this.hasAttribute("key")) {
       const key = document.createElement("span");
       key.className = "key";
