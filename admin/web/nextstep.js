@@ -55,7 +55,8 @@ function showArt(el, name) {
  * @param {(event: PointerEvent, start: object) => void} onMove
  * @param {(event: PointerEvent) => object} onStart - Whatever the mover needs
  *   to know about the moment the gesture began.
- * @param {() => void} [onEnd]
+ * @param {(start: object) => void} [onEnd] - Given what onStart returned,
+ *   which by then carries whatever the moves wrote into it.
  */
 function gesture(handle, onMove, onStart, onEnd) {
   handle.addEventListener("pointerdown", (event) => {
@@ -65,15 +66,78 @@ function gesture(handle, onMove, onStart, onEnd) {
     event.preventDefault();
     handle.setPointerCapture(event.pointerId);
     const start = onStart(event);
-    const move = (moveEvent) => onMove(moveEvent, start);
+
+    /* A pointer reports faster than the screen redraws, so the moves are
+       coalesced into one update per frame. Everything beyond the last one in
+       a frame is work whose result is painted over before anybody sees it. */
+    let latest = null;
+    let frame = 0;
+
+    const apply = () => {
+      frame = 0;
+      onMove(latest, start);
+    };
+
+    const move = (moveEvent) => {
+      latest = moveEvent;
+      if (!frame) frame = requestAnimationFrame(apply);
+    };
+
     const finish = () => {
       handle.removeEventListener("pointermove", move);
-      onEnd?.();
+      /* The last position has to land before anything saves it, so a frame
+         still owed is run now rather than cancelled. */
+      if (frame) {
+        cancelAnimationFrame(frame);
+        apply();
+      }
+      onEnd?.(start);
     };
+
     handle.addEventListener("pointermove", move);
     handle.addEventListener("pointerup", finish, { once: true });
     handle.addEventListener("pointercancel", finish, { once: true });
   });
+}
+
+/**
+ * Moves an element by its handle, and settles it where it was let go.
+ *
+ * Whilst the gesture runs the element is moved with a transform, which the
+ * compositor can do without laying the page out again. Its left and top are
+ * written once, at the end, so everything that reads them afterwards sees a
+ * plain position and knows nothing about how it got there.
+ *
+ * @param {HTMLElement} element - What moves.
+ * @param {HTMLElement} handle - What is grabbed.
+ * @param {object} hooks
+ * @param {() => void} [hooks.onGrab] - Called as the gesture begins.
+ * @param {() => void} [hooks.onSettled] - Called once the position is written.
+ */
+function draggable(element, handle, { onGrab, onSettled } = {}) {
+  gesture(handle,
+    (event, start) => {
+      /* Never past the top or left edge, and never wholly behind the dock. */
+      start.left = Math.max(0, Math.min(event.clientX - start.grabX, innerWidth - 90));
+      start.top = Math.max(0, Math.min(event.clientY - start.grabY, innerHeight - 24));
+      element.style.transform =
+        `translate(${start.left - start.fromLeft}px, ${start.top - start.fromTop}px)`;
+    },
+    (event) => {
+      onGrab?.();
+      const fromLeft = element.offsetLeft;
+      const fromTop = element.offsetTop;
+      return {
+        grabX: event.clientX - fromLeft, grabY: event.clientY - fromTop,
+        fromLeft, fromTop, left: fromLeft, top: fromTop,
+      };
+    },
+    (start) => {
+      element.style.transform = "";
+      element.style.left = start.left + "px";
+      element.style.top = start.top + "px";
+      onSettled?.();
+    });
 }
 
 /* --- nx-window ---------------------------------------------------------- */
@@ -244,17 +308,10 @@ class NxWindow extends HTMLElement {
 
   /** Dragging by the bar, closing by the button, raising by a click anywhere. */
   wire(close) {
-    gesture(this.bar,
-      (event, start) => {
-        /* Never past the top or left edge, and never wholly behind the dock. */
-        this.style.left = Math.max(0, Math.min(event.clientX - start.x, innerWidth - 90)) + "px";
-        this.style.top = Math.max(0, Math.min(event.clientY - start.y, innerHeight - 24)) + "px";
-      },
-      (event) => {
-        this.raise();
-        return { x: event.clientX - this.offsetLeft, y: event.clientY - this.offsetTop };
-      },
-      () => this.save());
+    draggable(this, this.bar, {
+      onGrab: () => this.raise(),
+      onSettled: () => this.save(),
+    });
 
     close.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -292,13 +349,9 @@ class NxMenu extends HTMLElement {
     this.style.left = (saved.x ?? Number(this.getAttribute("x"))) + "px";
     this.style.top = (saved.y ?? Number(this.getAttribute("y"))) + "px";
 
-    gesture(title,
-      (event, start) => {
-        this.style.left = Math.max(0, Math.min(event.clientX - start.x, innerWidth - 90)) + "px";
-        this.style.top = Math.max(0, Math.min(event.clientY - start.y, innerHeight - 24)) + "px";
-      },
-      (event) => ({ x: event.clientX - this.offsetLeft, y: event.clientY - this.offsetTop }),
-      () => remember(name, { x: this.offsetLeft, y: this.offsetTop }));
+    draggable(this, title, {
+      onSettled: () => remember(name, { x: this.offsetLeft, y: this.offsetTop }),
+    });
   }
 }
 
