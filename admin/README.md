@@ -46,7 +46,7 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/pi.py` | What the board underneath is doing |
 | `previously/server.py` | Which addresses exist and what answers them |
 | `previously/token.py` | The one secret, and what a request may do without it |
-| `web/` | What the browser gets |
+| `web/` | What the browser gets, including one catalogue of words per language |
 | `packaging/` | The unit and the default configuration |
 
 `kiosk.py` is one module because it is the whole surface: reviewing what this tool may do to the machine means reading that one file.
@@ -85,7 +85,7 @@ Every POST is checked for the token before anything looks at what was sent.
 
 **Nothing here answers in sentences.** A machine crosses the wire as what the file holds, so `"model": "NeXTcube", "turbo": true, "dimension": true` rather than `NeXTcube Turbo mit NeXTdimension`, and the browser writes the name. What a chip is called is a fact and travels as it is; what is said about it is the browser's.
 
-Every answer to a POST is a name and the values that fill it, `{"reason": "machine.running", "machine": "NeXTcube Turbo", "lines": 6}`, and `web/app.js` holds the sentence for each name. A service has no idea which language the person reading it wants, so it says what happened and the browser says it in words. That is what makes #18 possible, and it is why the answers were in two languages before: the sentence was written wherever the fact was known.
+Every answer to a POST is a name and the values that fill it, `{"reason": "machine.running", "machine": "NeXTcube Turbo", "lines": 6}`, and the browser holds the sentence for each name in each of its six languages. A service has no idea which language the person reading it wants, so it says what happened and the browser says it in words.
 
 ## Changing which machine it is
 
@@ -141,6 +141,18 @@ Stopping writes that file, presses F10 and waits for the guest to go. Starting r
 ## The interface
 
 `web/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`, `nx-viewer`.
+
+## The six languages
+
+English, German, French, Italian, Spanish and Swedish, which are the six NeXTSTEP itself shipped. English is the default and the one every other falls back to, so a missing entry shows an English sentence rather than a name.
+
+`web/lang/` holds one catalogue per language, `web/strings.js` the lookup. A string is asked for by its key, `t("info.disk")`, and where it says how many of something there are the browser's own rules decide between one wording and another, so French gets its singular for zero without the catalogue saying so. Dates follow the same choice, and German means Austrian here.
+
+Neither the markup nor the kit holds any words. `index.html` carries `data-t` keys and no text, which is why the page cannot show the wrong language for a moment whilst the right one arrives, and `nx-ask` is given the wording of its two buttons by whoever asks the question.
+
+The choice lives in this browser beside the window positions, and changing it writes the whole interface again without a reload. The Preferences window of #19 is where it is chosen.
+
+Adding a string means adding it to all six catalogues. `tests/test_strings.py` fails when one of them is missing an entry, when a sentence loses a `{place}` that the others have, when the page asks for a key that is not there, and when the service can answer with a name that nothing can say.
 
 ## What it shows
 

@@ -1,0 +1,175 @@
+/* Spanish. */
+
+NX_STRINGS.es = {
+  /* --- the menus ------------------------------------------------------- */
+  "menu.files": "Archivos",
+  "menu.token": "Token",
+  "menu.machine": "Máquina",
+  "menu.machine-info": "Información…",
+  "menu.activate": "Activar la configuración",
+  "menu.edit": "Editar la configuración…",
+  "menu.keep": "Poner en la repisa",
+  "menu.unkeep": "Quitar de la repisa",
+
+  /* --- the windows ----------------------------------------------------- */
+  "window.info": "Información",
+  "window.machine": "Máquina",
+
+  /* --- what a machine is ----------------------------------------------- */
+  "info.reading": "leyendo",
+  "info.state": "Estado",
+  "info.processor": "Procesador",
+  "info.memory": "Memoria",
+  "info.screen": "Pantalla",
+  "info.disk": "Disco",
+  "info.dimension": "Dimension",
+  "info.chips": "Chips",
+  "info.file": "Archivo",
+  "info.written": "Escrito",
+  "info.no-contact": "sin conexión",
+  "info.unreadable": "configuración ilegible",
+  "info.no-disk": "ninguno puesto",
+
+  "state.running": "en marcha {since}",
+  "state.stopped": "detenida",
+  "state.held": "apagada",
+  "state.unreachable": "inalcanzable",
+
+  "since.hours": "desde hace {hours}:{minutes} h",
+  "since.minutes": "desde hace {minutes} min",
+  "since.less-than-a-minute": "desde hace menos de un minuto",
+
+  "duration.days.one": "{days} día, {hours} h",
+  "duration.days.other": "{days} días, {hours} h",
+  "duration.hours": "{hours} h {minutes} min",
+  "duration.minutes": "{minutes} min",
+
+  /* --- the configuration file ------------------------------------------ */
+  "file.changed": "{when}",
+  "file.changed-not-booted": "{when}, aún sin arrancar",
+  "file.by-previously": "por Previously",
+  "file.by-previous-or-hand": "por Previous o a mano",
+  "file.other-machine": "esta máquina no es la que está puesta",
+
+  /* --- the machine itself ---------------------------------------------- */
+  "machine.with-dimension": "{name} con NeXTdimension",
+  "machine.cpu": "{cpu}, {mhz} MHz",
+  "machine.memory": "{mb} MB",
+  "machine.memory-banks": "{mb} MB ({banks})",
+  "machine.banks-empty": "vacíos",
+  "machine.screen.dimension": "NeXTdimension, en color",
+  "machine.screen.colour": "MegaPixel, en color",
+  "machine.screen.grey": "MegaPixel, escala de grises",
+  "machine.chips.with-nextbus": "{rtc}, {scsi}, con NeXTbus",
+  "machine.chips.without-nextbus": "{rtc}, {scsi}, sin NeXTbus",
+  "machine.dimension.fitted": "instalada",
+  "machine.dimension.none": "ninguna",
+
+  /* --- the file viewer -------------------------------------------------- */
+  "viewer.status": "{name}: {count}{more}",
+  "viewer.count.one": "1 elemento",
+  "viewer.count.other": "{count} elementos",
+  "viewer.read-only": ", solo lectura",
+  "viewer.unreachable": "Inalcanzable",
+
+  /* --- the buttons ------------------------------------------------------ */
+  "button.power-off": "Apagar",
+  "button.restart": "Reiniciar",
+  "button.power-on": "Encender",
+  "button.change": "Cambiar",
+  "button.use": "Aceptar",
+  "button.fine": "Bien",
+  "button.close": "Cerrar",
+  "button.cancel": "Cancelar",
+  "button.ok": "Sí",
+
+  /* --- what is happening now -------------------------------------------- */
+  "busy.starting": "encendiendo",
+  "busy.stopping": "apagando",
+  "busy.restarting": "reiniciando",
+  "busy.changing": "cambiando a {machine}",
+  "busy.board-restart": "NeXTSTEP se apaga, luego el Pi se reinicia",
+  "busy.board-poweroff": "NeXTSTEP se apaga, luego el Pi se apaga",
+
+  "note.no-console": "La consola no está en marcha. Encender no hará nada.",
+  "note.no-service": "sin conexión con el servicio",
+  "note.board-gone": "Ya no hay respuesta. Es lo que cabe esperar mientras el Pi se apaga.",
+
+  /* --- the panels ------------------------------------------------------- */
+  "ask.token.title": "Token",
+  "ask.token.needed": "Esta operación cambia algo en la máquina y necesita el token.",
+  "ask.token.where": "En el Pi está en un archivo que solo el servicio puede leer:",
+  "ask.token.wrong": "Ese no era el token de esta máquina.",
+
+  "ask.stop.title": "Detener NeXTSTEP",
+  "ask.stop.how": "NeXTSTEP se apaga con la tecla de encendido, igual que con Power Off en la ventana de cierre de sesión.",
+  "ask.stop.loss": "El trabajo sin guardar en los programas en marcha se perderá. El servicio no puede ver en qué está trabajando la máquina.",
+
+  "ask.change.title": "Cambiar de máquina",
+  "ask.change.question": "¿Arrancar como {machine}?",
+  "ask.change.own": "Lo que está puesto ahora es una configuración propia que no corresponde a ninguna de las máquinas ofrecidas. Se sobrescribirá.",
+  "ask.change.how": "NeXTSTEP se apaga con la tecla de encendido, se escribe la configuración y la máquina se arranca de nuevo.",
+  "ask.change.rollback": "Si no arranca, la configuración anterior se vuelve a escribir por sí sola.",
+
+  "ask.not-yet.missing": "{name} todavía no existe.",
+  "ask.not-yet.plan": "Debe permitir ajustar la máquina como Previous lo consiente, y no como un archivo de texto. Se está hablando de ello.",
+
+  "ask.board.reboot": "¿Reiniciar el Raspberry Pi?",
+  "ask.board.poweroff": "¿Apagar el Raspberry Pi?",
+  "ask.board.order": "NeXTSTEP se apaga primero con la tecla de encendido. El Pi espera a que ocurra, porque un reinicio bajo un emulador en marcha causa el mismo daño que cortar la corriente en mitad de una escritura.",
+  "ask.board.loss": "El trabajo sin guardar en los programas en marcha se perderá.",
+
+  /* --- the board underneath --------------------------------------------- */
+  "pi.model": "Máquina",
+  "pi.uptime": "En marcha",
+  "pi.temperature": "Temperatura",
+  "pi.power": "Corriente",
+  "pi.emulator": "Emulador",
+  "pi.sound": "Sonido",
+  "pi.memory": "Memoria",
+  "pi.card": "Tarjeta",
+  "pi.power.now": "ahora: {what}",
+  "pi.power.since-boot": "desde el arranque: {what}",
+  "pi.power.fine": "correcta",
+  "pi.emulator.running": "{percent} %, {mb} MB, {uptime}",
+  "pi.emulator.stopped": "no está en marcha",
+  "pi.sound.playing": "{card}, suena",
+  "pi.sound.silent": "{card}, en silencio",
+  "pi.sound.none": "ninguna tarjeta",
+  "pi.memory.free": "{available} de {total} MB libres",
+  "pi.disk.free": "{gb} GB libres, {percent} % ocupados",
+
+  "throttling.under-voltage": "tensión baja",
+  "throttling.frequency-capped": "frecuencia limitada",
+  "throttling.throttled": "frenado",
+  "throttling.temperature-limit": "límite de temperatura alcanzado",
+
+  /* --- what the service says happened ----------------------------------- */
+  "why.blank": "no muestra nada en la pantalla",
+  "why.never-came-up": "no arrancó",
+
+  "told.emulator.was-not-running": "El emulador no estaba en marcha y ahora está apagado.",
+  "told.emulator.ended-because-blank": "La máquina no había arrancado, así que el emulador se cerró. Ahora está apagado.",
+  "told.emulator.blank-and-will-not-end": "La máquina no arrancó y el emulador tampoco quiso cerrarse. Esto hay que mirarlo por SSH.",
+  "told.emulator.power-key-refused": "La tecla de encendido no se dejó pulsar, no se cambió nada.",
+  "told.emulator.already-running": "El emulador ya está en marcha.",
+  "told.emulator.nothing-holding-it": "Nada retiene al emulador, debería volver por sí solo.",
+  "told.emulator.on-its-way-back": "El emulador está volviendo.",
+  "told.guest.shut-itself-down": "NeXTSTEP se ha apagado por sí mismo, el emulador sigue apagado.",
+  "told.guest.still-shutting-down.one": "NeXTSTEP sigue sin apagarse después de {seconds} segundo. Sigue apagado, y un huésped que todavía está escribiendo es el único caso en el que esperar más es lo correcto.",
+  "told.guest.still-shutting-down.other": "NeXTSTEP sigue sin apagarse después de {seconds} segundos. Sigue apagado, y un huésped que todavía está escribiendo es el único caso en el que esperar más es lo correcto.",
+  "told.board.no-such-action": "No existe ninguna acción llamada {action}.",
+  "told.board.request-refused": "NeXTSTEP se ha apagado, pero no se pudo pedir al Pi. Sigue alcanzable por SSH.",
+  "told.board.on-its-way.reboot": "NeXTSTEP se ha apagado, el Pi se reinicia.",
+  "told.board.on-its-way.poweroff": "NeXTSTEP se ha apagado, el Pi se apaga.",
+  "told.machine.no-such": "No existe ninguna máquina llamada {asked}.",
+  "told.machine.running.one": "{machine} está en marcha, {lines} línea cambiada.",
+  "told.machine.running.other": "{machine} está en marcha, {lines} líneas cambiadas.",
+  "told.machine.was-already-set": "{machine} ya estaba puesta.",
+  "told.file.not-readable": "La configuración no se pudo leer: {detail}",
+  "told.token.not-given": "Interrumpido sin token.",
+  "told.rollback.could-not-write": "{machine} {why}, y la configuración anterior no se pudo volver a escribir: {detail}. La máquina es alcanzable por SSH.",
+  "told.rollback.emulator-will-not-end": "{machine} {why}, la configuración anterior está de vuelta en el archivo, pero el emulador no quiso cerrarse. Esto hay que mirarlo por SSH.",
+  "told.rollback.back-as-before": "{machine} {why}. La configuración anterior está de vuelta en el archivo y la máquina funciona como antes.",
+  "told.rollback.nothing-runs": "{machine} {why}, y con la configuración anterior tampoco funciona nada. Esto hay que mirarlo por SSH.",
+};

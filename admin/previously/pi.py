@@ -25,17 +25,21 @@ TIMEOUT_SECONDS = 5
 #: What the bits of vcgencmd get_throttled mean. The low four are now, the high
 #: four are since the machine last started, and they stay set once they have
 #: been. From Raspberry Pi's own documentation.
+#:
+#: Names rather than words, because the browser shows these in whichever of its
+#: six languages is in force and a word written here could only ever be in one.
+#: `lang/en.js` and the rest carry them as `throttling.<name>`.
 THROTTLING_NOW = {
-    0: "Unterspannung",
-    1: "Takt gedeckelt",
-    2: "gedrosselt",
-    3: "Temperaturgrenze erreicht",
+    0: "under-voltage",
+    1: "frequency-capped",
+    2: "throttled",
+    3: "temperature-limit",
 }
 THROTTLING_SINCE_BOOT = {
-    16: "Unterspannung",
-    17: "Takt gedeckelt",
-    18: "gedrosselt",
-    19: "Temperaturgrenze erreicht",
+    16: "under-voltage",
+    17: "frequency-capped",
+    18: "throttled",
+    19: "temperature-limit",
 }
 
 #: Where the kernel reports what each sound card's playback stream is doing.
