@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,11 +8,17 @@
 </head>
 <body>
 
+<!-- Every word a person reads is a key here rather than a sentence, and the
+     catalogues in lang/ hold the sentences. The markup carries no text at all,
+     so nothing can show the wrong language whilst the right one arrives. What
+     stays as it is written are names: NeXT's, the machine's own, and the
+     applications'. -->
+
 <nx-menu name="menu" title="Cube" x="8" y="8">
-  <nx-menu-item opens="info" key="i">Info</nx-menu-item>
+  <nx-menu-item opens="info" key="i" data-t="window.info"></nx-menu-item>
   <nx-menu-item opens="pi" key="p">Raspberry Pi</nx-menu-item>
-  <nx-menu-item opens="files" key="d">Dateien</nx-menu-item>
-  <nx-menu-item name="token" key="t">Token</nx-menu-item>
+  <nx-menu-item opens="files" key="d" data-t="menu.files"></nx-menu-item>
+  <nx-menu-item name="token" key="t" data-t="menu.token"></nx-menu-item>
 </nx-menu>
 
 <nx-dock>
@@ -20,18 +26,18 @@
   <nx-tile icon="defaultAppIcon" title="Config Editor" name="editor"></nx-tile>
 </nx-dock>
 
-<nx-window name="info" title="Info" fixed drop x="180" y="16" w="400">
+<nx-window name="info" data-t-title="window.info" fixed drop x="180" y="16" w="400">
   <div class="info-body">
     <nx-portrait>
       <i class="art icon" id="info-icon" style="background-image: var(--root)"></i>
-      <span class="caption" id="info-caption">wird gelesen</span>
+      <span class="caption" id="info-caption" data-t="info.reading"></span>
     </nx-portrait>
     <div class="readings">
-      <nx-row><label>Zustand</label><div class="state" id="info-state">&mdash;</div></nx-row>
-      <nx-row><label>Prozessor</label><nx-field id="info-cpu">&mdash;</nx-field></nx-row>
-      <nx-row><label>Speicher</label><nx-field id="info-ram">&mdash;</nx-field></nx-row>
-      <nx-row><label>Bildschirm</label><nx-field id="info-screen">&mdash;</nx-field></nx-row>
-      <nx-row><label>Platte</label><nx-field id="info-disk">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.state"></label><div class="state" id="info-state">&mdash;</div></nx-row>
+      <nx-row><label data-t="info.processor"></label><nx-field id="info-cpu">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.memory"></label><nx-field id="info-ram">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.screen"></label><nx-field id="info-screen">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.disk"></label><nx-field id="info-disk">&mdash;</nx-field></nx-row>
     </div>
   </div>
   <!-- Under the picture and across the whole window, because the column
@@ -40,32 +46,32 @@
        the file, in the same words, so that "Datei" means one thing wherever
        it appears. -->
   <div class="readings">
-    <nx-row><label>Datei</label><nx-field id="info-file">&mdash;</nx-field></nx-row>
-    <nx-row><label>Geschrieben</label><nx-field id="info-written">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="info.file"></label><nx-field id="info-file">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="info.written"></label><nx-field id="info-written">&mdash;</nx-field></nx-row>
   </div>
   <p class="note" id="kiosk-note"></p>
   <div class="buttons">
-    <button id="kiosk-stop">Ausschalten</button>
-    <button id="kiosk-restart">Neu starten</button>
-    <button id="kiosk-start" class="default">Einschalten</button>
+    <button id="kiosk-stop" data-t="button.power-off"></button>
+    <button id="kiosk-restart" data-t="button.restart"></button>
+    <button id="kiosk-start" class="default" data-t="button.power-on"></button>
   </div>
 </nx-window>
 
 <nx-window name="pi" title="Raspberry Pi" fixed x="600" y="16" w="360" closed>
   <div class="readings">
-    <nx-row><label>Maschine</label><nx-field id="pi-model">&mdash;</nx-field></nx-row>
-    <nx-row><label>Läuft</label><nx-field id="pi-uptime">&mdash;</nx-field></nx-row>
-    <nx-row><label>Temperatur</label><div class="state" id="pi-temp">&mdash;</div></nx-row>
-    <nx-row><label>Strom</label><div class="state" id="pi-power">&mdash;</div></nx-row>
-    <nx-row><label>Emulator</label><nx-field id="pi-emulator">&mdash;</nx-field></nx-row>
-    <nx-row><label>Ton</label><div class="state" id="pi-sound">&mdash;</div></nx-row>
-    <nx-row><label>Speicher</label><nx-field id="pi-memory">&mdash;</nx-field></nx-row>
-    <nx-row><label>Karte</label><nx-field id="pi-disk">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="pi.model"></label><nx-field id="pi-model">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="pi.uptime"></label><nx-field id="pi-uptime">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="pi.temperature"></label><div class="state" id="pi-temp">&mdash;</div></nx-row>
+    <nx-row><label data-t="pi.power"></label><div class="state" id="pi-power">&mdash;</div></nx-row>
+    <nx-row><label data-t="pi.emulator"></label><nx-field id="pi-emulator">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="pi.sound"></label><div class="state" id="pi-sound">&mdash;</div></nx-row>
+    <nx-row><label data-t="pi.memory"></label><nx-field id="pi-memory">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="pi.card"></label><nx-field id="pi-disk">&mdash;</nx-field></nx-row>
   </div>
   <p class="note" id="pi-note"></p>
   <div class="buttons">
-    <button id="pi-poweroff">Ausschalten</button>
-    <button id="pi-reboot">Neu starten</button>
+    <button id="pi-poweroff" data-t="button.power-off"></button>
+    <button id="pi-reboot" data-t="button.restart"></button>
   </div>
 </nx-window>
 
@@ -80,43 +86,55 @@
 
 <!-- What one machine is, opened from the context menu in the shelf. Its title
      is the machine's own name, so two of these would never be confused. -->
-<nx-window name="machine-info" title="Maschine" fixed x="640" y="400" w="400" closed>
+<nx-window name="machine-info" data-t-title="window.machine" fixed x="640" y="400" w="400" closed>
   <div class="info-body">
     <nx-portrait>
       <i class="art icon" id="mi-icon" style="background-image: var(--root)"></i>
       <span class="caption" id="mi-caption">&mdash;</span>
     </nx-portrait>
     <div class="readings">
-      <nx-row><label>Prozessor</label><nx-field id="mi-cpu">&mdash;</nx-field></nx-row>
-      <nx-row><label>Speicher</label><nx-field id="mi-ram">&mdash;</nx-field></nx-row>
-      <nx-row><label>Bildschirm</label><nx-field id="mi-screen">&mdash;</nx-field></nx-row>
-      <nx-row><label>Dimension</label><nx-field id="mi-dimension">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.processor"></label><nx-field id="mi-cpu">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.memory"></label><nx-field id="mi-ram">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.screen"></label><nx-field id="mi-screen">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.dimension"></label><nx-field id="mi-dimension">&mdash;</nx-field></nx-row>
     </div>
   </div>
   <div class="readings">
-    <nx-row><label>Chips</label><nx-field id="mi-chips">&mdash;</nx-field></nx-row>
-    <nx-row><label>Datei</label><nx-field id="mi-changed">&mdash;</nx-field></nx-row>
-    <nx-row><label>Geschrieben</label><nx-field id="mi-written">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="info.chips"></label><nx-field id="mi-chips">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="info.file"></label><nx-field id="mi-changed">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="info.written"></label><nx-field id="mi-written">&mdash;</nx-field></nx-row>
   </div>
 </nx-window>
 
 <!-- What a right click on a machine offers. Put where the pointer is, and
      taken away again, so it is not carried about and not remembered. -->
-<nx-menu name="machine-menu" context title="Maschine">
+<nx-menu name="machine-menu" context data-t-title="menu.machine">
   <!-- Reading before acting, and nothing between them: NeXTSTEP's own menus
        are one run of entries, with the submenu arrow and the shortcut letter
        the only things that break it. -->
-  <nx-menu-item name="info">Info&hellip;</nx-menu-item>
-  <nx-menu-item name="activate">Activate config</nx-menu-item>
-  <nx-menu-item name="edit" icon="defaultAppIcon">Edit config&hellip;</nx-menu-item>
+  <nx-menu-item name="info" data-t="menu.machine-info"></nx-menu-item>
+  <nx-menu-item name="activate" data-t="menu.activate"></nx-menu-item>
+  <nx-menu-item name="edit" icon="defaultAppIcon" data-t="menu.edit"></nx-menu-item>
   <!-- Last, and the only one a folder on the shelf shows. The rule that takes
        the shadow off the foot of a menu asks for the last child, so the entry
-       that can stand alone has to be it. -->
-  <nx-menu-item name="shelf">Auf die Ablage legen</nx-menu-item>
+       that can stand alone has to be it. The page writes its wording, which is
+       one of two depending on where the thing already lies. -->
+  <nx-menu-item name="shelf" data-t="menu.keep"></nx-menu-item>
 </nx-menu>
 
 <nx-ask id="ask"></nx-ask>
 
+<!-- The words load first, then the kit, then the page. Every element is
+     therefore built around text it already has rather than being filled in
+     afterwards. -->
+<script src="strings.js"></script>
+<script src="lang/en.js"></script>
+<script src="lang/de.js"></script>
+<script src="lang/fr.js"></script>
+<script src="lang/it.js"></script>
+<script src="lang/es.js"></script>
+<script src="lang/sv.js"></script>
+<script>translate();</script>
 <script src="nextstep.js"></script>
 <script src="app.js"></script>
 

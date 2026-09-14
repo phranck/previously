@@ -27,8 +27,8 @@ TIMEOUT_SECONDS = 5
 #: been. From Raspberry Pi's own documentation.
 #:
 #: Names rather than words, because the browser shows these in whichever of its
-#: five languages is in force and a word written here could only ever be in
-#: one. `lang/en.js` and the rest carry them as `throttling.<name>`.
+#: six languages is in force and a word written here could only ever be in one.
+#: `lang/en.js` and the rest carry them as `throttling.<name>`.
 THROTTLING_NOW = {
     0: "under-voltage",
     1: "frequency-capped",

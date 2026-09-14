@@ -1,0 +1,175 @@
+/* Swedish. */
+
+NX_STRINGS.sv = {
+  /* --- the menus ------------------------------------------------------- */
+  "menu.files": "Filer",
+  "menu.token": "Token",
+  "menu.machine": "Maskin",
+  "menu.machine-info": "Info…",
+  "menu.activate": "Aktivera konfigurationen",
+  "menu.edit": "Redigera konfigurationen…",
+  "menu.keep": "Lägg på hyllan",
+  "menu.unkeep": "Ta bort från hyllan",
+
+  /* --- the windows ----------------------------------------------------- */
+  "window.info": "Info",
+  "window.machine": "Maskin",
+
+  /* --- what a machine is ----------------------------------------------- */
+  "info.reading": "läses in",
+  "info.state": "Status",
+  "info.processor": "Processor",
+  "info.memory": "Minne",
+  "info.screen": "Skärm",
+  "info.disk": "Disk",
+  "info.dimension": "Dimension",
+  "info.chips": "Kretsar",
+  "info.file": "Fil",
+  "info.written": "Skriven",
+  "info.no-contact": "ingen förbindelse",
+  "info.unreadable": "konfigurationen går inte att läsa",
+  "info.no-disk": "ingen isatt",
+
+  "state.running": "igång {since}",
+  "state.stopped": "stoppad",
+  "state.held": "avstängd",
+  "state.unreachable": "onåbar",
+
+  "since.hours": "sedan {hours}:{minutes} tim",
+  "since.minutes": "sedan {minutes} min",
+  "since.less-than-a-minute": "sedan mindre än en minut",
+
+  "duration.days.one": "{days} dag, {hours} tim",
+  "duration.days.other": "{days} dagar, {hours} tim",
+  "duration.hours": "{hours} tim {minutes} min",
+  "duration.minutes": "{minutes} min",
+
+  /* --- the configuration file ------------------------------------------ */
+  "file.changed": "{when}",
+  "file.changed-not-booted": "{when}, inte startad än",
+  "file.by-previously": "av Previously",
+  "file.by-previous-or-hand": "av Previous eller för hand",
+  "file.other-machine": "den här maskinen är inte den inställda",
+
+  /* --- the machine itself ---------------------------------------------- */
+  "machine.with-dimension": "{name} med NeXTdimension",
+  "machine.cpu": "{cpu}, {mhz} MHz",
+  "machine.memory": "{mb} MB",
+  "machine.memory-banks": "{mb} MB ({banks})",
+  "machine.banks-empty": "tomma",
+  "machine.screen.dimension": "NeXTdimension, färg",
+  "machine.screen.colour": "MegaPixel, färg",
+  "machine.screen.grey": "MegaPixel, gråskala",
+  "machine.chips.with-nextbus": "{rtc}, {scsi}, med NeXTbus",
+  "machine.chips.without-nextbus": "{rtc}, {scsi}, utan NeXTbus",
+  "machine.dimension.fitted": "monterad",
+  "machine.dimension.none": "ingen",
+
+  /* --- the file viewer -------------------------------------------------- */
+  "viewer.status": "{name}: {count}{more}",
+  "viewer.count.one": "1 objekt",
+  "viewer.count.other": "{count} objekt",
+  "viewer.read-only": ", endast läsbar",
+  "viewer.unreachable": "Onåbar",
+
+  /* --- the buttons ------------------------------------------------------ */
+  "button.power-off": "Stäng av",
+  "button.restart": "Starta om",
+  "button.power-on": "Slå på",
+  "button.change": "Byt",
+  "button.use": "Använd",
+  "button.fine": "Bra",
+  "button.close": "Stäng",
+  "button.cancel": "Avbryt",
+  "button.ok": "Ja",
+
+  /* --- what is happening now -------------------------------------------- */
+  "busy.starting": "slås på",
+  "busy.stopping": "stängs av",
+  "busy.restarting": "startas om",
+  "busy.changing": "byter till {machine}",
+  "busy.board-restart": "NeXTSTEP stängs av, sedan startar Pi:n om",
+  "busy.board-poweroff": "NeXTSTEP stängs av, sedan stängs Pi:n av",
+
+  "note.no-console": "Konsolen är inte igång. Att slå på gör ingenting.",
+  "note.no-service": "ingen förbindelse med tjänsten",
+  "note.board-gone": "Inget svar längre. Det är väntat medan Pi:n stängs av.",
+
+  /* --- the panels ------------------------------------------------------- */
+  "ask.token.title": "Token",
+  "ask.token.needed": "Den här åtgärden ändrar något på maskinen och kräver token.",
+  "ask.token.where": "På Pi:n ligger den i en fil som bara tjänsten får läsa:",
+  "ask.token.wrong": "Det var inte den här maskinens token.",
+
+  "ask.stop.title": "Stoppa NeXTSTEP",
+  "ask.stop.how": "NeXTSTEP stängs av med strömknappen, precis som med Power Off i utloggningsfönstret.",
+  "ask.stop.loss": "Osparat arbete i program som är igång går förlorat. Tjänsten kan inte se vad maskinen håller på med.",
+
+  "ask.change.title": "Byt maskin",
+  "ask.change.question": "Starta som {machine}?",
+  "ask.change.own": "Det som är inställt nu är en egen konfiguration som inte motsvarar någon av maskinerna som erbjuds. Den skrivs över.",
+  "ask.change.how": "NeXTSTEP stängs av med strömknappen, konfigurationen skrivs och maskinen startas om.",
+  "ask.change.rollback": "Om den inte startar skrivs den tidigare konfigurationen tillbaka av sig själv.",
+
+  "ask.not-yet.missing": "{name} finns inte än.",
+  "ask.not-yet.plan": "Den ska göra maskinen inställbar så som Previous tillåter, och inte som en textfil. Det diskuteras just nu.",
+
+  "ask.board.reboot": "Starta om Raspberry Pi?",
+  "ask.board.poweroff": "Stänga av Raspberry Pi?",
+  "ask.board.order": "NeXTSTEP stängs först av med strömknappen. Pi:n väntar på det, eftersom en omstart under en emulator som är igång gör samma skada som att bryta strömmen mitt i en skrivning.",
+  "ask.board.loss": "Osparat arbete i program som är igång går förlorat.",
+
+  /* --- the board underneath --------------------------------------------- */
+  "pi.model": "Maskin",
+  "pi.uptime": "Igång",
+  "pi.temperature": "Temperatur",
+  "pi.power": "Ström",
+  "pi.emulator": "Emulator",
+  "pi.sound": "Ljud",
+  "pi.memory": "Minne",
+  "pi.card": "Kort",
+  "pi.power.now": "nu: {what}",
+  "pi.power.since-boot": "sedan starten: {what}",
+  "pi.power.fine": "i ordning",
+  "pi.emulator.running": "{percent} %, {mb} MB, {uptime}",
+  "pi.emulator.stopped": "inte igång",
+  "pi.sound.playing": "{card}, spelar",
+  "pi.sound.silent": "{card}, tyst",
+  "pi.sound.none": "inget kort",
+  "pi.memory.free": "{available} av {total} MB fria",
+  "pi.disk.free": "{gb} GB fria, {percent} % använt",
+
+  "throttling.under-voltage": "underspänning",
+  "throttling.frequency-capped": "frekvensen begränsad",
+  "throttling.throttled": "strypt",
+  "throttling.temperature-limit": "temperaturgränsen nådd",
+
+  /* --- what the service says happened ----------------------------------- */
+  "why.blank": "visar ingenting på skärmen",
+  "why.never-came-up": "startade inte",
+
+  "told.emulator.was-not-running": "Emulatorn var inte igång och är nu avstängd.",
+  "told.emulator.ended-because-blank": "Maskinen hade inte startat, så emulatorn avslutades. Den är avstängd nu.",
+  "told.emulator.blank-and-will-not-end": "Maskinen startade inte och emulatorn ville inte avslutas heller. Det behöver ses över via SSH.",
+  "told.emulator.power-key-refused": "Strömknappen gick inte att trycka ner, ingenting ändrades.",
+  "told.emulator.already-running": "Emulatorn är redan igång.",
+  "told.emulator.nothing-holding-it": "Ingenting håller emulatorn nere, den borde komma tillbaka av sig själv.",
+  "told.emulator.on-its-way-back": "Emulatorn är på väg tillbaka.",
+  "told.guest.shut-itself-down": "NeXTSTEP har stängt av sig själv, emulatorn förblir avstängd.",
+  "told.guest.still-shutting-down.one": "NeXTSTEP har fortfarande inte stängts av efter {seconds} sekund. Den förblir avstängd, och en gäst som fortfarande skriver är det enda fall där det är rätt att vänta längre.",
+  "told.guest.still-shutting-down.other": "NeXTSTEP har fortfarande inte stängts av efter {seconds} sekunder. Den förblir avstängd, och en gäst som fortfarande skriver är det enda fall där det är rätt att vänta längre.",
+  "told.board.no-such-action": "Det finns ingen åtgärd som heter {action}.",
+  "told.board.request-refused": "NeXTSTEP är avstängt, men Pi:n gick inte att be om det. Den går att nå via SSH.",
+  "told.board.on-its-way.reboot": "NeXTSTEP är avstängt, Pi:n startar om.",
+  "told.board.on-its-way.poweroff": "NeXTSTEP är avstängt, Pi:n stänger av.",
+  "told.machine.no-such": "Det finns ingen maskin som heter {asked}.",
+  "told.machine.running.one": "{machine} är igång, {lines} rad ändrad.",
+  "told.machine.running.other": "{machine} är igång, {lines} rader ändrade.",
+  "told.machine.was-already-set": "{machine} var redan inställd.",
+  "told.file.not-readable": "Konfigurationen gick inte att läsa: {detail}",
+  "told.token.not-given": "Avbrutet utan token.",
+  "told.rollback.could-not-write": "{machine} {why}, och den tidigare konfigurationen gick inte att skriva tillbaka: {detail}. Maskinen går att nå via SSH.",
+  "told.rollback.emulator-will-not-end": "{machine} {why}, den tidigare konfigurationen står åter i filen, men emulatorn ville inte avslutas. Det behöver ses över via SSH.",
+  "told.rollback.back-as-before": "{machine} {why}. Den tidigare konfigurationen står åter i filen och maskinen är igång som förut.",
+  "told.rollback.nothing-runs": "{machine} {why}, och ingenting är igång med den tidigare konfigurationen heller. Det behöver ses över via SSH.",
+};

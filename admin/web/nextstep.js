@@ -765,12 +765,14 @@ class NxAsk extends HTMLElement {
    * @param {string} question.title - The panel's own title bar.
    * @param {string[]} question.text - One paragraph per entry.
    * @param {string} [question.icon] - Which picture, by the name showArt knows.
-   * @param {string} [question.confirm] - The wording on the acting button.
-   * @param {string} [question.cancel] - The wording on the safe one.
+   * @param {string} question.confirm - The wording on the acting button. The
+   *   kit holds no words of its own, in any language, so both buttons are
+   *   named by whoever asks.
+   * @param {string} question.cancel - The wording on the safe one.
    * @param {boolean} [question.field] - Show a line to type into.
    * @returns {Promise<boolean>} True where the acting button was pressed.
    */
-  ask({ title, text, icon, confirm = "Ja", cancel = "Abbrechen", field = false }) {
+  ask({ title, text, icon, confirm, cancel, field = false }) {
     this.querySelector(".title").textContent = title;
     this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {

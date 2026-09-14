@@ -18,6 +18,11 @@ const TOKEN_KEY = "previously:token";
  *  in logs, in history and in whatever somebody pastes into a chat window. */
 const TOKEN_HEADER = "X-Previously-Token";
 
+/** What stands in a field that has nothing to say. An em dash rather than an
+ *  empty field, because an empty one reads as a value that is missing and this
+ *  one is a question that does not arise. */
+const NOTHING = "—";
+
 /** What the pictures are called, by what they mean rather than by their file. */
 const Art = {
   Computer: "root",
@@ -35,70 +40,30 @@ const MACHINE_ART = {
   station: Art.Station,
 };
 
-/** What the service's answers mean, in words.
- *
- *  It sends a name for what happened and the values that fill it, because a
- *  sentence written there could only ever be in one language. The sentence
- *  lives here, where the person reading it is. */
-const SAYINGS = {
-  "emulator.was-not-running": () =>
-    "Der Emulator lief nicht und ist jetzt ausgeschaltet.",
-  "emulator.ended-because-blank": () =>
-    "Die Maschine war nicht hochgekommen, also wurde der Emulator beendet. Er ist jetzt ausgeschaltet.",
-  "emulator.blank-and-will-not-end": () =>
-    "Die Maschine ist nicht hochgekommen und der Emulator liess sich auch nicht beenden. Das ist über SSH nachzusehen.",
-  "emulator.power-key-refused": () =>
-    "Der Ausschalter liess sich nicht drücken, es wurde nichts geändert.",
-  "emulator.already-running": () => "Der Emulator läuft schon.",
-  "emulator.nothing-holding-it": () =>
-    "Nichts hält den Emulator unten, er sollte von selbst zurückkommen.",
-  "emulator.on-its-way-back": () => "Der Emulator kommt zurück.",
-  "guest.shut-itself-down": () =>
-    "NeXTSTEP hat sich heruntergefahren, der Emulator bleibt aus.",
-  "guest.still-shutting-down": (told) =>
-    `NeXTSTEP ist nach ${told.seconds} Sekunden noch nicht heruntergefahren. `
-    + "Es bleibt ausgeschaltet, und ein Gast, der noch schreibt, ist der eine Fall, "
-    + "in dem längeres Warten richtig ist.",
-  "board.no-such-action": (told) => `Es gibt keine Aktion namens ${told.action}.`,
-  "board.request-refused": () =>
-    "NeXTSTEP ist heruntergefahren, aber der Pi liess sich nicht darum bitten. "
-    + "Er ist über SSH zu erreichen.",
-  "board.on-its-way": (told) =>
-    `NeXTSTEP ist heruntergefahren, der Pi ${told.action === "reboot" ? "startet neu" : "schaltet ab"}.`,
-  "machine.no-such": (told) => `Es gibt keine Maschine namens ${told.asked}.`,
-  "machine.running": (told) => `${told.machine} läuft, ${told.lines} Zeilen geändert.`,
-  "machine.was-already-set": (told) => `${told.machine} war schon eingestellt.`,
-  "file.not-readable": (told) => told.detail,
-  "rollback.could-not-write": (told) =>
-    `${told.machine} ${WHY[told.why]}, und die vorherige Konfiguration liess sich nicht `
-    + `zurückschreiben: ${told.detail}. Die Maschine ist über SSH zu erreichen.`,
-  "rollback.emulator-will-not-end": (told) =>
-    `${told.machine} ${WHY[told.why]}, die vorherige Konfiguration steht wieder in der Datei, `
-    + "aber der Emulator liess sich nicht beenden. Das ist über SSH nachzusehen.",
-  "rollback.back-as-before": (told) =>
-    `${told.machine} ${WHY[told.why]}. Die vorherige Konfiguration steht wieder in der Datei `
-    + "und die Maschine läuft wie zuvor.",
-  "rollback.nothing-runs": (told) =>
-    `${told.machine} ${WHY[told.why]}, und auch mit der vorherigen Konfiguration läuft nichts. `
-    + "Das ist über SSH nachzusehen.",
-};
-
-/** Which of the two ways a change went wrong, in words. */
-const WHY = {
-  "blank": "zeigt nichts auf dem Bildschirm",
-  "never-came-up": "kam nicht hoch",
-};
-
 /**
  * What the service just said, as a sentence.
  * @param {object|null} told - Its answer, carrying `reason` and whatever fills
  *   it.
- * @returns {string} The sentence, or the bare name where nothing here knows
- *   it, because a name on the screen is ugly and silence is worse.
+ * @returns {string} The sentence in the language the interface speaks, or the
+ *   bare name where no catalogue knows it, because a name on the screen is
+ *   ugly and silence is worse.
+ *
+ * The service sends a name and the values that fill it, so this is a lookup
+ * and nothing more. Three of its answers need one thing beyond their values:
+ * two say how many, which decides singular against plural, and one says which
+ * of two things the board is doing.
  */
 function say(told) {
-  const line = told && SAYINGS[told.reason];
-  return line ? line(told) : (told?.reason ?? "");
+  if (!told?.reason) return "";
+  const key = `told.${told.reason}`;
+  /* The reason a change was rolled back is itself a name, and it stands in the
+     middle of the sentence rather than beside it. */
+  const values = told.why ? { ...told, why: t(`why.${told.why}`) } : told;
+
+  if (told.reason === "board.on-its-way") return t(`${key}.${told.action}`, values);
+  if (told.reason === "guest.still-shutting-down") return t(key, values, told.seconds);
+  if (told.reason === "machine.running") return t(key, values, told.lines);
+  return t(key, values);
 }
 
 /** What the buttons ask the service to do, by the route that does it. */
@@ -159,29 +124,60 @@ async function useToken(token) {
 }
 
 /**
+ * The words every panel needs, put in front of what the caller says.
+ * @param {object} question - As the kit's ask takes it.
+ * @returns {object} The same, with the two buttons named.
+ *
+ * The kit holds no words of its own, so they are named here and nowhere else.
+ * A caller that has a better word for the acting button says so and keeps the
+ * safe one.
+ */
+function worded(question) {
+  return { confirm: t("button.ok"), cancel: t("button.cancel"), ...question };
+}
+
+/**
+ * Puts a question.
+ * @param {object} question
+ * @returns {Promise<boolean>} Whether the acting button was pressed.
+ */
+function askPanel(question) {
+  return document.getElementById("ask").ask(worded(question));
+}
+
+/**
+ * Puts a question that needs something typed.
+ * @param {object} question
+ * @returns {Promise<string|null>} What was typed, or null.
+ */
+function askPanelFor(question) {
+  return document.getElementById("ask").askFor(worded(question));
+}
+
+/**
  * Asks for the token until one is accepted or the panel is dismissed.
  * @param {string} [why] - A first line saying what prompted the question.
  * @returns {Promise<boolean>} Whether the service now accepts what we hold.
  */
 async function askForToken(why) {
-  const panel = document.getElementById("ask");
   let complaint = why;
 
   for (;;) {
-    const typed = await panel.askFor({
-      title: "Token",
+    const typed = await askPanelFor({
+      title: t("ask.token.title"),
       text: [
         complaint,
-        "Auf dem Pi steht es in einer Datei, die nur der Dienst lesen darf:",
+        t("ask.token.where"),
+        /* A command is typed rather than read, so it stays as it is. */
         "sudo cat /var/lib/previously/token",
       ].filter(Boolean),
       icon: Art.Computer,
-      confirm: "Übernehmen",
+      confirm: t("button.use"),
     });
 
     if (typed === null) return false;
     if (await useToken(typed)) return true;
-    complaint = "Das war nicht das Token dieser Maschine.";
+    complaint = t("ask.token.wrong");
   }
 }
 
@@ -205,7 +201,7 @@ function show(id, text) {
 function nameOf(machine) {
   let name = machine.model;
   if (machine.turbo && machine.kind !== 0) name += " Turbo";
-  if (machine.dimension) name += " mit NeXTdimension";
+  if (machine.dimension) name = t("machine.with-dimension", { name });
   return name;
 }
 
@@ -214,7 +210,7 @@ function nameOf(machine) {
  * @returns {string} The processor and its clock.
  */
 function cpuOf(machine) {
-  return `${machine.cpu}, ${machine.mhz} MHz`;
+  return t("machine.cpu", { cpu: machine.cpu, mhz: machine.mhz });
 }
 
 /**
@@ -225,8 +221,8 @@ function cpuOf(machine) {
  * machine type, and colour arrives only through a NeXTdimension.
  */
 function screenOf(machine) {
-  if (machine.dimension) return "NeXTdimension, farbig";
-  return machine.colour ? "MegaPixel, farbig" : "MegaPixel, Graustufen";
+  if (machine.dimension) return t("machine.screen.dimension");
+  return t(machine.colour ? "machine.screen.colour" : "machine.screen.grey");
 }
 
 /**
@@ -234,7 +230,8 @@ function screenOf(machine) {
  * @returns {string} The three chips that decide whether it runs at all.
  */
 function chipsOf(machine) {
-  return `${machine.rtc}, ${machine.scsi}, ${machine.nbic ? "mit" : "ohne"} NeXTbus`;
+  return t(machine.nbic ? "machine.chips.with-nextbus" : "machine.chips.without-nextbus",
+           { rtc: machine.rtc, scsi: machine.scsi });
 }
 
 /**
@@ -257,9 +254,11 @@ function since(seconds) {
   if (seconds === null || seconds === undefined) return "";
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours > 0) return `seit ${hours}:${String(minutes).padStart(2, "0")} Std`;
-  if (minutes > 0) return `seit ${minutes} Min`;
-  return "seit weniger als einer Minute";
+  if (hours > 0) {
+    return t("since.hours", { hours, minutes: String(minutes).padStart(2, "0") });
+  }
+  if (minutes > 0) return t("since.minutes", { minutes });
+  return t("since.less-than-a-minute");
 }
 
 /** Everything on the page that changes something. */
@@ -291,8 +290,8 @@ function drawStatus(status) {
     /* Nothing can be asked of a machine that is not answering, and whilst it
        restarts it will not answer for a minute or two. Leaving the buttons
        live would collect requests that go nowhere. */
-    state.replaceChildren(document.createTextNode("nicht erreichbar"));
-    show("info-caption", "keine Verbindung");
+    state.replaceChildren(document.createTextNode(t("state.unreachable")));
+    show("info-caption", t("info.no-contact"));
     allowActions(false);
     return;
   }
@@ -308,15 +307,15 @@ function drawStatus(status) {
   /* Three states, not two. Held down means somebody switched it off from here
      and nothing will start it again; stopped without a hold means it went away
      on its own, which is a different thing and worth saying differently. */
-  let words = " angehalten";
-  if (status.running) words = ` läuft ${since(status.uptime_seconds)}`;
-  else if (status.held) words = " ausgeschaltet";
+  let words = t("state.stopped");
+  if (status.running) words = t("state.running", { since: since(status.uptime_seconds) });
+  else if (status.held) words = t("state.held");
   /* The file has been written since this machine started, so it holds a
      machine nobody has tried. It marks the machine in the shelf, and the file
      line below says it in words, because a texture explains nothing on its
      own. */
   const untried = Boolean(status.file?.newer_than_the_machine);
-  state.replaceChildren(lamp, document.createTextNode(words));
+  state.replaceChildren(lamp, document.createTextNode(" " + words));
 
   /* "kommt zurück" is done when it is back, and the note should not still be
      saying it. So a note is kept until the machine is in a different state
@@ -337,15 +336,15 @@ function drawStatus(status) {
      again, so switching it on would report success and do nothing. Saying so
      here is the only place that failure becomes visible. */
   if (!status.console_active) {
-    show("kiosk-note", "Die Konsole läuft nicht. Einschalten bleibt wirkungslos.");
+    show("kiosk-note", t("note.no-console"));
   }
 
   const machine = status.configuration;
   if (!machine) {
-    show("info-caption", "Konfiguration nicht lesbar");
+    show("info-caption", t("info.unreadable"));
     const empty = ["info-cpu", "info-ram", "info-screen", "info-disk",
                    "info-file", "info-written"];
-    for (const id of empty) show(id, "—");
+    for (const id of empty) show(id, NOTHING);
     return;
   }
 
@@ -355,9 +354,9 @@ function drawStatus(status) {
   show("info-file", changedLine(status.file));
   show("info-written", writtenLine(status.file));
   show("info-cpu", cpuOf(machine));
-  show("info-ram", `${machine.memory_mb} MB`);
+  show("info-ram", t("machine.memory", { mb: machine.memory_mb }));
   show("info-screen", screenOf(machine));
-  show("info-disk", machine.disk ?? "keine eingelegt");
+  show("info-disk", machine.disk ?? t("info.no-disk"));
 
   /* The same picture the boot ROM puts up whilst it tests this machine. Colour
      plays no part in it: a NeXTstation Color stands in the same case as a grey
@@ -389,9 +388,8 @@ async function tell(route, body) {
     /* Refused for want of a token. Ask for one and do what was asked, rather
        than reporting a failure the reader would have to interpret. */
     if (answer.status === 403) {
-      const accepted = await askForToken(
-        "Dieser Vorgang ändert etwas an der Maschine und braucht das Token.");
-      if (!accepted) return { ok: false, reason: "ohne Token abgebrochen" };
+      const accepted = await askForToken(t("ask.token.needed"));
+      if (!accepted) return { ok: false, reason: "token.not-given" };
       answer = await send();
     }
 
@@ -409,9 +407,7 @@ async function tell(route, body) {
 async function operate(route, working) {
   setBusy(true, working);
   const answer = await tell(route);
-  setBusy(false, answer === null
-    ? "keine Verbindung zum Dienst"
-    : say(answer));
+  setBusy(false, answer === null ? t("note.no-service") : say(answer));
   if (answer) drawStatus(answer);
   refresh();
 }
@@ -491,12 +487,9 @@ function setBusy(busy, note) {
  * @returns {Promise<boolean>}
  */
 function warn(what) {
-  return document.getElementById("ask").ask({
-    title: "NeXTSTEP anhalten",
-    text: [
-      "NeXTSTEP wird über den Ausschalter heruntergefahren, so wie über Power Off im Logout-Fenster.",
-      "Nicht gespeicherte Arbeit in laufenden Programmen geht dabei verloren. Der Dienst kann nicht sehen, woran die Maschine gerade arbeitet.",
-    ],
+  return askPanel({
+    title: t("ask.stop.title"),
+    text: [t("ask.stop.how"), t("ask.stop.loss")],
     icon: runningArt,
     confirm: what,
   });
@@ -508,14 +501,14 @@ function wireButtons() {
     ?.addEventListener("click", () => askForToken());
 
   document.getElementById("kiosk-start").addEventListener("click",
-    () => operate(Kiosk.Start, "wird eingeschaltet"));
+    () => operate(Kiosk.Start, t("busy.starting")));
 
   document.getElementById("kiosk-stop").addEventListener("click", async () => {
-    if (await warn("Ausschalten")) operate(Kiosk.Stop, "fährt herunter");
+    if (await warn(t("button.power-off"))) operate(Kiosk.Stop, t("busy.stopping"));
   });
 
   document.getElementById("kiosk-restart").addEventListener("click", async () => {
-    if (await warn("Neu starten")) operate(Kiosk.Restart, "startet neu");
+    if (await warn(t("button.restart"))) operate(Kiosk.Restart, t("busy.restarting"));
   });
 }
 
@@ -529,7 +522,7 @@ function wireButtons() {
 async function drawMachines() {
   const answer = await ask("/api/files");
   if (!answer) {
-    show("machine-note", "Nicht erreichbar");
+    show("machine-note", t("viewer.unreachable"));
     return;
   }
 
@@ -585,9 +578,11 @@ function drawPlace() {
  */
 function saying(folder) {
   const count = (folder.entries ?? []).length;
-  const things = count === 1 ? "1 Eintrag" : `${count} Einträge`;
-  const more = folder.writable === false ? ", nur lesbar" : "";
-  return `${folder.name}: ${things}${more}`;
+  return t("viewer.status", {
+    name: folder.name,
+    count: t("viewer.count", { count }, count),
+    more: folder.writable === false ? t("viewer.read-only") : "",
+  });
 }
 
 /**
@@ -716,8 +711,10 @@ function markCurrent(identifier, untried) {
  * @returns {string} The date and time, or an em dash where there is none.
  */
 function when(seconds) {
-  if (!seconds) return "—";
-  return new Date(seconds * 1000).toLocaleString("de-AT", {
+  if (!seconds) return NOTHING;
+  /* In the language the interface speaks, because a date written the German
+     way in an English panel is a date somebody has to stop and read. */
+  return new Date(seconds * 1000).toLocaleString(currentLocale(), {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
@@ -731,8 +728,9 @@ function when(seconds) {
  *   written afterwards is a machine nobody has tried.
  */
 function changedLine(file) {
-  if (!file) return "—";
-  return when(file.changed_at) + (file.newer_than_the_machine ? ", noch nicht gebootet" : "");
+  if (!file) return NOTHING;
+  return t(file.newer_than_the_machine ? "file.changed-not-booted" : "file.changed",
+           { when: when(file.changed_at) });
 }
 
 /**
@@ -744,8 +742,8 @@ function changedLine(file) {
  *   somebody at the keyboard.
  */
 function writtenLine(file) {
-  if (!file) return "—";
-  return file.written_by_us ? "von Previously" : "von Previous oder von Hand";
+  if (!file) return NOTHING;
+  return t(file.written_by_us ? "file.by-previously" : "file.by-previous-or-hand");
 }
 
 /**
@@ -757,7 +755,7 @@ function writtenLine(file) {
  */
 function fitted(banks) {
   const filled = banks.filter((size) => size > 0);
-  if (!filled.length) return "leer";
+  if (!filled.length) return t("machine.banks-empty");
   return filled.every((size) => size === filled[0])
     ? `${filled.length} × ${filled[0]}`
     : filled.join(" + ");
@@ -783,9 +781,11 @@ function showMachineInfo(where) {
     `var(--${machineArt(machine.enclosure)})`;
 
   show("mi-cpu", cpuOf(machine));
-  show("mi-ram", `${machine.memory_mb} MB (${fitted(machine.banks)})`);
+  show("mi-ram", t("machine.memory-banks",
+                   { mb: machine.memory_mb, banks: fitted(machine.banks) }));
   show("mi-screen", screenOf(machine));
-  show("mi-dimension", machine.dimension ? "eingebaut" : "keine");
+  show("mi-dimension", t(machine.dimension
+    ? "machine.dimension.fitted" : "machine.dimension.none"));
   show("mi-chips", chipsOf(machine));
 
   /* The file holds one machine, so everything it can say applies to that one
@@ -795,8 +795,8 @@ function showMachineInfo(where) {
      Nitro that the catalogue's name does. */
   const isTheOneInTheFile = lastStatus?.configuration?.catalogue === machine.id;
   if (!file || !isTheOneInTheFile) {
-    show("mi-changed", "diese Maschine ist nicht eingestellt");
-    show("mi-written", "—");
+    show("mi-changed", t("file.other-machine"));
+    show("mi-written", NOTHING);
   } else {
     show("mi-changed", changedLine(file));
     show("mi-written", writtenLine(file));
@@ -819,26 +819,23 @@ async function changeTo(identifier) {
   /* What is in the file now is nobody's machine from this list, so saying it
      will be written over is the difference between a change and a loss. */
   const own = Boolean(lastStatus?.configuration) && !lastStatus.configuration.catalogue;
-  const agreed = await document.getElementById("ask").ask({
-    title: "Maschine wechseln",
+  const agreed = await askPanel({
+    title: t("ask.change.title"),
     text: [
-      `Als ${name} starten?`,
-      own && "Eingestellt ist gerade eine eigene Konfiguration, die keiner "
-        + "der angebotenen Maschinen entspricht. Sie wird dabei überschrieben.",
-      "NeXTSTEP wird über den Ausschalter heruntergefahren, die Konfiguration geschrieben und die Maschine neu gestartet.",
-      "Kommt sie damit nicht hoch, wird die vorherige Konfiguration von selbst zurückgeschrieben.",
+      t("ask.change.question", { machine: name }),
+      own && t("ask.change.own"),
+      t("ask.change.how"),
+      t("ask.change.rollback"),
     ].filter(Boolean),
     /* The same picture it wears in the viewer, taken from the same place. */
     icon: machineArt(machine.enclosure),
-    confirm: "Wechseln",
+    confirm: t("button.change"),
   });
   if (!agreed) return;
 
-  setBusy(true, `wechselt auf ${name}`);
+  setBusy(true, t("busy.changing", { machine: name }));
   const answer = await tell("/api/machine", { machine: identifier });
-  setBusy(false, answer === null
-    ? "keine Verbindung zum Dienst"
-    : say(answer));
+  setBusy(false, answer === null ? t("note.no-service") : say(answer));
   if (answer) drawStatus(answer);
   refresh();
 }
@@ -848,15 +845,12 @@ async function changeTo(identifier) {
  * @param {string} name - What it will be called.
  */
 function notYet(name) {
-  return document.getElementById("ask").ask({
+  return askPanel({
     title: name,
-    text: [
-      `${name} gibt es noch nicht.`,
-      "Sie soll die Maschine so einstellbar machen, wie Previous es erlaubt, und nicht als Textdatei. Das wird gerade besprochen.",
-    ],
+    text: [t("ask.not-yet.missing", { name }), t("ask.not-yet.plan")],
     icon: Art.Editor,
-    confirm: "Gut",
-    cancel: "Schliessen",
+    confirm: t("button.fine"),
+    cancel: t("button.close"),
   });
 }
 
@@ -896,8 +890,11 @@ function openMachineMenu(thing, x, y) {
   };
 
   /* The one entry whose wording changes, because it is the same act either
-     way round and two entries for it would both be wrong half the time. */
-  shelf.textContent = onShelf ? "Von der Ablage nehmen" : "Auf die Ablage legen";
+     way round and two entries for it would both be wrong half the time. The
+     key is written with it, so a change of language finds the wording this
+     entry is actually showing rather than the one the markup started with. */
+  shelf.dataset.t = onShelf ? "menu.unkeep" : "menu.keep";
+  writeWords(shelf, t(shelf.dataset.t));
   shelf.onclick = () => {
     menu.close();
     keepOnShelf(where, !onShelf);
@@ -927,17 +924,14 @@ function openMachineMenu(thing, x, y) {
 /**
  * Asks before the whole machine goes, and says in which order.
  * @param {string} what - The wording on the acting button.
- * @param {string} afterwards - What the board does once the guest is down.
+ * @param {string} question - Which question to put, by its name in the
+ *   catalogue, because the two differ in what the board does afterwards.
  * @returns {Promise<boolean>}
  */
-function warnAboutTheBoard(what, afterwards) {
-  return document.getElementById("ask").ask({
+function warnAboutTheBoard(what, question) {
+  return askPanel({
     title: "Raspberry Pi",
-    text: [
-      `Den Raspberry Pi ${afterwards}?`,
-      "NeXTSTEP wird zuerst über den Ausschalter heruntergefahren. Der Pi wartet darauf, weil ein Neustart unter einem laufenden Emulator dasselbe anrichtet wie das Abschalten mitten im Schreiben.",
-      "Nicht gespeicherte Arbeit in laufenden Programmen geht dabei verloren.",
-    ],
+    text: [t(question), t("ask.board.order"), t("ask.board.loss")],
     icon: Art.Computer,
     confirm: what,
   });
@@ -956,9 +950,7 @@ async function operateBoard(route, working) {
 
   /* A board that is going down answers nothing, and that is the ordinary case
      rather than a failure. Saying so beats a page that claims no contact. */
-  show("pi-note", answer === null
-    ? "Keine Antwort mehr. Das ist zu erwarten, wenn der Pi gerade abschaltet."
-    : say(answer));
+  show("pi-note", answer === null ? t("note.board-gone") : say(answer));
 
   /* Nothing is switched back on here. The next status decides: whilst the
      board is away it does not answer, and everything stays off until it does. */
@@ -968,14 +960,14 @@ async function operateBoard(route, working) {
 /** Wires the board's own two buttons. */
 function wireBoard() {
   document.getElementById("pi-reboot").addEventListener("click", async () => {
-    if (await warnAboutTheBoard("Neu starten", "neu starten")) {
-      operateBoard(Board.Reboot, "NeXTSTEP fährt herunter, dann startet der Pi neu");
+    if (await warnAboutTheBoard(t("button.restart"), "ask.board.reboot")) {
+      operateBoard(Board.Reboot, t("busy.board-restart"));
     }
   });
 
   document.getElementById("pi-poweroff").addEventListener("click", async () => {
-    if (await warnAboutTheBoard("Ausschalten", "ausschalten")) {
-      operateBoard(Board.PowerOff, "NeXTSTEP fährt herunter, dann schaltet der Pi ab");
+    if (await warnAboutTheBoard(t("button.power-off"), "ask.board.poweroff")) {
+      operateBoard(Board.PowerOff, t("busy.board-poweroff"));
     }
   });
 }
@@ -1022,13 +1014,25 @@ function wireMachines() {
  * @returns {string}
  */
 function duration(seconds) {
-  if (seconds === null || seconds === undefined) return "—";
+  if (seconds === null || seconds === undefined) return NOTHING;
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  if (days > 0) return `${days} Tage, ${hours} Std`;
-  if (hours > 0) return `${hours} Std ${minutes} Min`;
-  return `${minutes} Min`;
+  if (days > 0) return t("duration.days", { days, hours }, days);
+  if (hours > 0) return t("duration.hours", { hours, minutes });
+  return t("duration.minutes", { minutes });
+}
+
+/**
+ * What the board says about its power, in words.
+ * @param {string[]} names - The service's names for it, such as
+ *   `under-voltage`. It sends names rather than sentences for the same reason
+ *   it does everywhere else: a sentence written there could only ever be in
+ *   one language.
+ * @returns {string} Them in one list, in the language the interface speaks.
+ */
+function named(names) {
+  return names.map((name) => t(`throttling.${name}`)).join(", ");
 }
 
 /**
@@ -1051,51 +1055,59 @@ function showState(id, well, words) {
  */
 function drawPi(pi) {
   if (pi === null) {
-    show("pi-model", "nicht erreichbar");
+    show("pi-model", t("state.unreachable"));
     allowActions(false);
     return;
   }
 
-  show("pi-model", pi.model ?? "—");
+  show("pi-model", pi.model ?? NOTHING);
   show("pi-uptime", duration(pi.uptime_seconds));
 
   /* Above 80 degrees a Pi 5 begins to slow itself down, so that is where the
      reading stops being a number and becomes a warning. */
   const temperature = pi.temperature_c;
   showState("pi-temp", temperature !== null && temperature < 80,
-    temperature === null ? "—" : `${temperature.toFixed(1)} °C`);
+    temperature === null ? NOTHING : `${temperature.toFixed(1)} °C`);
 
   /* Two different things. Something happening now is a problem to act on, and
      something that happened once may have been the moment a drive was plugged
      in, which is worth knowing and not worth alarm. */
   const throttling = pi.throttling;
   if (!throttling) {
-    showState("pi-power", true, "—");
+    showState("pi-power", true, NOTHING);
   } else if (throttling.now.length) {
-    showState("pi-power", false, `jetzt: ${throttling.now.join(", ")}`);
+    showState("pi-power", false, t("pi.power.now", { what: named(throttling.now) }));
   } else if (throttling.since_boot.length) {
-    showState("pi-power", false, `seit dem Start: ${throttling.since_boot.join(", ")}`);
+    showState("pi-power", false,
+      t("pi.power.since-boot", { what: named(throttling.since_boot) }));
   } else {
-    showState("pi-power", true, "in Ordnung");
+    showState("pi-power", true, t("pi.power.fine"));
   }
 
   /* Around 150 per cent of one core is ordinary with a NeXTdimension, because
      two threads run, so the figure is stated without judging it. */
   show("pi-emulator", pi.emulator
-    ? `${Math.round(pi.emulator.cpu_percent)} %, ${pi.emulator.memory_mb} MB, `
-      + duration(pi.emulator.uptime_seconds)
-    : "läuft nicht");
+    ? t("pi.emulator.running", {
+        percent: Math.round(pi.emulator.cpu_percent),
+        mb: pi.emulator.memory_mb,
+        uptime: duration(pi.emulator.uptime_seconds),
+      })
+    : t("pi.emulator.stopped"));
 
   /* The one that looks like nothing: the card is there, the configuration
      still names it, and the stream was closed when the speaker was moved. */
-  showState("pi-sound", Boolean(pi.sound?.playing),
-    pi.sound ? `${pi.sound.card}, ${pi.sound.playing ? "spielt" : "still"}` : "keine Karte");
+  showState("pi-sound", Boolean(pi.sound?.playing), pi.sound
+    ? t(pi.sound.playing ? "pi.sound.playing" : "pi.sound.silent", { card: pi.sound.card })
+    : t("pi.sound.none"));
 
   show("pi-memory", pi.memory
-    ? `${pi.memory.available_mb} von ${pi.memory.total_mb} MB frei` : "—");
+    ? t("pi.memory.free",
+        { available: pi.memory.available_mb, total: pi.memory.total_mb })
+    : NOTHING);
   show("pi-disk", pi.disk
-    ? `${Math.round(pi.disk.free_mb / 1024)} GB frei, ${pi.disk.used_percent} % belegt`
-    : "—");
+    ? t("pi.disk.free",
+        { gb: Math.round(pi.disk.free_mb / 1024), percent: pi.disk.used_percent })
+    : NOTHING);
 }
 
 /** Fetches the status and draws it, and the board's readings where its window
@@ -1105,6 +1117,25 @@ async function refresh() {
 
   const window_ = document.querySelector('nx-window[name="pi"]');
   if (window_ && !window_.hidden) drawPi(await ask("/api/pi"));
+}
+
+/**
+ * Changes the language the whole interface speaks.
+ * @param {string} code - One of `en`, `de`, `fr`, `it`, `es` and `sv`.
+ * @returns {boolean} Whether that language exists.
+ *
+ * Everything the markup carries is written by `setLanguage` itself. What this
+ * adds is the other half: every window the page fills in as it goes, which has
+ * to be filled in again before any of it is read in the new language.
+ *
+ * Until the Preferences window of #19 offers this, it is reached from the
+ * browser's console.
+ */
+function speak(code) {
+  return setLanguage(code, () => {
+    drawPlace();
+    refresh();
+  });
 }
 
 wireButtons();
