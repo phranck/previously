@@ -13,7 +13,7 @@ import mimetypes
 import pathlib
 import urllib.parse
 
-from . import change, config, files, kiosk, pi
+from . import change, config, files, kiosk, machines, pi
 from .token import HEADER
 
 VERSION = "0.1.0"
@@ -173,6 +173,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         }
         try:
             answer["configuration"] = config.read(self.settings.previous_config)
+            # Which of the eleven this is exactly, or None where it is none of
+            # them. Asked against the whole catalogue rather than against the
+            # name the file gives itself, because Previous has no idea of Nitro
+            # and a Nitro machine therefore calls itself by another's name.
+            answer["configuration"]["catalogue"] = config.matching(
+                self.settings.previous_config,
+                [(machine.identifier, machines.settings_for(machine))
+                 for machine in machines.CATALOGUE])
         except config.NotReadable as error:
             answer["configuration"] = None
             answer["error"] = str(error)

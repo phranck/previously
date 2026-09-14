@@ -56,13 +56,7 @@ def read(path):
     @returns dict with the machine, its processor, memory, disk and screen.
     @raises NotReadable - The file is not there, or is not INI-shaped.
     """
-    parser = configparser.ConfigParser()
-    parser.optionxform = str          # the file's keys are case sensitive
-    try:
-        if not parser.read(path):
-            raise NotReadable("no such file: %s" % path)
-    except configparser.Error as error:
-        raise NotReadable(str(error)) from error
+    parser = _parsed(path)
 
     system = _section(parser, "System")
     memory = _section(parser, "Memory")
@@ -227,6 +221,68 @@ def enclosure(machine_type):
       likely to be.
     """
     return ENCLOSURES.get(machine_type, "cube")
+
+
+def matching(path, options):
+    """Which of these the file holds exactly.
+
+    @param path - pathlib.Path to previous.cfg.
+    @param options - Pairs of (name, settings), as machines.settings_for
+      produces them.
+    @returns The name of the first whose every setting the file already has,
+      or None where the file is none of them.
+    @raises NotReadable - The file is not there, or is not INI-shaped.
+
+    A file that is none of them is not broken. It is a machine somebody put
+    together, and the difference matters: this tool offers eleven and must not
+    present a twelfth as one of those, nor write over it without saying so.
+
+    Asked against the whole list rather than against the machine the file names
+    itself after, because two of the eleven differ from another two by their
+    clock alone. Previous has no idea of Nitro, so a Nitro configuration calls
+    itself by the name of the machine it is a faster version of.
+    """
+    parser = _parsed(path)
+    for name, settings in options:
+        if not _differences(parser, settings):
+            return name
+    return None
+
+
+def differences(path, settings):
+    """Which of these settings the file does not already hold.
+
+    @param path - pathlib.Path to previous.cfg.
+    @param settings - Section name to key to value.
+    @returns dict of section to dict of key to (what the file has, what was
+      wanted). Empty where the file holds all of them.
+    @raises NotReadable - The file is not there, or is not INI-shaped.
+    """
+    return _differences(_parsed(path), settings)
+
+
+def _differences(parser, settings):
+    """@returns The same, from a file already read."""
+    found = {}
+    for section, keys in settings.items():
+        holding = _section(parser, section)
+        for key, wanted in keys.items():
+            has = holding.get(key)
+            if has is None or has.strip() != str(wanted).strip():
+                found.setdefault(section, {})[key] = (has, wanted)
+    return found
+
+
+def _parsed(path):
+    """@returns The file, read. @raises NotReadable where it cannot be."""
+    parser = configparser.ConfigParser()
+    parser.optionxform = str          # the file's keys are case sensitive
+    try:
+        if not parser.read(path):
+            raise NotReadable("no such file: %s" % path)
+    except configparser.Error as error:
+        raise NotReadable(str(error)) from error
+    return parser
 
 
 def _section(parser, name):

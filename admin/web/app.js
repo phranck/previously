@@ -206,7 +206,6 @@ function drawStatus(status) {
      machine nobody has tried. Said here in words, because the mark in the
      shelf is a texture and a texture explains nothing on its own. */
   const untried = Boolean(status.file?.newer_than_the_machine);
-  if (untried) words += ", Konfiguration geändert";
   state.replaceChildren(lamp, document.createTextNode(words));
 
   /* "kommt zurück" is done when it is back, and the note should not still be
@@ -239,7 +238,17 @@ function drawStatus(status) {
   }
 
   show("info-caption", machine.machine);
-  markCurrent(machine.machine, untried);
+  markCurrent(machine.catalogue, untried);
+
+  /* Two different things about the file, and both can be true at once: what it
+     holds, and whether the machine has seen it. They are a line of their own
+     rather than a tail on the state, because a machine that is simply running
+     has nothing to say here and the line then stays away. */
+  const notes = [];
+  if (!machine.catalogue) notes.push("eigene Konfiguration");
+  if (untried) notes.push("seit dem Start geändert");
+  document.getElementById("info-file-row").hidden = notes.length === 0;
+  show("info-file", notes.join(", "));
   show("info-cpu", machine.cpu);
   show("info-ram", `${machine.memory_mb} MB`);
   show("info-screen", machine.screen);
@@ -456,7 +465,7 @@ function drawPlace() {
     keeps: kept.map((path) => find(root, path)).filter(Boolean).map(entryFor),
     status: saying(here),
   });
-  markCurrent(lastStatus?.configuration?.machine,
+  markCurrent(lastStatus?.configuration?.catalogue,
               lastStatus?.file?.newer_than_the_machine);
 }
 
@@ -575,13 +584,18 @@ function keepOnShelf(where, onto) {
 
 /**
  * Marks the machine the emulator is currently set to.
- * @param {string|null} name - What /api/status called it.
+ * @param {string|null} identifier - Which of the eleven the file holds exactly,
+ *   or null where it holds none of them.
  * @param {boolean} [untried] - Whether the file has been written since that
  *   machine started, so what is written down has never been through a boot.
+ *
+ * By identifier rather than by name, because two of the eleven differ from
+ * another two by their clock alone and share a name in the file.
  */
-function markCurrent(name, untried) {
+function markCurrent(identifier, untried) {
   for (const thing of document.querySelectorAll("#file-viewer nx-thing")) {
-    const isCurrent = thing.getAttribute("label") === name;
+    const entry = catalogue.find((machine) => machine.path === thing.getAttribute("value"));
+    const isCurrent = Boolean(identifier) && entry?.id === identifier;
     thing.classList.toggle("current", isCurrent);
     thing.classList.toggle("untried", isCurrent && Boolean(untried));
     /* Switching to the machine that is already running would shut NeXTSTEP
@@ -673,13 +687,18 @@ async function changeTo(identifier) {
   if (!machine) return;
 
   const name = machine.name;
+  /* What is in the file now is nobody's machine from this list, so saying it
+     will be written over is the difference between a change and a loss. */
+  const own = Boolean(lastStatus?.configuration) && !lastStatus.configuration.catalogue;
   const agreed = await document.getElementById("ask").ask({
     title: "Maschine wechseln",
     text: [
       `Als ${name} starten?`,
+      own && "Eingestellt ist gerade eine eigene Konfiguration, die keiner "
+        + "der angebotenen Maschinen entspricht. Sie wird dabei überschrieben.",
       "NeXTSTEP wird über den Ausschalter heruntergefahren, die Konfiguration geschrieben und die Maschine neu gestartet.",
       "Kommt sie damit nicht hoch, wird die vorherige Konfiguration von selbst zurückgeschrieben.",
-    ],
+    ].filter(Boolean),
     /* The same picture it wears in the viewer, taken from the same place. */
     icon: machineArt(machine.enclosure),
     confirm: "Wechseln",
