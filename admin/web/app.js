@@ -316,20 +316,26 @@ let at = [root];
  *  a machine is without anything having to run. */
 let catalogue = [];
 
-/** Where the shelf's contents live between visits. The machines themselves
- *  come from the service; this is only which of them somebody put there. */
+/** Where the shelf's contents live between visits. The things themselves come
+ *  from the service; this is only which of them somebody put there. */
 const KEPT_KEY = "previously:kept";
+
+/** What lies there before anybody puts anything there: the root, so there is
+ *  always one step home, and the machines, which is where the work is. */
+const KEPT_BY_DEFAULT = ["/", "/Machines"];
 
 /** The identifiers on the viewer's shelf, in the order they were put there. */
 let kept = readKept();
 
-/** @returns {string[]} What was on the shelf last time, or nothing. */
+/** @returns {string[]} What was on the shelf last time, or the two that are
+ *  there to begin with. An empty shelf is a shelf somebody emptied, and that
+ *  is remembered as itself. */
 function readKept() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEPT_KEY));
-    return Array.isArray(saved) ? saved : [];
+    return Array.isArray(saved) ? saved : [...KEPT_BY_DEFAULT];
   } catch {
-    return [];
+    return [...KEPT_BY_DEFAULT];
   }
 }
 
@@ -445,8 +451,9 @@ function drawPlace() {
   viewer.show({
     path: at.map(entryFor),
     contents: (here.entries ?? []).map(entryFor),
-    keeps: kept.map((path) => catalogue.find((machine) => machine.path === path))
-      .filter(Boolean).map(entryFor),
+    /* Anything can lie on the shelf, a folder as readily as a machine, so
+       this looks in the whole tree rather than among the machines. */
+    keeps: kept.map((path) => find(root, path)).filter(Boolean).map(entryFor),
     status: saying(here),
   });
   markCurrent(lastStatus?.configuration?.machine,
@@ -489,14 +496,33 @@ function entryFor(entry) {
 function open(path) {
   const entry = find(root, path);
   if (!entry) return;
-  if (entry.kind === "folder") {
-    at = [...at, entry];
+  if (entry.kind === "folder" || entry.path === "/") {
+    /* Built from the path rather than by adding a step, because a folder on
+       the shelf can be anywhere and the way there is not the way from here. */
+    at = chainTo(entry.path);
     return drawPlace();
   }
   if (entry.kind === "application") {
     return notYet(entry.name.replace(/\.app$/, ""));
   }
   changeTo(entry.id);
+}
+
+/**
+ * The way from the root to a place, as the steps themselves.
+ * @param {string} where - A path such as "/Machines/System".
+ * @returns {object[]} The root first, that place last.
+ */
+function chainTo(where) {
+  const steps = [root];
+  let path = "";
+  for (const part of where.split("/").filter(Boolean)) {
+    path += "/" + part;
+    const step = find(root, path);
+    if (!step) break;
+    steps.push(step);
+  }
+  return steps;
 }
 
 /**
@@ -549,7 +575,7 @@ function keepOnShelf(where, onto) {
  *   machine started, so what is written down has never been through a boot.
  */
 function markCurrent(name, untried) {
-  for (const thing of document.querySelectorAll("#file-viewer .contents nx-thing")) {
+  for (const thing of document.querySelectorAll("#file-viewer nx-thing")) {
     const isCurrent = thing.getAttribute("label") === name;
     thing.classList.toggle("current", isCurrent);
     thing.classList.toggle("untried", isCurrent && Boolean(untried));
@@ -682,17 +708,21 @@ function notYet(name) {
 }
 
 /**
- * Opens the context menu for one machine.
- * @param {HTMLElement} thing - The machine that was clicked.
+ * Opens the context menu for whatever was clicked.
+ * @param {HTMLElement} thing - What was clicked.
  * @param {number} x - Where the pointer was.
  * @param {number} y
+ * @returns {boolean} Whether there was anything to offer.
+ *
+ * A machine gets the whole menu. Anything else gets one entry, and only where
+ * it lies on the shelf: a folder is opened by double clicking it, so a menu of
+ * entries that all refuse would be worse than none.
  */
 function openMachineMenu(thing, x, y) {
-  /* Only a machine has anything to offer here. A folder is opened by double
-     clicking it and an application by the same, so a menu for either would be
-     three entries that all refuse. */
-  const machine = catalogue.find((entry) => entry.path === thing.getAttribute("value"));
-  if (!machine) return false;
+  const where = thing.getAttribute("value");
+  const machine = catalogue.find((entry) => entry.path === where);
+  const onShelf = Boolean(thing.closest(".keep"));
+  if (!machine && !onShelf) return false;
 
   const menu = document.querySelector('nx-menu[name="machine-menu"]');
   /* Which machine this is about. The menu appears over whatever was clicked
@@ -703,30 +733,35 @@ function openMachineMenu(thing, x, y) {
   const edit = menu.querySelector('nx-menu-item[name="edit"]');
   const shelf = menu.querySelector('nx-menu-item[name="shelf"]');
 
+  /* Three of the four are about a machine, so a folder on the shelf shows the
+     one entry that applies to it. */
+  for (const entry of [info, activate, edit]) entry.hidden = !machine;
+
   info.onclick = () => {
     menu.close();
-    showMachineInfo(thing.getAttribute("value"));
+    showMachineInfo(where);
   };
 
   /* The one entry whose wording changes, because it is the same act either
      way round and two entries for it would both be wrong half the time. */
-  const onShelf = Boolean(thing.closest(".keep"));
   shelf.textContent = onShelf ? "Von der Ablage nehmen" : "Auf die Ablage legen";
   shelf.onclick = () => {
     menu.close();
-    keepOnShelf(thing.getAttribute("value"), !onShelf);
+    keepOnShelf(where, !onShelf);
   };
 
-  /* The machine that is already running cannot be activated: it would shut
-     NeXTSTEP down, write the same values back and start it again, for
-     nothing. The entry stays, so the menu keeps its shape. */
-  activate.toggleAttribute("disabled", thing.hasAttribute("disabled"));
+  if (machine) {
+    /* The machine that is already running cannot be activated: it would shut
+       NeXTSTEP down, write the same values back and start it again, for
+       nothing. The entry stays, so the menu keeps its shape. */
+    activate.toggleAttribute("disabled", thing.hasAttribute("disabled"));
 
-  activate.onclick = () => {
-    if (activate.hasAttribute("disabled")) return;
-    menu.close();
-    changeTo(machine.id);
-  };
+    activate.onclick = () => {
+      if (activate.hasAttribute("disabled")) return;
+      menu.close();
+      changeTo(machine.id);
+    };
+  }
   edit.onclick = () => {
     menu.close();
     notYet("Config Editor");

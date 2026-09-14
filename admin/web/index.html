@@ -98,9 +98,12 @@
        are one run of entries, with the submenu arrow and the shortcut letter
        the only things that break it. -->
   <nx-menu-item name="info">Info&hellip;</nx-menu-item>
-  <nx-menu-item name="shelf">Auf die Ablage legen</nx-menu-item>
   <nx-menu-item name="activate">Activate config</nx-menu-item>
   <nx-menu-item name="edit" icon="defaultAppIcon">Edit config&hellip;</nx-menu-item>
+  <!-- Last, and the only one a folder on the shelf shows. The rule that takes
+       the shadow off the foot of a menu asks for the last child, so the entry
+       that can stand alone has to be it. -->
+  <nx-menu-item name="shelf">Auf die Ablage legen</nx-menu-item>
 </nx-menu>
 
 <nx-ask id="ask"></nx-ask>
