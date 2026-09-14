@@ -174,13 +174,16 @@ check_host() {
 }
 
 # ---------------------------------------------------------------------------
-# 2  Kiosk compositor and the unpacker for the disk archive.
+# 2  Kiosk compositor, the unpacker for the disk archive, and the two tools the
+#    admin uses to reach the emulator: xdotool presses its keys and
+#    ImageMagick reads its screen, which is the only way to tell a machine that
+#    booted from one that did not.
 # ---------------------------------------------------------------------------
 
 install_packages() {
-  info "Installing cage, 7zip and xdotool"
+  info "Installing cage, 7zip, xdotool and imagemagick"
 
-  local wanted=(cage 7zip xdotool) missing=() package
+  local wanted=(cage 7zip xdotool imagemagick) missing=() package
   for package in "${wanted[@]}"; do
     dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "ok installed" || missing+=("$package")
   done

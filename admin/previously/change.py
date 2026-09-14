@@ -19,7 +19,7 @@ come back is put straight back the way it was.
 
 import time
 
-from . import config, kiosk, machines
+from . import config, kiosk, machines, screen
 
 #: How long to wait for the emulator to appear after the hold comes off. The
 #: console looks every two seconds, and the emulator takes a moment to open its
@@ -71,34 +71,50 @@ def to_machine(identifier, settings, sleep=None):
     if not _stayed_up(sleep):
         return False, _rolled_back(settings, machine, sleep)
 
+    # The emulator running is not the machine running. A configuration Previous
+    # cannot make sense of leaves the process up and the screen blank, and the
+    # screen is the only place that difference shows.
+    if screen.looks_alive() is False:
+        return False, _rolled_back(settings, machine, sleep, blank=True)
+
     if changed:
         return True, "%s läuft, %d Zeilen geändert" % (machine.name, changed)
     return True, "%s war schon eingestellt" % machine.name
 
 
-def _rolled_back(settings, machine, sleep):
+def _rolled_back(settings, machine, sleep, blank=False):
     """Puts the previous configuration back and says so.
 
+    @param blank - Whether the machine is sitting there with nothing on its
+      screen, which decides whether the emulator has to be got out of the way.
     @returns str, what to tell the user.
-
-    The hold is already off, so the console starts the emulator again by itself
-    with whatever the file now says. Nothing has to be switched on here.
     """
+    why = "zeigt nichts auf dem Bildschirm" if blank else "kam nicht hoch"
+
     backup = settings.previous_config.with_suffix(
         settings.previous_config.suffix + ".bak")
     try:
         settings.previous_config.write_bytes(backup.read_bytes())
     except OSError as error:
-        return ("%s kam nicht hoch, und die vorherige Konfiguration liess sich "
+        return ("%s %s, und die vorherige Konfiguration liess sich "
                 "nicht zurückschreiben: %s. Die Maschine ist über SSH zu "
-                "erreichen." % (machine.name, error))
+                "erreichen." % (machine.name, why, error))
+
+    # Previous reads its configuration when it starts and never again, so a
+    # file put back underneath a running emulator changes nothing until that
+    # emulator goes. Where it exited by itself the console has already started
+    # it again; where it is sitting at a blank screen it has to be told.
+    if blank and not kiosk.quit_emulator(sleep=sleep):
+        return ("%s %s, die vorherige Konfiguration steht wieder in der Datei, "
+                "aber der Emulator liess sich nicht beenden. Das ist über SSH "
+                "nachzusehen." % (machine.name, why))
 
     if _stayed_up(sleep):
-        return ("%s kam nicht hoch. Die vorherige Konfiguration steht wieder "
-                "in der Datei und die Maschine läuft wie zuvor." % machine.name)
+        return ("%s %s. Die vorherige Konfiguration steht wieder "
+                "in der Datei und die Maschine läuft wie zuvor." % (machine.name, why))
 
-    return ("%s kam nicht hoch, und auch mit der vorherigen Konfiguration "
-            "läuft nichts. Das ist über SSH nachzusehen." % machine.name)
+    return ("%s %s, und auch mit der vorherigen Konfiguration "
+            "läuft nichts. Das ist über SSH nachzusehen." % (machine.name, why))
 
 
 def _stayed_up(sleep):
