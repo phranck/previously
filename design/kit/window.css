@@ -1,0 +1,90 @@
+/* --- nx-window ---------------------------------------------------------- */
+
+nx-window {
+  position: absolute;
+  border: 1px solid var(--black);
+  background: var(--light);
+  display: flex;
+  flex-direction: column;
+  min-width: var(--win-min-w);
+  min-height: var(--win-min-h);
+}
+
+/* The bar is 19 px tall and sits on a one-pixel grey ledge, with two pixels of
+   shadow beneath it. Drawing all three as one gradient keeps the three numbers
+   in one place instead of spread over a border, a margin and a pseudo-element. */
+nx-window .titlebar {
+  height: var(--title-height);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 2px 2px;
+  margin: 1px 1px 0;
+  color: var(--white);
+  cursor: move;
+  background: linear-gradient(to bottom,
+    var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
+}
+/* The bar is 19 rows whether it is active or not, and the two rows under it
+   are the shadow. On an active bar the first of those reads as grey against
+   black; on an inactive one it would be the bar's own colour and would simply
+   make the bar look a row taller, so it is black here. Measured off the real
+   File Viewer, whose grey bar ends after 19 rows with two black ones under it. */
+nx-window[inactive] .titlebar {
+  background: linear-gradient(to bottom,
+    var(--dark) 0 19px, var(--black) 19px 21px);
+}
+
+/* Both window buttons are the originals, 15 by 15, bevel and glyph in one
+   bitmap. The miniaturise one is a little window, not a filled square. */
+nx-window .wbtn {
+  width: 15px; height: 15px;
+  flex: 0 0 auto;
+  cursor: default;
+}
+nx-window .wbtn.mini { background-image: var(--wbtn-mini); }
+nx-window .wbtn.close { background-image: var(--wbtn-close); }
+
+nx-window .title { flex: 1; text-align: center; font-weight: bold; }
+
+/* Most windows hold their content clear of the frame. A terminal does not: its
+   text view runs to the edge on every side, which is what flush says. */
+nx-window .pane {
+  flex: 1 1 auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+nx-window[flush] .pane { padding: 0; }
+
+/* A resizable window ends in a bar across its whole width, not in a corner.
+   Measured off the original: one row of shadow, one of light, then six of
+   face, with an upright divider 29 pixels in from either end. */
+nx-window .resizer {
+  height: var(--resize-bar);
+  flex: 0 0 auto;
+  display: flex;
+  cursor: ns-resize;
+  background: linear-gradient(to bottom,
+    var(--dark) 0 1px, var(--white) 1px 2px, var(--light) 2px 100%);
+}
+
+/* The two ends take the corner, so a drag there changes width and height at
+   once. Each carries the same two-line divider on its inner edge. */
+nx-window .resizer .end {
+  width: var(--resize-end);
+  cursor: nesw-resize;
+}
+nx-window .resizer .end:first-child {
+  border-right: 1px solid var(--white);
+  box-shadow: inset -2px 0 0 var(--dark);
+}
+nx-window .resizer .end:last-child {
+  cursor: nwse-resize;
+  border-left: 1px solid var(--dark);
+  box-shadow: inset 2px 0 0 var(--white);
+}
+nx-window .resizer .middle { flex: 1; }
+

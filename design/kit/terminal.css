@@ -1,0 +1,23 @@
+/* --- the terminal ------------------------------------------------------- */
+
+/* NeXT's Terminal was black on white in a bitmap face called Ohlfs, so this
+   one is black on white too. The session it shows is the Pi underneath. */
+.terminal {
+  background: var(--white);
+  padding: 5px 7px;
+  font: 12px/1.35 var(--mono);
+  white-space: pre-wrap;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+.terminal .cursor {
+  display: inline-block;
+  width: 7px; height: 13px;
+  background: var(--black);
+  vertical-align: text-bottom;
+  animation: blink 1.06s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .terminal .cursor { animation: none; } }
+

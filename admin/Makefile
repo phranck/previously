@@ -7,13 +7,20 @@
 
 PYTHON ?= python3
 
-.PHONY: help run test lint check clean
+.PHONY: help run test lint check kit clean
 
 help:
 	@echo 'run    start the service in the foreground'
 	@echo 'test   run the test suite'
 	@echo 'lint   check style and obvious mistakes'
 	@echo 'check  lint and test, which is what a commit needs'
+	@echo 'kit    put web/nextstep.css and web/nextstep.js back together'
+
+# The two files the browser gets are generated from ../design/kit/, one source
+# per component. Edit a component there and run this; the test suite fails when
+# the two have drifted from it.
+kit:
+	$(PYTHON) ../design/build.py
 
 run:
 	$(PYTHON) -m previously

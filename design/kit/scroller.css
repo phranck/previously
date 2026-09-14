@@ -1,0 +1,90 @@
+/* --- nx-scroller -------------------------------------------------------- */
+
+/* NeXTSTEP put its scroller on the left of the view, and both its arrows at
+   the bottom rather than one at either end. The trough is a one-pixel chequer
+   of #555555 and #aaaaaa, which reads as a grey halfway between them and is
+   how a machine with four greys drew a fifth.
+
+   Every sunken surface that could ever scroll goes inside one of these. That
+   is the rule, and this rule block is what enforces it: nx-scroller is the one
+   place in the whole stylesheet that hands out overflow, so a surface outside
+   one cannot scroll and therefore cannot show the browser's own bar. The
+   sunken edge belongs to the scroller as well, not to the view inside it. */
+nx-scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+nx-scroller .bar {
+  width: var(--scroller);
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--black);
+  background: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 2px 2px;
+}
+
+/* The trough holds the knob and gives it the room it slides in. */
+nx-scroller .trough { flex: 1 1 auto; position: relative; min-height: 0; }
+
+nx-scroller .knob {
+  position: absolute;
+  left: 1px; right: 1px;
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--white) var(--black) var(--black) var(--white);
+  box-shadow: inset -1px -1px 0 var(--dark);
+  cursor: default;
+}
+/* The dimple in the middle of the knob, which is what you take hold of. */
+nx-scroller .knob::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 5px; height: 5px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  border: 1px solid var(--dark);
+  border-bottom-color: var(--white);
+  border-right-color: var(--white);
+}
+
+/* Both arrows sit at the foot of the bar, one above the other, and they go
+   away with the knob when there is nothing to scroll. */
+nx-scroller .arrows { flex: 0 0 auto; }
+nx-scroller .step {
+  width: 100%;
+  height: var(--scroller);
+  display: grid;
+  place-items: center;
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--white) var(--black) var(--black) var(--white);
+  box-shadow: inset -1px -1px 0 var(--dark);
+  cursor: default;
+}
+nx-scroller .step:active {
+  border-color: var(--dark) var(--white) var(--white) var(--dark);
+  box-shadow: inset 1px 1px 0 var(--black);
+}
+nx-scroller .step i {
+  width: 0; height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+}
+nx-scroller .step.up i { border-bottom: 6px solid var(--black); }
+nx-scroller .step.down i { border-top: 6px solid var(--black); }
+
+/* The view beside the bar scrolls; the bar draws the state, so the browser's
+   own scrollbar stays out of the way. WebKit ignores scrollbar-width, which is
+   why the pseudo-element is there too. */
+nx-scroller > :not(.bar) {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none;
+}
+nx-scroller > :not(.bar)::-webkit-scrollbar { display: none; }
+

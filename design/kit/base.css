@@ -1,0 +1,174 @@
+/* ---------------------------------------------------------------------------
+   NeXTSTEP Workspace
+
+   The interface of the admin tool, built to look like the machine it
+   configures. Machines and disks are things you pick up, not values you type.
+
+   Nothing here is redrawn. The icons are the files out of a NeXTSTEP 3.3 disk
+   image, and the window buttons and dock marks are cut pixel for pixel from a
+   screenshot of the running system, because NeXTSTEP drew those in PostScript
+   and they exist as no file. ../../design/extract.py fetches both.
+
+   Every colour and raster below is read off that same screenshot at its own
+   1120 by 832:
+
+     Arbeitsfläche        #555577
+     Titelbalken, aktiv   #000000, sonst #555555, Schrift weiss und fett
+     Fensterfläche        #aaaaaa
+     Fensterrahmen        1 px #000000
+     Menüraster           20 px: 1 px #ffffff, 17 px #aaaaaa, #555555, #000000
+     Dock-Kachel          64 px, diagonal von #aaaaaa nach #555555
+     Rollbalken-Rinne     Schachbrett aus #555555 und #aaaaaa, 1 px
+     versenkte Fläche     aussen #555555, innen #000000 oben und links, weiss sonst
+     erhabene Fläche      weiss oben und links, aussen #000000, innen #555555
+     Auswahl              eine weisse Flaeche hinter Icon und Namen, 5 px Radius
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* The four values a mono NeXT could draw. Everything structural uses these. */
+  --white: #ffffff;
+  --light: #aaaaaa;
+  --dark:  #555555;
+  --black: #000000;
+
+  /* Measured off the screenshot: not a grey, the dark value with more blue. */
+  --desktop: #555577;
+
+  --live: #2f7d32;
+
+  --icon: 48px;          /* what NeXTSTEP drew an icon at, and these are those */
+  --tile: 128px;         /* the tile an icon and its name sit on, measured off
+                            the original's contents band, where two icons stand
+                            128 apart */
+  --shelf-tile: 96px;    /* the same on a shelf, which the original packs
+                            tighter: 96 between the two folders on its own */
+  --slot-w: 66px;        /* hilite.tiff is 66 by 52, so the slot is too */
+  --slot-h: 52px;
+  --reading-gap: 5px;    /* between one reading and the next, anywhere */
+  --slot-top: 2px;       /* air above the icon, inside the mark */
+  --name-air: 3px;       /* air above and below a name, inside the mark */
+
+  --font: Helvetica, "Helvetica Neue", Arial, sans-serif;
+  --mono: Menlo, "DejaVu Sans Mono", monospace;
+  --title-size: 12px;
+  --icon-size: 10px;
+
+  --row: 20px;           /* the menu raster, and the height of one entry */
+  --title-height: 21px;  /* 19 px of bar and 2 px of the shadow under it */
+  --dock-width: 68px;    /* 64 of tile and the two-pixel bevel on each side */
+  --resize-bar: 8px;     /* 1 shadow, 1 light, 6 face */
+  --resize-end: 29px;    /* where the upright divider sits, from either end */
+  --scroller: 18px;      /* 16 of trough and the line on either side */
+
+  /* The floor every window shares. A window that needs more says so on itself,
+     and the script reads it from there. */
+  --win-min-w: 280px;
+  --win-min-h: 160px;
+
+  /* PARTS: the pictures, which build.py bakes into the mockup as data URIs */
+  /* As files rather than as data URIs here. A service that
+     serves files should serve these as files too, so the browser caches
+     them and this stylesheet stays readable. ../../design/extract.py says
+     where the icons came from, and ../../design/bootpicture.py where the two
+     machines came from. */
+  --Workspace: url("parts/Workspace.png");
+  --defaultUnixIcon: url("parts/defaultUnixIcon.png");
+  --defaultAppIcon: url("parts/defaultAppIcon.png");
+  --dock-marks: url("parts/dock-marks.png");
+  --floppy: url("parts/floppy.png");
+  --folder: url("parts/folder.png");
+  --home: url("parts/home.png");
+  --Localization: url("parts/Localization.png");
+  /* NeXTSTEP's own selection was a white rounded shape, and this is the corner
+     it drew, read off hilite.tiff: white begins five pixels in on the first
+     row and reaches the edge on the sixth. */
+  --hilite-radius: 5px;
+
+  /* The one value outside the four above. It marks the configuration the
+     emulator is actually running, which is a thing NeXTSTEP had no idea of, so
+     there is no original to take a colour from. A shade under the window's own
+     grey, because it has to read as a state and not as a selection. */
+  --in-force: #999999;
+
+  /* The same mark with half of it missing, for a configuration that is written
+     down but has not been through a boot. NeXTSTEP drew a checkerboard of two
+     greys wherever something was partial, and at this size it reads as a
+     texture rather than as a pattern. */
+  --dither: repeating-conic-gradient(var(--in-force) 0% 25%, var(--light) 0% 50%);
+  --dither-size: 2px;
+  --net: url("parts/net.png");
+  --nextcube: url("parts/nextcube.png");
+  --nextstation: url("parts/nextstation.png");
+  --optical: url("parts/optical.png");
+  --Preferences: url("parts/Preferences.png");
+  --root: url("parts/root.png");
+  --scsi: url("parts/scsi.png");
+  --Terminal: url("parts/Terminal.png");
+  --trash: url("parts/trash.png");
+  --wbtn-close: url("parts/wbtn-close.png");
+  --wbtn-mini: url("parts/wbtn-mini.png");
+  --winchester: url("parts/winchester.png");
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  height: 100vh;
+  background: var(--desktop);
+  font: var(--title-size)/1.4 var(--font);
+  color: var(--black);
+  overflow: hidden;
+  /* A workspace is not a document. The prefixed form is written out because
+     Safari has only understood the plain one since version 17, and nextstep.js
+     refuses the gesture outright for the browsers that begin a selection
+     anyway. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-font-smoothing: none;
+}
+
+/* A custom element carries its own display, and that beats what the hidden
+   attribute means, so every one of them would need its own rule saying the
+   obvious. This says it once for all of them. */
+/* Important, because every rule below that gives something a display of its
+   own would otherwise beat this one on nothing but being later in the file.
+   That is what happened to the info window's file line: it carried hidden,
+   .readings said grid four hundred lines further down, and an empty row sat
+   there with a field squashed to a hairline. The attribute is the browser's
+   own promise that a thing is not shown, and nothing here has any business
+   overruling it by accident. */
+[hidden] { display: none !important; }
+
+/* Every picture in here is a bitmap at its own size, so it is never smoothed. */
+.art {
+  background-position: center;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+/* --- the two edges everything in this interface is built from ------------ */
+
+/* NeXTSTEP lit its surfaces from the top left, and every edge in the system is
+   one of these two. Both are measured off the original, and the count of lines
+   differs by side: the lit side of a sunken surface carries two, its shadowed
+   side one, and a raised surface is that turned around.
+   Sunken: outer #555555, inner #000000 on top and left, #ffffff below and right.
+   Raised: #ffffff on top and left, outer #000000, inner #555555 below and right. */
+.sunken,
+nx-portrait,
+nx-field,
+nx-scroller {
+  border: 1px solid;
+  border-color: var(--dark) var(--white) var(--white) var(--dark);
+  box-shadow: inset 1px 1px 0 var(--black);
+}
+
+.raised,
+button,
+nx-tile {
+  border: 1px solid;
+  border-color: var(--white) var(--black) var(--black) var(--white);
+  box-shadow: inset -1px -1px 0 var(--dark);
+}
+
