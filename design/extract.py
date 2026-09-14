@@ -60,6 +60,14 @@ ICONS = {
         ("home", "a home directory, which NeXTSTEP drew as a house"),
     # Outside the Workspace's own directory, so it carries its whole path.
     "/NextApps/Terminal.app/icon": ("Terminal", "the terminal, for a shell session"),
+    # Preferences.app kept a picture in each module's own bundle, at a size of
+    # its own rather than at the 48 of a Workspace icon. This is the module
+    # this tool offers, and the only one of the fourteen with anything to set
+    # here.
+    "/NextApps/Preferences.app/Localization.preferences/Localization":
+        ("Localization", "the language the tool speaks, as Preferences drew it"),
+    "/NextApps/Preferences.app/Preferences":
+        ("Preferences", "the application itself, as it sat in NextApps"),
     "Workspace": ("Workspace", "the NeXT wordmark on its cube"),
     "trash.1.alpha": ("trash", "the recycler, in the first of its four frames"),
     "hilite": ("hilite", "the white a selected icon sits on"),

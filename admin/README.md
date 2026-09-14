@@ -150,9 +150,15 @@ English, German, French, Italian, Spanish and Swedish, which are the six NeXTSTE
 
 Neither the markup nor the kit holds any words. `index.html` carries `data-t` keys and no text, which is why the page cannot show the wrong language for a moment whilst the right one arrives, and `nx-ask` is given the wording of its two buttons by whoever asks the question.
 
-The choice lives in this browser beside the window positions, and changing it writes the whole interface again without a reload. The Preferences window of #19 is where it is chosen.
+The choice lives in this browser beside the window positions, and changing it writes the whole interface again without a reload. The Preferences window is where it is chosen.
 
 Adding a string means adding it to all six catalogues. `tests/test_strings.py` fails when one of them is missing an entry, when a sentence loses a `{place}` that the others have, when the page asks for a key that is not there, and when the service can answer with a name that nothing can say.
+
+## Preferences
+
+NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath, and this is that with one module in it. The row stays at one module because it is the shape of the window rather than a count: the next one arrives into it instead of introducing it.
+
+The module is the one NeXTSTEP called Localization, and it offers the six languages. Everything it shows comes out of the disk image rather than from us: `Localization.tiff` is the picture Preferences.app carried for it, the window's title is what each language's `preferences.strings` called the application, and the module's name is the `Long Name` in the `Info` file of its own bundle. Three of the six left the application's name untranslated, so the window says `Preferences` in French, Italian and Swedish and `Präferenzen` in German, exactly as it did.
 
 ## What it shows
 
@@ -162,11 +168,20 @@ Previously arranges what it has the way NeXTSTEP arranged things, which is a pla
 Previously          the root, drawn as a home the way NeXTSTEP drew one
   Apps
     Config Editor.app
+    Preferences.app
     Terminal.app
   Machines
     System          the eleven this project ships, which cannot be changed
     User            what somebody saved, and only once there is something
 ```
+
+**The folders are read in whichever language is chosen.** The service names each with a key and the browser holds the words, so `Apps` is `Programme` in German and `Program` in Swedish. NeXTSTEP did not do that, because its viewer showed the names of real directories and a German installation holds a directory called `Apps`. These are not real directories, so they are read rather than looked up.
+
+**The applications keep their bundle names**, for the opposite reason: those are file names, and `/NextApps` in a German NeXTSTEP holds `Preferences.app` and `Terminal.app` exactly as an English one does. What an application is called in words is another thing, which NeXTSTEP translated and so do we: the bundle is `Preferences.app` and the window over it says `Präferenzen`.
+
+**What has no key keeps its own name**, which is how the machines stay `NeXTstation Turbo Color` everywhere and Previously stays Previously.
+
+**An application in that folder opens its window**, and one whose window is not built yet says so. Preferences is built, the editor is #50 and the terminal is #6.
 
 **The User folder is not there until it holds something.** An empty folder promises a place to put things, and until saving one is built there is none.
 

@@ -23,6 +23,10 @@ const TOKEN_HEADER = "X-Previously-Token";
  *  one is a question that does not arise. */
 const NOTHING = "—";
 
+/** What the name of an application ends in. NeXTSTEP showed the whole file
+ *  name, suffix and all, and this is a filesystem however made up it is. */
+const APPLICATION = ".app";
+
 /** What the pictures are called, by what they mean rather than by their file. */
 const Art = {
   Computer: "root",
@@ -579,7 +583,7 @@ function drawPlace() {
 function saying(folder) {
   const count = (folder.entries ?? []).length;
   return t("viewer.status", {
-    name: folder.name,
+    name: nameFor(folder),
     count: t("viewer.count", { count }, count),
     more: folder.writable === false ? t("viewer.read-only") : "",
   });
@@ -594,13 +598,46 @@ function saying(folder) {
  */
 function entryFor(entry) {
   return {
-    label: entry.name,
+    label: nameFor(entry),
     /* A folder and an application bring their own picture. A machine wears
        the one its boot ROM draws, and which that is follows from its case. */
     icon: entry.icon ?? machineArt(entry.enclosure),
     value: entry.path,
     folder: entry.kind === "folder",
   };
+}
+
+/**
+ * What one entry of the tree is called, here, now.
+ * @param {object} entry - A folder, an application or a machine.
+ * @returns {string} The words for it in the language being read, or its own
+ *   name where it has one that belongs to it.
+ *
+ * Three things keep the name they came with. A machine, because
+ * `NeXTstation Turbo Color` is a product rather than a description. Previously
+ * itself. And an application, because what stands under the picture is the
+ * name of its bundle: a German NeXTSTEP holds `Preferences.app` and
+ * `Terminal.app` exactly as an English one does, and its viewer shows the file
+ * name it finds. What an application is called in words is a different
+ * question, and appName answers that one.
+ */
+function nameFor(entry) {
+  if (entry.kind === "application" || !entry.label) return entry.name;
+  return t(entry.label);
+}
+
+/**
+ * @param {object} entry - An application.
+ * @returns {string} What it is called in words, without the suffix its file
+ *   name carries.
+ *
+ * NeXTSTEP kept the two apart and so does this. The bundle in `/NextApps` was
+ * `Preferences.app` in every language, whilst the application called itself
+ * `Präferenzen` in German wherever it named itself in a sentence, which is
+ * what its own `preferences.strings` holds.
+ */
+function appName(entry) {
+  return entry.label ? t(entry.label) : entry.name.replace(APPLICATION, "");
 }
 
 /**
@@ -617,7 +654,11 @@ function open(path) {
     return drawPlace();
   }
   if (entry.kind === "application") {
-    return notYet(entry.name.replace(/\.app$/, ""));
+    /* An application this tool has is a window it already holds. One it does
+       not have yet says so, which is the honest thing to do with an icon that
+       is there because the place it sits in is being built around it. */
+    const window_ = document.querySelector(`nx-window[name="${entry.opens}"]`);
+    return window_ ? window_.open() : notYet(appName(entry));
   }
   changeTo(entry.id);
 }
@@ -914,7 +955,7 @@ function openMachineMenu(thing, x, y) {
   }
   edit.onclick = () => {
     menu.close();
-    notYet("Config Editor");
+    notYet(t("app.config-editor"));
   };
 
   menu.openAt(x, y);
@@ -992,7 +1033,7 @@ function wireMachines() {
   });
 
   document.querySelector('nx-tile[name="editor"]')
-    ?.addEventListener("click", () => notYet("Config Editor"));
+    ?.addEventListener("click", () => notYet(t("app.config-editor")));
 
   /* Carried onto the info window, or double clicked in the viewer. The kit
      raises the same event for both, so this is one answer to two gestures,
@@ -1120,6 +1161,25 @@ async function refresh() {
 }
 
 /**
+ * Draws the languages this tool speaks, with the one in force marked.
+ *
+ * Each is named in its own language, because a language named in a language
+ * one cannot read is no help to whoever is looking for theirs. The order is
+ * the catalogue's own, so it does not move about as the interface changes.
+ */
+function drawLanguages() {
+  const list = document.getElementById("languages");
+  list.replaceChildren(...Object.entries(LANGUAGE_NAMES).map(([code, name]) => {
+    const option = document.createElement("div");
+    option.className = "option";
+    option.textContent = name;
+    option.toggleAttribute("chosen", code === currentLanguage());
+    option.addEventListener("click", () => speak(code));
+    return option;
+  }));
+}
+
+/**
  * Changes the language the whole interface speaks.
  * @param {string} code - One of `en`, `de`, `fr`, `it`, `es` and `sv`.
  * @returns {boolean} Whether that language exists.
@@ -1128,11 +1188,11 @@ async function refresh() {
  * adds is the other half: every window the page fills in as it goes, which has
  * to be filled in again before any of it is read in the new language.
  *
- * Until the Preferences window of #19 offers this, it is reached from the
- * browser's console.
+ * The Preferences window offers it, and the console can call it directly.
  */
 function speak(code) {
   return setLanguage(code, () => {
+    drawLanguages();
     drawPlace();
     refresh();
   });
@@ -1142,6 +1202,7 @@ wireButtons();
 wireMachines();
 wireBoard();
 wireOpening();
+drawLanguages();
 drawMachines();
 refresh();
 setInterval(refresh, REFRESH_MS);

@@ -40,6 +40,8 @@
   --tile: 104px;         /* the tile an icon and its name sit on */
   --slot-w: 66px;        /* hilite.tiff is 66 by 52, so the slot is too */
   --slot-h: 52px;
+  --module-w: 52px;      /* Localization.tiff is 52 by 49, and Preferences drew */
+  --module-h: 49px;      /* its modules at their own sizes rather than at 48 */
   --reading-gap: 5px;    /* between one reading and the next, anywhere */
   --slot-top: 2px;       /* air above the icon, inside the mark */
   --name-air: 3px;       /* air above and below a name, inside the mark */
@@ -73,6 +75,7 @@
   --floppy: url("parts/floppy.png");
   --folder: url("parts/folder.png");
   --home: url("parts/home.png");
+  --Localization: url("parts/Localization.png");
   /* NeXTSTEP's own selection was a white rounded shape, and this is the corner
      it drew, read off hilite.tiff: white begins five pixels in on the first
      row and reaches the edge on the sixth. */
@@ -94,6 +97,7 @@
   --nextcube: url("parts/nextcube.png");
   --nextstation: url("parts/nextstation.png");
   --optical: url("parts/optical.png");
+  --Preferences: url("parts/Preferences.png");
   --root: url("parts/root.png");
   --scsi: url("parts/scsi.png");
   --Terminal: url("parts/Terminal.png");
@@ -846,3 +850,56 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
   padding: 3px 5px;
 }
 .panel .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
+
+/* --- the preferences window ---------------------------------------------- */
+
+/* NeXTSTEP's Preferences is a row of module pictures with the chosen module's
+   panel underneath. One module has anything to set on this machine, and the
+   row stays because it is the shape of the window rather than a count: the
+   next module arrives into it instead of introducing it. */
+nx-window[name="preferences"] .modules {
+  /* One row, from the left, rather than the grid a shelf of files wants, and
+     as tall as the pictures in it rather than taking the room the panel needs. */
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-start;
+  padding: 6px;
+}
+
+/* A module picture is not an icon of a thing, so it carries no name under it.
+   What it is stands under the row, where there is room for the whole of it. */
+nx-window[name="preferences"] .modules nx-thing .name { display: none; }
+
+nx-window[name="preferences"] .modules nx-thing .icon {
+  width: var(--module-w);
+  height: var(--module-h);
+  background-size: var(--module-w) var(--module-h);
+}
+
+/* The chosen module's own name, as Preferences itself called it. */
+.module-name {
+  margin: 0;
+  padding: var(--reading-gap) 3px;
+  font-weight: bold;
+}
+
+/* A list of choices, in NeXT's white. One is in force, and the one in force is
+   drawn the way NeXTSTEP drew a selected row, which is the colours turned
+   around rather than a mark beside it. */
+.options {
+  background: var(--white);
+  min-height: 100%;
+}
+
+.option {
+  height: var(--row);
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  cursor: default;
+}
+
+.option[chosen] {
+  background: var(--black);
+  color: var(--white);
+}

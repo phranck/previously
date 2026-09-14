@@ -2,11 +2,12 @@
 
 Nothing here is on the card. These are the things this tool has, arranged the
 way NeXTSTEP arranged things, because a person choosing between eleven machines
-and two applications is choosing in a place rather than reading a list.
+and three applications is choosing in a place rather than reading a list.
 
     Previously          the root, drawn as a home the way NeXTSTEP drew one
       Apps
         Config Editor.app
+        Preferences.app
         Terminal.app
       Machines
         System          the eleven this project ships, which cannot be changed
@@ -15,27 +16,51 @@ and two applications is choosing in a place rather than reading a list.
 The whole thing is small enough to hand over at once, so there is one route and
 the browser walks it. Paths are written the way they read, with slashes, and
 they are what a request names when it wants one particular place.
+
+Every folder this tool made up carries the name of a string rather than words,
+and the browser holds the words in each of its languages. A machine carries no
+such name and keeps its own, because a product is called the same thing
+everywhere, and so is Previously.
+
+An application carries one as well, and it is used for what the application is
+called in a sentence rather than for what stands under its picture. NeXTSTEP
+held those two apart: `/NextApps` in a German installation holds
+`Preferences.app` and `Terminal.app`, exactly as an English one does, whilst
+the application called itself `Präferenzen` wherever it named itself in words.
 """
 
 from . import config, machines
 
 #: What the root is called and what it wears. NeXTSTEP drew a person's own
 #: directory as a house, and this is the one place everything here lives in.
+#: The name is the tool's own and is not translated.
 ROOT = "Previously"
 HOME_ICON = "home"
 
-#: A folder, and the two applications, by the pictures they carry. The editor
-#: has no face of its own yet, so it wears what NeXTSTEP drew for an
-#: application that brought none.
+#: A folder, and the three applications, by the pictures they carry. Two wear
+#: what NeXTSTEP drew for them; the editor has no face of its own yet, so it
+#: wears what NeXTSTEP drew for an application that brought none.
 FOLDER_ICON = "folder"
 EDITOR_ICON = "defaultAppIcon"
+PREFERENCES_ICON = "Preferences"
 TERMINAL_ICON = "Terminal"
 
-#: The applications, and what each opens. Neither is built: the editor is #50
-#: and the terminal is #6, and until then choosing one says so.
+#: What each place is called, as the name of a string rather than as words.
+PLACES = {
+    "Apps": "place.apps",
+    "Machines": "place.machines",
+    "System": "place.system",
+    "User": "place.user",
+}
+
+#: The applications, in the order a viewer sorts them. Each carries its
+#: picture, the window it opens and the name of what it is called in words,
+#: which is not what its bundle is called. Preferences is built; the editor is
+#: #50 and the terminal is #6, and until those exist choosing one says so.
 APPLICATIONS = (
-    ("Config Editor.app", EDITOR_ICON, "editor"),
-    ("Terminal.app", TERMINAL_ICON, "terminal"),
+    ("Config Editor.app", EDITOR_ICON, "editor", "app.config-editor"),
+    ("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences"),
+    ("Terminal.app", TERMINAL_ICON, "terminal", "app.terminal"),
 )
 
 
@@ -44,18 +69,20 @@ def tree(state_directory=None):
 
     @param state_directory - pathlib.Path the service keeps its own state in,
       where a User configuration would live. None means there are none.
-    @returns dict, a folder with `name`, `icon`, `path` and `entries`.
+    @returns dict, a folder with `name`, `icon`, `path` and `entries`, and a
+      `label` on everything this tool named itself.
     """
     return _folder(ROOT, "/", HOME_ICON, [
         _folder("Apps", "/Apps", FOLDER_ICON, [
             {
                 "name": name,
+                "label": label,
                 "icon": icon,
                 "path": "/Apps/" + name,
                 "kind": "application",
                 "opens": opens,
             }
-            for name, icon, opens in APPLICATIONS
+            for name, icon, opens, label in APPLICATIONS
         ]),
         _folder("Machines", "/Machines", FOLDER_ICON, _machine_folders(state_directory)),
     ])
@@ -109,9 +136,15 @@ def _machine(machine, in_folder):
 
 
 def _folder(name, path, icon, entries, writable=True):
-    """@returns dict describing a folder and what is in it."""
+    """@returns dict describing a folder and what is in it.
+
+    A folder this tool named gets the name of the string that says it in
+    whichever language is being read. The root has none, so it keeps the one
+    word here that is not translated.
+    """
     return {
         "name": name,
+        "label": PLACES.get(name),
         "icon": icon,
         "path": path,
         "kind": "folder",
