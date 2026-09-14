@@ -60,8 +60,13 @@
 
   --font: Helvetica, "Helvetica Neue", Arial, sans-serif;
   --mono: Menlo, "DejaVu Sans Mono", monospace;
-  --title-size: 12px;
-  --icon-size: 10px;
+  /* What the interface is set at. NeXTSTEP put the names under its icons at
+     this size too, and the menu entries and the window titles with them:
+     measured off the running system, all of them have a capital 9 pixels
+     tall. */
+  --text-size: 12px;
+  /* The one thing it set smaller, whose capital is 7. */
+  --status-size: 10px;
 
   --row: 20px;           /* the menu raster, and the height of one entry */
   --title-height: 21px;  /* 19 px of bar and 2 px of the shadow under it */
@@ -103,7 +108,7 @@ body {
   margin: 0;
   height: 100vh;
   background: var(--desktop);
-  font: var(--title-size)/1.4 var(--font);
+  font: var(--text-size)/1.4 var(--font);
   color: var(--black);
   overflow: hidden;
   /* A workspace is not a document. The prefixed form is written out because
@@ -555,7 +560,7 @@ nx-thing .slot::after {
 nx-thing .icon { width: var(--icon); height: var(--icon); background-size: var(--icon); }
 
 nx-thing .name {
-  font-size: var(--icon-size);
+  font-size: var(--text-size);
   line-height: 1.3;
   text-align: center;
   /* Air above and below the lettering, so a name on one line gets a mark with
@@ -709,7 +714,7 @@ nx-viewer .status {
   flex: 0 0 auto;
   margin: 0;
   padding: 1px 3px 3px;
-  font-size: var(--icon-size);
+  font-size: var(--status-size);
   color: var(--dark);
 }
 
@@ -767,7 +772,7 @@ nx-portrait {
   background: var(--light);
 }
 nx-portrait .icon { width: 48px; height: 48px; background-size: contain; }
-nx-portrait .caption { font-size: var(--icon-size); text-align: center; line-height: 1.3; }
+nx-portrait .caption { text-align: center; line-height: 1.3; }
 
 /* The whole window answers a drag, so the eye is not asked to hit 48 pixels. */
 nx-window[droppable] { outline: 2px solid var(--white); outline-offset: -4px; }
@@ -798,7 +803,7 @@ nx-field {
 .lamp { width: 9px; height: 9px; border: 1px solid var(--black); background: var(--live); }
 
 button {
-  font: var(--title-size) var(--font);
+  font: var(--text-size) var(--font);
   color: var(--black);
   background: var(--light);
   padding: 3px 14px;

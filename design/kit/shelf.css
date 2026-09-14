@@ -84,7 +84,7 @@ nx-thing .slot::after {
 nx-thing .icon { width: var(--icon); height: var(--icon); background-size: var(--icon); }
 
 nx-thing .name {
-  font-size: var(--icon-size);
+  font-size: var(--text-size);
   line-height: 1.3;
   text-align: center;
   /* Air above and below the lettering, so a name on one line gets a mark with
