@@ -463,12 +463,17 @@ function drawPlace() {
 /**
  * The line under the shelf.
  * @param {object} folder - The place being shown.
- * @returns {string} What is in it, and what cannot be done to it.
+ * @returns {string} Which place, what is in it, and what cannot be done to it.
+ *
+ * It names the place because of where it sits: directly under the shelf, which
+ * holds something else entirely. NeXTSTEP put a fact about the whole disk
+ * there and had no such question to answer.
  */
 function saying(folder) {
   const count = (folder.entries ?? []).length;
   const things = count === 1 ? "1 Eintrag" : `${count} Einträge`;
-  return folder.writable === false ? `${things}, nur lesbar` : things;
+  const more = folder.writable === false ? ", nur lesbar" : "";
+  return `${folder.name}: ${things}${more}`;
 }
 
 /**

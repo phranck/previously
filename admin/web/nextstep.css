@@ -478,7 +478,11 @@ nx-shelf {
   /* Reflows with the window, which is what makes resizing worth having. */
   grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr));
   grid-auto-rows: min-content;
-  gap: 4px;
+  /* More between the rows than between the columns, because a name that runs
+     to two lines reaches down towards the icon below it. Four pixels leaves it
+     six clear of that icon whilst a one-line name has nineteen, and the pair
+     then reads as one block rather than two rows. */
+  gap: 14px 4px;
   padding: 8px;
   background: var(--light);
 }
