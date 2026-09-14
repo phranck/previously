@@ -132,6 +132,23 @@ function since(seconds) {
   return "seit weniger als einer Minute";
 }
 
+/** Everything on the page that changes something. */
+const ACTIONS = [
+  "kiosk-start", "kiosk-stop", "kiosk-restart",
+  "pi-reboot", "pi-poweroff",
+];
+
+/**
+ * Turns every acting button off or lets the state decide again.
+ * @param {boolean} reachable - Whether the service answered.
+ */
+function allowActions(reachable) {
+  for (const id of ACTIONS) {
+    const button = document.getElementById(id);
+    if (button) button.disabled = !reachable;
+  }
+}
+
 /**
  * Draws the state of the machine into the info window.
  * @param {object|null} status - What /api/status answered, or null.
@@ -140,10 +157,16 @@ function drawStatus(status) {
   const state = document.getElementById("info-state");
 
   if (status === null) {
+    /* Nothing can be asked of a machine that is not answering, and whilst it
+       restarts it will not answer for a minute or two. Leaving the buttons
+       live would collect requests that go nowhere. */
     state.replaceChildren(document.createTextNode("nicht erreichbar"));
     show("info-caption", "keine Verbindung");
+    allowActions(false);
     return;
   }
+
+  allowActions(true);
 
   /* The lamp carries the state as a shape as well as a colour, because colour
      alone asks the reader to compare two small squares. */
@@ -273,10 +296,6 @@ function setBusy(busy, note) {
   for (const id of ["kiosk-start", "kiosk-stop", "kiosk-restart"]) {
     document.getElementById(id).disabled = busy;
   }
-  /* The apply button also needs something chosen, so letting it go is not the
-     same as switching it on. */
-  document.getElementById("machine-apply").disabled =
-    busy || !document.querySelector("#machine-shelf nx-thing[chosen]");
   show("kiosk-note", note);
   noteState = note ? JUST_WRITTEN : null;
 }
@@ -344,11 +363,7 @@ async function drawMachines() {
     return thing;
   }));
 
-  shelf.addEventListener("click", () => {
-    const chosen = shelf.querySelector("nx-thing[chosen]");
-    document.getElementById("machine-apply").disabled = !chosen;
-    show("machine-note", "");
-  });
+  shelf.addEventListener("click", () => show("machine-note", ""));
 }
 
 /**
@@ -364,8 +379,6 @@ function markCurrent(name) {
     thing.toggleAttribute("disabled", isCurrent);
     if (isCurrent) thing.removeAttribute("chosen");
   }
-  document.getElementById("machine-apply").disabled =
-    !document.querySelector("#machine-shelf nx-thing[chosen]");
 }
 
 /**
@@ -473,9 +486,7 @@ function warnAboutTheBoard(what, afterwards) {
  * @param {string} working - What to say while it happens.
  */
 async function operateBoard(route, working) {
-  for (const id of ["pi-reboot", "pi-poweroff"]) {
-    document.getElementById(id).disabled = true;
-  }
+  allowActions(false);
   show("pi-note", working);
 
   const answer = await tell(route);
@@ -485,9 +496,9 @@ async function operateBoard(route, working) {
   show("pi-note", answer === null
     ? "Keine Antwort mehr. Das ist zu erwarten, wenn der Pi gerade abschaltet."
     : answer.reason ?? "");
-  for (const id of ["pi-reboot", "pi-poweroff"]) {
-    document.getElementById(id).disabled = false;
-  }
+
+  /* Nothing is switched back on here. The next status decides: whilst the
+     board is away it does not answer, and everything stays off until it does. */
   refresh();
 }
 
@@ -513,7 +524,8 @@ function wireOpening() {
   });
 }
 
-/** Wires the three ways to choose a machine. */
+/** Wires the two gestures that choose a machine. The third, the context
+ *  menu, wires itself where it is opened. */
 function wireMachines() {
   /* A right click anywhere on a machine, rather than on the shelf, so the menu
      is always about something. */
@@ -531,11 +543,6 @@ function wireMachines() {
      raises the same event for both, so this is one answer to two gestures. */
   document.addEventListener("nx-choose",
     (event) => changeTo(event.detail.value));
-
-  document.getElementById("machine-apply").addEventListener("click", () => {
-    const chosen = document.querySelector("#machine-shelf nx-thing[chosen]");
-    if (chosen) changeTo(chosen.getAttribute("value"));
-  });
 }
 
 /**
@@ -574,6 +581,7 @@ function showState(id, well, words) {
 function drawPi(pi) {
   if (pi === null) {
     show("pi-model", "nicht erreichbar");
+    allowActions(false);
     return;
   }
 
