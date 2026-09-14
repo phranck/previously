@@ -10,11 +10,15 @@ import pathlib
 
 CONFIG_FILE = pathlib.Path("/etc/previously/config.ini")
 
-#: The one place this service writes. The unit creates it through
-#: StateDirectory=, and its hardening leaves everything else read-only, so
-#: anything the service maintains itself lives here and the paths below are
-#: derived from this rather than stated again.
+#: What this service keeps between one start and the next. The unit creates it
+#: through StateDirectory=, and its hardening leaves everything else read-only.
 STATE_DIRECTORY = "/var/lib/previously"
+
+#: What it keeps only whilst the machine is up. A tmpfs, created by the unit
+#: through RuntimeDirectory= and empty again at every boot, which is what the
+#: hold file needs: a machine that has just started should run its emulator,
+#: whoever switched it off before the last shutdown.
+RUNTIME_DIRECTORY = "/run/previously"
 
 #: Everything a fresh installation runs on. The emulator's configuration lives
 #: in the home of whoever owns it, which is the user this service runs as, so
@@ -25,10 +29,11 @@ DEFAULTS = {
     "previous_config": "~/.config/previous/previous.cfg",
     "kiosk_unit": "getty@tty1.service",
     "state_directory": STATE_DIRECTORY,
-    # The secret a request carries before it may change anything, and the file
-    # that holds the emulator down. Both are state the service maintains
-    # itself, so /var/lib rather than /etc, which holds what an administrator
-    # writes.
+    "runtime_directory": RUNTIME_DIRECTORY,
+    # The secret a request carries before it may change anything. State the
+    # service maintains itself, so /var/lib rather than /etc, which holds what
+    # an administrator writes. It has to survive a reboot, so it is not in the
+    # runtime directory beside the hold file.
     "token_file": STATE_DIRECTORY + "/token",
 }
 
@@ -56,6 +61,7 @@ class Settings:
         self.previous_config = _path(values["previous_config"])
         self.kiosk_unit = values["kiosk_unit"]
         self.state_directory = _path(values["state_directory"])
+        self.runtime_directory = _path(values["runtime_directory"])
         self.token_file = _path(values["token_file"])
 
     @classmethod

@@ -23,6 +23,12 @@ RestartSec=5
 StateDirectory=previously
 StateDirectoryMode=0750
 
+# And what it keeps only whilst the machine is up, which is the file that holds
+# the emulator down. A tmpfs, so the board comes back to an empty one and the
+# console starts the emulator by itself whoever switched it off before.
+RuntimeDirectory=previously
+RuntimeDirectoryMode=0750
+
 # It reads a few files and answers HTTP. Nothing else is any of its business.
 NoNewPrivileges=yes
 PrivateTmp=yes

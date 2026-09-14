@@ -30,6 +30,13 @@ KIOSK_OPERATIONS = {
     "/api/kiosk/restart": kiosk.restart,
 }
 
+#: What a POST may ask of the board itself. Separate from the emulator's, and
+#: separate on purpose: these two are the only things this tool does as root.
+BOARD_OPERATIONS = {
+    "/api/pi/reboot": "reboot",
+    "/api/pi/poweroff": "poweroff",
+}
+
 
 class Handler(http.server.BaseHTTPRequestHandler):
     """Answers one request.
@@ -78,11 +85,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if route == "/api/machine":
             return self._change_machine()
 
+        board = BOARD_OPERATIONS.get(route)
+        if board is not None:
+            finished, reason = kiosk.board(board, self.settings.runtime_directory)
+            return self._json(
+                {"ok": finished, "reason": reason, **self._status()},
+                status=200 if finished else 409,
+            )
+
         operation = KIOSK_OPERATIONS.get(route)
         if operation is None:
             return self._json({"error": "not found"}, status=404)
 
-        finished, reason = operation(self.settings.state_directory)
+        finished, reason = operation(self.settings.runtime_directory)
         return self._json(
             {"ok": finished, "reason": reason, **self._status()},
             status=200 if finished else 409,
@@ -155,7 +170,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         running = kiosk.emulator_is_running()
         answer = {
             "running": running,
-            "held": kiosk.is_held(self.settings.state_directory),
+            "held": kiosk.is_held(self.settings.runtime_directory),
             "console_active": kiosk.is_running(unit),
             "uptime_seconds": kiosk.uptime_seconds(unit) if running else None,
         }

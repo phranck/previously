@@ -1,0 +1,17 @@
+# Watches for the admin tool's request to reboot the machine.
+#
+# The tool itself has no privileges and needs none. It creates one file in its
+# own runtime directory, and this unit, which systemd runs as root, does the
+# one thing that file means. Nothing is passed: the name of the file is the
+# whole of the request.
+
+[Unit]
+Description=Watch for a request to reboot the machine
+Documentation=https://github.com/phranck/previously
+
+[Path]
+PathExists=/run/previously/reboot
+Unit=previously-reboot.service
+
+[Install]
+WantedBy=paths.target

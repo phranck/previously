@@ -32,6 +32,13 @@ const Kiosk = {
   Restart: "/api/kiosk/restart",
 };
 
+/** And what the board itself can be asked. Separate from the emulator's,
+ *  because these two take the whole machine with them. */
+const Board = {
+  Reboot: "/api/pi/reboot",
+  PowerOff: "/api/pi/poweroff",
+};
+
 /** How long a shutdown may take before the page stops waiting for the answer.
  *  Longer than the service's own patience with the guest, so the reason it
  *  gives always arrives rather than being cut off by the browser. */
@@ -441,6 +448,64 @@ function openMachineMenu(thing, x, y) {
   menu.openAt(x, y);
 }
 
+/**
+ * Asks before the whole machine goes, and says in which order.
+ * @param {string} what - The wording on the acting button.
+ * @param {string} afterwards - What the board does once the guest is down.
+ * @returns {Promise<boolean>}
+ */
+function warnAboutTheBoard(what, afterwards) {
+  return document.getElementById("ask").ask({
+    title: "Raspberry Pi",
+    text: [
+      `Den Raspberry Pi ${afterwards}?`,
+      "NeXTSTEP wird zuerst über den Ausschalter heruntergefahren. Der Pi wartet darauf, weil ein Neustart unter einem laufenden Emulator dasselbe anrichtet wie das Abschalten mitten im Schreiben.",
+      "Nicht gespeicherte Arbeit in laufenden Programmen geht dabei verloren.",
+    ],
+    icon: Art.Computer,
+    confirm: what,
+  });
+}
+
+/**
+ * Runs one of the board's two actions and reports what came of it.
+ * @param {string} route - One of Board.
+ * @param {string} working - What to say while it happens.
+ */
+async function operateBoard(route, working) {
+  for (const id of ["pi-reboot", "pi-poweroff"]) {
+    document.getElementById(id).disabled = true;
+  }
+  show("pi-note", working);
+
+  const answer = await tell(route);
+
+  /* A board that is going down answers nothing, and that is the ordinary case
+     rather than a failure. Saying so beats a page that claims no contact. */
+  show("pi-note", answer === null
+    ? "Keine Antwort mehr. Das ist zu erwarten, wenn der Pi gerade abschaltet."
+    : answer.reason ?? "");
+  for (const id of ["pi-reboot", "pi-poweroff"]) {
+    document.getElementById(id).disabled = false;
+  }
+  refresh();
+}
+
+/** Wires the board's own two buttons. */
+function wireBoard() {
+  document.getElementById("pi-reboot").addEventListener("click", async () => {
+    if (await warnAboutTheBoard("Neu starten", "neu starten")) {
+      operateBoard(Board.Reboot, "NeXTSTEP fährt herunter, dann startet der Pi neu");
+    }
+  });
+
+  document.getElementById("pi-poweroff").addEventListener("click", async () => {
+    if (await warnAboutTheBoard("Ausschalten", "ausschalten")) {
+      operateBoard(Board.PowerOff, "NeXTSTEP fährt herunter, dann schaltet der Pi ab");
+    }
+  });
+}
+
 /** Fills a window the moment it opens, rather than at the next poll. */
 function wireOpening() {
   document.addEventListener("nx-open", (event) => {
@@ -565,6 +630,7 @@ async function refresh() {
 
 wireButtons();
 wireMachines();
+wireBoard();
 wireOpening();
 drawMachines();
 refresh();

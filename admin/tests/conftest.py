@@ -27,6 +27,7 @@ def settings_for(tmp_path, **overrides):
         "previous_config": str(tmp_path / "previous.cfg"),
         "kiosk_unit": "does-not-exist.service",
         "token_file": str(tmp_path / "token"),
+        "runtime_directory": str(tmp_path),
     })
     values.update({key: str(value) for key, value in overrides.items()})
     return Settings(values)

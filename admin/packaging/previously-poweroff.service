@@ -1,0 +1,15 @@
+# Switch off the machine, when previously-poweroff.path says somebody asked.
+#
+# One exact command and nothing else. There is no argument to pass and no shell
+# to pass it through, so this cannot be talked into doing anything but this.
+
+[Unit]
+Description=Switch off the machine at the admin tool's request
+Documentation=https://github.com/phranck/previously
+
+[Service]
+Type=oneshot
+# Removed first, so a command that fails does not leave a request standing that
+# the path unit would act on again.
+ExecStartPre=/bin/rm -f /run/previously/poweroff
+ExecStart=/usr/bin/systemctl poweroff
