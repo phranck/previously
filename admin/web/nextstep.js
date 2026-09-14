@@ -954,6 +954,32 @@ addEventListener("selectstart", (event) => {
   if (!event.target.closest?.(".terminal")) event.preventDefault();
 });
 
+/* --- the letters beside the menu entries ---------------------------------
+
+   NeXTSTEP drew those for Command key shortcuts. Command and Control both
+   belong to the browser here, so the letter acts on its own, and three
+   conditions keep that from being a nuisance: nothing held down, nothing being
+   typed into, and no panel up, because a panel has a keyboard of its own and
+   two answers to give with it.
+
+   A context menu is left out. Its entries act on whatever was right clicked,
+   and a key press has nothing under the pointer. */
+addEventListener("keydown", (event) => {
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  if (document.querySelector("nx-ask[data-open]")) return;
+
+  const focused = document.activeElement;
+  if (focused?.matches?.("input, textarea, select") || focused?.isContentEditable) return;
+
+  const pressed = event.key.toLowerCase();
+  const item = [...document.querySelectorAll("nx-menu:not([context]) nx-menu-item[key]")]
+    .find((entry) => entry.getAttribute("key").toLowerCase() === pressed);
+  if (!item || item.hasAttribute("disabled")) return;
+
+  event.preventDefault();
+  item.click();
+});
+
 for (const [tag, type] of [
   ["nx-window", NxWindow], ["nx-menu", NxMenu], ["nx-menu-item", NxMenuItem],
   ["nx-tile", NxTile], ["nx-scroller", NxScroller],
