@@ -18,6 +18,16 @@ MACHINE_NAMES = {
     2: "NeXTstation",
 }
 
+#: Which case a machine type comes in. The boot ROM draws the machine on its
+#: own panel while it tests the hardware, and it has two pictures: the cube for
+#: types 0 and 1, which share an enclosure, and the station for type 2. The
+#: interface shows the same two, so this is what decides which.
+ENCLOSURES = {
+    0: "cube",
+    1: "cube",
+    2: "station",
+}
+
 #: The processor each level stands for. Previous stores a level rather than a
 #: name, and sets it itself from the machine type.
 CPU_NAMES = {
@@ -58,12 +68,25 @@ def read(path):
 
     return {
         "machine": _machine_name(machine_type, turbo, dimension_seated),
+        "enclosure": enclosure(machine_type),
         "cpu": _cpu(system),
         "memory_mb": _memory(memory),
         "screen": _screen(system, dimension_seated),
         "disk": _disk(parser),
         "dimension": dimension_seated,
     }
+
+
+def enclosure(machine_type):
+    """Which case a machine of this type comes in.
+
+    @param machine_type - What the file holds in nMachineType, and what
+      machines.py carries as `kind`.
+    @returns "cube" or "station". A type nobody knows answers "cube", because
+      that is the case NeXT built first and the one an unknown number is most
+      likely to be.
+    """
+    return ENCLOSURES.get(machine_type, "cube")
 
 
 def _section(parser, name):

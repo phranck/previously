@@ -14,13 +14,14 @@ Open any of them in a browser. They need no server and no build step.
 
 The NeXTSTEP draft draws nothing by hand. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
 
-Four tools do that work:
+Five tools do that work:
 
 | Tool | What it does |
 |---|---|
 | `ufs.py` | Reads a NeXT UFS filesystem: 4.3BSD FFS, big endian, behind a `dlV3` disk label. |
 | `nxtiff.py` | Decodes NeXT's TIFFs, which no current library reads: two bits per sample, alpha in its own plane, and a second copy of each picture at four bits per colour channel. |
 | `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `parts/`. |
+| `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
 | `build.py` | Bakes everything in `parts/` into the mockup as data URIs, so it stays one file. |
 
 `parts/` is committed, so the draft works without running any of this. Run it again when a picture needs to change:
@@ -31,6 +32,18 @@ python3 build.py
 ```
 
 `extract.py` needs two things that are not in this repository. The first is a NeXTSTEP 3.3 disk image, which the paper PAP-NXR-001 says where to get. The second is a screenshot of NeXTSTEP 3.3 at its own resolution of 1120 by 832, because the pixel bounds in `extract.py` are that screenshot's and nothing else will line up.
+
+## The two machines
+
+The pictures of the NeXTcube and the NeXTstation come from somewhere else again, because NeXTSTEP holds no drawing of either. The boot ROM does: whilst it tests the hardware it puts up a panel with the NeXT cube on the left and the machine on the right, and which machine that is follows from the configuration.
+
+Previous can write the emulated framebuffer itself, which is what makes those pictures usable. Ctrl+Alt+G grabs it at the machine's own 1120 by 832 in NeXT's four greys, unscaled, and leaves `next_screen_NNN.png` in the directory the emulator was started in. Grabbing once a second through a boot catches the panel, and `bootpicture.py` finds the machine inside it and reduces it to an icon:
+
+```bash
+python3 bootpicture.py next_screen_021.png ../admin/web/parts/nextstation.png
+```
+
+Nothing in it is fixed to one screenshot. The panel is found by its own grey, and the machine by the gap that separates it from the text, so the same call works for either.
 
 ## What the interface is built from
 

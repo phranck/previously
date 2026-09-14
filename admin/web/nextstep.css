@@ -62,8 +62,9 @@
 
   /* The pictures, as files rather than as data URIs. A service that
      serves files should serve these as files too, so the browser caches
-     them and this stylesheet stays readable. ../../design/extract.py
-     says where each one was taken from. */
+     them and this stylesheet stays readable. ../../design/extract.py says
+     where the icons came from, and ../../design/bootpicture.py where the two
+     machines came from. */
   --Workspace: url("parts/Workspace.png");
   --defaultUnixIcon: url("parts/defaultUnixIcon.png");
   --defaultAppIcon: url("parts/defaultAppIcon.png");
@@ -81,8 +82,9 @@
      grey, because it has to read as a state and not as a selection. */
   --in-force: #999999;
   --net: url("parts/net.png");
+  --nextcube: url("parts/nextcube.png");
+  --nextstation: url("parts/nextstation.png");
   --optical: url("parts/optical.png");
-  --root-color: url("parts/root-color.png");
   --root: url("parts/root.png");
   --scsi: url("parts/scsi.png");
   --trash: url("parts/trash.png");

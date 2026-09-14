@@ -64,7 +64,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(pi.readings())
         if route == "/api/machines":
             return self._json({"machines": [
-                {"id": machine.identifier, "name": machine.name}
+                {
+                    "id": machine.identifier,
+                    "name": machine.name,
+                    # So the shelf can draw the right picture before anything
+                    # is running, rather than reading it out of the name.
+                    "enclosure": config.enclosure(machine.kind),
+                }
                 for machine in machines.CATALOGUE
             ]})
         if route == "/api/token":

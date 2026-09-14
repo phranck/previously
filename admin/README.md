@@ -111,7 +111,9 @@ Stopping writes that file, presses F10 and waits for the guest to go. Starting r
 
 A thing with a `value` can be lifted and carried, and a window with `drop` takes what lands on it. A menu with `context` is the same menu put where the pointer is and taken away again, and an item in one can carry an `icon` and be `disabled`. Both raise `nx-choose` carrying that value, so double clicking a thing and dragging it somewhere mean the same to whoever answers, and a page answers once. They are split into files here rather than baked into one page, and the pictures are files rather than data URIs.
 
-The stylesheet and the kit are taken from the draft rather than written again, so a change to the look happens in one place. `../design/extract.py` says where every picture came from.
+The stylesheet and the kit are taken from the draft rather than written again, so a change to the look happens in one place. `../design/extract.py` says where the icons came from, and `../design/bootpicture.py` where the two machines came from.
+
+**Every machine in the shelf wears the picture its boot ROM draws.** The ROM has two, a cube and a station, and which one a machine gets follows from `nMachineType`: 0 and 1 stand in the cube's case and 2 in the station's. `/api/machines` carries that with each entry, so the shelf can draw before anything is running, and `/api/status` carries it too, so the info window and the panels that ask about the running machine show the same picture. Colour plays no part in it, because a NeXTstation Color stands in the same case as a grey one.
 
 ## Installing it on the Pi
 

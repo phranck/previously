@@ -89,6 +89,29 @@ def test_reads_a_station_without_one(tmp_path):
     assert answer["dimension"] is False
 
 
+def test_a_cube_is_reported_as_a_cube(tmp_path):
+    """The interface draws the machine the boot ROM draws, and this is what
+    tells it which of the two pictures that is."""
+    assert config.read(write(tmp_path, CUBE_TURBO_WITH_DIMENSION))["enclosure"] == "cube"
+
+
+def test_a_station_is_reported_as_a_station(tmp_path):
+    assert config.read(write(tmp_path, PLAIN_STATION))["enclosure"] == "station"
+
+
+def test_the_1988_machine_stands_in_the_cube_case(tmp_path):
+    """NeXT built the NeXT Computer and the NeXTcube in the same case, so the
+    ROM has one picture for both."""
+    answer = config.read(write(tmp_path, "[System]\nnMachineType = 0\n"))
+    assert answer["enclosure"] == "cube"
+
+
+def test_a_machine_type_nobody_knows_still_answers():
+    """A page that draws nothing tells the reader less than one that draws the
+    machine NeXT built first."""
+    assert config.enclosure(99) == "cube"
+
+
 def test_no_inserted_disk_reads_as_none(tmp_path):
     assert config.read(write(tmp_path, PLAIN_STATION))["disk"] is None
 

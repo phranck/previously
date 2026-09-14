@@ -6,7 +6,7 @@ Those files are not in this repository, so what is tested here is the rules
 that produce them rather than the comparison itself.
 """
 
-from previously import machines
+from previously import config, machines
 
 
 def test_every_identifier_is_used_once():
@@ -92,6 +92,13 @@ def test_memory_is_four_banks_of_whole_megabytes():
         memory = machines.settings_for(machine)["Memory"]
         assert sorted(memory) == ["nMemoryBankSize%d" % i for i in range(4)]
         assert all(value.isdigit() for value in memory.values())
+
+
+def test_every_machine_has_a_case_the_interface_knows():
+    """A machine whose type is missing from the table would silently be drawn
+    as a cube, and the shelf would show the wrong picture rather than fail."""
+    for machine in machines.CATALOGUE:
+        assert machine.kind in config.ENCLOSURES, machine.identifier
 
 
 def test_every_value_written_is_a_string():
