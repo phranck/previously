@@ -205,10 +205,13 @@ nx-menu-item[disabled] { color: var(--dark); }
 nx-menu-item[disabled]:hover,
 nx-menu-item[disabled]:active { background: none; color: var(--dark); }
 
-/* The place a picture goes, which every entry keeps whether it carries one or
-   not, so the words all begin at the same column. At the size NeXTSTEP put
-   beside a line of menu text rather than at icon size. */
-nx-menu-item .mark {
+/* The place a picture goes, at the size NeXTSTEP put beside a line of menu
+   text rather than at icon size. Every entry in a menu that has pictures keeps
+   the place, so the words all begin at the same column; a menu where nothing
+   has one keeps no column at all. */
+nx-menu-item .mark { display: none; }
+nx-menu[with-icons] nx-menu-item .mark {
+  display: block;
   width: 16px; height: 16px;
   background-size: contain;
   margin-right: 6px;
