@@ -148,6 +148,18 @@ function draggable(element, handle, { onGrab, onSettled } = {}) {
     });
 }
 
+/* --- the desk is not a document ------------------------------------------
+
+   A right click here opens what the thing under the pointer offers, or
+   nothing. The browser's own menu is about a document: reload it, save the
+   picture, look at the source. None of that is about a machine or a window,
+   and NeXTSTEP never put anything of the sort on a desk.
+
+   Refused for the whole desk, including the fields and anything a terminal
+   will hold, because one rule that holds everywhere is the only kind a person
+   can rely on. What has a menu of its own opens it from its own handler. */
+addEventListener("contextmenu", (event) => event.preventDefault());
+
 /* --- the desk does not hold text -----------------------------------------
 
    user-select says a selection may not begin inside an element. It does not
