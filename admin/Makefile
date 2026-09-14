@@ -1,8 +1,9 @@
 # One way to do each thing, so none of it lives in anybody's memory.
 #
-# Everything here runs with what Debian ships: python3, python3-pytest and
-# python3-flake8. Nothing is fetched, so it all works on a machine with no
-# network and inside the package build.
+# The service itself uses the standard library and nothing else, so it starts
+# on a machine with no network and inside the package build. Checking it needs
+# flake8 and pytest, which are not on the Pi: README.md says where to get them
+# and how to point PYTHON at them.
 
 PYTHON ?= python3
 
