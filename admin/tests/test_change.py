@@ -8,7 +8,7 @@ import textwrap
 
 import pytest
 
-from previously import change, config, kiosk
+from previously import change, config, kiosk, screen
 
 REAL_SHAPE = textwrap.dedent("""\
     [Log]
@@ -53,6 +53,13 @@ def machine(tmp_path, monkeypatch):
             self.running = True
             self.age = 3600
             self.powered_off = 0
+            #: What the screen says now, and what it will say once the
+            #: machine has been changed. They differ because the machine
+            #: being left behind was running: only the new one is in
+            #: question.
+            self.screen = True
+            self.screen_after = True
+            self.quit_asked = 0
 
         def emulator_is_running(self):
             return self.running
@@ -69,11 +76,22 @@ def machine(tmp_path, monkeypatch):
             """What the console does once the hold is off."""
             self.running = True
             self.age = age
+            self.screen = self.screen_after
+
+        def quit(self, sleep=None):
+            """Previous being told to go, for a guest that never started."""
+            self.quit_asked += 1
+            self.running = False
+            return True
 
     emulator = Emulator()
     monkeypatch.setattr(kiosk, "emulator_is_running", emulator.emulator_is_running)
     monkeypatch.setattr(kiosk, "emulator_uptime_seconds", emulator.emulator_uptime_seconds)
     monkeypatch.setattr(kiosk, "press_power", emulator.press_power)
+    # No X server in a test, so the screen cannot be read and nothing is
+    # claimed about it. A test that is about the screen says so itself.
+    monkeypatch.setattr(screen, "looks_alive", lambda: emulator.screen)
+    monkeypatch.setattr(kiosk, "quit_emulator", emulator.quit)
     return emulator
 
 
@@ -158,6 +176,54 @@ def test_choosing_what_is_already_set_changes_nothing(settings, machine):
 
 
 # -- when it does not come back ------------------------------------------
+
+
+def test_a_machine_that_shows_nothing_is_rolled_back(settings, machine):
+    """The emulator running is not the machine running. A configuration
+    Previous cannot make sense of leaves the process up and the screen blank,
+    and that looked like success until the screen was read."""
+    before = settings.previous_config.read_text()
+    machine.screen_after = False
+
+    finished, reason = run("nextstation", settings, machine)
+
+    assert finished is False
+    assert "zeigt nichts auf dem Bildschirm" in reason
+    assert settings.previous_config.read_text() == before
+
+
+def test_a_blank_machine_is_got_out_of_the_way(settings, machine):
+    """Previous reads its configuration once, at startup, so putting the file
+    back underneath it changes nothing until it goes. The power key cannot do
+    it: NeXTSTEP never started, so there is nothing there to answer."""
+    machine.screen_after = False
+
+    run("nextstation", settings, machine)
+
+    assert machine.quit_asked == 1
+    assert machine.powered_off == 1
+
+
+def test_a_machine_that_shows_something_is_left_alone(settings, machine):
+    machine.screen_after = True
+
+    finished, reason = run("nextstation", settings, machine)
+
+    assert finished is True
+    assert machine.quit_asked == 0
+    assert "läuft" in reason
+
+
+def test_a_screen_that_cannot_be_read_is_not_held_against_it(settings, machine):
+    """Without an X server, or without the tool that reads it, every machine
+    would otherwise look broken."""
+    machine.screen = None
+    machine.screen_after = None
+
+    finished, _ = run("nextstation", settings, machine)
+
+    assert finished is True
+    assert machine.quit_asked == 0
 
 
 def test_a_machine_that_never_returns_is_rolled_back(settings, machine):

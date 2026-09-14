@@ -20,6 +20,8 @@ import shutil
 import subprocess
 import time
 
+from . import screen
+
 #: How long to wait for systemctl before giving up. A query that hangs is worse
 #: than one that fails, because the page waits with it.
 TIMEOUT_SECONDS = 5
@@ -34,6 +36,20 @@ POWER_KEY = "F10"
 #: carries the return symbol. So the key is half of it and this is the other
 #: half.
 CONFIRM_KEY = "Return"
+
+#: What quits Previous itself rather than the machine inside it, from its own
+#: [ShortcutsWithModifiers]. The way out of a machine that never booted: the
+#: power key reaches NeXTSTEP, and where NeXTSTEP never started there is
+#: nothing for it to reach.
+#:
+#: It costs whatever the guest had not written, which is why it is not how a
+#: machine is switched off. Previous asks before it goes, and the panel's
+#: default button is the return key again.
+QUIT_KEYS = "ctrl+alt+q"
+
+#: How long to wait for the emulator to go after being told to. It has no guest
+#: to shut down, so this is the time SDL takes to close a window.
+QUIT_TIMEOUT_SECONDS = 15
 
 #: How often the confirmation is pressed again whilst waiting for the guest.
 #: NeXTSTEP raises its panel at its own pace, and one press at a fixed moment
@@ -58,11 +74,6 @@ POLL_SECONDS = 1
 #: this service creates and of the systemd path unit watching for it, so a name
 #: added here without a pair of units to match is a request nothing answers.
 BOARD_REQUESTS = ("reboot", "poweroff")
-
-#: Where an X server puts its socket. The kiosk's Xwayland is the one this
-#: service talks to, and its display number comes from the name of the file
-#: it leaves here.
-X11_SOCKETS = "/tmp/.X11-unix"
 
 
 def is_running(unit):
@@ -183,11 +194,11 @@ def _press(key):
     @param key - An X keysym name, such as "F10".
     @returns bool
     """
-    display = _display()
-    if display is None or shutil.which("xdotool") is None:
+    where = screen.display()
+    if where is None or shutil.which("xdotool") is None:
         return False
 
-    environment = dict(os.environ, DISPLAY=display)
+    environment = dict(os.environ, DISPLAY=where)
     try:
         result = subprocess.run(
             ["xdotool", "key", "--clearmodifiers", key],
@@ -200,23 +211,6 @@ def _press(key):
     except (OSError, subprocess.TimeoutExpired):
         return False
     return result.returncode == 0
-
-
-def _display():
-    """Which X display the kiosk is on.
-
-    @returns str such as ":0", or None where no X server is listening.
-
-    Found from the socket rather than taken from the environment, because this
-    service has no session of its own and the number is Xwayland's to choose.
-    """
-    try:
-        sockets = sorted(
-            name for name in os.listdir(X11_SOCKETS) if name.startswith("X")
-        )
-    except OSError:
-        return None
-    return ":" + sockets[0][1:] if sockets else None
 
 
 def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
@@ -236,6 +230,18 @@ def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
 
     if not emulator_is_running():
         return True, "the emulator was not running, and is now held down"
+
+    # A guest that never started cannot be shut down. The power key reaches
+    # NeXTSTEP, and where the screen is blank there is no NeXTSTEP to reach, so
+    # pressing it only spends the whole timeout before saying so. Previous
+    # itself is told instead, and the hold is already in place.
+    if screen.looks_alive() is False:
+        if quit_emulator(sleep=sleep):
+            return True, ("Die Maschine war nicht hochgekommen, also wurde der "
+                          "Emulator beendet. Er ist jetzt ausgeschaltet.")
+        return False, ("Die Maschine ist nicht hochgekommen und der Emulator "
+                       "liess sich auch nicht beenden. Das ist über SSH "
+                       "nachzusehen.")
 
     if not press_power():
         hold_path(runtime_directory).unlink(missing_ok=True)
@@ -268,6 +274,42 @@ def start(runtime_directory):
 
     hold_path(runtime_directory).unlink(missing_ok=True)
     return True, "the emulator is on its way back"
+
+
+def quit_emulator(timeout=QUIT_TIMEOUT_SECONDS, sleep=time.sleep):
+    """Ends the emulator itself, without asking the guest.
+
+    @param timeout - How long to wait for the process to go.
+    @param sleep - Injected so a test does not wait in real time.
+    @returns bool, whether it went.
+
+    For the one case the power key cannot reach: a machine that never booted.
+    NeXTSTEP is not there to be asked, so the emulator is told instead, through
+    Previous's own quit shortcut and the panel it raises.
+
+    Nothing the guest had is written back, which is why this is not how a
+    machine is switched off. It is how a machine that is not running is got out
+    of the way, and the hold is left to the caller: this only ends the process.
+    """
+    was = emulator_uptime_seconds()
+    if was is None:
+        return True
+    if not _press(QUIT_KEYS):
+        return False
+
+    sleep(1)
+    _press(CONFIRM_KEY)
+
+    # Gone means this one is gone, not that nothing is running. Nothing holds
+    # the console here, so a fresh emulator is often up within a second of the
+    # old one going, and asking whether one is running would see that and call
+    # it a failure. A younger process is a different process.
+    for _ in range(timeout):
+        age = emulator_uptime_seconds()
+        if age is None or age < was:
+            return True
+        sleep(1)
+    return False
 
 
 def restart(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):

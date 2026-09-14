@@ -9,7 +9,7 @@ system check.
 
 import pytest
 
-from previously import kiosk
+from previously import kiosk, screen
 
 #: The genuine press, kept before any fixture replaces it. Two tests below are
 #: about what press_power itself does, so a fake one would test the fake.
@@ -26,6 +26,9 @@ def world(tmp_path, monkeypatch):
     class World:
         def __init__(self):
             self.emulator_running = True
+            #: How long it has been up. Read by anything that has to tell one
+            #: emulator from the one that replaced it.
+            self.age = 3600
             self.power_pressed = 0
             self.power_works = True
             #: How many polls the guest takes to go. None means it never does.
@@ -34,6 +37,9 @@ def world(tmp_path, monkeypatch):
 
         def emulator_is_running(self):
             return self.emulator_running
+
+        def emulator_uptime_seconds(self):
+            return self.age if self.emulator_running else None
 
         def press_power(self):
             self.power_pressed += 1
@@ -47,6 +53,7 @@ def world(tmp_path, monkeypatch):
 
     answer = World()
     monkeypatch.setattr(kiosk, "emulator_is_running", answer.emulator_is_running)
+    monkeypatch.setattr(kiosk, "emulator_uptime_seconds", answer.emulator_uptime_seconds)
     monkeypatch.setattr(kiosk, "press_power", answer.press_power)
     return answer
 
@@ -253,16 +260,90 @@ def test_a_power_key_that_does_not_arrive_stops_there(tmp_path, world, monkeypat
 
 def test_no_x_server_means_no_key(tmp_path, monkeypatch):
     """The emulator is not running, so there is nothing to press against."""
-    monkeypatch.setattr(kiosk, "X11_SOCKETS", str(tmp_path / "absent"))
+    monkeypatch.setattr(screen, "X11_SOCKETS", str(tmp_path / "absent"))
     assert kiosk._press(kiosk.POWER_KEY) is False
 
 
-def test_the_display_comes_from_the_socket(tmp_path, monkeypatch):
-    """Xwayland picks the number, so it is read rather than assumed."""
-    monkeypatch.setattr(kiosk, "X11_SOCKETS", str(tmp_path))
-    (tmp_path / "X7").touch()
+def test_a_guest_that_never_started_is_not_waited_for(tmp_path, world, monkeypatch):
+    """The power key reaches NeXTSTEP, and where the screen is blank there is
+    no NeXTSTEP to reach. Waiting the whole timeout for one is what left a
+    machine that could not be changed back on 14 September 2026."""
+    monkeypatch.setattr(screen, "looks_alive", lambda: False)
+    monkeypatch.setattr(kiosk, "_press", lambda _key: True)
+    world.shutdown_after_polls = 1
 
-    assert kiosk._display() == ":7"
+    finished, reason = kiosk.stop(tmp_path, sleep=world.sleep)
+
+    assert finished is True
+    assert "Emulator beendet" in reason
+    assert world.power_pressed == 0
+    assert kiosk.is_held(tmp_path) is True
+
+
+def test_a_blank_machine_that_will_not_even_quit_is_reported(tmp_path, world, monkeypatch):
+    monkeypatch.setattr(screen, "looks_alive", lambda: False)
+    monkeypatch.setattr(kiosk, "_press", lambda _key: False)
+
+    finished, reason = kiosk.stop(tmp_path, sleep=world.sleep)
+
+    assert finished is False
+    assert "SSH" in reason
+
+
+def test_a_screen_that_cannot_be_read_is_shut_down_the_usual_way(tmp_path, world, monkeypatch):
+    """Without an X server there is no reading, and a guest that is running
+    must still be asked politely."""
+    monkeypatch.setattr(screen, "looks_alive", lambda: None)
+
+    finished, _ = kiosk.stop(tmp_path, sleep=world.sleep)
+
+    assert finished is True
+    assert world.power_pressed == 1
+
+
+# -- ending the emulator itself ------------------------------------------
+
+
+def test_quitting_asks_previous_rather_than_the_guest(tmp_path, world, monkeypatch):
+    """For a machine that never booted. The power key reaches NeXTSTEP, and
+    where NeXTSTEP never started there is nothing for it to reach."""
+    sent = []
+    monkeypatch.setattr(kiosk, "_press", lambda key: sent.append(key) or True)
+    world.shutdown_after_polls = 1
+
+    assert kiosk.quit_emulator(sleep=world.sleep) is True
+    assert sent == [kiosk.QUIT_KEYS, kiosk.CONFIRM_KEY]
+    assert world.power_pressed == 0
+
+
+def test_quitting_something_that_is_not_running_is_already_done(tmp_path, world):
+    world.emulator_running = False
+
+    assert kiosk.quit_emulator(sleep=world.sleep) is True
+
+
+def test_one_replaced_at_once_still_counts_as_gone(tmp_path, world, monkeypatch):
+    """Nothing holds the console here, so a fresh emulator is often up within a
+    second of the old one going. Asking whether one is running would see that
+    and call it a failure. Measured on the machine on 14 September 2026."""
+    monkeypatch.setattr(kiosk, "_press", lambda _key: True)
+    ages = iter([3600, 3600, 2, 2, 2])
+    monkeypatch.setattr(kiosk, "emulator_uptime_seconds", lambda: next(ages))
+
+    assert kiosk.quit_emulator(sleep=world.sleep) is True
+
+
+def test_a_quit_key_that_does_not_arrive_is_reported(tmp_path, world, monkeypatch):
+    monkeypatch.setattr(kiosk, "_press", lambda _key: False)
+
+    assert kiosk.quit_emulator(sleep=world.sleep) is False
+
+
+def test_an_emulator_that_will_not_go_is_reported(tmp_path, world, monkeypatch):
+    monkeypatch.setattr(kiosk, "_press", lambda _key: True)
+    world.shutdown_after_polls = None
+
+    assert kiosk.quit_emulator(timeout=3, sleep=world.sleep) is False
 
 
 # -- the board itself ----------------------------------------------------
