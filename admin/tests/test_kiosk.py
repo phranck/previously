@@ -92,11 +92,11 @@ def test_stopping_holds_before_it_presses(tmp_path, world):
 
 
 def test_stopping_presses_the_power_button_once(tmp_path, world):
-    finished, reason = kiosk.stop(tmp_path, sleep=world.sleep)
+    finished, told = kiosk.stop(tmp_path, sleep=world.sleep)
 
     assert finished is True
     assert world.power_pressed == 1
-    assert "shut itself down" in reason
+    assert told["reason"] == "guest.shut-itself-down"
 
 
 def test_stopping_leaves_the_emulator_held(tmp_path, world):
@@ -109,12 +109,12 @@ def test_stopping_something_already_stopped_still_holds_it(tmp_path, world):
     later, and the tool would have done the opposite of what was asked."""
     world.emulator_running = False
 
-    finished, reason = kiosk.stop(tmp_path, sleep=world.sleep)
+    finished, told = kiosk.stop(tmp_path, sleep=world.sleep)
 
     assert finished is True
     assert kiosk.is_held(tmp_path) is True
     assert world.power_pressed == 0
-    assert "was not running" in reason
+    assert told["reason"] == "emulator.was-not-running"
 
 
 def test_a_key_that_does_not_arrive_changes_nothing(tmp_path, world):
@@ -123,11 +123,11 @@ def test_a_key_that_does_not_arrive_changes_nothing(tmp_path, world):
     this."""
     world.power_works = False
 
-    finished, reason = kiosk.stop(tmp_path, sleep=world.sleep)
+    finished, told = kiosk.stop(tmp_path, sleep=world.sleep)
 
     assert finished is False
     assert kiosk.is_held(tmp_path) is False
-    assert "nothing was changed" in reason
+    assert told["reason"] == "emulator.power-key-refused"
 
 
 def test_a_guest_that_does_not_go_is_reported_rather_than_killed(tmp_path, world):
@@ -135,10 +135,10 @@ def test_a_guest_that_does_not_go_is_reported_rather_than_killed(tmp_path, world
     stops rather than reaching for anything harder."""
     world.shutdown_after_polls = None
 
-    finished, reason = kiosk.stop(tmp_path, timeout=3, sleep=world.sleep)
+    finished, told = kiosk.stop(tmp_path, timeout=3, sleep=world.sleep)
 
     assert finished is False
-    assert "has not finished shutting down" in reason
+    assert told["reason"] == "guest.still-shutting-down"
     # Still held, because the guest is still going and must not be restarted
     # underneath itself.
     assert kiosk.is_held(tmp_path) is True
@@ -160,40 +160,40 @@ def test_waiting_gives_the_guest_the_whole_timeout(tmp_path, world):
 def test_starting_removes_the_hold(tmp_path, world):
     kiosk.stop(tmp_path, sleep=world.sleep)
 
-    finished, reason = kiosk.start(tmp_path)
+    finished, told = kiosk.start(tmp_path)
 
     assert finished is True
     assert kiosk.is_held(tmp_path) is False
-    assert "on its way back" in reason
+    assert told["reason"] == "emulator.on-its-way-back"
 
 
 def test_starting_something_already_running_says_so(tmp_path, world):
-    finished, reason = kiosk.start(tmp_path)
+    finished, told = kiosk.start(tmp_path)
 
     assert finished is True
-    assert "already running" in reason
+    assert told["reason"] == "emulator.already-running"
 
 
 def test_starting_is_not_an_error_when_nothing_holds_and_nothing_runs(tmp_path, world):
     """The window between the hold coming off and the console noticing."""
     world.emulator_running = False
 
-    finished, reason = kiosk.start(tmp_path)
+    finished, told = kiosk.start(tmp_path)
 
     assert finished is True
-    assert "should come back on its own" in reason
+    assert told["reason"] == "emulator.nothing-holding-it"
 
 
 # -- restarting ----------------------------------------------------------
 
 
 def test_restarting_shuts_down_and_lets_it_come_back(tmp_path, world):
-    finished, reason = kiosk.restart(tmp_path, sleep=world.sleep)
+    finished, told = kiosk.restart(tmp_path, sleep=world.sleep)
 
     assert finished is True
     assert world.power_pressed == 1
     assert kiosk.is_held(tmp_path) is False
-    assert "on its way back" in reason
+    assert told["reason"] == "emulator.on-its-way-back"
 
 
 def test_a_restart_that_cannot_shut_down_does_not_start_anything(tmp_path, world):
@@ -201,11 +201,11 @@ def test_a_restart_that_cannot_shut_down_does_not_start_anything(tmp_path, world
     beside a guest that is still writing."""
     world.shutdown_after_polls = None
 
-    finished, reason = kiosk.restart(tmp_path, timeout=3, sleep=world.sleep)
+    finished, told = kiosk.restart(tmp_path, timeout=3, sleep=world.sleep)
 
     assert finished is False
     assert kiosk.is_held(tmp_path) is True
-    assert "has not finished shutting down" in reason
+    assert told["reason"] == "guest.still-shutting-down"
 
 
 # -- the keys themselves -------------------------------------------------
@@ -251,10 +251,10 @@ def test_a_power_key_that_does_not_arrive_stops_there(tmp_path, world, monkeypat
     monkeypatch.setattr(kiosk, "_press", refuse)
     monkeypatch.setattr(kiosk, "press_power", REAL_PRESS_POWER)
 
-    finished, reason = kiosk.stop(tmp_path, sleep=world.sleep)
+    finished, told = kiosk.stop(tmp_path, sleep=world.sleep)
 
     assert finished is False
-    assert "nothing was changed" in reason
+    assert told["reason"] == "emulator.power-key-refused"
     assert sent == [kiosk.POWER_KEY]
 
 
@@ -272,10 +272,10 @@ def test_a_guest_that_never_started_is_not_waited_for(tmp_path, world, monkeypat
     monkeypatch.setattr(kiosk, "_press", lambda _key: True)
     world.shutdown_after_polls = 1
 
-    finished, reason = kiosk.stop(tmp_path, sleep=world.sleep)
+    finished, told = kiosk.stop(tmp_path, sleep=world.sleep)
 
     assert finished is True
-    assert "Emulator beendet" in reason
+    assert told["reason"] == "emulator.ended-because-blank"
     assert world.power_pressed == 0
     assert kiosk.is_held(tmp_path) is True
 
@@ -284,10 +284,10 @@ def test_a_blank_machine_that_will_not_even_quit_is_reported(tmp_path, world, mo
     monkeypatch.setattr(screen, "looks_alive", lambda: False)
     monkeypatch.setattr(kiosk, "_press", lambda _key: False)
 
-    finished, reason = kiosk.stop(tmp_path, sleep=world.sleep)
+    finished, told = kiosk.stop(tmp_path, sleep=world.sleep)
 
     assert finished is False
-    assert "SSH" in reason
+    assert told["reason"] == "emulator.blank-and-will-not-end"
 
 
 def test_a_screen_that_cannot_be_read_is_shut_down_the_usual_way(tmp_path, world, monkeypatch):
@@ -396,10 +396,10 @@ def test_nothing_else_can_be_asked_of_the_board(tmp_path, world):
     """A name with no pair of units behind it is a request nothing answers, so
     it is refused here rather than left lying in the runtime directory. And the
     guest is not shut down for it."""
-    finished, reason = kiosk.board("halt-and-catch-fire", tmp_path, sleep=world.sleep)
+    finished, told = kiosk.board("halt-and-catch-fire", tmp_path, sleep=world.sleep)
 
     assert finished is False
-    assert "keine Aktion" in reason
+    assert told["reason"] == "board.no-such-action"
     assert list(tmp_path.iterdir()) == []
     assert world.power_pressed == 0
 
@@ -407,10 +407,10 @@ def test_nothing_else_can_be_asked_of_the_board(tmp_path, world):
 def test_a_guest_that_will_not_go_leaves_the_board_alone(tmp_path, world):
     world.shutdown_after_polls = None
 
-    finished, reason = kiosk.board("reboot", tmp_path, timeout=3, sleep=world.sleep)
+    finished, told = kiosk.board("reboot", tmp_path, timeout=3, sleep=world.sleep)
 
     assert finished is False
-    assert "has not finished shutting down" in reason
+    assert told["reason"] == "guest.still-shutting-down"
     assert not (tmp_path / "reboot").exists()
 
 
@@ -427,11 +427,11 @@ def test_a_request_that_cannot_be_written_is_reported(tmp_path, world, monkeypat
     be done about it."""
     monkeypatch.setattr(kiosk, "_request", lambda _directory, _action: False)
 
-    finished, reason = kiosk.board("poweroff", tmp_path, sleep=world.sleep)
+    finished, told = kiosk.board("poweroff", tmp_path, sleep=world.sleep)
 
     assert finished is False
-    assert "nicht darum bitten" in reason
-    assert "SSH" in reason
+    assert told["reason"] == "board.request-refused"
+    assert told["action"] == "poweroff"
 
 
 def test_a_runtime_directory_that_is_not_there_is_not_an_exception(tmp_path):

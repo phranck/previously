@@ -83,6 +83,10 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 
 Every POST is checked for the token before anything looks at what was sent.
 
+**Nothing here answers in sentences.** A machine crosses the wire as what the file holds, so `"model": "NeXTcube", "turbo": true, "dimension": true` rather than `NeXTcube Turbo mit NeXTdimension`, and the browser writes the name. What a chip is called is a fact and travels as it is; what is said about it is the browser's.
+
+Every answer to a POST is a name and the values that fill it, `{"reason": "machine.running", "machine": "NeXTcube Turbo", "lines": 6}`, and `web/app.js` holds the sentence for each name. A service has no idea which language the person reading it wants, so it says what happened and the browser says it in words. That is what makes #18 possible, and it is why the answers were in two languages before: the sentence was written wherever the fact was known.
+
 ## Changing which machine it is
 
 Choosing a NeXTcube Turbo is not one setting. It is a machine type, a processor level, a clock, whether the colour board is seated, which slot it speaks from, and four memory banks, and getting one of them wrong gives a machine that will not boot or is not the one that was asked for. `machines.py` holds the eleven that can be chosen and what each is in the file.

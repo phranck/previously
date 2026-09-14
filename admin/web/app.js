@@ -35,6 +35,72 @@ const MACHINE_ART = {
   station: Art.Station,
 };
 
+/** What the service's answers mean, in words.
+ *
+ *  It sends a name for what happened and the values that fill it, because a
+ *  sentence written there could only ever be in one language. The sentence
+ *  lives here, where the person reading it is. */
+const SAYINGS = {
+  "emulator.was-not-running": () =>
+    "Der Emulator lief nicht und ist jetzt ausgeschaltet.",
+  "emulator.ended-because-blank": () =>
+    "Die Maschine war nicht hochgekommen, also wurde der Emulator beendet. Er ist jetzt ausgeschaltet.",
+  "emulator.blank-and-will-not-end": () =>
+    "Die Maschine ist nicht hochgekommen und der Emulator liess sich auch nicht beenden. Das ist über SSH nachzusehen.",
+  "emulator.power-key-refused": () =>
+    "Der Ausschalter liess sich nicht drücken, es wurde nichts geändert.",
+  "emulator.already-running": () => "Der Emulator läuft schon.",
+  "emulator.nothing-holding-it": () =>
+    "Nichts hält den Emulator unten, er sollte von selbst zurückkommen.",
+  "emulator.on-its-way-back": () => "Der Emulator kommt zurück.",
+  "guest.shut-itself-down": () =>
+    "NeXTSTEP hat sich heruntergefahren, der Emulator bleibt aus.",
+  "guest.still-shutting-down": (told) =>
+    `NeXTSTEP ist nach ${told.seconds} Sekunden noch nicht heruntergefahren. `
+    + "Es bleibt ausgeschaltet, und ein Gast, der noch schreibt, ist der eine Fall, "
+    + "in dem längeres Warten richtig ist.",
+  "board.no-such-action": (told) => `Es gibt keine Aktion namens ${told.action}.`,
+  "board.request-refused": () =>
+    "NeXTSTEP ist heruntergefahren, aber der Pi liess sich nicht darum bitten. "
+    + "Er ist über SSH zu erreichen.",
+  "board.on-its-way": (told) =>
+    `NeXTSTEP ist heruntergefahren, der Pi ${told.action === "reboot" ? "startet neu" : "schaltet ab"}.`,
+  "machine.no-such": (told) => `Es gibt keine Maschine namens ${told.asked}.`,
+  "machine.running": (told) => `${told.machine} läuft, ${told.lines} Zeilen geändert.`,
+  "machine.was-already-set": (told) => `${told.machine} war schon eingestellt.`,
+  "file.not-readable": (told) => told.detail,
+  "rollback.could-not-write": (told) =>
+    `${told.machine} ${WHY[told.why]}, und die vorherige Konfiguration liess sich nicht `
+    + `zurückschreiben: ${told.detail}. Die Maschine ist über SSH zu erreichen.`,
+  "rollback.emulator-will-not-end": (told) =>
+    `${told.machine} ${WHY[told.why]}, die vorherige Konfiguration steht wieder in der Datei, `
+    + "aber der Emulator liess sich nicht beenden. Das ist über SSH nachzusehen.",
+  "rollback.back-as-before": (told) =>
+    `${told.machine} ${WHY[told.why]}. Die vorherige Konfiguration steht wieder in der Datei `
+    + "und die Maschine läuft wie zuvor.",
+  "rollback.nothing-runs": (told) =>
+    `${told.machine} ${WHY[told.why]}, und auch mit der vorherigen Konfiguration läuft nichts. `
+    + "Das ist über SSH nachzusehen.",
+};
+
+/** Which of the two ways a change went wrong, in words. */
+const WHY = {
+  "blank": "zeigt nichts auf dem Bildschirm",
+  "never-came-up": "kam nicht hoch",
+};
+
+/**
+ * What the service just said, as a sentence.
+ * @param {object|null} told - Its answer, carrying `reason` and whatever fills
+ *   it.
+ * @returns {string} The sentence, or the bare name where nothing here knows
+ *   it, because a name on the screen is ugly and silence is worse.
+ */
+function say(told) {
+  const line = told && SAYINGS[told.reason];
+  return line ? line(told) : (told?.reason ?? "");
+}
+
 /** What the buttons ask the service to do, by the route that does it. */
 const Kiosk = {
   Start: "/api/kiosk/start",
@@ -129,6 +195,49 @@ function show(id, text) {
 }
 
 /**
+ * What a machine is called, from the facts the service sent.
+ * @param {object} machine - A configuration or a catalogue entry.
+ * @returns {string} The model's own name with what is fitted to it.
+ *
+ * The model is a product name and arrives as it is. What gets added to it is
+ * a sentence, so it is added here.
+ */
+function nameOf(machine) {
+  let name = machine.model;
+  if (machine.turbo && machine.kind !== 0) name += " Turbo";
+  if (machine.dimension) name += " mit NeXTdimension";
+  return name;
+}
+
+/**
+ * @param {object} machine - A configuration or a catalogue entry.
+ * @returns {string} The processor and its clock.
+ */
+function cpuOf(machine) {
+  return `${machine.cpu}, ${machine.mhz} MHz`;
+}
+
+/**
+ * @param {object} machine - A configuration or a catalogue entry.
+ * @returns {string} What the screen shows, which is where colour is decided.
+ *
+ * A cube has no colour of its own: Previous forces the flag off for that
+ * machine type, and colour arrives only through a NeXTdimension.
+ */
+function screenOf(machine) {
+  if (machine.dimension) return "NeXTdimension, farbig";
+  return machine.colour ? "MegaPixel, farbig" : "MegaPixel, Graustufen";
+}
+
+/**
+ * @param {object} machine - A configuration or a catalogue entry.
+ * @returns {string} The three chips that decide whether it runs at all.
+ */
+function chipsOf(machine) {
+  return `${machine.rtc}, ${machine.scsi}, ${machine.nbic ? "mit" : "ohne"} NeXTbus`;
+}
+
+/**
  * The picture for a machine.
  * @param {string|null} enclosure - What the service called its case.
  * @returns {string} The picture's name. A case nobody knows falls back to the
@@ -203,15 +312,16 @@ function drawStatus(status) {
   if (status.running) words = ` läuft ${since(status.uptime_seconds)}`;
   else if (status.held) words = " ausgeschaltet";
   /* The file has been written since this machine started, so it holds a
-     machine nobody has tried. Said here in words, because the mark in the
-     shelf is a texture and a texture explains nothing on its own. */
+     machine nobody has tried. It marks the machine in the shelf, and the file
+     line below says it in words, because a texture explains nothing on its
+     own. */
   const untried = Boolean(status.file?.newer_than_the_machine);
   state.replaceChildren(lamp, document.createTextNode(words));
 
   /* "kommt zurück" is done when it is back, and the note should not still be
      saying it. So a note is kept until the machine is in a different state
      than it was when the note was written, and then it goes. */
-  const nowState = `${status.running}/${status.held}/${status.configuration?.machine}`;
+  const nowState = `${status.running}/${status.held}/${status.configuration?.catalogue}`;
   if (noteState === JUST_WRITTEN) {
     noteState = nowState;
   } else if (noteState !== null && noteState !== nowState) {
@@ -233,25 +343,20 @@ function drawStatus(status) {
   const machine = status.configuration;
   if (!machine) {
     show("info-caption", "Konfiguration nicht lesbar");
-    for (const id of ["info-cpu", "info-ram", "info-screen", "info-disk"]) show(id, "—");
+    const empty = ["info-cpu", "info-ram", "info-screen", "info-disk",
+                   "info-file", "info-written"];
+    for (const id of empty) show(id, "—");
     return;
   }
 
-  show("info-caption", machine.machine);
+  show("info-caption", nameOf(machine));
   markCurrent(machine.catalogue, untried);
 
-  /* Two different things about the file, and both can be true at once: what it
-     holds, and whether the machine has seen it. They are a line of their own
-     rather than a tail on the state, because a machine that is simply running
-     has nothing to say here and the line then stays away. */
-  const notes = [];
-  if (!machine.catalogue) notes.push("eigene Konfiguration");
-  if (untried) notes.push("seit dem Start geändert");
-  document.getElementById("info-file-row").hidden = notes.length === 0;
-  show("info-file", notes.join(", "));
-  show("info-cpu", machine.cpu);
+  show("info-file", changedLine(status.file));
+  show("info-written", writtenLine(status.file));
+  show("info-cpu", cpuOf(machine));
   show("info-ram", `${machine.memory_mb} MB`);
-  show("info-screen", machine.screen);
+  show("info-screen", screenOf(machine));
   show("info-disk", machine.disk ?? "keine eingelegt");
 
   /* The same picture the boot ROM puts up whilst it tests this machine. Colour
@@ -306,7 +411,7 @@ async function operate(route, working) {
   const answer = await tell(route);
   setBusy(false, answer === null
     ? "keine Verbindung zum Dienst"
-    : answer.reason ?? "");
+    : say(answer));
   if (answer) drawStatus(answer);
   refresh();
 }
@@ -619,6 +724,31 @@ function when(seconds) {
 }
 
 /**
+ * When the configuration file was last written.
+ * @param {object|undefined} file - What the service says about previous.cfg.
+ * @returns {string} The moment, and a note where the running machine is older
+ *   than the file. Previous reads the file once at its start, so anything
+ *   written afterwards is a machine nobody has tried.
+ */
+function changedLine(file) {
+  if (!file) return "—";
+  return when(file.changed_at) + (file.newer_than_the_machine ? ", noch nicht gebootet" : "");
+}
+
+/**
+ * Who wrote the configuration file last.
+ * @param {object|undefined} file - What the service says about previous.cfg.
+ * @returns {string} One of two sentences. Previously leaves a note of what it
+ *   wrote, so a file that no longer matches that note came from somewhere
+ *   else, and the two candidates are the emulator's own settings dialogue and
+ *   somebody at the keyboard.
+ */
+function writtenLine(file) {
+  if (!file) return "—";
+  return file.written_by_us ? "von Previously" : "von Previous oder von Hand";
+}
+
+/**
  * How a machine's memory is made up.
  * @param {number[]} banks - The four banks in megabytes, empty ones as zero.
  * @returns {string} "4 × 32" where every filled bank is the same size, and
@@ -652,25 +782,24 @@ function showMachineInfo(where) {
   document.getElementById("mi-icon").style.backgroundImage =
     `var(--${machineArt(machine.enclosure)})`;
 
-  show("mi-cpu", machine.cpu);
+  show("mi-cpu", cpuOf(machine));
   show("mi-ram", `${machine.memory_mb} MB (${fitted(machine.banks)})`);
-  show("mi-screen", machine.screen);
+  show("mi-screen", screenOf(machine));
   show("mi-dimension", machine.dimension ? "eingebaut" : "keine");
-  show("mi-chips", machine.chips);
+  show("mi-chips", chipsOf(machine));
 
   /* The file holds one machine, so everything it can say applies to that one
      and to no other. */
   const file = lastStatus?.file;
-  const isTheOneInTheFile = lastStatus?.configuration?.machine === machine.name;
+  /* By identifier rather than by name, because the file cannot carry the
+     Nitro that the catalogue's name does. */
+  const isTheOneInTheFile = lastStatus?.configuration?.catalogue === machine.id;
   if (!file || !isTheOneInTheFile) {
     show("mi-changed", "diese Maschine ist nicht eingestellt");
     show("mi-written", "—");
   } else {
-    const untried = file.newer_than_the_machine ? ", noch nicht gebootet" : "";
-    show("mi-changed", when(file.changed_at) + untried);
-    show("mi-written", file.written_by_us
-      ? "von Previously"
-      : "von Previous oder von Hand");
+    show("mi-changed", changedLine(file));
+    show("mi-written", writtenLine(file));
   }
 
   window_.open();
@@ -709,7 +838,7 @@ async function changeTo(identifier) {
   const answer = await tell("/api/machine", { machine: identifier });
   setBusy(false, answer === null
     ? "keine Verbindung zum Dienst"
-    : answer.reason ?? "");
+    : say(answer));
   if (answer) drawStatus(answer);
   refresh();
 }
@@ -829,7 +958,7 @@ async function operateBoard(route, working) {
      rather than a failure. Saying so beats a page that claims no contact. */
   show("pi-note", answer === null
     ? "Keine Antwort mehr. Das ist zu erwarten, wenn der Pi gerade abschaltet."
-    : answer.reason ?? "");
+    : say(answer));
 
   /* Nothing is switched back on here. The next status decides: whilst the
      board is away it does not answer, and everything stays off until it does. */

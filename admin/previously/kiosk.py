@@ -103,6 +103,22 @@ def uptime_seconds(unit):
     return max(0, int(_monotonic() - started))
 
 
+def told(name, **values):
+    """One answer from this module, as a name and what fills it.
+
+    @param name - What happened, in a form that does not change with the
+      language it is read in.
+    @param values - Whatever the sentence needs: a count, a machine's name, a
+      number of seconds.
+    @returns dict with `reason` and the rest beside it.
+
+    A sentence written here could only ever be in one language, and this
+    service has no idea which language the person reading it wants. So it says
+    what happened and the browser says it in words.
+    """
+    return {"reason": name, **values}
+
+
 def hold_path(runtime_directory):
     """Where the file that holds the emulator down lives.
 
@@ -229,7 +245,7 @@ def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
     hold_path(runtime_directory).touch()
 
     if not emulator_is_running():
-        return True, "the emulator was not running, and is now held down"
+        return True, told("emulator.was-not-running")
 
     # A guest that never started cannot be shut down. The power key reaches
     # NeXTSTEP, and where the screen is blank there is no NeXTSTEP to reach, so
@@ -237,25 +253,17 @@ def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
     # itself is told instead, and the hold is already in place.
     if screen.looks_alive() is False:
         if quit_emulator(sleep=sleep):
-            return True, ("Die Maschine war nicht hochgekommen, also wurde der "
-                          "Emulator beendet. Er ist jetzt ausgeschaltet.")
-        return False, ("Die Maschine ist nicht hochgekommen und der Emulator "
-                       "liess sich auch nicht beenden. Das ist über SSH "
-                       "nachzusehen.")
+            return True, told("emulator.ended-because-blank")
+        return False, told("emulator.blank-and-will-not-end")
 
     if not press_power():
         hold_path(runtime_directory).unlink(missing_ok=True)
-        return False, "the power button could not be pressed, so nothing was changed"
+        return False, told("emulator.power-key-refused")
 
     if not _wait_for_shutdown(timeout, sleep):
-        return False, (
-            "NeXTSTEP has not finished shutting down after %d seconds. "
-            "It is still held down, so nothing will start it again, and a "
-            "guest that is still writing is the one case where waiting "
-            "longer is right." % timeout
-        )
+        return False, told("guest.still-shutting-down", seconds=timeout)
 
-    return True, "NeXTSTEP shut itself down and the emulator is held down"
+    return True, told("guest.shut-itself-down")
 
 
 def start(runtime_directory):
@@ -269,11 +277,11 @@ def start(runtime_directory):
     """
     if not is_held(runtime_directory):
         if emulator_is_running():
-            return True, "the emulator is already running"
-        return True, "nothing is holding the emulator down; it should come back on its own"
+            return True, told("emulator.already-running")
+        return True, told("emulator.nothing-holding-it")
 
     hold_path(runtime_directory).unlink(missing_ok=True)
-    return True, "the emulator is on its way back"
+    return True, told("emulator.on-its-way-back")
 
 
 def quit_emulator(timeout=QUIT_TIMEOUT_SECONDS, sleep=time.sleep):
@@ -348,18 +356,16 @@ def board(action, runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS,
     console starts the emulator by itself.
     """
     if action not in BOARD_REQUESTS:
-        return False, "es gibt keine Aktion namens %r" % action
+        return False, told("board.no-such-action", action=action)
 
     stopped, reason = stop(runtime_directory, timeout, sleep)
     if not stopped:
         return False, reason
 
     if not _request(runtime_directory, action):
-        return False, ("NeXTSTEP ist heruntergefahren, aber der Pi liess sich "
-                       "nicht darum bitten. Er ist über SSH zu erreichen.")
+        return False, told("board.request-refused", action=action)
 
-    return True, ("NeXTSTEP ist heruntergefahren, der Pi %s."
-                  % ("startet neu" if action == "reboot" else "schaltet ab"))
+    return True, told("board.on-its-way", action=action)
 
 
 def _request(runtime_directory, action):

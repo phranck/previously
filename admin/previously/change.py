@@ -39,13 +39,15 @@ def to_machine(identifier, settings, sleep=None):
     @param settings - Settings, for the configuration path and the state
       directory.
     @param sleep - Injected so a test does not wait in real time.
-    @returns (bool, str). The second is what to tell the user either way.
+    @returns (bool, dict). The second is a name for what happened and the
+      values that fill it, because the sentence belongs to whoever is reading
+      it and this service does not know their language.
     """
     sleep = sleep or time.sleep
 
     machine = machines.find(identifier)
     if machine is None:
-        return False, "es gibt keine Maschine namens %r" % identifier
+        return False, kiosk.told("machine.no-such", asked=identifier)
 
     stopped, reason = kiosk.stop(settings.runtime_directory, sleep=sleep)
     if not stopped:
@@ -60,7 +62,7 @@ def to_machine(identifier, settings, sleep=None):
         # whatever it was rather than leaving the machine switched off for a
         # reason the user did not ask for.
         kiosk.start(settings.runtime_directory)
-        return False, str(error)
+        return False, kiosk.told("file.not-readable", detail=str(error))
 
     # So that the file can later say whether it is still the one we left. It is
     # noted even where nothing changed, because the file is ours either way.
@@ -78,43 +80,40 @@ def to_machine(identifier, settings, sleep=None):
         return False, _rolled_back(settings, machine, sleep, blank=True)
 
     if changed:
-        return True, "%s läuft, %d Zeilen geändert" % (machine.name, changed)
-    return True, "%s war schon eingestellt" % machine.name
+        return True, kiosk.told("machine.running", machine=machine.name, lines=changed)
+    return True, kiosk.told("machine.was-already-set", machine=machine.name)
 
 
 def _rolled_back(settings, machine, sleep, blank=False):
     """Puts the previous configuration back and says so.
 
     @param blank - Whether the machine is sitting there with nothing on its
-      screen, which decides whether the emulator has to be got out of the way.
-    @returns str, what to tell the user.
+      screen, which decides whether the emulator has to be got out of the way,
+      and which of the two words the browser puts on it.
+    @returns dict, a name and what fills it.
     """
-    why = "zeigt nichts auf dem Bildschirm" if blank else "kam nicht hoch"
+    why = "blank" if blank else "never-came-up"
 
     backup = settings.previous_config.with_suffix(
         settings.previous_config.suffix + ".bak")
     try:
         settings.previous_config.write_bytes(backup.read_bytes())
     except OSError as error:
-        return ("%s %s, und die vorherige Konfiguration liess sich "
-                "nicht zurückschreiben: %s. Die Maschine ist über SSH zu "
-                "erreichen." % (machine.name, why, error))
+        return kiosk.told("rollback.could-not-write", machine=machine.name,
+                          why=why, detail=str(error))
 
     # Previous reads its configuration when it starts and never again, so a
     # file put back underneath a running emulator changes nothing until that
     # emulator goes. Where it exited by itself the console has already started
     # it again; where it is sitting at a blank screen it has to be told.
     if blank and not kiosk.quit_emulator(sleep=sleep):
-        return ("%s %s, die vorherige Konfiguration steht wieder in der Datei, "
-                "aber der Emulator liess sich nicht beenden. Das ist über SSH "
-                "nachzusehen." % (machine.name, why))
+        return kiosk.told("rollback.emulator-will-not-end",
+                          machine=machine.name, why=why)
 
     if _stayed_up(sleep):
-        return ("%s %s. Die vorherige Konfiguration steht wieder "
-                "in der Datei und die Maschine läuft wie zuvor." % (machine.name, why))
+        return kiosk.told("rollback.back-as-before", machine=machine.name, why=why)
 
-    return ("%s %s, und auch mit der vorherigen Konfiguration "
-            "läuft nichts. Das ist über SSH nachzusehen." % (machine.name, why))
+    return kiosk.told("rollback.nothing-runs", machine=machine.name, why=why)
 
 
 def _stayed_up(sleep):

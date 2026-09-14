@@ -59,7 +59,8 @@ def test_status_carries_the_machine_and_whether_it_runs(service):
     payload = json.loads(body)
 
     assert status == 200
-    assert payload["configuration"]["machine"] == "NeXTcube Turbo"
+    assert payload["configuration"]["model"] == "NeXTcube"
+    assert payload["configuration"]["turbo"] is True
     # The unit in the fixture does not exist, so this is the false case.
     assert payload["running"] is False
     assert payload["uptime_seconds"] is None
@@ -344,4 +345,4 @@ def test_a_machine_that_does_not_exist_is_refused(service):
     with pytest.raises(urllib.error.HTTPError) as raised:
         urllib.request.urlopen(request, timeout=5)
     assert raised.value.code == 409
-    assert "keine Maschine" in json.loads(raised.value.read())["reason"]
+    assert json.loads(raised.value.read())["reason"] == "machine.no-such"

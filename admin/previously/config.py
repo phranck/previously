@@ -68,18 +68,23 @@ def read(path):
 
 
 def describe(system, memory, dimension):
-    """What a machine is, in words, from the keys that make it.
+    """What a machine is, from the keys that make it.
 
     @param system - The System keys, as a mapping of name to string. Either a
       section of the file or what machines.settings_for produced, because both
       use the emulator's own key names.
     @param memory - The Memory keys, the same way.
     @param dimension - The Dimension keys, the same way.
-    @returns dict describing the machine. No key name from the file appears in
-      it: a person choosing a machine should not have to learn that a cube is
-      `nMachineType = 1`.
+    @returns dict of facts. No key name from the file appears in it, and no
+      sentence either: a person choosing a machine should not have to learn
+      that a cube is `nMachineType = 1`, and a browser showing this in another
+      language cannot take a German sentence apart again.
 
-    Written for both sources on purpose. The shelf has to say what a machine
+    What a chip is called is a fact and travels as it is. What is said about it
+    is the browser's, so "MCCS1850" crosses the wire and "mit NeXTbus" does
+    not.
+
+    Written for both sources on purpose. The viewer has to say what a machine
     would be before it is running, and the info window has to say what the
     running one is, and a second copy of this arithmetic would be a second
     answer to the same question.
@@ -89,32 +94,26 @@ def describe(system, memory, dimension):
     dimension_seated = _bool(dimension, "bEnabled0")
 
     return {
-        "machine": _machine_name(machine_type, turbo, dimension_seated),
+        "kind": machine_type,
+        # The model's own name, which is not translated in any language and is
+        # therefore a fact like the chips. What gets added to it, the Turbo and
+        # the board, is a sentence and belongs to the browser.
+        "model": MACHINE_NAMES.get(machine_type, "?"),
         "enclosure": enclosure(machine_type),
-        "cpu": _cpu(system),
+        "turbo": turbo,
+        "colour": _bool(system, "bColor"),
+        "dimension": dimension_seated,
+        "cpu": CPU_NAMES.get(_int(system, "nCpuLevel", 1), "68040"),
+        "mhz": _int(system, "nCpuFreq", 25),
         "memory_mb": _memory(memory),
         "banks": [_int(memory, "nMemoryBankSize%d" % bank) for bank in range(4)],
-        "screen": _screen(system, dimension_seated),
-        "dimension": dimension_seated,
-        "turbo": turbo,
-        "chips": _chips(system),
+        # The three that decide whether a configuration runs at all, named
+        # because getting one wrong produces a machine that resets for ever
+        # without saying anything.
+        "rtc": "MCCS1850" if _bool(system, "nRTC") else "MC68HC68T1",
+        "scsi": "NCR53C90A" if _bool(system, "nSCSI") else "NCR53C90",
+        "nbic": _bool(system, "bNBIC"),
     }
-
-
-def _chips(system):
-    """The three chips that decide whether a configuration runs at all.
-
-    @param system - The System keys.
-    @returns str, the three named and separated by commas.
-
-    They are here because they are what a machine is made of rather than what
-    it does, and because getting one of them wrong produces a machine that
-    resets for ever without saying anything.
-    """
-    clock = "MCCS1850" if _bool(system, "nRTC") else "MC68HC68T1"
-    scsi = "NCR53C90A" if _bool(system, "nSCSI") else "NCR53C90"
-    bus = "mit NeXTbus" if _bool(system, "bNBIC") else "ohne NeXTbus"
-    return "%s, %s, %s" % (clock, scsi, bus)
 
 
 def note_written(path, state_directory):
@@ -301,44 +300,12 @@ def _bool(section, key):
     return str(section.get(key, "FALSE")).strip().upper() == "TRUE"
 
 
-def _machine_name(machine_type, turbo, dimension_seated):
-    """The name a person would use, which the file does not hold anywhere.
-
-    Previous stores the type, the turbo flag and the board separately, and the
-    machine somebody means is all three together.
-    """
-    name = MACHINE_NAMES.get(machine_type, "unbekannt")
-    if turbo and machine_type in (1, 2):
-        name += " Turbo"
-    if dimension_seated:
-        name += " mit NeXTdimension"
-    return name
-
-
-def _cpu(system):
-    """@returns The processor and its clock, as one readable string."""
-    level = _int(system, "nCpuLevel", 1)
-    clock = _int(system, "nCpuFreq", 25)
-    return "%s, %d MHz" % (CPU_NAMES.get(level, "68040"), clock)
-
-
 def _memory(memory):
     """@returns Total memory in megabytes, summed over the banks.
 
     Previous holds four banks and the machine has as much as they add up to.
     """
     return sum(_int(memory, "nMemoryBankSize%d" % bank) for bank in range(4))
-
-
-def _screen(system, dimension_seated):
-    """What the screen shows, which is where colour is decided.
-
-    A cube has no colour of its own: Previous forces bColor false for that
-    machine type, and colour arrives only through a NeXTdimension.
-    """
-    if dimension_seated:
-        return "NeXTdimension, farbig"
-    return "MegaPixel, farbig" if _bool(system, "bColor") else "MegaPixel, Graustufen"
 
 
 def _disk(parser):

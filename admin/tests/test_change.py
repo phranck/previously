@@ -121,11 +121,16 @@ def run(identifier, settings, machine, back_as=3600, come_back=True):
 
 
 def test_a_machine_is_written_and_comes_back(settings, machine):
-    finished, reason = run("nextstation-turbo-color", settings, machine)
+    finished, told = run("nextstation-turbo-color", settings, machine)
 
     assert finished is True
-    assert "NeXTstation Turbo Color" in reason
-    assert config.read(settings.previous_config)["machine"] == "NeXTstation Turbo"
+    assert told["machine"] == "NeXTstation Turbo Color"
+    # What the file says about itself, which cannot carry the Nitro or the
+    # colour that the catalogue's own name does.
+    written = config.read(settings.previous_config)
+    assert written["model"] == "NeXTstation"
+    assert written["turbo"] is True
+    assert written["colour"] is True
     assert machine.powered_off == 1
 
 
@@ -168,10 +173,10 @@ def test_the_previous_file_is_kept_beside_it(settings, machine):
 
 def test_choosing_what_is_already_set_changes_nothing(settings, machine):
     before = settings.previous_config.read_text()
-    finished, reason = run("nextcube-turbo-dimension", settings, machine)
+    finished, told = run("nextcube-turbo-dimension", settings, machine)
 
     assert finished is True
-    assert "war schon eingestellt" in reason
+    assert told["reason"] == "machine.was-already-set"
     assert settings.previous_config.read_text() == before
 
 
@@ -185,10 +190,10 @@ def test_a_machine_that_shows_nothing_is_rolled_back(settings, machine):
     before = settings.previous_config.read_text()
     machine.screen_after = False
 
-    finished, reason = run("nextstation", settings, machine)
+    finished, told = run("nextstation", settings, machine)
 
     assert finished is False
-    assert "zeigt nichts auf dem Bildschirm" in reason
+    assert told["why"] == "blank"
     assert settings.previous_config.read_text() == before
 
 
@@ -207,11 +212,11 @@ def test_a_blank_machine_is_got_out_of_the_way(settings, machine):
 def test_a_machine_that_shows_something_is_left_alone(settings, machine):
     machine.screen_after = True
 
-    finished, reason = run("nextstation", settings, machine)
+    finished, told = run("nextstation", settings, machine)
 
     assert finished is True
     assert machine.quit_asked == 0
-    assert "läuft" in reason
+    assert told["reason"] == "machine.running"
 
 
 def test_a_screen_that_cannot_be_read_is_not_held_against_it(settings, machine):
@@ -231,10 +236,10 @@ def test_a_machine_that_never_returns_is_rolled_back(settings, machine):
     SSH as the only way back."""
     before = settings.previous_config.read_text()
 
-    finished, reason = run("nextstation", settings, machine, come_back=False)
+    finished, told = run("nextstation", settings, machine, come_back=False)
 
     assert finished is False
-    assert "kam nicht hoch" in reason
+    assert told["why"] == "never-came-up"
     assert settings.previous_config.read_text() == before
 
 
@@ -244,20 +249,20 @@ def test_a_machine_that_restarts_over_and_over_counts_as_not_coming_back(setting
     would see that loop and call it success."""
     before = settings.previous_config.read_text()
 
-    finished, reason = run("nextstation", settings, machine, back_as=1)
+    finished, told = run("nextstation", settings, machine, back_as=1)
 
     assert finished is False
-    assert "kam nicht hoch" in reason
+    assert told["why"] == "never-came-up"
     assert settings.previous_config.read_text() == before
 
 
 def test_a_name_that_is_not_a_machine_changes_nothing(settings, machine):
     before = settings.previous_config.read_text()
 
-    finished, reason = run("amiga-2000", settings, machine)
+    finished, told = run("amiga-2000", settings, machine)
 
     assert finished is False
-    assert "keine Maschine" in reason
+    assert told["reason"] == "machine.no-such"
     assert settings.previous_config.read_text() == before
     # And nothing was switched off for it.
     assert machine.powered_off == 0
@@ -270,9 +275,9 @@ def test_a_guest_that_will_not_shut_down_leaves_the_file_alone(settings, machine
 
     import unittest.mock
     with unittest.mock.patch.object(kiosk, "press_power", machine.press_power):
-        finished, reason = change.to_machine(
+        finished, told = change.to_machine(
             "nextstation", settings, sleep=lambda _s: None)
 
     assert finished is False
-    assert "shutting down" in reason
+    assert told["reason"] == "guest.still-shutting-down"
     assert settings.previous_config.read_text() == before
