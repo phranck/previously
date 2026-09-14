@@ -9,7 +9,29 @@ make run          # in the foreground, on port 2342
 make check        # lint and tests, which is what a commit needs
 ```
 
-Nothing is fetched. Everything runs on what Debian ships: `python3`, `python3-pytest` and `python3-flake8`.
+## What it needs installed
+
+**To run, on the Pi**, five things beyond what Raspberry Pi OS already has. `install.sh` installs four of them, `cage`, `7zip`, `xdotool` and `imagemagick`, and the fifth is Previous itself out of the Window Maker Live archive.
+
+The rest is the system's own and is assumed rather than installed: `systemd` for `systemctl`, `procps` for `pgrep` and `ps`, `raspi-utils-core` for `vcgencmd`, and `python3`. A Pi without `vcgencmd` still runs this; the window shows one reading fewer, because every reading in `pi.py` answers with nothing rather than failing.
+
+What each is for: `cage` is the compositor the emulator runs in, `7zip` unpacks the disk archive, `xdotool` presses the emulator's keys, and ImageMagick's `import` reads its screen, which is the only way to tell a machine that booted from one that did not.
+
+**To work on it**, `flake8` and `pytest` as well. They are not on the Pi and `install.sh` does not put them there, because nothing in running the service needs them.
+
+```bash
+sudo apt install python3-pytest python3-flake8       # Debian, the Pi included
+brew install flake8 pytest                           # macOS
+```
+
+Homebrew's are their own programs rather than modules of the system Python, which the Makefile calls as `$(PYTHON) -m`. So on a Mac it is a virtual environment that works with it:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install flake8 pytest
+make check PYTHON=.venv/bin/python
+```
+
+Nothing is fetched at runtime. The service itself uses only the standard library, so it starts on a machine with no network and inside a package build.
 
 ## What is in here
 
