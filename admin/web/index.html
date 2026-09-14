@@ -60,11 +60,9 @@
   </div>
 </nx-window>
 
-<nx-window name="machines" title="Maschinen" x="180" y="360" w="440" h="300"
-           min-w="300" min-h="200" closed>
-  <nx-scroller>
-    <nx-shelf id="machine-shelf"></nx-shelf>
-  </nx-scroller>
+<nx-window name="machines" title="Maschinen" x="180" y="330" w="470" h="460"
+           min-w="340" min-h="340" closed>
+  <nx-viewer id="machine-viewer"></nx-viewer>
   <p class="note" id="machine-note"></p>
 </nx-window>
 
@@ -97,6 +95,7 @@
        are one run of entries, with the submenu arrow and the shortcut letter
        the only things that break it. -->
   <nx-menu-item name="info">Info&hellip;</nx-menu-item>
+  <nx-menu-item name="shelf">Auf die Ablage legen</nx-menu-item>
   <nx-menu-item name="activate">Activate config</nx-menu-item>
   <nx-menu-item name="edit" icon="defaultAppIcon">Edit config&hellip;</nx-menu-item>
 </nx-menu>

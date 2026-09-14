@@ -113,7 +113,9 @@ Stopping writes that file, presses F10 and waits for the guest to go. Starting r
 
 ## The interface
 
-`web/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`.
+`web/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`, `nx-viewer`.
+
+**`nx-viewer` is NeXTSTEP's File Viewer**, which is four bands in one window: a shelf that keeps whatever is dropped on it, one line of status, the path as a row of icons with an arrow between each pair, and what the last step of that path holds. It knows nothing about what it shows. The page hands it a path, contents and a shelf, and listens for `nx-choose` when something is chosen, `nx-path` when a step of the path is, and `nx-keep` when something is dropped on the shelf. The machines window is one, and the shared directory of #21 will be another.
 
 A thing with a `value` can be lifted and carried, and a window with `drop` takes what lands on it. A menu with `context` is the same menu put where the pointer is and taken away again, and an item in one can carry an `icon` and be `disabled`. Both raise `nx-choose` carrying that value, so double clicking a thing and dragging it somewhere mean the same to whoever answers, and a page answers once. They are split into files here rather than baked into one page, and the pictures are files rather than data URIs.
 

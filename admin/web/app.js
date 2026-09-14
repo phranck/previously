@@ -21,6 +21,7 @@ const TOKEN_HEADER = "X-Previously-Token";
 /** What the pictures are called, by what they mean rather than by their file. */
 const Art = {
   Computer: "root",
+  Folder: "folder",
   Cube: "nextcube",
   Station: "nextstation",
   Editor: "defaultAppIcon",
@@ -309,6 +310,23 @@ let runningArt = Art.Computer;
  *  info window says what a machine is without anything having to run. */
 let catalogue = [];
 
+/** Where the shelf's contents live between visits. The machines themselves
+ *  come from the service; this is only which of them somebody put there. */
+const KEPT_KEY = "previously:kept";
+
+/** The identifiers on the viewer's shelf, in the order they were put there. */
+let kept = readKept();
+
+/** @returns {string[]} What was on the shelf last time, or nothing. */
+function readKept() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEPT_KEY));
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+}
+
 /** The last thing /api/status said, for the parts of the info window that are
  *  about the file rather than about a machine. */
 let lastStatus = null;
@@ -384,24 +402,57 @@ function wireButtons() {
  */
 async function drawMachines() {
   const answer = await ask("/api/machines");
-  const shelf = document.getElementById("machine-shelf");
+  const viewer = document.getElementById("machine-viewer");
   if (!answer) {
     show("machine-note", "Liste nicht erreichbar");
     return;
   }
 
   catalogue = answer.machines;
-  shelf.replaceChildren(...answer.machines.map((machine) => {
-    const thing = document.createElement("nx-thing");
-    thing.setAttribute("icon", machineArt(machine.enclosure));
-    thing.setAttribute("label", machine.name);
-    /* The value is what a drop, a double click and the button all hand over,
-       so there is one place the machine's name lives. */
-    thing.setAttribute("value", machine.id);
-    return thing;
-  }));
+  viewer.show({
+    path: [{ label: "Maschinen", icon: Art.Folder, value: "" }],
+    contents: answer.machines.map(entryFor),
+    keeps: kept.map((identifier) => catalogue.find((machine) => machine.id === identifier))
+      .filter(Boolean).map(entryFor),
+    status: `${answer.machines.length} Maschinen`,
+  });
 
-  shelf.addEventListener("click", () => show("machine-note", ""));
+  viewer.addEventListener("click", () => show("machine-note", ""));
+}
+
+/**
+ * One machine as the viewer wants it.
+ * @param {object} machine - An entry of /api/machines.
+ * @returns {object} `{label, icon, value}`. The value is what a drop, a double
+ *   click and the menu all hand over, so there is one place the machine's name
+ *   lives.
+ */
+function entryFor(machine) {
+  return {
+    label: machine.name,
+    icon: machineArt(machine.enclosure),
+    value: machine.id,
+  };
+}
+
+/**
+ * Puts a machine on the viewer's shelf, or takes it off again.
+ * @param {string} identifier - Which machine.
+ * @param {boolean} onto - True to put it there, false to take it off.
+ *
+ * The shelf is for the two or three somebody actually switches between. It is
+ * kept in this browser rather than on the Pi: which machines one person wants
+ * to hand is not a property of the machine.
+ */
+function keepOnShelf(identifier, onto) {
+  kept = kept.filter((entry) => entry !== identifier);
+  if (onto) kept.push(identifier);
+  try {
+    localStorage.setItem(KEPT_KEY, JSON.stringify(kept));
+  } catch {
+    /* A browser that refuses to store it still shows it for this visit. */
+  }
+  drawMachines();
 }
 
 /**
@@ -411,7 +462,7 @@ async function drawMachines() {
  *   machine started, so what is written down has never been through a boot.
  */
 function markCurrent(name, untried) {
-  for (const thing of document.querySelectorAll("#machine-shelf nx-thing")) {
+  for (const thing of document.querySelectorAll("#machine-viewer .contents nx-thing")) {
     const isCurrent = thing.getAttribute("label") === name;
     thing.classList.toggle("current", isCurrent);
     thing.classList.toggle("untried", isCurrent && Boolean(untried));
@@ -499,7 +550,7 @@ function showMachineInfo(identifier) {
  */
 async function changeTo(identifier) {
   const thing = document.querySelector(
-    `#machine-shelf nx-thing[value="${identifier}"]`);
+    `#machine-viewer .contents nx-thing[value="${identifier}"]`);
   if (!thing) return;
 
   const name = thing.getAttribute("label");
@@ -557,10 +608,20 @@ function openMachineMenu(thing, x, y) {
   const info = menu.querySelector('nx-menu-item[name="info"]');
   const activate = menu.querySelector('nx-menu-item[name="activate"]');
   const edit = menu.querySelector('nx-menu-item[name="edit"]');
+  const shelf = menu.querySelector('nx-menu-item[name="shelf"]');
 
   info.onclick = () => {
     menu.close();
     showMachineInfo(thing.getAttribute("value"));
+  };
+
+  /* The one entry whose wording changes, because it is the same act either
+     way round and two entries for it would both be wrong half the time. */
+  const onShelf = Boolean(thing.closest(".keep"));
+  shelf.textContent = onShelf ? "Von der Ablage nehmen" : "Auf die Ablage legen";
+  shelf.onclick = () => {
+    menu.close();
+    keepOnShelf(thing.getAttribute("value"), !onShelf);
   };
 
   /* The machine that is already running cannot be activated: it would shut
@@ -649,7 +710,7 @@ function wireOpening() {
 function wireMachines() {
   /* A right click anywhere on a machine, rather than on the shelf, so the menu
      is always about something. */
-  document.getElementById("machine-shelf").addEventListener("contextmenu", (event) => {
+  document.getElementById("machine-viewer").addEventListener("contextmenu", (event) => {
     const thing = event.target.closest("nx-thing");
     if (!thing) return;
     event.preventDefault();
@@ -663,6 +724,11 @@ function wireMachines() {
      raises the same event for both, so this is one answer to two gestures. */
   document.addEventListener("nx-choose",
     (event) => changeTo(event.detail.value));
+
+  /* Carried onto the viewer's own shelf, which means keep this one to hand
+     rather than start it. */
+  document.addEventListener("nx-keep",
+    (event) => keepOnShelf(event.detail.value, true));
 }
 
 /**
