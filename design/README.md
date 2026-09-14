@@ -63,6 +63,8 @@ The NeXTSTEP draft is a set of custom elements that plug into one another:
 
 `nx-scroller` is the only rule in the stylesheet that hands out `overflow`. Anything that can scroll therefore sits inside one and wears NeXT's own scroller on its left, and the browser's native scrollbar cannot appear.
 
+`nx-viewer` is the File Viewer: a shelf that keeps what is dropped on it, a line of status, the path as a row of icons with an arrow between each pair, and the contents of the last step in a scroller. It is given what to show and says what was chosen, so it serves machines and directories alike.
+
 The rest: `nx-menu` with `nx-menu-item`, `nx-dock` with `nx-tile`, `nx-shelf` with `nx-thing`, and `nx-portrait`, `nx-row` and `nx-field` for panels. They use the light DOM rather than a shadow root, so one stylesheet and one set of design tokens reach all of them.
 
 ## A note on the icons
