@@ -37,7 +37,11 @@
   --live: #2f7d32;
 
   --icon: 48px;          /* what NeXTSTEP drew an icon at, and these are those */
-  --tile: 104px;         /* the tile an icon and its name sit on */
+  --tile: 128px;         /* the tile an icon and its name sit on, measured off
+                            the original's contents band, where two icons stand
+                            128 apart */
+  --shelf-tile: 96px;    /* the same on a shelf, which the original packs
+                            tighter: 96 between the two folders on its own */
   --slot-w: 66px;        /* hilite.tiff is 66 by 52, so the slot is too */
   --slot-h: 52px;
   --module-w: 52px;      /* Localization.tiff is 52 by 49, and Preferences drew */
@@ -486,14 +490,17 @@ nx-scroller > :not(.bar)::-webkit-scrollbar { display: none; }
 nx-shelf {
   display: grid;
   align-content: start;
-  /* Reflows with the window, which is what makes resizing worth having. */
-  grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr));
+  /* Whole tiles of a fixed width, filled from the left. A column that stretched
+     to the window would put the first icon further in and the next one further
+     off the more room there was, and NeXTSTEP held the same step whatever the
+     window was doing. */
+  grid-template-columns: repeat(auto-fill, var(--tile));
+  justify-content: start;
   grid-auto-rows: min-content;
   /* More between the rows than between the columns, because a name that runs
-     to two lines reaches down towards the icon below it. Four pixels leaves it
-     six clear of that icon whilst a one-line name has nineteen, and the pair
-     then reads as one block rather than two rows. */
-  gap: 14px 4px;
+     to two lines reaches down towards the icon below it. The step across is
+     the tile itself, so there is nothing to add between them. */
+  gap: 14px 0;
   padding: 8px;
   background: var(--light);
 }
@@ -649,6 +656,9 @@ nx-viewer {
 /* The shelf sits on the window's own grey with no frame, which is what makes
    it read as part of the window rather than as another view. */
 nx-viewer .keep {
+  /* The original packs its shelf tighter than the band below it, which is the
+     one place the two differ. */
+  --tile: var(--shelf-tile);
   flex: 0 0 auto;
   min-height: calc(var(--slot-h) + var(--slot-top) + 2 * var(--name-air) + 20px);
 }
