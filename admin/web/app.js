@@ -312,8 +312,9 @@ function drawStatus(status) {
   if (status.running) words = ` läuft ${since(status.uptime_seconds)}`;
   else if (status.held) words = " ausgeschaltet";
   /* The file has been written since this machine started, so it holds a
-     machine nobody has tried. Said here in words, because the mark in the
-     shelf is a texture and a texture explains nothing on its own. */
+     machine nobody has tried. It marks the machine in the shelf, and the file
+     line below says it in words, because a texture explains nothing on its
+     own. */
   const untried = Boolean(status.file?.newer_than_the_machine);
   state.replaceChildren(lamp, document.createTextNode(words));
 
@@ -342,22 +343,17 @@ function drawStatus(status) {
   const machine = status.configuration;
   if (!machine) {
     show("info-caption", "Konfiguration nicht lesbar");
-    for (const id of ["info-cpu", "info-ram", "info-screen", "info-disk"]) show(id, "—");
+    const empty = ["info-cpu", "info-ram", "info-screen", "info-disk",
+                   "info-file", "info-written"];
+    for (const id of empty) show(id, "—");
     return;
   }
 
   show("info-caption", nameOf(machine));
   markCurrent(machine.catalogue, untried);
 
-  /* Two different things about the file, and both can be true at once: what it
-     holds, and whether the machine has seen it. They are a line of their own
-     rather than a tail on the state, because a machine that is simply running
-     has nothing to say here and the line then stays away. */
-  const notes = [];
-  if (!machine.catalogue) notes.push("eigene Konfiguration");
-  if (untried) notes.push("seit dem Start geändert");
-  document.getElementById("info-file-row").hidden = notes.length === 0;
-  show("info-file", notes.join(", "));
+  show("info-file", changedLine(status.file));
+  show("info-written", writtenLine(status.file));
   show("info-cpu", cpuOf(machine));
   show("info-ram", `${machine.memory_mb} MB`);
   show("info-screen", screenOf(machine));
@@ -728,6 +724,31 @@ function when(seconds) {
 }
 
 /**
+ * When the configuration file was last written.
+ * @param {object|undefined} file - What the service says about previous.cfg.
+ * @returns {string} The moment, and a note where the running machine is older
+ *   than the file. Previous reads the file once at its start, so anything
+ *   written afterwards is a machine nobody has tried.
+ */
+function changedLine(file) {
+  if (!file) return "—";
+  return when(file.changed_at) + (file.newer_than_the_machine ? ", noch nicht gebootet" : "");
+}
+
+/**
+ * Who wrote the configuration file last.
+ * @param {object|undefined} file - What the service says about previous.cfg.
+ * @returns {string} One of two sentences. Previously leaves a note of what it
+ *   wrote, so a file that no longer matches that note came from somewhere
+ *   else, and the two candidates are the emulator's own settings dialogue and
+ *   somebody at the keyboard.
+ */
+function writtenLine(file) {
+  if (!file) return "—";
+  return file.written_by_us ? "von Previously" : "von Previous oder von Hand";
+}
+
+/**
  * How a machine's memory is made up.
  * @param {number[]} banks - The four banks in megabytes, empty ones as zero.
  * @returns {string} "4 × 32" where every filled bank is the same size, and
@@ -777,11 +798,8 @@ function showMachineInfo(where) {
     show("mi-changed", "diese Maschine ist nicht eingestellt");
     show("mi-written", "—");
   } else {
-    const untried = file.newer_than_the_machine ? ", noch nicht gebootet" : "";
-    show("mi-changed", when(file.changed_at) + untried);
-    show("mi-written", file.written_by_us
-      ? "von Previously"
-      : "von Previous oder von Hand");
+    show("mi-changed", changedLine(file));
+    show("mi-written", writtenLine(file));
   }
 
   window_.open();

@@ -34,11 +34,14 @@
       <nx-row><label>Platte</label><nx-field id="info-disk">&mdash;</nx-field></nx-row>
     </div>
   </div>
-  <!-- Under the picture rather than beside it, because what it says does not
-       fit in the narrow column, and only where there is something to say,
-       which most of the time there is not. -->
-  <div class="readings" id="info-file-row" hidden>
+  <!-- Under the picture and across the whole window, because the column
+       beside the picture is 156 pixels wide and these three sentences measure
+       152, 174 and 208. The same two questions the machine window asks about
+       the file, in the same words, so that "Datei" means one thing wherever
+       it appears. -->
+  <div class="readings">
     <nx-row><label>Datei</label><nx-field id="info-file">&mdash;</nx-field></nx-row>
+    <nx-row><label>Geschrieben</label><nx-field id="info-written">&mdash;</nx-field></nx-row>
   </div>
   <p class="note" id="kiosk-note"></p>
   <div class="buttons">
