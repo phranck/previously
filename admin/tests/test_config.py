@@ -165,6 +165,79 @@ def test_a_machine_without_those_chips_says_the_others(tmp_path):
     assert plain["chips"] == "MC68HC68T1, NCR53C90A, ohne NeXTbus"
 
 
+# -- which of the eleven the file is -------------------------------------
+
+
+def catalogue():
+    """@returns The eleven as matching() wants them."""
+    from previously import machines
+    return [(machine.identifier, machines.settings_for(machine))
+            for machine in machines.CATALOGUE]
+
+
+def test_a_file_written_from_the_catalogue_is_recognised(tmp_path):
+    from previously import machines
+
+    path = write(tmp_path, "[System]\n")
+    config.write(path, machines.settings_for(machines.find("nextstation-color")))
+
+    assert config.matching(path, catalogue()) == "nextstation-color"
+
+
+def test_a_nitro_is_told_apart_from_the_machine_it_is_named_after(tmp_path):
+    """Previous has no idea of Nitro, so the file calls this one NeXTcube
+    Turbo. Matching against the whole catalogue is what tells them apart, and
+    matching against the name alone would not."""
+    from previously import machines
+
+    path = write(tmp_path, "[System]\n")
+    config.write(path, machines.settings_for(machines.find("nextcube-turbo-nitro")))
+
+    assert config.read(path)["machine"] == "NeXTcube Turbo"
+    assert config.matching(path, catalogue()) == "nextcube-turbo-nitro"
+
+
+def test_a_machine_somebody_put_together_is_none_of_them(tmp_path):
+    """One bank changed by hand, and it is no longer any of the eleven. That
+    is not an error: it is a machine this tool does not offer, and it must not
+    be presented as one that it does."""
+    from previously import machines
+
+    path = write(tmp_path, "[System]\n")
+    config.write(path, machines.settings_for(machines.find("nextcube-turbo")))
+    path.write_text(path.read_text().replace(
+        "nMemoryBankSize0 = 32", "nMemoryBankSize0 = 8"))
+
+    assert config.matching(path, catalogue()) is None
+
+
+def test_what_differs_is_named(tmp_path):
+    from previously import machines
+
+    path = write(tmp_path, "[System]\n")
+    settings = machines.settings_for(machines.find("nextcube-turbo"))
+    config.write(path, settings)
+    path.write_text(path.read_text().replace(
+        "nMemoryBankSize0 = 32", "nMemoryBankSize0 = 8"))
+
+    assert config.differences(path, settings) == {
+        "Memory": {"nMemoryBankSize0": ("8", "32")}}
+
+
+def test_a_file_missing_a_key_differs_by_it(tmp_path):
+    """Previous writes every key it knows, so a file without one has been
+    edited, and it is not the machine it claims to be."""
+    from previously import machines
+
+    settings = machines.settings_for(machines.find("nextstation"))
+    path = write(tmp_path, "[System]\nnMachineType = 2\n")
+
+    differing = config.differences(path, settings)
+
+    assert differing["System"]["bTurbo"] == (None, "FALSE")
+    assert "nMachineType" not in differing.get("System", {})
+
+
 # -- who wrote the file --------------------------------------------------
 
 

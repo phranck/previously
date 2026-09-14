@@ -34,6 +34,12 @@
       <nx-row><label>Platte</label><nx-field id="info-disk">&mdash;</nx-field></nx-row>
     </div>
   </div>
+  <!-- Under the picture rather than beside it, because what it says does not
+       fit in the narrow column, and only where there is something to say,
+       which most of the time there is not. -->
+  <div class="readings" id="info-file-row" hidden>
+    <nx-row><label>Datei</label><nx-field id="info-file">&mdash;</nx-field></nx-row>
+  </div>
   <p class="note" id="kiosk-note"></p>
   <div class="buttons">
     <button id="kiosk-stop">Ausschalten</button>

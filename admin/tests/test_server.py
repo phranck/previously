@@ -257,6 +257,15 @@ def machines_in(tree):
     return found
 
 
+def test_the_status_says_which_of_the_eleven_the_file_is(service):
+    """So the viewer marks the machine that is really running rather than the
+    one whose name the file happens to carry."""
+    _, _, body = fetch(service + "/api/status")
+    answer = json.loads(body)
+
+    assert "catalogue" in answer["configuration"]
+
+
 def test_the_tree_is_open(service):
     """What this tool holds costs nothing to know, so it reads like the rest."""
     status, _, body = fetch(service + "/api/files")
