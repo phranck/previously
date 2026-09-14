@@ -306,24 +306,36 @@ async function operate(route, working) {
  *  it shows it rather than a generic computer. Set from every status. */
 let runningArt = Art.Computer;
 
-/** Every machine the service offers, as it described them. Kept because the
- *  info window says what a machine is without anything having to run. */
+/** Everything this tool holds, as the service arranged it. */
+let root = { name: "Previously", path: "/", entries: [] };
+
+/** The way to the place being shown, outermost first. */
+let at = [root];
+
+/** Every machine anywhere in that tree. Kept because the info window says what
+ *  a machine is without anything having to run. */
 let catalogue = [];
 
-/** Where the shelf's contents live between visits. The machines themselves
- *  come from the service; this is only which of them somebody put there. */
+/** Where the shelf's contents live between visits. The things themselves come
+ *  from the service; this is only which of them somebody put there. */
 const KEPT_KEY = "previously:kept";
+
+/** What lies there before anybody puts anything there: the root, so there is
+ *  always one step home, and the machines, which is where the work is. */
+const KEPT_BY_DEFAULT = ["/", "/Machines"];
 
 /** The identifiers on the viewer's shelf, in the order they were put there. */
 let kept = readKept();
 
-/** @returns {string[]} What was on the shelf last time, or nothing. */
+/** @returns {string[]} What was on the shelf last time, or the two that are
+ *  there to begin with. An empty shelf is a shelf somebody emptied, and that
+ *  is remembered as itself. */
 function readKept() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEPT_KEY));
-    return Array.isArray(saved) ? saved : [];
+    return Array.isArray(saved) ? saved : [...KEPT_BY_DEFAULT];
   } catch {
-    return [];
+    return [...KEPT_BY_DEFAULT];
   }
 }
 
@@ -401,52 +413,153 @@ function wireButtons() {
  * page is how the two come to disagree.
  */
 async function drawMachines() {
-  const answer = await ask("/api/machines");
-  const viewer = document.getElementById("machine-viewer");
+  const answer = await ask("/api/files");
   if (!answer) {
-    show("machine-note", "Liste nicht erreichbar");
+    show("machine-note", "Nicht erreichbar");
     return;
   }
 
-  catalogue = answer.machines;
-  viewer.show({
-    path: [{ label: "Maschinen", icon: Art.Folder, value: "" }],
-    contents: answer.machines.map(entryFor),
-    keeps: kept.map((identifier) => catalogue.find((machine) => machine.id === identifier))
-      .filter(Boolean).map(entryFor),
-    status: `${answer.machines.length} Maschinen`,
-  });
+  root = answer;
+  catalogue = allMachines(root);
+  /* Stay where the reader was, by path rather than by object, because the
+     tree they are looking at was fetched again. */
+  at = at.map((step) => find(root, step.path)).filter(Boolean);
+  if (!at.length) at = [root];
+  drawPlace();
 
-  viewer.addEventListener("click", () => show("machine-note", ""));
+  document.getElementById("file-viewer")
+    .addEventListener("click", () => show("machine-note", ""));
 }
 
 /**
- * One machine as the viewer wants it.
- * @param {object} machine - An entry of /api/machines.
- * @returns {object} `{label, icon, value}`. The value is what a drop, a double
- *   click and the menu all hand over, so there is one place the machine's name
- *   lives.
+ * Every machine anywhere in the tree.
+ * @param {object} folder - Where to look.
+ * @returns {object[]} The machines, in the order they are met.
+ *
+ * The info window says what a machine is without caring where it sits, so it
+ * reads from this rather than from wherever the viewer happens to be.
  */
-function entryFor(machine) {
+function allMachines(folder) {
+  return (folder.entries ?? []).flatMap((entry) =>
+    entry.kind === "machine" ? [entry] : allMachines(entry));
+}
+
+/** Draws whatever place the viewer is in, with the way there above it. */
+function drawPlace() {
+  const viewer = document.getElementById("file-viewer");
+  const here = at[at.length - 1];
+  viewer.show({
+    path: at.map(entryFor),
+    contents: (here.entries ?? []).map(entryFor),
+    /* Anything can lie on the shelf, a folder as readily as a machine, so
+       this looks in the whole tree rather than among the machines. */
+    keeps: kept.map((path) => find(root, path)).filter(Boolean).map(entryFor),
+    status: saying(here),
+  });
+  markCurrent(lastStatus?.configuration?.machine,
+              lastStatus?.file?.newer_than_the_machine);
+}
+
+/**
+ * The line under the shelf.
+ * @param {object} folder - The place being shown.
+ * @returns {string} What is in it, and what cannot be done to it.
+ */
+function saying(folder) {
+  const count = (folder.entries ?? []).length;
+  const things = count === 1 ? "1 Eintrag" : `${count} Einträge`;
+  return folder.writable === false ? `${things}, nur lesbar` : things;
+}
+
+/**
+ * One entry as the viewer wants it.
+ * @param {object} entry - A folder, an application or a machine.
+ * @returns {object} `{label, icon, value}`. The value is the entry's path,
+ *   which is what a drop, a double click and the menu all hand over, so there
+ *   is one place a thing's name lives.
+ */
+function entryFor(entry) {
   return {
-    label: machine.name,
-    icon: machineArt(machine.enclosure),
-    value: machine.id,
+    label: entry.name,
+    /* A folder and an application bring their own picture. A machine wears
+       the one its boot ROM draws, and which that is follows from its case. */
+    icon: entry.icon ?? machineArt(entry.enclosure),
+    value: entry.path,
+    folder: entry.kind === "folder",
   };
 }
 
 /**
+ * Answers a double click in the viewer, whatever was under it.
+ * @param {string} path - What the thing carries.
+ */
+function open(path) {
+  const entry = find(root, path);
+  if (!entry) return;
+  if (entry.kind === "folder" || entry.path === "/") {
+    /* Built from the path rather than by adding a step, because a folder on
+       the shelf can be anywhere and the way there is not the way from here. */
+    at = chainTo(entry.path);
+    return drawPlace();
+  }
+  if (entry.kind === "application") {
+    return notYet(entry.name.replace(/\.app$/, ""));
+  }
+  changeTo(entry.id);
+}
+
+/**
+ * The way from the root to a place, as the steps themselves.
+ * @param {string} where - A path such as "/Machines/System".
+ * @returns {object[]} The root first, that place last.
+ */
+function chainTo(where) {
+  const steps = [root];
+  let path = "";
+  for (const part of where.split("/").filter(Boolean)) {
+    path += "/" + part;
+    const step = find(root, path);
+    if (!step) break;
+    steps.push(step);
+  }
+  return steps;
+}
+
+/**
+ * Goes back to a step of the path.
+ * @param {number} index - Which step, counted from the root.
+ */
+function goTo(index) {
+  at = at.slice(0, index + 1);
+  drawPlace();
+}
+
+/**
+ * @param {object} folder - Where to look.
+ * @param {string} path - What to look for.
+ * @returns {object|null} The entry with that path, anywhere below.
+ */
+function find(folder, path) {
+  if (folder.path === path) return folder;
+  for (const entry of folder.entries ?? []) {
+    const found = find(entry, path);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
  * Puts a machine on the viewer's shelf, or takes it off again.
- * @param {string} identifier - Which machine.
+ * @param {string} where - The machine's path in the tree.
  * @param {boolean} onto - True to put it there, false to take it off.
  *
  * The shelf is for the two or three somebody actually switches between. It is
  * kept in this browser rather than on the Pi: which machines one person wants
  * to hand is not a property of the machine.
  */
-function keepOnShelf(identifier, onto) {
-  kept = kept.filter((entry) => entry !== identifier);
-  if (onto) kept.push(identifier);
+function keepOnShelf(where, onto) {
+  kept = kept.filter((entry) => entry !== where);
+  if (onto) kept.push(where);
   try {
     localStorage.setItem(KEPT_KEY, JSON.stringify(kept));
   } catch {
@@ -462,7 +575,7 @@ function keepOnShelf(identifier, onto) {
  *   machine started, so what is written down has never been through a boot.
  */
 function markCurrent(name, untried) {
-  for (const thing of document.querySelectorAll("#machine-viewer .contents nx-thing")) {
+  for (const thing of document.querySelectorAll("#file-viewer nx-thing")) {
     const isCurrent = thing.getAttribute("label") === name;
     thing.classList.toggle("current", isCurrent);
     thing.classList.toggle("untried", isCurrent && Boolean(untried));
@@ -503,15 +616,15 @@ function fitted(banks) {
 
 /**
  * Shows what one machine is, in a window of its own.
- * @param {string} identifier - Which machine, as the catalogue names it.
+ * @param {string} where - The machine's path in the tree.
  *
  * The settings come from the catalogue, so a machine that is not running is
  * described exactly as the running one is. The two lines about the file are
  * about the file rather than about the machine, so they are filled in only for
  * the machine the file actually holds.
  */
-function showMachineInfo(identifier) {
-  const machine = catalogue.find((entry) => entry.id === identifier);
+function showMachineInfo(where) {
+  const machine = catalogue.find((entry) => entry.path === where);
   if (!machine) return;
 
   const window_ = document.querySelector('nx-window[name="machine-info"]');
@@ -547,13 +660,14 @@ function showMachineInfo(identifier) {
 /**
  * Asks about a machine and changes to it when the answer is yes.
  * @param {string} identifier - Which machine, as the catalogue names it.
+ *   The catalogue's own identifier rather than a path, because that is what
+ *   the service takes.
  */
 async function changeTo(identifier) {
-  const thing = document.querySelector(
-    `#machine-viewer .contents nx-thing[value="${identifier}"]`);
-  if (!thing) return;
+  const machine = catalogue.find((entry) => entry.id === identifier);
+  if (!machine) return;
 
-  const name = thing.getAttribute("label");
+  const name = machine.name;
   const agreed = await document.getElementById("ask").ask({
     title: "Maschine wechseln",
     text: [
@@ -561,9 +675,8 @@ async function changeTo(identifier) {
       "NeXTSTEP wird über den Ausschalter heruntergefahren, die Konfiguration geschrieben und die Maschine neu gestartet.",
       "Kommt sie damit nicht hoch, wird die vorherige Konfiguration von selbst zurückgeschrieben.",
     ],
-    /* The thing in the shelf already carries the picture for this machine, so
-       the panel takes it from there rather than asking a second time. */
-    icon: thing.getAttribute("icon"),
+    /* The same picture it wears in the viewer, taken from the same place. */
+    icon: machineArt(machine.enclosure),
     confirm: "Wechseln",
   });
   if (!agreed) return;
@@ -595,12 +708,22 @@ function notYet(name) {
 }
 
 /**
- * Opens the context menu for one machine.
- * @param {HTMLElement} thing - The machine that was clicked.
+ * Opens the context menu for whatever was clicked.
+ * @param {HTMLElement} thing - What was clicked.
  * @param {number} x - Where the pointer was.
  * @param {number} y
+ * @returns {boolean} Whether there was anything to offer.
+ *
+ * A machine gets the whole menu. Anything else gets one entry, and only where
+ * it lies on the shelf: a folder is opened by double clicking it, so a menu of
+ * entries that all refuse would be worse than none.
  */
 function openMachineMenu(thing, x, y) {
+  const where = thing.getAttribute("value");
+  const machine = catalogue.find((entry) => entry.path === where);
+  const onShelf = Boolean(thing.closest(".keep"));
+  if (!machine && !onShelf) return false;
+
   const menu = document.querySelector('nx-menu[name="machine-menu"]');
   /* Which machine this is about. The menu appears over whatever was clicked
      and then goes away, so without a name it is an orphan. */
@@ -610,36 +733,42 @@ function openMachineMenu(thing, x, y) {
   const edit = menu.querySelector('nx-menu-item[name="edit"]');
   const shelf = menu.querySelector('nx-menu-item[name="shelf"]');
 
+  /* Three of the four are about a machine, so a folder on the shelf shows the
+     one entry that applies to it. */
+  for (const entry of [info, activate, edit]) entry.hidden = !machine;
+
   info.onclick = () => {
     menu.close();
-    showMachineInfo(thing.getAttribute("value"));
+    showMachineInfo(where);
   };
 
   /* The one entry whose wording changes, because it is the same act either
      way round and two entries for it would both be wrong half the time. */
-  const onShelf = Boolean(thing.closest(".keep"));
   shelf.textContent = onShelf ? "Von der Ablage nehmen" : "Auf die Ablage legen";
   shelf.onclick = () => {
     menu.close();
-    keepOnShelf(thing.getAttribute("value"), !onShelf);
+    keepOnShelf(where, !onShelf);
   };
 
-  /* The machine that is already running cannot be activated: it would shut
-     NeXTSTEP down, write the same values back and start it again, for
-     nothing. The entry stays, so the menu keeps its shape. */
-  activate.toggleAttribute("disabled", thing.hasAttribute("disabled"));
+  if (machine) {
+    /* The machine that is already running cannot be activated: it would shut
+       NeXTSTEP down, write the same values back and start it again, for
+       nothing. The entry stays, so the menu keeps its shape. */
+    activate.toggleAttribute("disabled", thing.hasAttribute("disabled"));
 
-  activate.onclick = () => {
-    if (activate.hasAttribute("disabled")) return;
-    menu.close();
-    changeTo(thing.getAttribute("value"));
-  };
+    activate.onclick = () => {
+      if (activate.hasAttribute("disabled")) return;
+      menu.close();
+      changeTo(machine.id);
+    };
+  }
   edit.onclick = () => {
     menu.close();
     notYet("Config Editor");
   };
 
   menu.openAt(x, y);
+  return true;
 }
 
 /**
@@ -710,7 +839,7 @@ function wireOpening() {
 function wireMachines() {
   /* A right click anywhere on a machine, rather than on the shelf, so the menu
      is always about something. */
-  document.getElementById("machine-viewer").addEventListener("contextmenu", (event) => {
+  document.getElementById("file-viewer").addEventListener("contextmenu", (event) => {
     const thing = event.target.closest("nx-thing");
     if (!thing) return;
     event.preventDefault();
@@ -720,10 +849,13 @@ function wireMachines() {
   document.querySelector('nx-tile[name="editor"]')
     ?.addEventListener("click", () => notYet("Config Editor"));
 
-  /* Carried onto the info window, or double clicked in the shelf. The kit
-     raises the same event for both, so this is one answer to two gestures. */
-  document.addEventListener("nx-choose",
-    (event) => changeTo(event.detail.value));
+  /* Carried onto the info window, or double clicked in the viewer. The kit
+     raises the same event for both, so this is one answer to two gestures,
+     and what happens follows from what was chosen. */
+  document.addEventListener("nx-choose", (event) => open(event.detail.value));
+
+  /* A step of the path was clicked, so go back to it. */
+  document.addEventListener("nx-path", (event) => goTo(event.detail.index));
 
   /* Carried onto the viewer's own shelf, which means keep this one to hand
      rather than start it. */

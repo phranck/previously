@@ -246,26 +246,67 @@ def test_an_error_is_logged_even_on_a_connection_that_served_a_file(capsys):
 # -- changing the machine ------------------------------------------------
 
 
-def test_the_catalogue_is_open(service):
-    """Which machines exist costs nothing to know, so it reads like the rest."""
-    status, _, body = fetch(service + "/api/machines")
-    names = [machine["id"] for machine in json.loads(body)["machines"]]
+def machines_in(tree):
+    """@returns The machines anywhere in the tree, by identifier."""
+    found = {}
+    for entry in tree.get("entries", []):
+        if entry.get("kind") == "machine":
+            found[entry["id"]] = entry
+        else:
+            found.update(machines_in(entry))
+    return found
+
+
+def test_the_tree_is_open(service):
+    """What this tool holds costs nothing to know, so it reads like the rest."""
+    status, _, body = fetch(service + "/api/files")
+    tree = json.loads(body)
 
     assert status == 200
-    assert "nextcube-turbo" in names
-    assert len(names) == len(set(names))
+    assert tree["name"] == "Previously"
+    assert [entry["name"] for entry in tree["entries"]] == ["Apps", "Machines"]
 
 
-def test_the_catalogue_says_which_case_each_machine_is_in(service):
-    """The shelf draws a picture per machine before anything is running, so
-    the case travels with the list rather than being read out of the name."""
-    _, _, body = fetch(service + "/api/machines")
-    cases = {machine["id"]: machine["enclosure"]
-             for machine in json.loads(body)["machines"]}
+def test_the_eleven_sit_in_a_folder_that_cannot_be_written(service):
+    _, _, body = fetch(service + "/api/files")
+    tree = json.loads(body)
+    machines_folder = next(e for e in tree["entries"] if e["name"] == "Machines")
+    system = next(e for e in machines_folder["entries"] if e["name"] == "System")
+
+    assert system["writable"] is False
+    assert len(system["entries"]) == 11
+    assert system["entries"][0]["path"] == "/Machines/System/next-computer"
+
+
+def test_there_is_no_user_folder_until_something_is_in_it(service):
+    """An empty folder would promise something that is not there."""
+    _, _, body = fetch(service + "/api/files")
+    tree = json.loads(body)
+    machines_folder = next(e for e in tree["entries"] if e["name"] == "Machines")
+
+    assert [entry["name"] for entry in machines_folder["entries"]] == ["System"]
+
+
+def test_every_machine_says_which_case_it_is_in(service):
+    """The viewer draws a picture per machine before anything is running, so
+    the case travels with the entry rather than being read out of the name."""
+    _, _, body = fetch(service + "/api/files")
+    cases = {identifier: machine["enclosure"]
+             for identifier, machine in machines_in(json.loads(body)).items()}
 
     assert cases["nextcube-turbo"] == "cube"
     assert cases["nextstation-color"] == "station"
     assert set(cases.values()) == {"cube", "station"}
+
+
+def test_the_two_applications_are_there_and_say_what_they_open(service):
+    _, _, body = fetch(service + "/api/files")
+    tree = json.loads(body)
+    apps = next(e for e in tree["entries"] if e["name"] == "Apps")
+
+    assert [entry["name"] for entry in apps["entries"]] == [
+        "Config Editor.app", "Terminal.app"]
+    assert [entry["opens"] for entry in apps["entries"]] == ["editor", "terminal"]
 
 
 def test_changing_the_machine_needs_the_token(service):

@@ -13,7 +13,7 @@ import mimetypes
 import pathlib
 import urllib.parse
 
-from . import change, config, kiosk, machines, pi
+from . import change, config, files, kiosk, pi
 from .token import HEADER
 
 VERSION = "0.1.0"
@@ -62,10 +62,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(self._status())
         if route == "/api/pi":
             return self._json(pi.readings())
-        if route == "/api/machines":
-            return self._json({"machines": [
-                self._machine(machine) for machine in machines.CATALOGUE
-            ]})
+        if route == "/api/files":
+            return self._json(files.tree(self.settings.state_directory))
         if route == "/api/token":
             return self._json({"valid": self._carries_the_token()})
         return self._file(route)
@@ -157,23 +155,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "config_path": str(path),
             "config_readable": path.is_file(),
         }
-
-    def _machine(self, machine):
-        """One entry of the catalogue, described the way the file's own is.
-
-        @param machine - A machines.Machine.
-        @returns dict. The same shape config.read answers with, so the info
-          window shows a machine that is not running the same way it shows the
-          one that is, and the shelf can draw before anything is running.
-        """
-        settings = machines.settings_for(machine)
-        described = config.describe(
-            settings["System"], settings["Memory"], settings["Dimension"])
-        described["id"] = machine.identifier
-        # The catalogue's own name, which carries the Nitro that the file
-        # cannot: to Previous that is a clock and nothing else.
-        described["name"] = machine.name
-        return described
 
     def _status(self):
         """What the machine is set to and whether it is running.

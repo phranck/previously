@@ -54,6 +54,12 @@ ICONS = {
     # application without a face of its own wore, which is what the config
     # editor is until it has one.
     "defaultAppIcon": ("defaultAppIcon", "an application, as NeXTSTEP drew one"),
+    # In English.lproj rather than beside the others, which is where NeXT put
+    # the few icons that were localised.
+    "/usr/lib/NextStep/Workspace.app/WM.app/English.lproj/home":
+        ("home", "a home directory, which NeXTSTEP drew as a house"),
+    # Outside the Workspace's own directory, so it carries its whole path.
+    "/NextApps/Terminal.app/icon": ("Terminal", "the terminal, for a shell session"),
     "Workspace": ("Workspace", "the NeXT wordmark on its cube"),
     "trash.1.alpha": ("trash", "the recycler, in the first of its four frames"),
     "hilite": ("hilite", "the white a selected icon sits on"),
@@ -74,7 +80,11 @@ def extract_icons(image_path):
     filesystem = UFS(str(image_path), PARTITION_OFFSET)
     written = 0
     for source, (name, _) in ICONS.items():
-        inode = filesystem.resolve("%s/%s.tiff" % (ICON_DIRECTORY, source))
+        # A name is taken from the Workspace's own directory unless it carries
+        # a path of its own, which the few icons that live in an application
+        # do.
+        where = source if source.startswith("/") else "%s/%s" % (ICON_DIRECTORY, source)
+        inode = filesystem.resolve(where + ".tiff")
         if inode is None:
             print("  missing in image: " + source)
             continue
