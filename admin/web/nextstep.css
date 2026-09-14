@@ -124,7 +124,14 @@ body {
 /* A custom element carries its own display, and that beats what the hidden
    attribute means, so every one of them would need its own rule saying the
    obvious. This says it once for all of them. */
-[hidden] { display: none; }
+/* Important, because every rule below that gives something a display of its
+   own would otherwise beat this one on nothing but being later in the file.
+   That is what happened to the info window's file line: it carried hidden,
+   .readings said grid four hundred lines further down, and an empty row sat
+   there with a field squashed to a hairline. The attribute is the browser's
+   own promise that a thing is not shown, and nothing here has any business
+   overruling it by accident. */
+[hidden] { display: none !important; }
 
 /* Every picture in here is a bitmap at its own size, so it is never smoothed. */
 .art {
