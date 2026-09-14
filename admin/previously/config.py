@@ -9,7 +9,12 @@ the half which only looks cannot damage anything.
 """
 
 import configparser
+import hashlib
 import time
+
+#: Where the note about the last write is kept, inside the service's own state
+#: directory. It holds one digest and nothing else.
+RECEIPT = "written.sha256"
 
 #: What the emulator calls each machine, by the number in the file. The names
 #: are Previous's own, from its machine type enumeration.
@@ -63,6 +68,28 @@ def read(path):
     memory = _section(parser, "Memory")
     dimension = _section(parser, "Dimension")
 
+    answer = describe(system, memory, dimension)
+    answer["disk"] = _disk(parser)
+    return answer
+
+
+def describe(system, memory, dimension):
+    """What a machine is, in words, from the keys that make it.
+
+    @param system - The System keys, as a mapping of name to string. Either a
+      section of the file or what machines.settings_for produced, because both
+      use the emulator's own key names.
+    @param memory - The Memory keys, the same way.
+    @param dimension - The Dimension keys, the same way.
+    @returns dict describing the machine. No key name from the file appears in
+      it: a person choosing a machine should not have to learn that a cube is
+      `nMachineType = 1`.
+
+    Written for both sources on purpose. The shelf has to say what a machine
+    would be before it is running, and the info window has to say what the
+    running one is, and a second copy of this arithmetic would be a second
+    answer to the same question.
+    """
     machine_type = _int(system, "nMachineType", 1)
     turbo = _bool(system, "bTurbo")
     dimension_seated = _bool(dimension, "bEnabled0")
@@ -72,21 +99,92 @@ def read(path):
         "enclosure": enclosure(machine_type),
         "cpu": _cpu(system),
         "memory_mb": _memory(memory),
+        "banks": [_int(memory, "nMemoryBankSize%d" % bank) for bank in range(4)],
         "screen": _screen(system, dimension_seated),
-        "disk": _disk(parser),
         "dimension": dimension_seated,
+        "turbo": turbo,
+        "chips": _chips(system),
     }
 
 
-def file_state(path, emulator_age_seconds, now=None):
+def _chips(system):
+    """The three chips that decide whether a configuration runs at all.
+
+    @param system - The System keys.
+    @returns str, the three named and separated by commas.
+
+    They are here because they are what a machine is made of rather than what
+    it does, and because getting one of them wrong produces a machine that
+    resets for ever without saying anything.
+    """
+    clock = "MCCS1850" if _bool(system, "nRTC") else "MC68HC68T1"
+    scsi = "NCR53C90A" if _bool(system, "nSCSI") else "NCR53C90"
+    bus = "mit NeXTbus" if _bool(system, "bNBIC") else "ohne NeXTbus"
+    return "%s, %s, %s" % (clock, scsi, bus)
+
+
+def note_written(path, state_directory):
+    """Records what this service just wrote, so it can be recognised later.
+
+    @param path - The file that was written.
+    @param state_directory - pathlib.Path the service may write to, which
+      survives a restart.
+    @returns bool, False where the note could not be kept. That is not worth an
+      exception: the file was written either way, and all that is lost is being
+      able to say later who wrote it.
+
+    A digest of the whole file rather than its time, because a time says when
+    something happened and this question is whether the file is still the one
+    we left behind.
+    """
+    digest = _digest(path)
+    if digest is None:
+        return False
+    try:
+        (state_directory / RECEIPT).write_text(digest)
+        return True
+    except OSError:
+        return False
+
+
+def _written_by_us(path, state_directory):
+    """Whether the file is still the one this service wrote.
+
+    @returns bool. False where there is no note, which is the honest answer:
+      this service has written nothing it can recognise.
+
+    Only one side of this is knowable. A file that does not match the note was
+    written by somebody else, and Previous's own dialogue and a text editor
+    look exactly alike from here.
+    """
+    if state_directory is None:
+        return False
+    try:
+        noted = (state_directory / RECEIPT).read_text().strip()
+    except OSError:
+        return False
+    return bool(noted) and noted == _digest(path)
+
+
+def _digest(path):
+    """@returns The file's SHA-256 as hex, or None where it cannot be read."""
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def file_state(path, emulator_age_seconds, now=None, state_directory=None):
     """What the file says about itself, held against the machine that runs.
 
     @param path - pathlib.Path to previous.cfg.
     @param emulator_age_seconds - How long the emulator has been up, or None
       where none is running.
     @param now - The current time, for tests. Defaults to time.time().
-    @returns dict with `changed_at`, a Unix timestamp or None, and
-      `newer_than_the_machine`.
+    @param state_directory - Where the note from the last write is kept. Left
+      out, `written_by_us` answers False.
+    @returns dict with `changed_at`, a Unix timestamp or None,
+      `newer_than_the_machine`, and `written_by_us`.
 
     Previous reads this file when it starts and never again, so a file written
     since then holds a machine that nobody has tried. It is not an error and
@@ -106,6 +204,7 @@ def file_state(path, emulator_age_seconds, now=None):
             changed_at is not None and started_at is not None
             and changed_at > started_at
         ),
+        "written_by_us": _written_by_us(path, state_directory),
     }
 
 

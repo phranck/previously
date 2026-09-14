@@ -181,6 +181,18 @@ class NxWindow extends HTMLElement {
     this.wire(close);
   }
 
+  /**
+   * Puts a different name in the title bar.
+   * @param {string} text - What the window is about now.
+   *
+   * For a window that says something about whatever was chosen, where the
+   * name is the difference between two of them.
+   */
+  rename(text) {
+    const title = this.bar?.querySelector(".title");
+    if (title) title.textContent = text;
+  }
+
   /** @returns {HTMLElement} A child element, appended nowhere yet. */
   build(tag, className) {
     const el = document.createElement(tag);

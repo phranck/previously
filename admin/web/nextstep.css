@@ -197,6 +197,19 @@ nx-menu-item {
 }
 nx-menu-item:last-child { box-shadow: none; }
 
+/* A menu entry with nothing in it, which is what a separator is here. Every
+   entry already carries a line above and below, so a rule on its own would be
+   invisible: what tells the two groups apart is the empty height between
+   them. */
+nx-menu hr {
+  height: 5px;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--white);
+  box-shadow: inset 0 -2px 0 var(--dark), inset 0 -1px 0 var(--black);
+  background: var(--light);
+}
+
 /* The entry under the pointer takes the white a selection takes elsewhere in
    here, and holding the mouse on it inverts it. Two steps rather than one, so
    the pointer says where it is and the press says what is about to happen.
