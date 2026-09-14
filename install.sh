@@ -29,6 +29,12 @@
 
 set -euo pipefail
 
+# Where this script is, so it can find the files that ship beside it. Resolved
+# rather than taken from $0, because the script is meant to be runnable from
+# anywhere and through a symlink.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+
 export DEBIAN_FRONTEND=noninteractive
 
 readonly REPO_HOST="wmlive.rumbero.org"
@@ -50,10 +56,10 @@ readonly CONFIG_FILE="${CONFIG_DIR}/previous.cfg"
 # sessions, which are the way back into a machine whose screen is taken.
 readonly PROFILE="${HOME}/.profile"
 
-# The admin tool holds the emulator down by creating this file. It lives in
-# that tool's own state directory, which is the one place its systemd unit may
-# write, and the console's autostart below waits on it.
-readonly HOLD_FILE="/var/lib/previously/hold"
+# The admin tool holds the emulator down by creating this file, and the
+# console's autostart below waits on it. On a tmpfs, so a board that has just
+# started runs its emulator whoever switched it off before the last shutdown.
+readonly HOLD_FILE="/run/previously/hold"
 
 # What login looks for before printing the message of the day.
 readonly HUSHLOGIN="${HOME}/.hushlogin"
@@ -428,6 +434,44 @@ quieten_login() {
 }
 
 # ---------------------------------------------------------------------------
+# 8b  Let the browser restart and switch off the Pi, without giving the admin
+#     tool any privileges.
+#
+#     Only root may power a machine down, and the admin tool runs as an
+#     ordinary user with NoNewPrivileges set, which is what stops sudo working
+#     there and is worth keeping. So the tool does not run the command. It
+#     leaves a file in its own runtime directory, and a systemd path unit
+#     running as root does the one thing that file means.
+#
+#     The name of the file is the whole of the request. Nothing is passed and
+#     there is no shell to pass it through, so these units cannot be talked
+#     into doing anything but the one command each names.
+# ---------------------------------------------------------------------------
+
+readonly BOARD_UNITS=(previously-reboot.path previously-reboot.service
+                      previously-poweroff.path previously-poweroff.service)
+
+install_board_units() {
+  info "Letting the browser restart and switch off the Pi"
+
+  local source_dir="${SCRIPT_DIR}/admin/packaging"
+  if [[ ! -f "${source_dir}/previously-reboot.path" ]]; then
+    skip "the admin tool is not in this checkout"
+    return
+  fi
+
+  local unit
+  for unit in "${BOARD_UNITS[@]}"; do
+    sudo install -o root -g root -m 0644 "${source_dir}/${unit}" "/etc/systemd/system/${unit}"
+  done
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now previously-reboot.path previously-poweroff.path
+
+  undo "stop watching for restart and shutdown requests" \
+       "sudo systemctl disable --now previously-reboot.path previously-poweroff.path; sudo rm -f /etc/systemd/system/previously-{reboot,poweroff}.{path,service}; sudo systemctl daemon-reload"
+}
+
+# ---------------------------------------------------------------------------
 # 9  Start Previous on the first console only, so SSH stays usable as the way
 #    back into a machine whose screen now belongs to NeXTSTEP.
 # ---------------------------------------------------------------------------
@@ -456,6 +500,9 @@ ${AUTOSTART_MARKER}
 # held, and it avoids the race that stopping through systemd would have, since
 # this unit restarts itself the moment a session ends and would bring a fresh
 # emulator up underneath whatever stopped the last one.
+#
+# The file is on a tmpfs, so a board that has just booted never finds one and
+# always starts its emulator.
 if [ "\$XDG_VTNR" = 1 ] && [ -z "\$WAYLAND_DISPLAY" ]; then
   clear
   while [ -f ${HOLD_FILE} ]; do sleep 2; done
@@ -535,6 +582,7 @@ main() {
   write_config
   enable_autologin
   quieten_boot
+  install_board_units
   install_autostart
   install_audio
 

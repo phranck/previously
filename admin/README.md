@@ -55,6 +55,8 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `GET /api/pi` | Temperature, power, sound, disk, and what the emulator costs |
 | `GET /api/machines` | Which machines can be chosen |
 | `POST /api/machine` | Makes the emulated machine the one named |
+| `POST /api/pi/reboot` | Shuts NeXTSTEP down, then restarts the board |
+| `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
 
 Every POST is checked for the token before anything looks at what was sent.
 
@@ -78,14 +80,22 @@ One key is not enough. NeXTSTEP answers the power key with a panel asking whethe
 
 The keys go in through the X server with `xdotool`, because Previous runs as an X client under the kiosk's Xwayland. A Wayland virtual keyboard is not the way: it binds its protocol against the compositor and reports success, and the emulator never sees the key. Both directions were measured on the machine.
 
+**Restarting or switching off the board takes NeXTSTEP down first**, and waits for it. A board that reboots underneath a running emulator does the same damage as killing the emulator, and to a machine that then has to come back up.
+
+**The tool still needs no privileges for that.** Only root may power a machine down, so the tool does not: it leaves a file in its own runtime directory, and a systemd path unit running as root does the one thing that file means. `previously-reboot.path` watches for `/run/previously/reboot` and starts a unit whose whole body is `ExecStart=/usr/bin/systemctl reboot`. The name of the file is the whole of the request, so there is nothing to pass and no shell to pass it through.
+
+A sudoers rule was the other way to do this, and it cannot work here: the service sets `NoNewPrivileges=yes`, which is exactly what stops `sudo` from becoming root, and that flag is worth more than the convenience.
+
 **Keeping it down is a file, not a systemd command.** `getty@tty1` restarts itself the instant a session ends, and the console's `~/.profile` starts the emulator. So when the guest powers off, a fresh emulator is booting a second later, and anything arriving after that to stop the unit would kill a guest that had just begun writing.
 
-`~/.profile` therefore waits on `/var/lib/previously/hold` rather than starting the emulator unconditionally:
+`~/.profile` therefore waits on `/run/previously/hold` rather than starting the emulator unconditionally:
 
 ```sh
-while [ -f /var/lib/previously/hold ]; do sleep 2; done
+while [ -f /run/previously/hold ]; do sleep 2; done
 exec cage -- /usr/bin/previous
 ```
+
+That path is a tmpfs and is empty at every boot, which is what makes restarting the board work: the machine comes back and starts its emulator whoever switched it off before the last shutdown. On the card it would leave a board that reboots waiting for a file nobody is going to remove.
 
 Stopping writes that file, presses F10 and waits for the guest to go. Starting removes the file, and the waiting console notices within two seconds. Nothing is killed, nothing races, and the service never needs a privilege it could misuse.
 

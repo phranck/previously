@@ -40,7 +40,7 @@ def to_machine(identifier, settings, sleep=None):
     if machine is None:
         return False, "es gibt keine Maschine namens %r" % identifier
 
-    stopped, reason = kiosk.stop(settings.state_directory, sleep=sleep)
+    stopped, reason = kiosk.stop(settings.runtime_directory, sleep=sleep)
     if not stopped:
         return False, reason
 
@@ -52,10 +52,10 @@ def to_machine(identifier, settings, sleep=None):
         # Nothing was written, so there is nothing to undo. Let it come back as
         # whatever it was rather than leaving the machine switched off for a
         # reason the user did not ask for.
-        kiosk.start(settings.state_directory)
+        kiosk.start(settings.runtime_directory)
         return False, str(error)
 
-    kiosk.start(settings.state_directory)
+    kiosk.start(settings.runtime_directory)
 
     if not _stayed_up(sleep):
         return False, _rolled_back(settings, machine, sleep)

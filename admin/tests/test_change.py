@@ -55,7 +55,7 @@ def machine(tmp_path, monkeypatch):
         def emulator_uptime_seconds(self):
             return self.age if self.running else None
 
-        def press_power(self, _sleep=None):
+        def press_power(self):
             self.powered_off += 1
             self.running = False
             return True
@@ -77,7 +77,7 @@ def settings(tmp_path):
     from conftest import settings_for
     path = tmp_path / "previous.cfg"
     path.write_text(REAL_SHAPE)
-    return settings_for(tmp_path, previous_config=path, state_directory=tmp_path)
+    return settings_for(tmp_path, previous_config=path, runtime_directory=tmp_path)
 
 
 def run(identifier, settings, machine, back_as=3600, come_back=True):
@@ -88,7 +88,7 @@ def run(identifier, settings, machine, back_as=3600, come_back=True):
         steps.append("waited")
         # The hold coming off is what lets the console start it again, so the
         # emulator returns at the first wait after that.
-        if come_back and not machine.running and not kiosk.is_held(settings.state_directory):
+        if come_back and not machine.running and not kiosk.is_held(settings.runtime_directory):
             machine.comes_back(back_as)
 
     return change.to_machine(identifier, settings, sleep=sleep)
@@ -195,7 +195,7 @@ def test_a_name_that_is_not_a_machine_changes_nothing(settings, machine):
 def test_a_guest_that_will_not_shut_down_leaves_the_file_alone(settings, machine):
     """Writing underneath a running emulator loses the change when it exits."""
     before = settings.previous_config.read_text()
-    machine.press_power = lambda _sleep=None: True   # key sent, guest ignores it
+    machine.press_power = lambda: True   # key sent, guest ignores it
 
     import unittest.mock
     with unittest.mock.patch.object(kiosk, "press_power", machine.press_power):

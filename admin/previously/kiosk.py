@@ -3,10 +3,16 @@
 It is one module because it is the whole surface. Reviewing what the tool may
 do to the machine means reading this file, and there is nothing else to read.
 
-None of it needs privilege. Reading state does not, because `systemctl
-is-active` answers any user. Changing it does not either, because the emulator
-is started and stopped through a file in this service's own state directory
-rather than through systemd. Why that is so is explained at hold_path below.
+Switching the emulated machine on and off needs no privilege, because that
+happens through a file in this service's own runtime directory rather than
+through systemd. Why that is so is explained at hold_path below.
+
+Switching the board itself off needs none either, and that is worth saying
+plainly because it looks as though it must. Only root may power a machine
+down, so this tool does not: it leaves a file in its own runtime directory, and
+a systemd path unit running as root does the one thing that file means. The
+name of the file is the whole of the request, so there is nothing to pass and
+no shell to pass it through.
 """
 
 import os
@@ -29,9 +35,11 @@ POWER_KEY = "F10"
 #: half.
 CONFIRM_KEY = "Return"
 
-#: How long the guest takes to put that panel up. Measured on the reference
-#: machine, where it was there well inside a second; two is that with room.
-PANEL_SECONDS = 2
+#: How often the confirmation is pressed again whilst waiting for the guest.
+#: NeXTSTEP raises its panel at its own pace, and one press at a fixed moment
+#: after the power key lands on the desktop when the panel is not up yet, which
+#: leaves the panel standing and the machine running.
+CONFIRM_EVERY_POLLS = 4
 
 #: The emulator's process name. Whether it is running is the only honest
 #: signal that the guest has finished shutting down, because the unit stays
@@ -45,6 +53,11 @@ SHUTDOWN_TIMEOUT_SECONDS = 120
 
 #: How often to look while waiting.
 POLL_SECONDS = 1
+
+#: What the board itself can be asked to do. Each name is the name of a file
+#: this service creates and of the systemd path unit watching for it, so a name
+#: added here without a pair of units to match is a request nothing answers.
+BOARD_REQUESTS = ("reboot", "poweroff")
 
 #: Where an X server puts its socket. The kiosk's Xwayland is the one this
 #: service talks to, and its display number comes from the name of the file
@@ -79,11 +92,11 @@ def uptime_seconds(unit):
     return max(0, int(_monotonic() - started))
 
 
-def hold_path(state_directory):
+def hold_path(runtime_directory):
     """Where the file that holds the emulator down lives.
 
-    @param state_directory - The service's own directory, which the unit
-      creates through StateDirectory= and which is the one place it may write.
+    @param runtime_directory - The service's runtime directory, which the unit
+      creates through RuntimeDirectory= on a tmpfs.
     @returns pathlib.Path
 
     This file is the whole start and stop mechanism, and the reason the tool
@@ -97,17 +110,23 @@ def hold_path(state_directory):
     the emulator to disappear would therefore never see it gone, and a
     systemctl stop arriving afterwards would kill a guest that had just begun
     writing, which is the damage this avoids, moved one boot later.
+
+    On a tmpfs rather than on the card, so that a machine which has just
+    started runs its emulator whoever switched it off before the last
+    shutdown. Otherwise shutting the guest down before rebooting the board
+    would bring the board back to a console waiting for a file nobody is going
+    to remove.
     """
-    return state_directory / "hold"
+    return runtime_directory / "hold"
 
 
-def is_held(state_directory):
+def is_held(runtime_directory):
     """Whether the emulator is being held down.
 
-    @param state_directory - The service's own directory.
+    @param runtime_directory - The service's runtime directory.
     @returns bool
     """
-    return hold_path(state_directory).exists()
+    return hold_path(runtime_directory).exists()
 
 
 def emulator_is_running():
@@ -138,15 +157,14 @@ def emulator_uptime_seconds():
     return min(ages) if ages else None
 
 
-def press_power(sleep=time.sleep):
-    """Presses the emulated power button and answers the panel it raises.
+def press_power():
+    """Presses the emulated power button.
 
-    @param sleep - Injected so a test does not wait in real time.
-    @returns bool, whether both keys were sent.
+    @returns bool, whether the key was sent.
 
-    Two keys, because one does not do it. The power key raises a panel asking
-    whether the machine should really switch off, and its default button is
-    the one the return key presses.
+    This raises a panel inside the guest asking whether the machine should
+    really switch off. Answering it is the waiting's business, because when the
+    panel appears is the guest's business and not ours.
 
     Sent through the X server. Previous runs as an X client under the kiosk's
     Xwayland, so keys reach it through XTEST and not through Wayland. That was
@@ -156,10 +174,7 @@ def press_power(sleep=time.sleep):
     the first thing to check is whether Previous has become a Wayland client,
     because then the whole route changes rather than the key names.
     """
-    if not _press(POWER_KEY):
-        return False
-    sleep(PANEL_SECONDS)
-    return _press(CONFIRM_KEY)
+    return _press(POWER_KEY)
 
 
 def _press(key):
@@ -204,10 +219,10 @@ def _display():
     return ":" + sockets[0][1:] if sockets else None
 
 
-def stop(state_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
+def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
     """Shuts the guest down properly and keeps the emulator down afterwards.
 
-    @param state_directory - The service's own directory.
+    @param runtime_directory - The service's runtime directory.
     @param timeout - Seconds to wait for the guest before giving up.
     @param sleep - Injected so a test does not wait in real time.
     @returns (bool, str). The second is what to tell the user, whether it
@@ -217,13 +232,13 @@ def stop(state_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
     already there. Doing it the other way round leaves a gap in which the
     emulator comes straight back.
     """
-    hold_path(state_directory).touch()
+    hold_path(runtime_directory).touch()
 
     if not emulator_is_running():
         return True, "the emulator was not running, and is now held down"
 
-    if not press_power(sleep):
-        hold_path(state_directory).unlink(missing_ok=True)
+    if not press_power():
+        hold_path(runtime_directory).unlink(missing_ok=True)
         return False, "the power button could not be pressed, so nothing was changed"
 
     if not _wait_for_shutdown(timeout, sleep):
@@ -237,28 +252,28 @@ def stop(state_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
     return True, "NeXTSTEP shut itself down and the emulator is held down"
 
 
-def start(state_directory):
+def start(runtime_directory):
     """Lets the emulator come back.
 
-    @param state_directory - The service's own directory.
+    @param runtime_directory - The service's runtime directory.
     @returns (bool, str)
 
     Removing the file is the whole of it. The waiting profile on the console
     notices within a couple of seconds and starts the emulator itself.
     """
-    if not is_held(state_directory):
+    if not is_held(runtime_directory):
         if emulator_is_running():
             return True, "the emulator is already running"
         return True, "nothing is holding the emulator down; it should come back on its own"
 
-    hold_path(state_directory).unlink(missing_ok=True)
+    hold_path(runtime_directory).unlink(missing_ok=True)
     return True, "the emulator is on its way back"
 
 
-def restart(state_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
+def restart(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
     """Shuts the guest down properly and lets it come straight back.
 
-    @param state_directory - The service's own directory.
+    @param runtime_directory - The service's runtime directory.
     @param timeout - Seconds to wait for the guest.
     @param sleep - Injected so a test does not wait in real time.
     @returns (bool, str)
@@ -266,18 +281,79 @@ def restart(state_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep)
     A stop followed by a start, rather than relying on the unit restarting by
     itself, because that path is observable at every step and this one is not.
     """
-    finished, reason = stop(state_directory, timeout, sleep)
+    finished, reason = stop(runtime_directory, timeout, sleep)
     if not finished:
         return False, reason
-    return start(state_directory)
+    return start(runtime_directory)
+
+
+def board(action, runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS,
+          sleep=time.sleep):
+    """Restarts or switches off the board, taking the guest down first.
+
+    @param action - "reboot" or "poweroff".
+    @param runtime_directory - The service's runtime directory.
+    @param timeout - Seconds to wait for the guest before giving up.
+    @param sleep - Injected so a test does not wait in real time.
+    @returns (bool, str)
+
+    The guest goes first and the board waits for it. A board that reboots
+    underneath a running emulator does the same damage as killing the
+    emulator, and to a machine that then has to come back up.
+
+    Nothing releases the hold afterwards, and nothing needs to: it is on a
+    tmpfs, so the board comes back to an empty runtime directory and the
+    console starts the emulator by itself.
+    """
+    if action not in BOARD_REQUESTS:
+        return False, "es gibt keine Aktion namens %r" % action
+
+    stopped, reason = stop(runtime_directory, timeout, sleep)
+    if not stopped:
+        return False, reason
+
+    if not _request(runtime_directory, action):
+        return False, ("NeXTSTEP ist heruntergefahren, aber der Pi liess sich "
+                       "nicht darum bitten. Er ist über SSH zu erreichen.")
+
+    return True, ("NeXTSTEP ist heruntergefahren, der Pi %s."
+                  % ("startet neu" if action == "reboot" else "schaltet ab"))
+
+
+def _request(runtime_directory, action):
+    """Leaves the request where the path unit watching for it will find it.
+
+    @param runtime_directory - The service's runtime directory.
+    @param action - One of BOARD_REQUESTS.
+    @returns bool, whether the file could be written.
+
+    Writing it is the whole of what this service does. What happens next is
+    previously-reboot.service or previously-poweroff.service, which systemd
+    runs as root and which names one command with no arguments.
+    """
+    try:
+        (runtime_directory / action).touch()
+    except OSError:
+        return False
+    return True
 
 
 def _wait_for_shutdown(timeout, sleep):
-    """Waits for the emulator to go.
+    """Waits for the emulator to go, answering the panel until it does.
 
     @param timeout - Seconds to wait in total.
     @param sleep - How to wait between looks.
     @returns bool, False where it is still there when the time runs out.
+
+    The confirmation is pressed again every few polls rather than once at a
+    fixed moment after the power key. NeXTSTEP raises its panel at its own
+    pace, and a machine that has been up for hours with windows open is slower
+    about it than one that has just started. A press that arrives before the
+    panel lands on the desktop and does nothing, and the panel then stands
+    unanswered until the time runs out.
+
+    Pressing again costs nothing once the guest is going: there is no longer
+    anything for the key to reach.
 
     Counted in polls rather than against a clock, so the wait is exactly as
     long as the caller's sleep makes it and a test can pass one that returns
@@ -286,9 +362,11 @@ def _wait_for_shutdown(timeout, sleep):
     Reliable only because the hold is already in place: without it the session
     ending would bring a new emulator up and this would never see none.
     """
-    for _ in range(max(1, int(timeout / POLL_SECONDS))):
+    for attempt in range(max(1, int(timeout / POLL_SECONDS))):
         if not emulator_is_running():
             return True
+        if attempt % CONFIRM_EVERY_POLLS == 0:
+            _press(CONFIRM_KEY)
         sleep(POLL_SECONDS)
     return not emulator_is_running()
 
