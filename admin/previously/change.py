@@ -1,9 +1,16 @@
 """Changing which machine the emulator is, without leaving it unable to start.
 
-One job, and it is the risky one. Previous writes previous.cfg from memory when
-it exits, so a change made underneath a running emulator is lost. And a machine
-it cannot run leaves a black screen with SSH as the only way back, which is the
+One job, and it is the risky one. Previous reads previous.cfg when it starts
+and never again, so a change made underneath a running emulator does nothing
+until it restarts, and the person watching has no way to tell. And a machine it
+cannot run leaves a black screen with SSH as the only way back, which is the
 one outcome this must not produce.
+
+Previous does not write the file back of its own accord, neither when it exits
+nor when its own dialogue closes. Only "Save Config" in that dialogue writes,
+and that asks for a filename first. So what somebody sets in the dialogue holds
+for that session and is gone at the next start unless they save it, and nothing
+here can see it in the meantime.
 
 So the order is fixed: shut the guest down properly, copy the file, write, let
 it come back, and watch long enough to know that it did. Anything that does not

@@ -1,9 +1,10 @@
 """The catalogue, and what each machine is in the file.
 
-The values were checked against the eleven ready-made configurations in the
-project's Papers folder on 13 September 2026, 121 values with no deviation.
-Those files are not in this repository, so what is tested here is the rules
-that produce them rather than the comparison itself.
+The rules being tested are Previous's own, from Configuration_SetSystemDefaults
+in its src/configuration.c. Every machine here was booted on the Pi on 14
+September 2026 and came up, which is the only test that can really be passed:
+a configuration Previous will not run fails silently, with a white screen and
+an empty log.
 """
 
 from previously import config, machines
@@ -24,9 +25,11 @@ def test_something_that_is_not_a_machine_is_not_invented():
     assert machines.find(None) is None
 
 
-def test_every_machine_sets_the_same_ten_keys():
+def test_every_machine_sets_the_same_keys():
     """A machine that left a key out would leave the one before it in place,
-    which is how a half-changed machine comes about."""
+    which is how a half-changed machine comes about. That is not a tidiness
+    point: a machine carrying one chip of a turbo and one of a plain board
+    resets for ever and shows a white screen."""
     shapes = set()
     for machine in machines.CATALOGUE:
         settings = machines.settings_for(machine)
@@ -34,14 +37,55 @@ def test_every_machine_sets_the_same_ten_keys():
             (section, key)
             for section, keys in settings.items() for key in keys)))
     assert len(shapes) == 1
-    assert len(next(iter(shapes))) == 11
+    assert len(next(iter(shapes))) == 16
 
 
-def test_the_processor_is_the_same_in_all_of_them():
-    """NeXT's line was on the 68040 by the time of these machines, and Previous
-    models nothing earlier that boots this disk."""
+def test_the_1988_machine_is_a_68030():
+    """NeXT's first machine is a 68030 with a separate 68882, and Previous
+    refuses a level that disagrees with the type."""
+    system = machines.settings_for(machines.find("next-computer"))["System"]
+
+    assert system["nCpuLevel"] == "3"
+    assert system["n_FPUType"] == "68882"
+    assert system["nSCSI"] == "FALSE"
+
+
+def test_everything_after_it_is_a_68040_with_the_unit_on_the_chip():
     for machine in machines.CATALOGUE:
-        assert machines.settings_for(machine)["System"]["nCpuLevel"] == "4"
+        if machine.identifier == "next-computer":
+            continue
+        system = machines.settings_for(machine)["System"]
+        assert system["nCpuLevel"] == "4", machine.identifier
+        assert system["n_FPUType"] == "68040", machine.identifier
+        assert system["nSCSI"] == "TRUE", machine.identifier
+
+
+def test_only_a_turbo_or_a_colour_station_carries_the_later_clock_chip():
+    """The MCCS1850 came with the turbo board and with the colour station, and
+    a plain machine given it is the machine that would not boot."""
+    for machine in machines.CATALOGUE:
+        system = machines.settings_for(machine)["System"]
+        expected = machine.turbo or (machine.kind == machines.NEXTSTATION and machine.colour)
+        assert system["nRTC"] == ("TRUE" if expected else "FALSE"), machine.identifier
+
+
+def test_the_bus_chip_is_in_the_cubes_and_not_in_the_station():
+    """A NeXTstation has no NeXTbus, so it has nothing to interface to it."""
+    for machine in machines.CATALOGUE:
+        system = machines.settings_for(machine)["System"]
+        assert system["bNBIC"] == ("FALSE" if machine.kind == machines.NEXTSTATION else "TRUE"), \
+            machine.identifier
+
+
+def test_the_clock_follows_the_board_rather_than_the_machine():
+    for machine in machines.CATALOGUE:
+        clock = machines.settings_for(machine)["System"]["nCpuFreq"]
+        if machine.nitro:
+            assert clock == "40", machine.identifier
+        elif machine.turbo:
+            assert clock == "33", machine.identifier
+        else:
+            assert clock == "25", machine.identifier
 
 
 def test_nitro_is_a_faster_clock_and_nothing_else():
@@ -70,7 +114,7 @@ def test_only_the_station_carries_colour_of_its_own():
     flag off for that machine type anyway."""
     for machine in machines.CATALOGUE:
         if machines.settings_for(machine)["System"]["bColor"] == "TRUE":
-            assert machine.kind == 2, machine.identifier
+            assert machine.kind == machines.NEXTSTATION, machine.identifier
 
 
 def test_only_the_cube_takes_a_dimension():
