@@ -17,11 +17,7 @@ NX_STRINGS.sv = {
   "app.preferences": "Preferences",
   "preferences.localization": "Lokala inställningar",
 
-  /* --- the places and the applications ------------------------------- */
-  "place.apps": "Program",
-  "place.machines": "Maskiner",
-  "place.system": "System",
-  "place.user": "Användare",
+  /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Konfigurationsredigerare",
   "app.terminal": "Terminal",
 

@@ -17,16 +17,17 @@ The whole thing is small enough to hand over at once, so there is one route and
 the browser walks it. Paths are written the way they read, with slashes, and
 they are what a request names when it wants one particular place.
 
-Every folder this tool made up carries the name of a string rather than words,
-and the browser holds the words in each of its languages. A machine carries no
-such name and keeps its own, because a product is called the same thing
-everywhere, and so is Previously.
+A viewer shows names, so everything here is named once and read the same in
+every language: the folders, the bundles, the machines and Previously itself.
+NeXTSTEP did that too, and its own installations are the evidence. `/NextApps`
+in a German one holds `Preferences.app` and `Terminal.app`, exactly as an
+English one does, and the Workspace shows the directory called `Apps` under
+that name.
 
-An application carries one as well, and it is used for what the application is
-called in a sentence rather than for what stands under its picture. NeXTSTEP
-held those two apart: `/NextApps` in a German installation holds
-`Preferences.app` and `Terminal.app`, exactly as an English one does, whilst
-the application called itself `Präferenzen` wherever it named itself in words.
+What an application is called in words is the other half, and NeXTSTEP did
+translate that: the same application titled its window `Präferenzen`. So an
+application carries the name of a string as well, and that name is used
+wherever it is spoken rather than where its bundle is shown.
 """
 
 from . import config, machines
@@ -45,14 +46,6 @@ EDITOR_ICON = "defaultAppIcon"
 PREFERENCES_ICON = "Preferences"
 TERMINAL_ICON = "Terminal"
 
-#: What each place is called, as the name of a string rather than as words.
-PLACES = {
-    "Apps": "place.apps",
-    "Machines": "place.machines",
-    "System": "place.system",
-    "User": "place.user",
-}
-
 #: The applications, in the order a viewer sorts them. Each carries its
 #: picture, the window it opens and the name of what it is called in words,
 #: which is not what its bundle is called. Preferences is built; the editor is
@@ -70,7 +63,7 @@ def tree(state_directory=None):
     @param state_directory - pathlib.Path the service keeps its own state in,
       where a User configuration would live. None means there are none.
     @returns dict, a folder with `name`, `icon`, `path` and `entries`, and a
-      `label` on everything this tool named itself.
+      `label` on the applications, which is what each is called in words.
     """
     return _folder(ROOT, "/", HOME_ICON, [
         _folder("Apps", "/Apps", FOLDER_ICON, [
@@ -136,15 +129,9 @@ def _machine(machine, in_folder):
 
 
 def _folder(name, path, icon, entries, writable=True):
-    """@returns dict describing a folder and what is in it.
-
-    A folder this tool named gets the name of the string that says it in
-    whichever language is being read. The root has none, so it keeps the one
-    word here that is not translated.
-    """
+    """@returns dict describing a folder and what is in it."""
     return {
         "name": name,
-        "label": PLACES.get(name),
         "icon": icon,
         "path": path,
         "kind": "folder",

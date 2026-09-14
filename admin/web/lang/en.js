@@ -22,11 +22,7 @@ NX_STRINGS.en = {
   "app.preferences": "Preferences",
   "preferences.localization": "Localization Preferences",
 
-  /* --- the places and the applications ------------------------------- */
-  "place.apps": "Apps",
-  "place.machines": "Machines",
-  "place.system": "System",
-  "place.user": "User",
+  /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Config Editor",
   "app.terminal": "Terminal",
 

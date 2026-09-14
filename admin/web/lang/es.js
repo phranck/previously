@@ -17,11 +17,7 @@ NX_STRINGS.es = {
   "app.preferences": "Preferencias",
   "preferences.localization": "Preferencias de adaptación",
 
-  /* --- the places and the applications ------------------------------- */
-  "place.apps": "Aplicaciones",
-  "place.machines": "Máquinas",
-  "place.system": "Sistema",
-  "place.user": "Usuario",
+  /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Editor de configuración",
   "app.terminal": "Terminal",
 
