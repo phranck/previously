@@ -76,25 +76,31 @@ def write(tmp_path, text):
 def test_reads_a_cube_turbo_with_a_dimension(tmp_path):
     answer = config.read(write(tmp_path, CUBE_TURBO_WITH_DIMENSION))
 
-    assert answer["machine"] == "NeXTcube Turbo mit NeXTdimension"
-    assert answer["cpu"] == "68040, 33 MHz"
+    assert answer["model"] == "NeXTcube"
+    assert answer["turbo"] is True
+    assert answer["cpu"] == "68040"
+    assert answer["mhz"] == 33
     assert answer["memory_mb"] == 128
     assert answer["disk"] == "NS33_2GB.dd"
     assert answer["dimension"] is True
 
 
-def test_a_seated_dimension_means_colour(tmp_path):
-    """A cube has no colour of its own, so the board is what decides it."""
+def test_a_seated_board_travels_as_a_fact(tmp_path):
+    """A cube has no colour of its own, so the board is what decides it, and
+    what the browser says about the screen follows from these two."""
     answer = config.read(write(tmp_path, CUBE_TURBO_WITH_DIMENSION))
-    assert answer["screen"] == "NeXTdimension, farbig"
+
+    assert answer["dimension"] is True
+    assert answer["colour"] is False
 
 
 def test_reads_a_station_without_one(tmp_path):
     answer = config.read(write(tmp_path, PLAIN_STATION))
 
-    assert answer["machine"] == "NeXTstation"
+    assert answer["model"] == "NeXTstation"
+    assert answer["turbo"] is False
     assert answer["memory_mb"] == 32
-    assert answer["screen"] == "MegaPixel, farbig"
+    assert answer["colour"] is True
     assert answer["dimension"] is False
 
 
@@ -148,9 +154,13 @@ def test_the_catalogue_and_the_file_describe_a_machine_the_same_way(tmp_path):
 
 def test_the_three_chips_are_named(tmp_path):
     """They are what a machine is made of, and getting one wrong is what makes
-    a configuration reset for ever instead of booting."""
+    a configuration reset for ever instead of booting. Their names are facts
+    and travel as they are; what is said about them is the browser's."""
     turbo = config.read(write(tmp_path, CUBE_TURBO_WITH_DIMENSION))
-    assert turbo["chips"] == "MCCS1850, NCR53C90A, mit NeXTbus"
+
+    assert turbo["rtc"] == "MCCS1850"
+    assert turbo["scsi"] == "NCR53C90A"
+    assert turbo["nbic"] is True
 
 
 def test_a_machine_without_those_chips_says_the_others(tmp_path):
@@ -162,7 +172,9 @@ def test_a_machine_without_those_chips_says_the_others(tmp_path):
         nSCSI = TRUE
         bNBIC = FALSE
         """)))
-    assert plain["chips"] == "MC68HC68T1, NCR53C90A, ohne NeXTbus"
+    assert plain["rtc"] == "MC68HC68T1"
+    assert plain["scsi"] == "NCR53C90A"
+    assert plain["nbic"] is False
 
 
 # -- which of the eleven the file is -------------------------------------
@@ -193,7 +205,7 @@ def test_a_nitro_is_told_apart_from_the_machine_it_is_named_after(tmp_path):
     path = write(tmp_path, "[System]\n")
     config.write(path, machines.settings_for(machines.find("nextcube-turbo-nitro")))
 
-    assert config.read(path)["machine"] == "NeXTcube Turbo"
+    assert config.read(path)["model"] == "NeXTcube"
     assert config.matching(path, catalogue()) == "nextcube-turbo-nitro"
 
 
@@ -337,17 +349,18 @@ def test_a_config_missing_sections_still_answers(tmp_path):
     page that shows nothing is better than one that fails."""
     answer = config.read(write(tmp_path, "[System]\nnMachineType = 0\n"))
 
-    assert answer["machine"] == "NeXT Computer"
+    assert answer["model"] == "NeXT Computer"
     assert answer["memory_mb"] == 0
     assert answer["disk"] is None
 
 
-def test_the_turbo_name_is_not_given_to_a_machine_that_had_none(tmp_path):
-    """NeXT built no turbo of the 1988 machine, so the flag is meaningless
-    there and must not reach the name."""
+def test_the_1988_machine_is_reported_as_itself(tmp_path):
+    """NeXT built no turbo of it, so whatever the flag says, the browser knows
+    from the type that there is no Turbo to add."""
     answer = config.read(write(tmp_path, textwrap.dedent("""
         [System]
         nMachineType = 0
         bTurbo = TRUE
         """)))
-    assert answer["machine"] == "NeXT Computer"
+    assert answer["model"] == "NeXT Computer"
+    assert answer["kind"] == 0

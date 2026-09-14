@@ -84,9 +84,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         board = BOARD_OPERATIONS.get(route)
         if board is not None:
-            finished, reason = kiosk.board(board, self.settings.runtime_directory)
+            finished, told = kiosk.board(board, self.settings.runtime_directory)
             return self._json(
-                {"ok": finished, "reason": reason, **self._status()},
+                {"ok": finished, **told, **self._status()},
                 status=200 if finished else 409,
             )
 
@@ -94,9 +94,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if operation is None:
             return self._json({"error": "not found"}, status=404)
 
-        finished, reason = operation(self.settings.runtime_directory)
+        finished, told = operation(self.settings.runtime_directory)
         return self._json(
-            {"ok": finished, "reason": reason, **self._status()},
+            {"ok": finished, **told, **self._status()},
             status=200 if finished else 409,
         )
 
@@ -113,9 +113,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except (ValueError, OSError):
             return self._json({"error": "unreadable request"}, status=400)
 
-        finished, reason = change.to_machine(body.get("machine"), self.settings)
+        finished, told = change.to_machine(body.get("machine"), self.settings)
         return self._json(
-            {"ok": finished, "reason": reason, **self._status()},
+            {"ok": finished, **told, **self._status()},
             status=200 if finished else 409,
         )
 
