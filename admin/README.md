@@ -175,7 +175,11 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
     User            what somebody saved, and only once there is something
 ```
 
-**Every one of those names is read in whichever language is chosen.** The service names each place with a key and the browser holds the words, so `Apps` is `Programme` in German and `Program` in Swedish. What has no key keeps its own name, which is how the machines stay `NeXTstation Turbo Color` everywhere and Previously stays Previously.
+**The folders are read in whichever language is chosen.** The service names each with a key and the browser holds the words, so `Apps` is `Programme` in German and `Program` in Swedish. NeXTSTEP did not do that, because its viewer showed the names of real directories and a German installation holds a directory called `Apps`. These are not real directories, so they are read rather than looked up.
+
+**The applications keep their bundle names**, for the opposite reason: those are file names, and `/NextApps` in a German NeXTSTEP holds `Preferences.app` and `Terminal.app` exactly as an English one does. What an application is called in words is another thing, which NeXTSTEP translated and so do we: the bundle is `Preferences.app` and the window over it says `Präferenzen`.
+
+**What has no key keeps its own name**, which is how the machines stay `NeXTstation Turbo Color` everywhere and Previously stays Previously.
 
 **An application in that folder opens its window**, and one whose window is not built yet says so. Preferences is built, the editor is #50 and the terminal is #6.
 

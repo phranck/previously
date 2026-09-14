@@ -613,20 +613,28 @@ function entryFor(entry) {
  * @returns {string} The words for it in the language being read, or its own
  *   name where it has one that belongs to it.
  *
- * The service names every place it made up with a key rather than with words,
- * so those are looked up. A machine keeps the name it came with, because
- * `NeXTstation Turbo Color` is a product rather than a description, and so
- * does Previously itself.
+ * Three things keep the name they came with. A machine, because
+ * `NeXTstation Turbo Color` is a product rather than a description. Previously
+ * itself. And an application, because what stands under the picture is the
+ * name of its bundle: a German NeXTSTEP holds `Preferences.app` and
+ * `Terminal.app` exactly as an English one does, and its viewer shows the file
+ * name it finds. What an application is called in words is a different
+ * question, and appName answers that one.
  */
 function nameFor(entry) {
-  if (!entry.label) return entry.name;
-  return entry.kind === "application" ? appName(entry) + APPLICATION : t(entry.label);
+  if (entry.kind === "application" || !entry.label) return entry.name;
+  return t(entry.label);
 }
 
 /**
  * @param {object} entry - An application.
- * @returns {string} What it is called, without the suffix its file name
- *   carries. A panel about an application names the application.
+ * @returns {string} What it is called in words, without the suffix its file
+ *   name carries.
+ *
+ * NeXTSTEP kept the two apart and so does this. The bundle in `/NextApps` was
+ * `Preferences.app` in every language, whilst the application called itself
+ * `Präferenzen` in German wherever it named itself in a sentence, which is
+ * what its own `preferences.strings` holds.
  */
 function appName(entry) {
   return entry.label ? t(entry.label) : entry.name.replace(APPLICATION, "");

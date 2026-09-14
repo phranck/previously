@@ -17,10 +17,16 @@ The whole thing is small enough to hand over at once, so there is one route and
 the browser walks it. Paths are written the way they read, with slashes, and
 they are what a request names when it wants one particular place.
 
-Every place this tool made up carries the name of a string rather than words,
+Every folder this tool made up carries the name of a string rather than words,
 and the browser holds the words in each of its languages. A machine carries no
 such name and keeps its own, because a product is called the same thing
 everywhere, and so is Previously.
+
+An application carries one as well, and it is used for what the application is
+called in a sentence rather than for what stands under its picture. NeXTSTEP
+held those two apart: `/NextApps` in a German installation holds
+`Preferences.app` and `Terminal.app`, exactly as an English one does, whilst
+the application called itself `Präferenzen` wherever it named itself in words.
 """
 
 from . import config, machines
@@ -48,9 +54,9 @@ PLACES = {
 }
 
 #: The applications, in the order a viewer sorts them. Each carries its
-#: picture, the window it opens and what it is called. Preferences is built;
-#: the editor is #50 and the terminal is #6, and until those exist choosing one
-#: says so.
+#: picture, the window it opens and the name of what it is called in words,
+#: which is not what its bundle is called. Preferences is built; the editor is
+#: #50 and the terminal is #6, and until those exist choosing one says so.
 APPLICATIONS = (
     ("Config Editor.app", EDITOR_ICON, "editor", "app.config-editor"),
     ("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences"),
