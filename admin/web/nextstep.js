@@ -982,6 +982,27 @@ addEventListener("keydown", (event) => {
   item.click();
 });
 
+/**
+ * Puts the front window back in front and every other one behind it.
+ *
+ * This runs over all the windows rather than inside any one of them, because
+ * being in front is a statement about all of them together: a window can only
+ * make itself active by making the others inactive, and at a load none of them
+ * has done that yet. Without it every title bar is drawn active, which is a
+ * desk NeXTSTEP never showed.
+ *
+ * Without a remembered name the last open window in the markup takes it, which
+ * is the one a reader would call the frontmost.
+ */
+function restoreFront() {
+  const windows = [...document.querySelectorAll("nx-window")];
+  for (const window_ of windows) window_.setAttribute("inactive", "");
+  const remembered = recall("desk").front;
+  const open = windows.filter((window_) => !window_.hidden);
+  const front = open.find((window_) => window_.name === remembered) ?? open.at(-1);
+  front?.raise();
+}
+
 for (const [tag, type] of [
   ["nx-window", NxWindow], ["nx-menu", NxMenu], ["nx-menu-item", NxMenuItem],
   ["nx-tile", NxTile], ["nx-scroller", NxScroller],
@@ -990,3 +1011,7 @@ for (const [tag, type] of [
 ]) {
   customElements.define(tag, type);
 }
+
+/* After the defines, because every window has to exist and know whether it is
+   open before one of them can be picked out as the front one. */
+restoreFront();
