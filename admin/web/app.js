@@ -1120,6 +1120,25 @@ async function refresh() {
 }
 
 /**
+ * Draws the languages this tool speaks, with the one in force marked.
+ *
+ * Each is named in its own language, because a language named in a language
+ * one cannot read is no help to whoever is looking for theirs. The order is
+ * the catalogue's own, so it does not move about as the interface changes.
+ */
+function drawLanguages() {
+  const list = document.getElementById("languages");
+  list.replaceChildren(...Object.entries(LANGUAGE_NAMES).map(([code, name]) => {
+    const option = document.createElement("div");
+    option.className = "option";
+    option.textContent = name;
+    option.toggleAttribute("chosen", code === currentLanguage());
+    option.addEventListener("click", () => speak(code));
+    return option;
+  }));
+}
+
+/**
  * Changes the language the whole interface speaks.
  * @param {string} code - One of `en`, `de`, `fr`, `it`, `es` and `sv`.
  * @returns {boolean} Whether that language exists.
@@ -1128,11 +1147,11 @@ async function refresh() {
  * adds is the other half: every window the page fills in as it goes, which has
  * to be filled in again before any of it is read in the new language.
  *
- * Until the Preferences window of #19 offers this, it is reached from the
- * browser's console.
+ * The Preferences window offers it, and the console can call it directly.
  */
 function speak(code) {
   return setLanguage(code, () => {
+    drawLanguages();
     drawPlace();
     refresh();
   });
@@ -1142,6 +1161,7 @@ wireButtons();
 wireMachines();
 wireBoard();
 wireOpening();
+drawLanguages();
 drawMachines();
 refresh();
 setInterval(refresh, REFRESH_MS);

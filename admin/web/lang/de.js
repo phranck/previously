@@ -14,6 +14,8 @@ NX_STRINGS.de = {
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Info",
   "window.machine": "Maschine",
+  "window.preferences": "Präferenzen",
+  "preferences.localization": "Lokalisierungs-Präferenzen",
 
   /* --- what a machine is ----------------------------------------------- */
   "info.reading": "wird gelesen",

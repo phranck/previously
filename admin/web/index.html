@@ -18,6 +18,7 @@
   <nx-menu-item opens="info" key="i" data-t="window.info"></nx-menu-item>
   <nx-menu-item opens="pi" key="p">Raspberry Pi</nx-menu-item>
   <nx-menu-item opens="files" key="d" data-t="menu.files"></nx-menu-item>
+  <nx-menu-item opens="preferences" key="e" data-t="window.preferences"></nx-menu-item>
   <nx-menu-item name="token" key="t" data-t="menu.token"></nx-menu-item>
 </nx-menu>
 
@@ -121,6 +122,21 @@
        one of two depending on where the thing already lies. -->
   <nx-menu-item name="shelf" data-t="menu.keep"></nx-menu-item>
 </nx-menu>
+
+<!-- Preferences, as NeXTSTEP built one: a row of module pictures across the
+     top and the chosen module's panel underneath. The one module here is the
+     one NeXTSTEP called Localization, and its picture and its name in each
+     language are Preferences.app's own. -->
+<nx-window name="preferences" data-t-title="window.preferences" fixed
+           x="620" y="120" w="300" h="290" min-h="200" closed>
+  <nx-shelf class="modules">
+    <nx-thing icon="Localization" chosen></nx-thing>
+  </nx-shelf>
+  <p class="module-name" data-t="preferences.localization"></p>
+  <nx-scroller>
+    <div class="options" id="languages"></div>
+  </nx-scroller>
+</nx-window>
 
 <nx-ask id="ask"></nx-ask>
 

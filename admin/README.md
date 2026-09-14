@@ -150,9 +150,15 @@ English, German, French, Italian, Spanish and Swedish, which are the six NeXTSTE
 
 Neither the markup nor the kit holds any words. `index.html` carries `data-t` keys and no text, which is why the page cannot show the wrong language for a moment whilst the right one arrives, and `nx-ask` is given the wording of its two buttons by whoever asks the question.
 
-The choice lives in this browser beside the window positions, and changing it writes the whole interface again without a reload. The Preferences window of #19 is where it is chosen.
+The choice lives in this browser beside the window positions, and changing it writes the whole interface again without a reload. The Preferences window is where it is chosen.
 
 Adding a string means adding it to all six catalogues. `tests/test_strings.py` fails when one of them is missing an entry, when a sentence loses a `{place}` that the others have, when the page asks for a key that is not there, and when the service can answer with a name that nothing can say.
+
+## Preferences
+
+NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath, and this is that with one module in it. The row stays at one module because it is the shape of the window rather than a count: the next one arrives into it instead of introducing it.
+
+The module is the one NeXTSTEP called Localization, and it offers the six languages. Everything it shows comes out of the disk image rather than from us: `Localization.tiff` is the picture Preferences.app carried for it, the window's title is what each language's `preferences.strings` called the application, and the module's name is the `Long Name` in the `Info` file of its own bundle. Three of the six left the application's name untranslated, so the window says `Preferences` in French, Italian and Swedish and `Präferenzen` in German, exactly as it did.
 
 ## What it shows
 

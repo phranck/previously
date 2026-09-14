@@ -14,6 +14,8 @@ NX_STRINGS.fr = {
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Infos",
   "window.machine": "Machine",
+  "window.preferences": "Preferences",
+  "preferences.localization": "Préférences de localisation",
 
   /* --- what a machine is ----------------------------------------------- */
   "info.reading": "lecture en cours",

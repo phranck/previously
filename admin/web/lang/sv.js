@@ -14,6 +14,8 @@ NX_STRINGS.sv = {
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Info",
   "window.machine": "Maskin",
+  "window.preferences": "Preferences",
+  "preferences.localization": "Lokala inställningar",
 
   /* --- what a machine is ----------------------------------------------- */
   "info.reading": "läses in",
