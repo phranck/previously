@@ -72,6 +72,7 @@
   --dock-marks: url("parts/dock-marks.png");
   --floppy: url("parts/floppy.png");
   --folder: url("parts/folder.png");
+  --home: url("parts/home.png");
   /* NeXTSTEP's own selection was a white rounded shape, and this is the corner
      it drew, read off hilite.tiff: white begins five pixels in on the first
      row and reaches the edge on the sixth. */
@@ -95,6 +96,7 @@
   --optical: url("parts/optical.png");
   --root: url("parts/root.png");
   --scsi: url("parts/scsi.png");
+  --Terminal: url("parts/Terminal.png");
   --trash: url("parts/trash.png");
   --wbtn-close: url("parts/wbtn-close.png");
   --wbtn-mini: url("parts/wbtn-mini.png");

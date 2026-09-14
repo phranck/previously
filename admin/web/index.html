@@ -11,7 +11,7 @@
 <nx-menu name="menu" title="Cube" x="8" y="8">
   <nx-menu-item opens="info" key="i">Info</nx-menu-item>
   <nx-menu-item opens="pi" key="p">Raspberry Pi</nx-menu-item>
-  <nx-menu-item opens="machines" key="m">Maschinen</nx-menu-item>
+  <nx-menu-item opens="files" key="d">Dateien</nx-menu-item>
   <nx-menu-item name="token" key="t">Token</nx-menu-item>
 </nx-menu>
 
@@ -60,9 +60,12 @@
   </div>
 </nx-window>
 
-<nx-window name="machines" title="Maschinen" x="180" y="330" w="470" h="460"
+<!-- Everything this tool holds, arranged the way NeXTSTEP arranged things.
+     The name is the window's own, not the machines': what is in it is two
+     applications and two folders of machines. -->
+<nx-window name="files" title="Previously" x="180" y="330" w="470" h="460"
            min-w="340" min-h="340" closed>
-  <nx-viewer id="machine-viewer"></nx-viewer>
+  <nx-viewer id="file-viewer"></nx-viewer>
   <p class="note" id="machine-note"></p>
 </nx-window>
 

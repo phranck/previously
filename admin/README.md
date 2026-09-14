@@ -18,6 +18,7 @@ Nothing is fetched. Everything runs on what Debian ships: `python3`, `python3-py
 | `previously/settings.py` | What the service itself is configured with |
 | `previously/config.py` | Reading and writing `previous.cfg` |
 | `previously/machines.py` | Which machines exist, and what each one is in the file |
+| `previously/files.py` | The places this tool shows, which are not places on any disk |
 | `previously/change.py` | Changing the machine without leaving it unable to start |
 | `previously/kiosk.py` | Everything this tool does to the machine, in one file |
 | `previously/pi.py` | What the board underneath is doing |
@@ -53,7 +54,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/kiosk/stop` | Shuts it down properly and keeps it down |
 | `POST /api/kiosk/restart` | Both, in that order |
 | `GET /api/pi` | Temperature, power, sound, disk, and what the emulator costs |
-| `GET /api/machines` | Which machines can be chosen |
+| `GET /api/files` | Everything this tool holds, as a place with places in it |
 | `POST /api/machine` | Makes the emulated machine the one named |
 | `POST /api/pi/reboot` | Shuts NeXTSTEP down, then restarts the board |
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
@@ -115,13 +116,31 @@ Stopping writes that file, presses F10 and waits for the guest to go. Starting r
 
 `web/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`, `nx-viewer`.
 
+## What it shows
+
+Previously arranges what it has the way NeXTSTEP arranged things, which is a place with places in it. `files.py` builds that tree and `/api/files` hands it over whole, because it is small enough that a route per folder would only add round trips.
+
+```
+Previously          the root, drawn as a home the way NeXTSTEP drew one
+  Apps
+    Config Editor.app
+    Terminal.app
+  Machines
+    System          the eleven this project ships, which cannot be changed
+    User            what somebody saved, and only once there is something
+```
+
+**The User folder is not there until it holds something.** An empty folder promises a place to put things, and until saving one is built there is none.
+
+**System cannot be written.** Whatever else happens, the eleven are a set to go back to, and going back is one double click.
+
 **`nx-viewer` is NeXTSTEP's File Viewer**, which is four bands in one window: a shelf that keeps whatever is dropped on it, one line of status, the path as a row of icons with an arrow between each pair, and what the last step of that path holds. It knows nothing about what it shows. The page hands it a path, contents and a shelf, and listens for `nx-choose` when something is chosen, `nx-path` when a step of the path is, and `nx-keep` when something is dropped on the shelf. The machines window is one, and the shared directory of #21 will be another.
 
 A thing with a `value` can be lifted and carried, and a window with `drop` takes what lands on it. A menu with `context` is the same menu put where the pointer is and taken away again, and an item in one can carry an `icon` and be `disabled`. Both raise `nx-choose` carrying that value, so double clicking a thing and dragging it somewhere mean the same to whoever answers, and a page answers once. They are split into files here rather than baked into one page, and the pictures are files rather than data URIs.
 
 The stylesheet and the kit are taken from the draft rather than written again, so a change to the look happens in one place. `../design/extract.py` says where the icons came from, and `../design/bootpicture.py` where the two machines came from.
 
-**Every machine in the shelf wears the picture its boot ROM draws.** The ROM has two, a cube and a station, and which one a machine gets follows from `nMachineType`: 0 and 1 stand in the cube's case and 2 in the station's. `/api/machines` carries that with each entry, so the shelf can draw before anything is running, and `/api/status` carries it too, so the info window and the panels that ask about the running machine show the same picture. Colour plays no part in it, because a NeXTstation Color stands in the same case as a grey one.
+**Every machine in the viewer wears the picture its boot ROM draws.** The ROM has two, a cube and a station, and which one a machine gets follows from `nMachineType`: 0 and 1 stand in the cube's case and 2 in the station's. `/api/files` carries that with each machine, so the viewer can draw before anything is running, and `/api/status` carries it too, so the info window and the panels that ask about the running machine show the same picture. Colour plays no part in it, because a NeXTstation Color stands in the same case as a grey one.
 
 ## Installing it on the Pi
 
