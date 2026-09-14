@@ -22,7 +22,7 @@ Five tools do that work:
 | `nxtiff.py` | Decodes NeXT's TIFFs, which no current library reads: two bits per sample, alpha in its own plane, and a second copy of each picture at four bits per colour channel. |
 | `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `parts/`. |
 | `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
-| `build.py` | Bakes everything in `parts/` into the mockup as data URIs, so it stays one file. |
+| `build.py` | Puts the kit together, writes the two files the admin serves, and bakes `parts/` into the mockup as data URIs so it stays one file. |
 
 `parts/` is committed, so the draft works without running any of this. Run it again when a picture needs to change:
 
@@ -44,6 +44,20 @@ python3 bootpicture.py next_screen_021.png ../admin/web/parts/nextstation.png
 ```
 
 Nothing in it is fixed to one screenshot. The panel is found by its own grey, and the machine by the gap that separates it from the text, so the same call works for either.
+
+## The kit
+
+`kit/` is the interface, one source per part. Each part holds its element and its styles beside each other, `window.js` next to `window.css`, and `build.py` puts them together into the two files the admin serves and into this draft. So a part is edited in one place and cannot drift from itself.
+
+```bash
+python3 build.py            # or: make -C ../admin kit
+```
+
+`build.py` carries the list of parts, in the order they go together. That one list decides the order of the stylesheet, the order of the definitions, the `customElements.define` call at the foot of the script, and the overview comment at its head. Adding a part means adding a line to it.
+
+The two files it writes, `../admin/web/nextstep.css` and `../admin/web/nextstep.js`, say at the top that they are generated. `../admin/tests/test_kit.py` fails when either has been edited by hand, which is what makes one source safe to rely on.
+
+What is not in the kit is what only one application has. The admin keeps that in `../admin/web/previously.css`, and this draft keeps its own beside the marks in the file.
 
 ## What the interface is built from
 

@@ -1,0 +1,66 @@
+/* What this application draws that the kit does not.
+
+   The kit knows about windows, shelves and panels. What is here names
+   something only Previously has: its Preferences, with the one module of the
+   fourteen that has anything to set on this machine. */
+
+/* --- the preferences window ---------------------------------------------- */
+
+/* The module pictures are not the 48 of an icon. Preferences drew its own at
+   sizes of their own, and Localization.tiff is 52 by 49. */
+:root {
+  --module-w: 52px;
+  --module-h: 49px;
+}
+
+
+/* NeXTSTEP's Preferences is a row of module pictures with the chosen module's
+   panel underneath. One module has anything to set on this machine, and the
+   row stays because it is the shape of the window rather than a count: the
+   next module arrives into it instead of introducing it. */
+nx-window[name="preferences"] .modules {
+  /* One row, from the left, rather than the grid a shelf of files wants, and
+     as tall as the pictures in it rather than taking the room the panel needs. */
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-start;
+  padding: 6px;
+}
+
+/* A module picture is not an icon of a thing, so it carries no name under it.
+   What it is stands under the row, where there is room for the whole of it. */
+nx-window[name="preferences"] .modules nx-thing .name { display: none; }
+
+nx-window[name="preferences"] .modules nx-thing .icon {
+  width: var(--module-w);
+  height: var(--module-h);
+  background-size: var(--module-w) var(--module-h);
+}
+
+/* The chosen module's own name, as Preferences itself called it. */
+.module-name {
+  margin: 0;
+  padding: var(--reading-gap) 3px;
+  font-weight: bold;
+}
+
+/* A list of choices, in NeXT's white. One is in force, and the one in force is
+   drawn the way NeXTSTEP drew a selected row, which is the colours turned
+   around rather than a mark beside it. */
+.options {
+  background: var(--white);
+  min-height: 100%;
+}
+
+.option {
+  height: var(--row);
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  cursor: default;
+}
+
+.option[chosen] {
+  background: var(--black);
+  color: var(--white);
+}

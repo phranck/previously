@@ -1,0 +1,61 @@
+/* --- nx-viewer ---------------------------------------------------------- */
+
+/* Four bands, and the window gives them all the room it has. Only the last
+   one grows: the shelf is as tall as what is on it, the status is one line,
+   and the path is one row of icons. */
+nx-viewer {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The shelf sits on the window's own grey with no frame, which is what makes
+   it read as part of the window rather than as another view. */
+nx-viewer .keep {
+  /* The original packs its shelf tighter than the band below it, which is the
+     one place the two differ. */
+  --tile: var(--shelf-tile);
+  flex: 0 0 auto;
+  min-height: calc(var(--slot-h) + var(--slot-top) + 2 * var(--name-air) + 20px);
+}
+
+/* Whilst something is being carried over it, the shelf says it will take it,
+   the same way a window that accepts drops does. */
+nx-viewer .keep[droppable] { outline: 2px solid var(--white); outline-offset: -3px; }
+
+/* One line about the whole, in the smaller lettering NeXTSTEP used for it and
+   in the grey that says it is not a reading anybody acts on. */
+nx-viewer .status {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 1px 3px 3px;
+  font-size: var(--icon-size);
+  color: var(--dark);
+}
+
+/* The way here, as one row that does not wrap: a path that runs out of room
+   is a path with too many steps in it, not one to fold. */
+nx-viewer .path {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: var(--light);
+}
+
+/* The mark between two steps, drawn the way the scroller's arrows are: three
+   borders, one of them the colour. */
+nx-viewer .step-arrow {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid var(--dark);
+}
+
+/* Room under the path, so the two framed bands do not touch. */
+nx-viewer > nx-scroller { margin-top: var(--reading-gap); }
+

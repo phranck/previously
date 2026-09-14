@@ -191,7 +191,11 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
 
 A thing with a `value` can be lifted and carried, and a window with `drop` takes what lands on it. A menu with `context` is the same menu put where the pointer is and taken away again, and an item in one can carry an `icon` and be `disabled`. Both raise `nx-choose` carrying that value, so double clicking a thing and dragging it somewhere mean the same to whoever answers, and a page answers once. They are split into files here rather than baked into one page, and the pictures are files rather than data URIs.
 
-The stylesheet and the kit began as the draft's in `../design/`, and the two are separate copies now: the draft holds 680 lines of kit against this one's 992, and each has components the other has not. What this tool ships is the pair here. `../design/extract.py` says where the icons came from, and `../design/bootpicture.py` where the two machines came from.
+`web/nextstep.css` and `web/nextstep.js` are generated. The kit is one source per part in `../design/kit/`, each holding its element and its styles beside each other, and `../design/build.py` puts them together into those two files and into the draft. Edit a part there and run `make kit`; `tests/test_kit.py` fails when either file has been edited by hand instead.
+
+`web/previously.css` is this application's own and is not generated. What goes in it is what only Previously has, which today is its Preferences window.
+
+`../design/extract.py` says where the icons came from, and `../design/bootpicture.py` where the two machines came from.
 
 **Every machine in the viewer wears the picture its boot ROM draws.** The ROM has two, a cube and a station, and which one a machine gets follows from `nMachineType`: 0 and 1 stand in the cube's case and 2 in the station's. `/api/files` carries that with each machine, so the viewer can draw before anything is running, and `/api/status` carries it too, so the info window and the panels that ask about the running machine show the same picture. Colour plays no part in it, because a NeXTstation Color stands in the same case as a grey one.
 

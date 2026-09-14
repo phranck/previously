@@ -1,0 +1,46 @@
+/* --- nx-dock ------------------------------------------------------------ */
+
+/* The tiles touch. There is no gap in the original and the column has no
+   padding either, so the dock is one strip against the right edge. */
+nx-dock {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: var(--dock-width);
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+}
+
+nx-tile {
+  width: var(--dock-width); height: var(--dock-width);
+  display: grid;
+  place-items: center;
+  position: relative;
+  cursor: default;
+  flex: 0 0 auto;
+  /* The tile's bevel is two pixels rather than the usual one. */
+  border-width: 2px;
+  border-color: var(--white) var(--black) var(--black) var(--white);
+  box-shadow: none;
+  /* The face runs diagonally, not down. Measured at the four corners of a tile
+     it reads #aaaaaa top left and #555555 bottom right, with the other two
+     corners landing between them. */
+  background: linear-gradient(135deg, var(--light), var(--dark));
+}
+nx-tile:active { border-color: var(--black) var(--white) var(--white) var(--black); }
+nx-tile[spaced] { margin-top: auto; }
+nx-tile .art { width: 56px; height: 56px; background-size: contain; }
+
+/* Three marks pressed into the corner said the application was not started. In
+   the screenshot the Workspace Manager carries none of them, and it is the one
+   application that is always running. The bitmap is the original, three pixels
+   by two apiece. */
+nx-tile[idle]::after {
+  content: "";
+  position: absolute;
+  left: 4px; bottom: 4px;
+  width: 13px; height: 2px;
+  background-image: var(--dock-marks);
+  image-rendering: pixelated;
+}
+

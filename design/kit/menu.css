@@ -1,0 +1,84 @@
+/* --- nx-menu ------------------------------------------------------------ */
+
+/* The menu sits in a black outline, and every entry carries its own light on
+   top and its own shadow underneath. That three-line divider is the whole
+   grammar of the look, so it is written once and reused. */
+nx-menu {
+  position: absolute;
+  display: block;
+  width: 148px;
+  z-index: 60;
+  border: 1px solid var(--black);
+  background: var(--light);
+}
+
+nx-menu .title,
+nx-menu-item {
+  height: var(--row);
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+}
+
+nx-menu .title {
+  background: var(--black);
+  color: var(--white);
+  font-weight: bold;
+  cursor: move;
+}
+
+nx-menu-item {
+  /* Whatever an entry carries stays together on the left. The shortcut letter
+     takes itself to the right edge, which is what its own margin does. */
+  justify-content: flex-start;
+  gap: 0;
+  border-top: 1px solid var(--white);
+  /* One pixel of black at the very bottom, one of grey above it. The later
+     shadow is painted under the earlier one, so black wins the last row. */
+  box-shadow: inset 0 -2px 0 var(--dark), inset 0 -1px 0 var(--black);
+  cursor: default;
+}
+nx-menu-item:last-child { box-shadow: none; }
+
+/* The entry under the pointer takes the white a selection takes elsewhere in
+   here, and holding the mouse on it inverts it. Two steps rather than one, so
+   the pointer says where it is and the press says what is about to happen.
+
+   NeXTSTEP itself did only the second, and lit nothing on hover. It also had
+   one pointer and no trackpad. */
+nx-menu-item:hover { background: var(--white); }
+nx-menu-item:active { background: var(--black); color: var(--white); }
+
+/* An entry that would do nothing. The lettering greys and the entry stays in
+   place, so the menu keeps its shape and a reader sees that the thing exists
+   and is not available now. Nothing lights under the pointer, because nothing
+   would happen. */
+nx-menu-item[disabled] { color: var(--dark); }
+nx-menu-item[disabled]:hover,
+nx-menu-item[disabled]:active { background: none; color: var(--dark); }
+
+/* The place a picture goes, at the size NeXTSTEP put beside a line of menu
+   text rather than at icon size. Every entry in a menu that has pictures keeps
+   the place, so the words all begin at the same column; a menu where nothing
+   has one keeps no column at all. */
+nx-menu-item .mark { display: none; }
+nx-menu[with-icons] nx-menu-item .mark {
+  display: block;
+  width: 16px; height: 16px;
+  background-size: contain;
+  margin-right: 6px;
+  flex: 0 0 auto;
+}
+
+/* A menu that answers a right click stands above everything else. Its title
+   says which thing it is about, because unlike the main menu it appears over
+   whatever was clicked and then goes away again. */
+nx-menu[context] {
+  z-index: 80;
+}
+nx-menu[context] .title { cursor: default; }
+
+/* Pushed to the right edge on its own, so an entry carrying a picture keeps
+   the picture and its words together on the left. */
+nx-menu-item .key { font-size: 11px; margin-left: auto; }
+
