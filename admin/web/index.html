@@ -20,7 +20,7 @@
   <nx-tile icon="defaultAppIcon" title="Config Editor" name="editor"></nx-tile>
 </nx-dock>
 
-<nx-window name="info" title="Info" fixed drop x="180" y="16" w="400" h="316">
+<nx-window name="info" title="Info" fixed drop x="180" y="16" w="400">
   <div class="info-body">
     <nx-portrait>
       <i class="art icon" id="info-icon" style="background-image: var(--root)"></i>
@@ -42,7 +42,7 @@
   </div>
 </nx-window>
 
-<nx-window name="pi" title="Raspberry Pi" fixed x="600" y="16" w="360" h="250" closed>
+<nx-window name="pi" title="Raspberry Pi" fixed x="600" y="16" w="360" closed>
   <div class="readings">
     <nx-row><label>Maschine</label><nx-field id="pi-model">&mdash;</nx-field></nx-row>
     <nx-row><label>Läuft</label><nx-field id="pi-uptime">&mdash;</nx-field></nx-row>

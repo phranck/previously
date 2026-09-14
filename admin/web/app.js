@@ -441,6 +441,13 @@ function openMachineMenu(thing, x, y) {
   menu.openAt(x, y);
 }
 
+/** Fills a window the moment it opens, rather than at the next poll. */
+function wireOpening() {
+  document.addEventListener("nx-open", (event) => {
+    if (event.target.getAttribute("name") === "pi") refresh();
+  });
+}
+
 /** Wires the three ways to choose a machine. */
 function wireMachines() {
   /* A right click anywhere on a machine, rather than on the shelf, so the menu
@@ -558,6 +565,7 @@ async function refresh() {
 
 wireButtons();
 wireMachines();
+wireOpening();
 drawMachines();
 refresh();
 setInterval(refresh, REFRESH_MS);

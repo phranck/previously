@@ -195,13 +195,23 @@ class NxWindow extends HTMLElement {
     /* A window nobody can resize has no size of its own to remember, so its
        markup decides. Otherwise a size saved before it was fixed, or before
        its contents changed, would outlive both. */
-    const size = this.hasAttribute("fixed")
+    const fixed = this.hasAttribute("fixed");
+    const size = fixed
       ? (_key, attribute) => Number(this.getAttribute(attribute))
       : number;
+
     this.style.left = Math.min(number("x", "x"), Math.max(0, innerWidth - 90)) + "px";
     this.style.top = Math.min(number("y", "y"), Math.max(0, innerHeight - 40)) + "px";
     this.style.width = size("w", "w") + "px";
-    this.style.height = size("h", "h") + "px";
+
+    /* A fixed window is as tall as what is in it, unless its markup says
+       otherwise. A height written by hand is a number that stops being right
+       the moment a row is added, and both windows here had drifted that way.
+       Width stays a decision, because a column of readings has no natural
+       one. */
+    this.style.height = fixed && !this.hasAttribute("h")
+      ? "auto"
+      : size("h", "h") + "px";
     for (const [attribute, property] of [["min-w", "--win-min-w"], ["min-h", "--win-min-h"]]) {
       if (this.hasAttribute(attribute)) {
         this.style.setProperty(property, this.getAttribute(attribute) + "px");
@@ -265,6 +275,9 @@ class NxWindow extends HTMLElement {
     this.hidden = false;
     this.raise();
     this.save();
+    /* So whatever fills this window can fill it now rather than at the next
+       poll, which is up to five seconds of dashes. */
+    this.dispatchEvent(new CustomEvent("nx-open", { bubbles: true }));
   }
 
   /** Hides it, keeping its geometry for the next time. */
@@ -379,6 +392,11 @@ class NxMenu extends HTMLElement {
     title.textContent = this.getAttribute("title") ?? "";
     this.removeAttribute("title");
     this.prepend(title);
+
+    /* Whether to keep a column for pictures is the menu's decision and not
+       each entry's: the words line up when every entry holds the place, and a
+       menu where nothing has a picture would indent all of them for nothing. */
+    this.toggleAttribute("with-icons", Boolean(this.querySelector("nx-menu-item[icon]")));
 
     /* A menu that answers a right click is the same menu, put where the
        pointer is and taken away again. It is not carried about and not
