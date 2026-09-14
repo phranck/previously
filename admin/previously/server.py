@@ -185,6 +185,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except config.NotReadable as error:
             answer["configuration"] = None
             answer["error"] = str(error)
+        # Whether the file has moved on since the emulator read it, which is
+        # the one thing the configuration itself cannot say.
+        answer["file"] = config.file_state(
+            self.settings.previous_config, kiosk.emulator_uptime_seconds())
         return answer
 
     def _carries_the_token(self):

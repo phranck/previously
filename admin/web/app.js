@@ -200,6 +200,11 @@ function drawStatus(status) {
   let words = " angehalten";
   if (status.running) words = ` läuft ${since(status.uptime_seconds)}`;
   else if (status.held) words = " ausgeschaltet";
+  /* The file has been written since this machine started, so it holds a
+     machine nobody has tried. Said here in words, because the mark in the
+     shelf is a texture and a texture explains nothing on its own. */
+  const untried = Boolean(status.file?.newer_than_the_machine);
+  if (untried) words += ", Konfiguration geändert";
   state.replaceChildren(lamp, document.createTextNode(words));
 
   /* "kommt zurück" is done when it is back, and the note should not still be
@@ -232,7 +237,7 @@ function drawStatus(status) {
   }
 
   show("info-caption", machine.machine);
-  markCurrent(machine.machine);
+  markCurrent(machine.machine, untried);
   show("info-cpu", machine.cpu);
   show("info-ram", `${machine.memory_mb} MB`);
   show("info-screen", machine.screen);
@@ -392,11 +397,14 @@ async function drawMachines() {
 /**
  * Marks the machine the emulator is currently set to.
  * @param {string|null} name - What /api/status called it.
+ * @param {boolean} [untried] - Whether the file has been written since that
+ *   machine started, so what is written down has never been through a boot.
  */
-function markCurrent(name) {
+function markCurrent(name, untried) {
   for (const thing of document.querySelectorAll("#machine-shelf nx-thing")) {
     const isCurrent = thing.getAttribute("label") === name;
     thing.classList.toggle("current", isCurrent);
+    thing.classList.toggle("untried", isCurrent && Boolean(untried));
     /* Switching to the machine that is already running would shut NeXTSTEP
        down, write the same values back and start it again, for nothing. */
     thing.toggleAttribute("disabled", isCurrent);
