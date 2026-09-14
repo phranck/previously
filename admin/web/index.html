@@ -93,9 +93,10 @@
 <!-- What a right click on a machine offers. Put where the pointer is, and
      taken away again, so it is not carried about and not remembered. -->
 <nx-menu name="machine-menu" context title="Maschine">
+  <!-- Reading before acting, and nothing between them: NeXTSTEP's own menus
+       are one run of entries, with the submenu arrow and the shortcut letter
+       the only things that break it. -->
   <nx-menu-item name="info">Info&hellip;</nx-menu-item>
-  <!-- The entry that only reads, kept apart from the two that act. -->
-  <hr>
   <nx-menu-item name="activate">Activate config</nx-menu-item>
   <nx-menu-item name="edit" icon="defaultAppIcon">Edit config&hellip;</nx-menu-item>
 </nx-menu>
