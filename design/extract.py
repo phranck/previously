@@ -66,6 +66,8 @@ ICONS = {
     # here.
     "/NextApps/Preferences.app/Localization.preferences/Localization":
         ("Localization", "the language the tool speaks, as Preferences drew it"),
+    "/NextApps/Preferences.app/Preferences":
+        ("Preferences", "the application itself, as it sat in NextApps"),
     "Workspace": ("Workspace", "the NeXT wordmark on its cube"),
     "trash.1.alpha": ("trash", "the recycler, in the first of its four frames"),
     "hilite": ("hilite", "the white a selected icon sits on"),

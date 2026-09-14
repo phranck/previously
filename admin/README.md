@@ -168,11 +168,16 @@ Previously arranges what it has the way NeXTSTEP arranged things, which is a pla
 Previously          the root, drawn as a home the way NeXTSTEP drew one
   Apps
     Config Editor.app
+    Preferences.app
     Terminal.app
   Machines
     System          the eleven this project ships, which cannot be changed
     User            what somebody saved, and only once there is something
 ```
+
+**Every one of those names is read in whichever language is chosen.** The service names each place with a key and the browser holds the words, so `Apps` is `Programme` in German and `Program` in Swedish. What has no key keeps its own name, which is how the machines stay `NeXTstation Turbo Color` everywhere and Previously stays Previously.
+
+**An application in that folder opens its window**, and one whose window is not built yet says so. Preferences is built, the editor is #50 and the terminal is #6.
 
 **The User folder is not there until it holds something.** An empty folder promises a place to put things, and until saving one is built there is none.
 

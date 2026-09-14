@@ -14,8 +14,16 @@ NX_STRINGS.sv = {
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Info",
   "window.machine": "Maskin",
-  "window.preferences": "Preferences",
+  "app.preferences": "Preferences",
   "preferences.localization": "Lokala inställningar",
+
+  /* --- the places and the applications ------------------------------- */
+  "place.apps": "Program",
+  "place.machines": "Maskiner",
+  "place.system": "System",
+  "place.user": "Användare",
+  "app.config-editor": "Konfigurationsredigerare",
+  "app.terminal": "Terminal",
 
   /* --- what a machine is ----------------------------------------------- */
   "info.reading": "läses in",

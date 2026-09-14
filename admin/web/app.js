@@ -23,6 +23,10 @@ const TOKEN_HEADER = "X-Previously-Token";
  *  one is a question that does not arise. */
 const NOTHING = "—";
 
+/** What the name of an application ends in. NeXTSTEP showed the whole file
+ *  name, suffix and all, and this is a filesystem however made up it is. */
+const APPLICATION = ".app";
+
 /** What the pictures are called, by what they mean rather than by their file. */
 const Art = {
   Computer: "root",
@@ -579,7 +583,7 @@ function drawPlace() {
 function saying(folder) {
   const count = (folder.entries ?? []).length;
   return t("viewer.status", {
-    name: folder.name,
+    name: nameFor(folder),
     count: t("viewer.count", { count }, count),
     more: folder.writable === false ? t("viewer.read-only") : "",
   });
@@ -594,13 +598,38 @@ function saying(folder) {
  */
 function entryFor(entry) {
   return {
-    label: entry.name,
+    label: nameFor(entry),
     /* A folder and an application bring their own picture. A machine wears
        the one its boot ROM draws, and which that is follows from its case. */
     icon: entry.icon ?? machineArt(entry.enclosure),
     value: entry.path,
     folder: entry.kind === "folder",
   };
+}
+
+/**
+ * What one entry of the tree is called, here, now.
+ * @param {object} entry - A folder, an application or a machine.
+ * @returns {string} The words for it in the language being read, or its own
+ *   name where it has one that belongs to it.
+ *
+ * The service names every place it made up with a key rather than with words,
+ * so those are looked up. A machine keeps the name it came with, because
+ * `NeXTstation Turbo Color` is a product rather than a description, and so
+ * does Previously itself.
+ */
+function nameFor(entry) {
+  if (!entry.label) return entry.name;
+  return entry.kind === "application" ? appName(entry) + APPLICATION : t(entry.label);
+}
+
+/**
+ * @param {object} entry - An application.
+ * @returns {string} What it is called, without the suffix its file name
+ *   carries. A panel about an application names the application.
+ */
+function appName(entry) {
+  return entry.label ? t(entry.label) : entry.name.replace(APPLICATION, "");
 }
 
 /**
@@ -617,7 +646,11 @@ function open(path) {
     return drawPlace();
   }
   if (entry.kind === "application") {
-    return notYet(entry.name.replace(/\.app$/, ""));
+    /* An application this tool has is a window it already holds. One it does
+       not have yet says so, which is the honest thing to do with an icon that
+       is there because the place it sits in is being built around it. */
+    const window_ = document.querySelector(`nx-window[name="${entry.opens}"]`);
+    return window_ ? window_.open() : notYet(appName(entry));
   }
   changeTo(entry.id);
 }
@@ -914,7 +947,7 @@ function openMachineMenu(thing, x, y) {
   }
   edit.onclick = () => {
     menu.close();
-    notYet("Config Editor");
+    notYet(t("app.config-editor"));
   };
 
   menu.openAt(x, y);
@@ -992,7 +1025,7 @@ function wireMachines() {
   });
 
   document.querySelector('nx-tile[name="editor"]')
-    ?.addEventListener("click", () => notYet("Config Editor"));
+    ?.addEventListener("click", () => notYet(t("app.config-editor")));
 
   /* Carried onto the info window, or double clicked in the viewer. The kit
      raises the same event for both, so this is one answer to two gestures,

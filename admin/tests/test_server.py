@@ -309,14 +309,15 @@ def test_every_machine_says_which_case_it_is_in(service):
     assert set(cases.values()) == {"cube", "station"}
 
 
-def test_the_two_applications_are_there_and_say_what_they_open(service):
+def test_the_applications_are_there_and_say_what_they_open(service):
     _, _, body = fetch(service + "/api/files")
     tree = json.loads(body)
     apps = next(e for e in tree["entries"] if e["name"] == "Apps")
 
     assert [entry["name"] for entry in apps["entries"]] == [
-        "Config Editor.app", "Terminal.app"]
-    assert [entry["opens"] for entry in apps["entries"]] == ["editor", "terminal"]
+        "Config Editor.app", "Preferences.app", "Terminal.app"]
+    assert [entry["opens"] for entry in apps["entries"]] == [
+        "editor", "preferences", "terminal"]
 
 
 def test_changing_the_machine_needs_the_token(service):

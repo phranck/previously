@@ -19,8 +19,16 @@ NX_STRINGS.en = {
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Info",
   "window.machine": "Machine",
-  "window.preferences": "Preferences",
+  "app.preferences": "Preferences",
   "preferences.localization": "Localization Preferences",
+
+  /* --- the places and the applications ------------------------------- */
+  "place.apps": "Apps",
+  "place.machines": "Machines",
+  "place.system": "System",
+  "place.user": "User",
+  "app.config-editor": "Config Editor",
+  "app.terminal": "Terminal",
 
   /* --- what a machine is ----------------------------------------------- */
   "info.reading": "reading",

@@ -118,6 +118,32 @@ def test_every_answer_the_service_can_give_has_a_sentence(english):
         assert key in english or any(other.startswith(key + ".") for other in english), key
 
 
+def test_every_place_the_service_names_has_a_name(english):
+    """The tree is places this tool made up, so it names them with keys and the
+    browser holds the words. A key nothing can say reaches the screen as it
+    is."""
+    from previously import files
+
+    wanted = set(files.PLACES.values())
+    wanted |= {label for _, _, _, label in files.APPLICATIONS}
+
+    assert sorted(wanted - set(english)) == []
+
+
+def test_what_keeps_its_own_name_has_no_key(english):
+    """The root is the tool's name and a machine is a product, and neither is
+    translated. Both are left alone by having no key rather than by a case in
+    the browser, so this is what holds that true."""
+    from previously import files
+
+    tree = files.tree()
+    machines = tree["entries"][1]["entries"][0]["entries"]
+
+    assert tree["label"] is None
+    assert tree["name"] == "Previously"
+    assert machines and all("label" not in machine for machine in machines)
+
+
 def test_every_word_the_board_can_report_has_a_sentence(english):
     """The four names for what a Raspberry Pi does to itself when the power or
     the temperature is not what it wants."""

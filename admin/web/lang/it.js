@@ -14,8 +14,16 @@ NX_STRINGS.it = {
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Info",
   "window.machine": "Macchina",
-  "window.preferences": "Preferences",
+  "app.preferences": "Preferences",
   "preferences.localization": "Preferenze di localizzazione",
+
+  /* --- the places and the applications ------------------------------- */
+  "place.apps": "Applicazioni",
+  "place.machines": "Macchine",
+  "place.system": "Sistema",
+  "place.user": "Utente",
+  "app.config-editor": "Editor di configurazione",
+  "app.terminal": "Terminal",
 
   /* --- what a machine is ----------------------------------------------- */
   "info.reading": "in lettura",
