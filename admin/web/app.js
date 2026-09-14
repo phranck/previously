@@ -21,8 +21,17 @@ const TOKEN_HEADER = "X-Previously-Token";
 /** What the pictures are called, by what they mean rather than by their file. */
 const Art = {
   Computer: "root",
-  ComputerColor: "root-color",
+  Cube: "nextcube",
+  Station: "nextstation",
   Editor: "defaultAppIcon",
+};
+
+/** Which picture a machine wears, by the case the service says it comes in.
+ *  Both are the boot ROM's own drawings, so the shelf shows what the screen
+ *  shows a second after a machine is chosen. */
+const MACHINE_ART = {
+  cube: Art.Cube,
+  station: Art.Station,
 };
 
 /** What the buttons ask the service to do, by the route that does it. */
@@ -116,6 +125,17 @@ async function askForToken(why) {
  */
 function show(id, text) {
   document.getElementById(id).textContent = text;
+}
+
+/**
+ * The picture for a machine.
+ * @param {string|null} enclosure - What the service called its case.
+ * @returns {string} The picture's name. A case nobody knows falls back to the
+ *   generic computer, so a service that learns a new machine type before this
+ *   page does still draws something.
+ */
+function machineArt(enclosure) {
+  return MACHINE_ART[enclosure] ?? Art.Computer;
 }
 
 /**
@@ -218,12 +238,11 @@ function drawStatus(status) {
   show("info-screen", machine.screen);
   show("info-disk", machine.disk ?? "keine eingelegt");
 
-  /* The picture is root.tiff either way, because NeXTSTEP had one machine icon
-     and drew every host with it. Only the tube changes: a machine that could
-     show colour shows colour. */
-  const colour = machine.screen.includes("farbig");
-  document.getElementById("info-icon").style.backgroundImage =
-    `var(--${colour ? Art.ComputerColor : Art.Computer})`;
+  /* The same picture the boot ROM puts up whilst it tests this machine. Colour
+     plays no part in it: a NeXTstation Color stands in the same case as a grey
+     one, and the line above says which tube is in it. */
+  runningArt = machineArt(machine.enclosure);
+  document.getElementById("info-icon").style.backgroundImage = `var(--${runningArt})`;
 }
 
 /**
@@ -276,6 +295,10 @@ async function operate(route, working) {
   refresh();
 }
 
+/** The picture of the machine that is configured now, so a panel asking about
+ *  it shows it rather than a generic computer. Set from every status. */
+let runningArt = Art.Computer;
+
 /** Written into noteState whilst a note is new and the state it describes has
  *  not been seen yet. */
 const JUST_WRITTEN = Symbol("just written");
@@ -316,7 +339,7 @@ function warn(what) {
       "NeXTSTEP wird über den Ausschalter heruntergefahren, so wie über Power Off im Logout-Fenster.",
       "Nicht gespeicherte Arbeit in laufenden Programmen geht dabei verloren. Der Dienst kann nicht sehen, woran die Maschine gerade arbeitet.",
     ],
-    icon: Art.Computer,
+    icon: runningArt,
     confirm: what,
   });
 }
@@ -355,7 +378,7 @@ async function drawMachines() {
 
   shelf.replaceChildren(...answer.machines.map((machine) => {
     const thing = document.createElement("nx-thing");
-    thing.setAttribute("icon", Art.Computer);
+    thing.setAttribute("icon", machineArt(machine.enclosure));
     thing.setAttribute("label", machine.name);
     /* The value is what a drop, a double click and the button all hand over,
        so there is one place the machine's name lives. */
@@ -398,7 +421,9 @@ async function changeTo(identifier) {
       "NeXTSTEP wird über den Ausschalter heruntergefahren, die Konfiguration geschrieben und die Maschine neu gestartet.",
       "Kommt sie damit nicht hoch, wird die vorherige Konfiguration von selbst zurückgeschrieben.",
     ],
-    icon: Art.Computer,
+    /* The thing in the shelf already carries the picture for this machine, so
+       the panel takes it from there rather than asking a second time. */
+    icon: thing.getAttribute("icon"),
     confirm: "Wechseln",
   });
   if (!agreed) return;

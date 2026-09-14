@@ -256,6 +256,18 @@ def test_the_catalogue_is_open(service):
     assert len(names) == len(set(names))
 
 
+def test_the_catalogue_says_which_case_each_machine_is_in(service):
+    """The shelf draws a picture per machine before anything is running, so
+    the case travels with the list rather than being read out of the name."""
+    _, _, body = fetch(service + "/api/machines")
+    cases = {machine["id"]: machine["enclosure"]
+             for machine in json.loads(body)["machines"]}
+
+    assert cases["nextcube-turbo"] == "cube"
+    assert cases["nextstation-color"] == "station"
+    assert set(cases.values()) == {"cube", "station"}
+
+
 def test_changing_the_machine_needs_the_token(service):
     request = urllib.request.Request(
         service + "/api/machine", data=b'{"machine": "nextcube"}', method="POST")
