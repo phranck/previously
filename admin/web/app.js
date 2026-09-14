@@ -613,13 +613,13 @@ function entryFor(entry) {
  * @returns {string} The words for it in the language being read, or its own
  *   name where it has one that belongs to it.
  *
- * Three things keep the name they came with. A machine, because
- * `NeXTstation Turbo Color` is a product rather than a description. Previously
- * itself. And an application, because what stands under the picture is the
- * name of its bundle: a German NeXTSTEP holds `Preferences.app` and
- * `Terminal.app` exactly as an English one does, and its viewer shows the file
- * name it finds. What an application is called in words is a different
- * question, and appName answers that one.
+ * Everything in the tree keeps the name it came with, because a viewer shows
+ * names: the folders, the bundles, the machines and Previously itself. A
+ * German NeXTSTEP holds a directory called `Apps` and a bundle called
+ * `Preferences.app`, and its viewer shows both as it finds them.
+ *
+ * What an application is called in words is a different question, and appName
+ * answers that one.
  */
 function nameFor(entry) {
   if (entry.kind === "application" || !entry.label) return entry.name;
