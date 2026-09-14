@@ -51,7 +51,7 @@ def test_what_this_machine_actually_said(answers):
     answer = pi._throttling()
 
     assert answer["now"] == []
-    assert sorted(answer["since_boot"]) == ["Unterspannung", "gedrosselt"]
+    assert sorted(answer["since_boot"]) == ["throttled", "under-voltage"]
 
 
 def test_something_happening_now_is_kept_apart_from_something_that_did(answers):
@@ -61,8 +61,8 @@ def test_something_happening_now_is_kept_apart_from_something_that_did(answers):
 
     answer = pi._throttling()
 
-    assert sorted(answer["now"]) == ["Unterspannung", "gedrosselt"]
-    assert sorted(answer["since_boot"]) == ["Unterspannung", "gedrosselt"]
+    assert sorted(answer["now"]) == ["throttled", "under-voltage"]
+    assert sorted(answer["since_boot"]) == ["throttled", "under-voltage"]
 
 
 def test_every_bit_that_is_named_is_read(answers):
