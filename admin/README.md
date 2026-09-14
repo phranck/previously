@@ -64,7 +64,9 @@ Every POST is checked for the token before anything looks at what was sent.
 
 Choosing a NeXTcube Turbo is not one setting. It is a machine type, a processor level, a clock, whether the colour board is seated, which slot it speaks from, and four memory banks, and getting one of them wrong gives a machine that will not boot or is not the one that was asked for. `machines.py` holds the eleven that can be chosen and what each is in the file.
 
-Those values come from the eleven ready-made configurations in the project's Papers folder. Ten of their 195 keys differ between machines, and those ten are what gets written. Everything else in `previous.cfg`, including the disk it boots from, belongs to the installation rather than to the machine and is passed through untouched.
+Those values come from Previous itself, out of the function its own dialogue runs when the machine changes there. Sixteen keys are written and everything else in `previous.cfg`, including the disk it boots from, belongs to the installation rather than to the machine and is passed through untouched.
+
+**They have to be written together.** Seven of them follow from the machine type, the turbo board and the colour board at once: the processor level, its clock, the floating point unit, the real-time clock chip, the SCSI controller, the bus interface chip and the DSP's expansion memory. A machine that gets some of them and keeps the rest is not a machine Previous can run, and it does not say so: it resets in a loop and shows a white screen with nothing in the log.
 
 **The order is fixed, because the risky part is not the writing.** Previous writes `previous.cfg` from memory when it exits, so a change made underneath a running emulator is thrown away by the emulator itself. And a machine it cannot run leaves a black screen with SSH as the only way back.
 

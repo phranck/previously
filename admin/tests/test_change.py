@@ -25,8 +25,13 @@ REAL_SHAPE = textwrap.dedent("""\
     nMachineType = 1
     bColor = FALSE
     bTurbo = TRUE
+    bNBIC = TRUE
+    nSCSI = TRUE
+    nRTC = TRUE
     nCpuLevel = 4
     nCpuFreq = 33
+    bDSPMemoryExpansion = TRUE
+    n_FPUType = 68040
 
     [Dimension]
     nConsoleSlot = 2
