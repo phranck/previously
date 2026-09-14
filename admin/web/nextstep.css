@@ -81,6 +81,13 @@
      there is no original to take a colour from. A shade under the window's own
      grey, because it has to read as a state and not as a selection. */
   --in-force: #999999;
+
+  /* The same mark with half of it missing, for a configuration that is written
+     down but has not been through a boot. NeXTSTEP drew a checkerboard of two
+     greys wherever something was partial, and at this size it reads as a
+     texture rather than as a pattern. */
+  --dither: repeating-conic-gradient(var(--in-force) 0% 25%, var(--light) 0% 50%);
+  --dither-size: 2px;
   --net: url("parts/net.png");
   --nextcube: url("parts/nextcube.png");
   --nextstation: url("parts/nextstation.png");
@@ -567,6 +574,34 @@ nx-thing .name {
 nx-thing.current { --mark: var(--in-force); }
 nx-thing.current .icon { opacity: .6; }
 nx-thing.current .name { font-weight: bold; }
+
+/* The file has been written since that machine started, so what is on the
+   screen and what is on the card are two different machines and nobody has
+   tried the second one. Previous reads its configuration once, at startup, and
+   this is the only place that difference can be seen.
+
+   The mark keeps its shape and loses half its ink. The pattern is fixed to the
+   window rather than to each element, so it runs across the slot, the name and
+   the two fillets as one surface instead of restarting at every edge. */
+nx-thing.current.untried .slot,
+nx-thing.current.untried .name,
+nx-thing.current.untried .slot::before,
+nx-thing.current.untried .slot::after {
+  background-image: var(--dither);
+  background-size: var(--dither-size) var(--dither-size);
+  background-attachment: fixed;
+}
+
+/* The fillets are a gradient that draws the hollow, so with a pattern in the
+   background the hollow has to be cut instead of painted. */
+nx-thing.current.untried .slot::before {
+  mask-image: radial-gradient(circle at top left,
+    transparent var(--hilite-radius), black 0);
+}
+nx-thing.current.untried .slot::after {
+  mask-image: radial-gradient(circle at top right,
+    transparent var(--hilite-radius), black 0);
+}
 
 /* Selection is white behind the icon and white behind the name, and the
    lettering stays black. No second colour enters the interface.

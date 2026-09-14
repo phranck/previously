@@ -5,6 +5,7 @@ being tested is the shape that exists rather than the one that would be
 convenient.
 """
 
+import os
 import textwrap
 
 import pytest
@@ -114,6 +115,47 @@ def test_a_machine_type_nobody_knows_still_answers():
 
 def test_no_inserted_disk_reads_as_none(tmp_path):
     assert config.read(write(tmp_path, PLAIN_STATION))["disk"] is None
+
+
+# -- the file against the machine that is running ------------------------
+
+
+def test_a_file_written_after_the_emulator_started_has_not_been_tried(tmp_path):
+    """Previous reads the file when it starts and never again, so this is the
+    only place the difference between the two can be seen."""
+    path = write(tmp_path, PLAIN_STATION)
+    os.utime(path, (1_000_500, 1_000_500))
+
+    state = config.file_state(path, emulator_age_seconds=100, now=1_000_550)
+
+    assert state["changed_at"] == 1_000_500
+    assert state["newer_than_the_machine"] is True
+
+
+def test_a_file_older_than_the_emulator_is_what_it_is_running(tmp_path):
+    path = write(tmp_path, PLAIN_STATION)
+    os.utime(path, (1_000_000, 1_000_000))
+
+    state = config.file_state(path, emulator_age_seconds=100, now=1_000_550)
+
+    assert state["newer_than_the_machine"] is False
+
+
+def test_with_nothing_running_there_is_nothing_to_disagree_with(tmp_path):
+    """A file cannot be newer than a machine that is not there."""
+    path = write(tmp_path, PLAIN_STATION)
+
+    state = config.file_state(path, emulator_age_seconds=None)
+
+    assert state["newer_than_the_machine"] is False
+    assert state["changed_at"] is not None
+
+
+def test_a_file_that_is_not_there_says_so_rather_than_raising(tmp_path):
+    state = config.file_state(tmp_path / "absent.cfg", emulator_age_seconds=100)
+
+    assert state["changed_at"] is None
+    assert state["newer_than_the_machine"] is False
 
 
 def test_a_missing_file_is_refused(tmp_path):

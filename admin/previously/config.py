@@ -9,6 +9,7 @@ the half which only looks cannot damage anything.
 """
 
 import configparser
+import time
 
 #: What the emulator calls each machine, by the number in the file. The names
 #: are Previous's own, from its machine type enumeration.
@@ -75,6 +76,46 @@ def read(path):
         "disk": _disk(parser),
         "dimension": dimension_seated,
     }
+
+
+def file_state(path, emulator_age_seconds, now=None):
+    """What the file says about itself, held against the machine that runs.
+
+    @param path - pathlib.Path to previous.cfg.
+    @param emulator_age_seconds - How long the emulator has been up, or None
+      where none is running.
+    @param now - The current time, for tests. Defaults to time.time().
+    @returns dict with `changed_at`, a Unix timestamp or None, and
+      `newer_than_the_machine`.
+
+    Previous reads this file when it starts and never again, so a file written
+    since then holds a machine that nobody has tried. It is not an error and
+    not a warning: it is the difference between what runs and what is written
+    down, and the only place that difference can be seen.
+
+    With no emulator running the question does not arise, because there is no
+    running machine for the file to disagree with.
+    """
+    changed_at = _changed_at(path)
+    started_at = None
+    if emulator_age_seconds is not None:
+        started_at = (time.time() if now is None else now) - emulator_age_seconds
+    return {
+        "changed_at": changed_at,
+        "newer_than_the_machine": (
+            changed_at is not None and started_at is not None
+            and changed_at > started_at
+        ),
+    }
+
+
+def _changed_at(path):
+    """@returns When the file was last written, as a Unix timestamp, or None
+      where it cannot be read."""
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return None
 
 
 def enclosure(machine_type):
