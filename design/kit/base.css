@@ -50,8 +50,13 @@
 
   --font: Helvetica, "Helvetica Neue", Arial, sans-serif;
   --mono: Menlo, "DejaVu Sans Mono", monospace;
-  --title-size: 12px;
-  --icon-size: 10px;
+  /* What the interface is set at. NeXTSTEP put the names under its icons at
+     this size too, and the menu entries and the window titles with them:
+     measured off the running system, all of them have a capital 9 pixels
+     tall. */
+  --text-size: 12px;
+  /* The one thing it set smaller, whose capital is 7. */
+  --status-size: 10px;
 
   --row: 20px;           /* the menu raster, and the height of one entry */
   --title-height: 21px;  /* 19 px of bar and 2 px of the shadow under it */
@@ -116,7 +121,7 @@ body {
   margin: 0;
   height: 100vh;
   background: var(--desktop);
-  font: var(--title-size)/1.4 var(--font);
+  font: var(--text-size)/1.4 var(--font);
   color: var(--black);
   overflow: hidden;
   /* A workspace is not a document. The prefixed form is written out because

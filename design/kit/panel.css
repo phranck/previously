@@ -27,7 +27,7 @@ nx-portrait {
   background: var(--light);
 }
 nx-portrait .icon { width: 48px; height: 48px; background-size: contain; }
-nx-portrait .caption { font-size: var(--icon-size); text-align: center; line-height: 1.3; }
+nx-portrait .caption { text-align: center; line-height: 1.3; }
 
 /* The whole window answers a drag, so the eye is not asked to hit 48 pixels. */
 nx-window[droppable] { outline: 2px solid var(--white); outline-offset: -4px; }
@@ -58,7 +58,7 @@ nx-field {
 .lamp { width: 9px; height: 9px; border: 1px solid var(--black); background: var(--live); }
 
 button {
-  font: var(--title-size) var(--font);
+  font: var(--text-size) var(--font);
   color: var(--black);
   background: var(--light);
   padding: 3px 14px;
