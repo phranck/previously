@@ -68,7 +68,11 @@ Those values come from Previous itself, out of the function its own dialogue run
 
 **They have to be written together.** Seven of them follow from the machine type, the turbo board and the colour board at once: the processor level, its clock, the floating point unit, the real-time clock chip, the SCSI controller, the bus interface chip and the DSP's expansion memory. A machine that gets some of them and keeps the rest is not a machine Previous can run, and it does not say so: it resets in a loop and shows a white screen with nothing in the log.
 
-**The order is fixed, because the risky part is not the writing.** Previous writes `previous.cfg` from memory when it exits, so a change made underneath a running emulator is thrown away by the emulator itself. And a machine it cannot run leaves a black screen with SSH as the only way back.
+**The order is fixed, because the risky part is not the writing.** Previous reads `previous.cfg` when it starts and never again, so a change made underneath a running emulator does nothing until it restarts and nobody watching can tell. And a machine it cannot run leaves a black screen with SSH as the only way back.
+
+**Previous never writes the file back by itself.** Not when it exits, and not when its own configuration dialogue closes. The only thing that writes is "Save Config" in that dialogue, which asks for a filename first. So what somebody sets behind F12 holds for that session and is gone at the next start unless they save it, and this tool cannot see it whilst it is only in the emulator's memory. What it does see, within five seconds, is a file somebody saved.
+
+That also decides what this tool overwrites, which is the sixteen keys that make up a machine and nothing else. Disks, sound, network and screen are left exactly as the file has them, whoever put them there.
 
 So: shut the guest down properly, copy the file beside itself as `previous.cfg.bak`, write, let it come back, and watch long enough to know that it did. Anything that does not come back is put straight back the way it was.
 
