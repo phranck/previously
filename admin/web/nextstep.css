@@ -40,6 +40,7 @@
   --tile: 104px;         /* the tile an icon and its name sit on */
   --slot-w: 66px;        /* hilite.tiff is 66 by 52, so the slot is too */
   --slot-h: 52px;
+  --reading-gap: 5px;    /* between one reading and the next, anywhere */
   --slot-top: 2px;       /* air above the icon, inside the mark */
   --name-air: 3px;       /* air above and below a name, inside the mark */
 
@@ -650,9 +651,15 @@ nx-window[droppable] nx-portrait { background: var(--white); }
   overflow: hidden;
   display: grid;
   grid-auto-rows: min-content;
-  gap: 5px;
+  gap: var(--reading-gap);
   align-content: start;
 }
+
+/* A second group of readings under the picture is the same list continued, so
+   the step between the two groups is the step inside them. Without this the
+   pane puts them flush against each other and the one join in the window is
+   tighter than every other. */
+.info-body + .readings { margin-top: var(--reading-gap); }
 
 nx-row { display: grid; grid-template-columns: 88px 1fr; gap: 8px; align-items: center; }
 nx-row label { text-align: right; }

@@ -64,14 +64,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(pi.readings())
         if route == "/api/machines":
             return self._json({"machines": [
-                {
-                    "id": machine.identifier,
-                    "name": machine.name,
-                    # So the shelf can draw the right picture before anything
-                    # is running, rather than reading it out of the name.
-                    "enclosure": config.enclosure(machine.kind),
-                }
-                for machine in machines.CATALOGUE
+                self._machine(machine) for machine in machines.CATALOGUE
             ]})
         if route == "/api/token":
             return self._json({"valid": self._carries_the_token()})
@@ -165,6 +158,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "config_readable": path.is_file(),
         }
 
+    def _machine(self, machine):
+        """One entry of the catalogue, described the way the file's own is.
+
+        @param machine - A machines.Machine.
+        @returns dict. The same shape config.read answers with, so the info
+          window shows a machine that is not running the same way it shows the
+          one that is, and the shelf can draw before anything is running.
+        """
+        settings = machines.settings_for(machine)
+        described = config.describe(
+            settings["System"], settings["Memory"], settings["Dimension"])
+        described["id"] = machine.identifier
+        # The catalogue's own name, which carries the Nitro that the file
+        # cannot: to Previous that is a clock and nothing else.
+        described["name"] = machine.name
+        return described
+
     def _status(self):
         """What the machine is set to and whether it is running.
 
@@ -188,7 +198,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # Whether the file has moved on since the emulator read it, which is
         # the one thing the configuration itself cannot say.
         answer["file"] = config.file_state(
-            self.settings.previous_config, kiosk.emulator_uptime_seconds())
+            self.settings.previous_config, kiosk.emulator_uptime_seconds(),
+            state_directory=self.settings.state_directory)
         return answer
 
     def _carries_the_token(self):

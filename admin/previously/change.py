@@ -62,6 +62,10 @@ def to_machine(identifier, settings, sleep=None):
         kiosk.start(settings.runtime_directory)
         return False, str(error)
 
+    # So that the file can later say whether it is still the one we left. It is
+    # noted even where nothing changed, because the file is ours either way.
+    config.note_written(settings.previous_config, settings.state_directory)
+
     kiosk.start(settings.runtime_directory)
 
     if not _stayed_up(sleep):

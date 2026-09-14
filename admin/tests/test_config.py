@@ -17,8 +17,12 @@ CUBE_TURBO_WITH_DIMENSION = textwrap.dedent("""
     nMachineType = 1
     bColor = FALSE
     bTurbo = TRUE
+    bNBIC = TRUE
+    nSCSI = TRUE
+    nRTC = TRUE
     nCpuLevel = 4
     nCpuFreq = 33
+    n_FPUType = 68040
 
     [Memory]
     nMemoryBankSize0 = 32
@@ -42,8 +46,12 @@ PLAIN_STATION = textwrap.dedent("""
     nMachineType = 2
     bColor = TRUE
     bTurbo = FALSE
+    bNBIC = FALSE
+    nSCSI = TRUE
+    nRTC = TRUE
     nCpuLevel = 1
     nCpuFreq = 25
+    n_FPUType = 68040
 
     [Memory]
     nMemoryBankSize0 = 16
@@ -115,6 +123,87 @@ def test_a_machine_type_nobody_knows_still_answers():
 
 def test_no_inserted_disk_reads_as_none(tmp_path):
     assert config.read(write(tmp_path, PLAIN_STATION))["disk"] is None
+
+
+# -- describing a machine from either side -------------------------------
+
+
+def test_the_catalogue_and_the_file_describe_a_machine_the_same_way(tmp_path):
+    """The shelf says what a machine would be and the info window says what
+    the running one is. Two ways of working that out would drift."""
+    from previously import machines
+
+    machine = machines.find("nextstation-turbo-color")
+    settings = machines.settings_for(machine)
+    from_catalogue = config.describe(
+        settings["System"], settings["Memory"], settings["Dimension"])
+
+    path = write(tmp_path, PLAIN_STATION)
+    config.write(path, settings)
+    from_file = config.read(path)
+    del from_file["disk"]
+
+    assert from_file == from_catalogue
+
+
+def test_the_three_chips_are_named(tmp_path):
+    """They are what a machine is made of, and getting one wrong is what makes
+    a configuration reset for ever instead of booting."""
+    turbo = config.read(write(tmp_path, CUBE_TURBO_WITH_DIMENSION))
+    assert turbo["chips"] == "MCCS1850, NCR53C90A, mit NeXTbus"
+
+
+def test_a_machine_without_those_chips_says_the_others(tmp_path):
+    plain = config.read(write(tmp_path, textwrap.dedent("""
+        [System]
+        nMachineType = 2
+        bTurbo = FALSE
+        nRTC = FALSE
+        nSCSI = TRUE
+        bNBIC = FALSE
+        """)))
+    assert plain["chips"] == "MC68HC68T1, NCR53C90A, ohne NeXTbus"
+
+
+# -- who wrote the file --------------------------------------------------
+
+
+def test_a_file_this_service_wrote_is_recognised(tmp_path):
+    path = write(tmp_path, PLAIN_STATION)
+    state = tmp_path / "state"
+    state.mkdir()
+
+    assert config.note_written(path, state) is True
+    assert config.file_state(path, None, state_directory=state)["written_by_us"] is True
+
+
+def test_a_file_somebody_else_wrote_is_not(tmp_path):
+    """Previous's own dialogue and a text editor look alike from here, so the
+    answer is only ever yes or not-us."""
+    path = write(tmp_path, PLAIN_STATION)
+    state = tmp_path / "state"
+    state.mkdir()
+    config.note_written(path, state)
+
+    path.write_text(PLAIN_STATION + "\nbTurbo = TRUE\n")
+
+    assert config.file_state(path, None, state_directory=state)["written_by_us"] is False
+
+
+def test_without_a_note_nothing_is_claimed(tmp_path):
+    path = write(tmp_path, PLAIN_STATION)
+    state = tmp_path / "state"
+    state.mkdir()
+
+    assert config.file_state(path, None, state_directory=state)["written_by_us"] is False
+
+
+def test_a_note_that_cannot_be_kept_is_not_an_error(tmp_path):
+    """The file was written either way, and all that is lost is being able to
+    say later who wrote it."""
+    path = write(tmp_path, PLAIN_STATION)
+
+    assert config.note_written(path, tmp_path / "no-such-directory") is False
 
 
 # -- the file against the machine that is running ------------------------

@@ -68,9 +68,35 @@
   <p class="note" id="machine-note"></p>
 </nx-window>
 
+<!-- What one machine is, opened from the context menu in the shelf. Its title
+     is the machine's own name, so two of these would never be confused. -->
+<nx-window name="machine-info" title="Maschine" fixed x="640" y="400" w="400" closed>
+  <div class="info-body">
+    <nx-portrait>
+      <i class="art icon" id="mi-icon" style="background-image: var(--root)"></i>
+      <span class="caption" id="mi-caption">&mdash;</span>
+    </nx-portrait>
+    <div class="readings">
+      <nx-row><label>Prozessor</label><nx-field id="mi-cpu">&mdash;</nx-field></nx-row>
+      <nx-row><label>Speicher</label><nx-field id="mi-ram">&mdash;</nx-field></nx-row>
+      <nx-row><label>Bildschirm</label><nx-field id="mi-screen">&mdash;</nx-field></nx-row>
+      <nx-row><label>Dimension</label><nx-field id="mi-dimension">&mdash;</nx-field></nx-row>
+    </div>
+  </div>
+  <div class="readings">
+    <nx-row><label>Chips</label><nx-field id="mi-chips">&mdash;</nx-field></nx-row>
+    <nx-row><label>Datei</label><nx-field id="mi-changed">&mdash;</nx-field></nx-row>
+    <nx-row><label>Geschrieben</label><nx-field id="mi-written">&mdash;</nx-field></nx-row>
+  </div>
+</nx-window>
+
 <!-- What a right click on a machine offers. Put where the pointer is, and
      taken away again, so it is not carried about and not remembered. -->
 <nx-menu name="machine-menu" context title="Maschine">
+  <!-- Reading before acting, and nothing between them: NeXTSTEP's own menus
+       are one run of entries, with the submenu arrow and the shortcut letter
+       the only things that break it. -->
+  <nx-menu-item name="info">Info&hellip;</nx-menu-item>
   <nx-menu-item name="activate">Activate config</nx-menu-item>
   <nx-menu-item name="edit" icon="defaultAppIcon">Edit config&hellip;</nx-menu-item>
 </nx-menu>

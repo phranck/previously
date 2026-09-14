@@ -175,6 +175,7 @@ function allowActions(reachable) {
  */
 function drawStatus(status) {
   const state = document.getElementById("info-state");
+  lastStatus = status;
 
   if (status === null) {
     /* Nothing can be asked of a machine that is not answering, and whilst it
@@ -304,6 +305,14 @@ async function operate(route, working) {
  *  it shows it rather than a generic computer. Set from every status. */
 let runningArt = Art.Computer;
 
+/** Every machine the service offers, as it described them. Kept because the
+ *  info window says what a machine is without anything having to run. */
+let catalogue = [];
+
+/** The last thing /api/status said, for the parts of the info window that are
+ *  about the file rather than about a machine. */
+let lastStatus = null;
+
 /** Written into noteState whilst a note is new and the state it describes has
  *  not been seen yet. */
 const JUST_WRITTEN = Symbol("just written");
@@ -381,6 +390,7 @@ async function drawMachines() {
     return;
   }
 
+  catalogue = answer.machines;
   shelf.replaceChildren(...answer.machines.map((machine) => {
     const thing = document.createElement("nx-thing");
     thing.setAttribute("icon", machineArt(machine.enclosure));
@@ -410,6 +420,77 @@ function markCurrent(name, untried) {
     thing.toggleAttribute("disabled", isCurrent);
     if (isCurrent) thing.removeAttribute("chosen");
   }
+}
+
+/**
+ * When a moment was, in the words a person here uses.
+ * @param {number|null} seconds - A Unix timestamp.
+ * @returns {string} The date and time, or an em dash where there is none.
+ */
+function when(seconds) {
+  if (!seconds) return "—";
+  return new Date(seconds * 1000).toLocaleString("de-AT", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
+/**
+ * How a machine's memory is made up.
+ * @param {number[]} banks - The four banks in megabytes, empty ones as zero.
+ * @returns {string} "4 × 32" where every filled bank is the same size, and
+ *   "16 + 8" where they are not. Empty banks are left out: a bank with nothing
+ *   in it is a socket, and nobody counts sockets.
+ */
+function fitted(banks) {
+  const filled = banks.filter((size) => size > 0);
+  if (!filled.length) return "leer";
+  return filled.every((size) => size === filled[0])
+    ? `${filled.length} × ${filled[0]}`
+    : filled.join(" + ");
+}
+
+/**
+ * Shows what one machine is, in a window of its own.
+ * @param {string} identifier - Which machine, as the catalogue names it.
+ *
+ * The settings come from the catalogue, so a machine that is not running is
+ * described exactly as the running one is. The two lines about the file are
+ * about the file rather than about the machine, so they are filled in only for
+ * the machine the file actually holds.
+ */
+function showMachineInfo(identifier) {
+  const machine = catalogue.find((entry) => entry.id === identifier);
+  if (!machine) return;
+
+  const window_ = document.querySelector('nx-window[name="machine-info"]');
+  window_.rename(machine.name);
+  show("mi-caption", machine.name);
+  document.getElementById("mi-icon").style.backgroundImage =
+    `var(--${machineArt(machine.enclosure)})`;
+
+  show("mi-cpu", machine.cpu);
+  show("mi-ram", `${machine.memory_mb} MB (${fitted(machine.banks)})`);
+  show("mi-screen", machine.screen);
+  show("mi-dimension", machine.dimension ? "eingebaut" : "keine");
+  show("mi-chips", machine.chips);
+
+  /* The file holds one machine, so everything it can say applies to that one
+     and to no other. */
+  const file = lastStatus?.file;
+  const isTheOneInTheFile = lastStatus?.configuration?.machine === machine.name;
+  if (!file || !isTheOneInTheFile) {
+    show("mi-changed", "diese Maschine ist nicht eingestellt");
+    show("mi-written", "—");
+  } else {
+    const untried = file.newer_than_the_machine ? ", noch nicht gebootet" : "";
+    show("mi-changed", when(file.changed_at) + untried);
+    show("mi-written", file.written_by_us
+      ? "von Previously"
+      : "von Previous oder von Hand");
+  }
+
+  window_.open();
 }
 
 /**
@@ -473,8 +554,14 @@ function openMachineMenu(thing, x, y) {
   /* Which machine this is about. The menu appears over whatever was clicked
      and then goes away, so without a name it is an orphan. */
   menu.querySelector(".title").textContent = thing.getAttribute("label");
+  const info = menu.querySelector('nx-menu-item[name="info"]');
   const activate = menu.querySelector('nx-menu-item[name="activate"]');
   const edit = menu.querySelector('nx-menu-item[name="edit"]');
+
+  info.onclick = () => {
+    menu.close();
+    showMachineInfo(thing.getAttribute("value"));
+  };
 
   /* The machine that is already running cannot be activated: it would shut
      NeXTSTEP down, write the same values back and start it again, for
