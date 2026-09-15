@@ -8,7 +8,6 @@ refusal here is a test of its own.
 
 import base64
 import http.server
-import os
 import socket
 import threading
 import time
@@ -75,24 +74,6 @@ def rest_of_the_headers(connection):
     return text.decode("ascii", "replace")
 
 
-def test_a_request_without_the_token_gets_no_shell(service):
-    address, _ = service
-
-    status, connection = ask(address, [websocket.PROTOCOL])
-    connection.close()
-
-    assert "403" in status
-
-
-def test_a_wrong_token_gets_no_shell(service):
-    address, _ = service
-
-    status, connection = ask(address, [websocket.PROTOCOL, "not-the-token"])
-    connection.close()
-
-    assert "403" in status
-
-
 def test_a_request_that_is_not_an_upgrade_is_not_a_terminal(service):
     address, token = service
 
@@ -122,12 +103,14 @@ def test_a_request_without_a_key_is_refused(service):
     assert "400" in status
 
 
-@pytest.mark.skipif(not os.path.exists("/bin/sh"), reason="no shell")
-def test_the_token_opens_a_session_and_the_shell_answers(service):
-    address, token = service
+def test_the_handshake_needs_no_token(service):
+    """What is behind this socket is the machine's own SSH server, so whoever
+    connects proves who they are to that rather than to this service."""
+    address, _ = service
 
-    status, connection = ask(address, [websocket.PROTOCOL, token])
+    status, connection = ask(address, [websocket.PROTOCOL])
     headers = rest_of_the_headers(connection)
+    connection.close()
 
     # HTTP/1.1 rather than the 1.0 this handler answers everything else in,
     # because a browser refuses a handshake that is not.
@@ -135,25 +118,64 @@ def test_the_token_opens_a_session_and_the_shell_answers(service):
     assert websocket.accepts(KEY) in headers
     assert "Sec-WebSocket-Protocol: " + websocket.PROTOCOL in headers
 
-    # The shell is there: ask it something and wait for the answer.
-    connection.sendall(typed(b"echo hallo-vom-pi\n"))
-    heard = b""
-    deadline = time.monotonic() + 10
-    while time.monotonic() < deadline and b"hallo-vom-pi" not in heard:
-        heard += connection.recv(4096)
+
+def test_a_browser_that_says_nothing_is_given_up_on(service, monkeypatch):
+    """Otherwise connecting and saying nothing holds the one session there is,
+    which needs no token and no shell to do."""
+    monkeypatch.setattr(terminal, "FIRST_WORD_SECONDS", 1)
+    address, _ = service
+
+    _, connection = ask(address, [websocket.PROTOCOL])
+    rest_of_the_headers(connection)
+    connection.settimeout(6)
+    ended = b""
+    try:
+        while True:
+            piece = connection.recv(64)
+            if not piece:
+                break
+            ended += piece
+    except OSError:
+        pass
     connection.close()
 
-    assert b"hallo-vom-pi" in heard
+    # A close frame, or the socket simply gone. Either way the session is not
+    # being held any more.
+    assert ended == b"" or ended[0] & 0x0F == websocket.CLOSE
 
 
-@pytest.mark.skipif(not os.path.exists("/bin/sh"), reason="no shell")
+@pytest.mark.parametrize("first", [
+    b'{"login": "-oProxyCommand=something"}',
+    b'{"login": "root; rm -rf /"}',
+    b'{"login": ""}',
+    b'{"nothing": "of use"}',
+    b"not json at all",
+])
+def test_a_first_word_that_is_not_a_login_name_opens_nothing(service, first):
+    """The name becomes an argument to the SSH client, so one beginning with a
+    dash would be read as an option rather than as a person."""
+    address, _ = service
+
+    _, connection = ask(address, [websocket.PROTOCOL])
+    rest_of_the_headers(connection)
+    connection.sendall(said(first))
+    connection.settimeout(6)
+    try:
+        answer = connection.recv(64)
+    except OSError:
+        answer = b""
+    connection.close()
+
+    assert answer == b"" or answer[0] & 0x0F == websocket.CLOSE
+
+
 def test_one_session_at_a_time(service):
-    """A second browser would get a second shell that the first cannot see."""
-    address, token = service
+    """A second browser would get a second session the first cannot see."""
+    address, _ = service
 
-    first_status, first = ask(address, [websocket.PROTOCOL, token])
+    first_status, first = ask(address, [websocket.PROTOCOL])
     rest_of_the_headers(first)
-    second_status, second = ask(address, [websocket.PROTOCOL, token])
+    second_status, second = ask(address, [websocket.PROTOCOL])
     first.close()
     second.close()
 
@@ -161,20 +183,19 @@ def test_one_session_at_a_time(service):
     assert "409" in second_status
 
 
-@pytest.mark.skipif(not os.path.exists("/bin/sh"), reason="no shell")
 def test_the_next_browser_gets_a_session_once_the_first_has_gone(service):
     """The lock is released when the session ends, or the tool hands out one
-    shell and never another."""
-    address, token = service
+    session and never another."""
+    address, _ = service
 
-    _, first = ask(address, [websocket.PROTOCOL, token])
+    _, first = ask(address, [websocket.PROTOCOL])
     rest_of_the_headers(first)
     first.close()
 
     status = "not asked"
     deadline = time.monotonic() + terminal.GOODBYE_SECONDS + 8
     while time.monotonic() < deadline:
-        status, second = ask(address, [websocket.PROTOCOL, token])
+        status, second = ask(address, [websocket.PROTOCOL])
         second.close()
         if "101" in status:
             break
@@ -183,8 +204,8 @@ def test_the_next_browser_gets_a_session_once_the_first_has_gone(service):
     assert "101" in status
 
 
-def typed(data):
-    """What the browser sends when somebody types, which is a masked frame."""
+def said(data, opcode=websocket.TEXT):
+    """What the browser sends, which is always a masked frame."""
     key = b"\x01\x02\x03\x04"
-    head = bytes([0x80 | websocket.BINARY, 0x80 | len(data)]) + key
+    head = bytes([0x80 | opcode, 0x80 | len(data)]) + key
     return head + bytes(byte ^ key[index % 4] for index, byte in enumerate(data))

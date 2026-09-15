@@ -81,33 +81,33 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/machine` | Makes the emulated machine the one named |
 | `POST /api/pi/reboot` | Shuts NeXTSTEP down, then restarts the board |
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
-| `GET /api/terminal` | Becomes a WebSocket carrying a shell session |
+| `GET /api/terminal` | Becomes a WebSocket carrying a login on this machine |
 
-Every POST is checked for the token before anything looks at what was sent, and so is the one GET that hands out a shell.
+Every POST is checked for the token before anything looks at what was sent. The one route that is not is the terminal, and the section below says why: what answers there is this machine's own SSH server, so whoever is connecting proves who they are to that.
 
 ## The shell
 
-`GET /api/terminal` upgrades to a WebSocket and the service forks a pseudo terminal behind it, running the login shell of the user it runs as. Binary frames are what the shell sees, so a keystroke and a paste go that way. Text frames are what the session is told, which today is `{"resize": [rows, columns]}` and never reaches the shell.
+`GET /api/terminal` upgrades to a WebSocket, and what runs on the pseudo terminal behind it is `ssh` to this machine's own SSH server on the loopback. So what somebody sees is the login prompt sshd puts up, and what they get afterwards is an ordinary login shell: their own home, `sudo` if they have it, everything they would have sitting at the machine.
 
-**A browser cannot put a header on a WebSocket**, and #5 settled that the token is never in a URL, because a URL ends up in a log line and in somebody's history. So it travels as the second protocol offered: `Sec-WebSocket-Protocol: previously, <token>`. A request without it is refused before anything is forked.
+**This is why there is no token on that route.** The door is the same one sshd already holds open on this network, and the service is only the corridor. It never learns a password, never changes user, and needs no privilege of its own to hand out a shell that can do everything the person logging in can do.
 
-**One session at a time.** A second browser is answered with 409, because a second shell is one more thing running than anybody is watching.
+The other two ways are worse in both directions. Forking a shell here would hand one out without asking anybody who they are, and that shell would inherit this service's sandbox: no `sudo`, a read-only home, and a person left wondering why. `/bin/login` would ask, but it changes user, which `NoNewPrivileges=yes` refuses for this whole process tree, and on current Debian it no longer works when another program calls it. WeTTY solves it the same way when it is not running as root.
 
-**The shell can do exactly what the service can**, because the service's own process forks it. The unit runs as `next` with `ProtectSystem=strict` and `ProtectHome=read-only`, so the shell reads the machine and writes only `/home/next/.config/previous`. That is the escape hatch this tool can honestly offer; anything wider is what SSH is for.
+**The first thing the browser says is who is logging in**, as `{"login": "next", "size": [rows, columns]}`, so the session starts at the size it will be read at. The name is checked against what a Unix login name may be, because it becomes an argument to the SSH client and one beginning with a dash would be read as an option. After that, binary frames are what the session sees and text frames are what it is told, which today is `{"resize": [rows, columns]}`.
 
-**It ends when the socket does.** The browser closing, the network going, or the shell exiting all end the other side, and the hangup goes to the whole process group so that what was left running goes with it.
+**A browser that connects and says nothing is given up on after ten seconds**, because there is one session at a time and holding it needs no password. A second browser is answered with 409.
+
+**It ends when the socket does.** The window closing, the page going, or the login ending all end the other side, and the hangup goes to the whole process group so that what was left running goes with it.
+
+The SSH client is told not to check the host key and not to write one down, because the service's home is read only and the other end of the loopback is this machine: an impostor there would already be root on it. It is also told to use passwords rather than keys, so that a key put in `authorized_keys` later cannot quietly turn the login prompt off.
 
 `websocket.py` is the protocol, out of the standard library: the handshake from `hashlib`, the frames from `struct`. `terminal.py` is the session and the two directions it is pumped in.
 
-In the browser, `web/terminal.js` is the view and `app.js` holds the socket. The view draws what it is given, says what was typed into it and says how large it has become; what is on the other end is the page's business.
+In the browser, `web/terminal.js` is the view and `app.js` holds the socket and the login prompt. The view draws what it is given, says what was typed into it and says how large it has become; what is on the other end is the page's business.
 
 **The one library.** Everything else here is written from nothing, and a terminal is not: what arrives from a shell is a stream of escape sequences that move a cursor, switch to an alternate screen and scroll a region. `xterm.js` 5.5.0 and its fit addon 0.10.0 do that, both MIT, in `web/vendor/` with the licence beside them. That is also why the terminal view is not part of the kit, which takes nothing from anybody.
 
 It is themed to what NeXT's Terminal was, black on white with a blinking block cursor. The sixteen ANSI colours stay, because a shell that paints its prompt is saying something with them, and the pale ones are darkened to be readable on white. The scroller NeXTSTEP put on the left of its own terminal is #107.
-
-**Nothing here answers in sentences.** A machine crosses the wire as what the file holds, so `"model": "NeXTcube", "turbo": true, "dimension": true` rather than `NeXTcube Turbo mit NeXTdimension`, and the browser writes the name. What a chip is called is a fact and travels as it is; what is said about it is the browser's.
-
-Every answer to a POST is a name and the values that fill it, `{"reason": "machine.running", "machine": "NeXTcube Turbo", "lines": 6}`, and the browser holds the sentence for each name in each of its six languages. A service has no idea which language the person reading it wants, so it says what happened and the browser says it in words.
 
 ## Changing which machine it is
 

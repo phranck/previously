@@ -109,6 +109,79 @@ def test_a_shell_that_has_gone_says_nothing_more(session):
     assert session.write(b"ls\n") is False
 
 
+# -- who is logging in ----------------------------------------------------
+
+
+@pytest.mark.parametrize("name", ["next", "pi", "_service", "a", "user-2", "x" * 32])
+def test_a_name_somebody_could_be_called(name):
+    assert terminal.is_a_login_name(name) is True
+
+
+@pytest.mark.parametrize("name", [
+    "-oProxyCommand=something",   # read as an option rather than a person
+    "root; rm -rf /",
+    "Next",                       # a Unix login name is lower case
+    "with space",
+    "",
+    None,
+    42,
+    "x" * 33,
+])
+def test_a_name_nobody_could_be_called(name):
+    assert terminal.is_a_login_name(name) is False
+
+
+def test_a_session_refuses_to_start_without_a_name():
+    """The name becomes an argument to the SSH client, so this is checked
+    where the client is started rather than only where the name arrives."""
+    with pytest.raises(ValueError):
+        terminal.Session(login="-oProxyCommand=something")
+
+
+def test_the_first_word_says_who_is_logging_in_and_how_large_the_window_is():
+    started = {}
+
+    class Pretending:
+        def __init__(self, **how):
+            started.update(how)
+
+    connection = Talking([(websocket.TEXT, b'{"login": "next", "size": [40, 100]}')])
+    terminal.Session, keeping = Pretending, terminal.Session
+    try:
+        terminal.open_for(connection)
+    finally:
+        terminal.Session = keeping
+
+    assert started == {"rows": 40, "columns": 100, "login": "next"}
+
+
+def test_a_size_that_is_not_one_falls_back_to_the_ordinary(monkeypatch):
+    started = {}
+    monkeypatch.setattr(terminal, "Session", lambda **how: started.update(how))
+    connection = Talking([(websocket.TEXT, b'{"login": "next", "size": "wide"}')])
+
+    terminal.open_for(connection)
+
+    assert started == {"rows": 24, "columns": 80, "login": "next"}
+
+
+@pytest.mark.parametrize("first", [
+    (websocket.BINARY, b'{"login": "next"}'),
+    (websocket.TEXT, b'{"login": "-oProxyCommand=x"}'),
+    (websocket.TEXT, b"not json"),
+])
+def test_nothing_is_started_for_a_first_word_this_does_not_trust(first, monkeypatch):
+    monkeypatch.setattr(terminal, "Session", lambda **how: "started")
+
+    assert terminal.open_for(Talking([first])) is None
+
+
+def test_nothing_is_started_for_a_browser_that_says_nothing(monkeypatch):
+    monkeypatch.setattr(terminal, "Session", lambda **how: "started")
+
+    assert terminal.open_for(Talking([])) is None
+
+
 # -- the two directions ---------------------------------------------------
 
 
