@@ -83,6 +83,9 @@ NX_STRINGS.en = {
   "viewer.read-only": ", read only",
   "viewer.unreachable": "Not reachable",
 
+  /* --- the terminal --------------------------------------------------- */
+  "terminal.ended": "[the session has ended]",
+
   /* --- the buttons ------------------------------------------------------ */
   "button.power-off": "Power off",
   "button.restart": "Restart",
