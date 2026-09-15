@@ -11,9 +11,10 @@ import http.server
 import json
 import mimetypes
 import pathlib
+import threading
 import urllib.parse
 
-from . import change, config, files, kiosk, machines, pi
+from . import change, config, files, kiosk, machines, pi, terminal, websocket
 from .token import HEADER
 
 VERSION = "0.1.0"
@@ -48,6 +49,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     settings = None
     token = None
+
+    #: Held whilst a shell session is open, so there is one at a time. A class
+    #: attribute because there is one server, and http.server makes a handler
+    #: per request.
+    terminals = threading.Lock()
     server_version = "previously/" + VERSION
     #: Without this the base class announces the Python version to the network.
     sys_version = ""
@@ -66,6 +72,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(files.tree(self.settings.state_directory))
         if route == "/api/token":
             return self._json({"valid": self._carries_the_token()})
+        if route == "/api/terminal":
+            return self._terminal()
         return self._file(route)
 
     def do_POST(self):
@@ -190,6 +198,65 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.settings.previous_config, kiosk.emulator_uptime_seconds(),
             state_directory=self.settings.state_directory)
         return answer
+
+    def _terminal(self):
+        """Hands out a shell on a WebSocket, to one browser at a time.
+
+        A shell changes the machine, so it is behind the token like everything
+        else that does. A browser cannot put a header on a WebSocket and the
+        token may not be in a URL, so it arrives as the second protocol
+        offered and is read from there.
+        """
+        if not websocket.wants_a_socket(self.headers):
+            return self._json({"error": "not a websocket request"}, status=400)
+
+        speaks = websocket.offered(self.headers.get("Sec-WebSocket-Protocol"))
+        if not speaks or speaks[0] != websocket.PROTOCOL:
+            return self._json({"error": "another protocol"}, status=400)
+        if not self._holds_the_token(speaks[1] if len(speaks) > 1 else None):
+            return self._json({"error": "a token is needed"}, status=403)
+
+        key = self.headers.get("Sec-WebSocket-Key")
+        if not key:
+            return self._json({"error": "no key"}, status=400)
+
+        # One at a time. A second browser would get a second shell that the
+        # first one cannot see, which is one more thing running than anybody
+        # is watching.
+        if not self.terminals.acquire(blocking=False):
+            return self._json({"error": "a session is already open"}, status=409)
+
+        self.close_connection = True
+        try:
+            # Written out rather than sent through send_response, because that
+            # answers in the protocol version this handler speaks and this
+            # handler speaks HTTP/1.0. A browser refuses a handshake that is
+            # not answered in 1.1, and raising the version for every other
+            # answer as well would change how they are all framed.
+            self.log_request(101)
+            self.wfile.write(
+                b"HTTP/1.1 101 Switching Protocols\r\n"
+                b"Upgrade: websocket\r\n"
+                b"Connection: Upgrade\r\n"
+                + b"Sec-WebSocket-Accept: " + websocket.accepts(key).encode() + b"\r\n"
+                + b"Sec-WebSocket-Protocol: " + websocket.PROTOCOL.encode() + b"\r\n"
+                b"\r\n")
+            self.wfile.flush()
+
+            connection = websocket.Connection(self.rfile, self.connection)
+            terminal.attach(terminal.Session(), connection)
+        finally:
+            self.terminals.release()
+
+    def _holds_the_token(self, offered):
+        """Whether what came with the upgrade is the token.
+
+        @param offered - What the second protocol carried, or None.
+        @returns bool
+        """
+        if self.token is None:
+            return False
+        return self.token.matches(offered)
 
     def _carries_the_token(self):
         """Whether this request carried the token.

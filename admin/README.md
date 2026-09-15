@@ -80,8 +80,23 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/machine` | Makes the emulated machine the one named |
 | `POST /api/pi/reboot` | Shuts NeXTSTEP down, then restarts the board |
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
+| `GET /api/terminal` | Becomes a WebSocket carrying a shell session |
 
-Every POST is checked for the token before anything looks at what was sent.
+Every POST is checked for the token before anything looks at what was sent, and so is the one GET that hands out a shell.
+
+## The shell
+
+`GET /api/terminal` upgrades to a WebSocket and the service forks a pseudo terminal behind it, running the login shell of the user it runs as. Binary frames are what the shell sees, so a keystroke and a paste go that way. Text frames are what the session is told, which today is `{"resize": [rows, columns]}` and never reaches the shell.
+
+**A browser cannot put a header on a WebSocket**, and #5 settled that the token is never in a URL, because a URL ends up in a log line and in somebody's history. So it travels as the second protocol offered: `Sec-WebSocket-Protocol: previously, <token>`. A request without it is refused before anything is forked.
+
+**One session at a time.** A second browser is answered with 409, because a second shell is one more thing running than anybody is watching.
+
+**The shell can do exactly what the service can**, because the service's own process forks it. The unit runs as `next` with `ProtectSystem=strict` and `ProtectHome=read-only`, so the shell reads the machine and writes only `/home/next/.config/previous`. That is the escape hatch this tool can honestly offer; anything wider is what SSH is for.
+
+**It ends when the socket does.** The browser closing, the network going, or the shell exiting all end the other side, and the hangup goes to the whole process group so that what was left running goes with it.
+
+`websocket.py` is the protocol, out of the standard library: the handshake from `hashlib`, the frames from `struct`. `terminal.py` is the session and the two directions it is pumped in.
 
 **Nothing here answers in sentences.** A machine crosses the wire as what the file holds, so `"model": "NeXTcube", "turbo": true, "dimension": true` rather than `NeXTcube Turbo mit NeXTdimension`, and the browser writes the name. What a chip is called is a fact and travels as it is; what is said about it is the browser's.
 
