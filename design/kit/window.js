@@ -146,14 +146,23 @@ class NxWindow extends HTMLElement {
     remember("desk", { front: this.name });
   }
 
-  /** Shows it, in front. */
-  open() {
+  /**
+   * Shows it, in front.
+   * @param {HTMLElement} [asker] - What was used to open it, if anything was.
+   *   It rides along as a rectangle, because an application whose icon has to
+   *   travel to the foot of the screen has to know where it is travelling
+   *   from, and only whoever was clicked knows that.
+   */
+  open(asker) {
     this.hidden = false;
     this.raise();
     this.save();
     /* So whatever fills this window can fill it now rather than at the next
        poll, which is up to five seconds of dashes. */
-    this.dispatchEvent(new CustomEvent("nx-open", { bubbles: true }));
+    this.dispatchEvent(new CustomEvent("nx-open", {
+      bubbles: true,
+      detail: { from: asker?.getBoundingClientRect?.() ?? null },
+    }));
   }
 
   /** Hides it, keeping its geometry for the next time.

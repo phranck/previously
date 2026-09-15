@@ -652,7 +652,7 @@ function appName(entry) {
  * Answers a double click in the viewer, whatever was under it.
  * @param {string} path - What the thing carries.
  */
-function open(path) {
+function open(path, asker) {
   const entry = find(root, path);
   if (!entry) return;
   if (entry.kind === "folder" || entry.path === "/") {
@@ -666,7 +666,7 @@ function open(path) {
        not have yet says so, which is the honest thing to do with an icon that
        is there because the place it sits in is being built around it. */
     const window_ = document.querySelector(`nx-window[name="${entry.opens}"]`);
-    return window_ ? window_.open() : notYet(appName(entry));
+    return window_ ? window_.open(asker) : notYet(appName(entry));
   }
   changeTo(entry.id);
 }
@@ -1047,7 +1047,10 @@ function wireMachines() {
   /* Carried onto the info window, or double clicked in the viewer. The kit
      raises the same event for both, so this is one answer to two gestures,
      and what happens follows from what was chosen. */
-  document.addEventListener("nx-choose", (event) => open(event.detail.value));
+  /* The thing that was chosen is where an application's icon starts its
+     journey to the floor of the screen, so it travels with the choice. */
+  document.addEventListener("nx-choose",
+    (event) => open(event.detail.value, event.target));
 
   /* A step of the path was clicked, so go back to it. */
   document.addEventListener("nx-path", (event) => goTo(event.detail.index));
@@ -1223,7 +1226,7 @@ let started = [];
  * application that is running and is not in the dock stands on the floor of
  * the screen instead, from the left corner rightwards.
  */
-function drawWhatIsRunning() {
+function drawWhatIsRunning(arriving) {
   const docked = [...document.querySelectorAll("nx-dock nx-tile[app]")];
   for (const tile of docked) {
     const application = applications().find((entry) => entry.path === tile.getAttribute("app"));
@@ -1236,23 +1239,33 @@ function drawWhatIsRunning() {
     /* The order they were started in, which is the order they arrived in the
        list this keeps. */
     .sort((one, other) => started.indexOf(one.path) - started.indexOf(other.path));
-  document.getElementById("floor")?.show(standing);
+  document.getElementById("floor")?.show(standing, arriving);
 }
 
 /**
  * Reads which applications are running now and draws them.
+ * @param {CustomEvent} [event] - The window opening or closing that prompted
+ *   this, which is what says where a newly started application is coming
+ *   from.
  *
  * A window that opens or closes is an application starting or stopping, and
- * an application that has just started takes the next place on the floor.
+ * an application that has just started takes the next place on the floor. Its
+ * icon travels there from whatever was used to start it, which the window
+ * carries along from whoever opened it.
  */
-function noticeTheApplications() {
+function noticeTheApplications(event) {
   for (const application of applications()) {
     const running = isRunning(application);
     const known = started.includes(application.path);
     if (running && !known) started.push(application.path);
     if (!running && known) started = started.filter((path) => path !== application.path);
   }
-  drawWhatIsRunning();
+
+  const opened = event?.type === "nx-open" ? event.target.getAttribute?.("name") : null;
+  const arriving = applications().find((entry) => entry.opens === opened);
+  drawWhatIsRunning(arriving && event.detail?.from
+    ? { opens: arriving.opens, from: event.detail.from }
+    : null);
 }
 
 /** Listens for a window opening or closing, which is what starting and

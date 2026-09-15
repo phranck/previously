@@ -27,8 +27,22 @@ nx-tile {
      corners landing between them. */
   background: linear-gradient(135deg, var(--light), var(--dark));
 }
-nx-tile:active { border-color: var(--black) var(--white) var(--white) var(--black); }
+/* No pressed state, on purpose. A tile is not a button: NeXTSTEP's did not
+   depress under the pointer, and a click on one is not an answer to anything.
+   What a tile does say is whether its application is running, which is the
+   marks below. */
 nx-tile[spaced] { margin-top: auto; }
+
+/* An icon on its way to the floor. Above everything, because it passes over
+   the windows, and deaf to the pointer, because it is a picture of something
+   rather than the thing. */
+.flying {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
 
 /* The floor of the screen, where an application that is not in the dock puts
    its icon. From the left corner rightwards, which is the order they were
