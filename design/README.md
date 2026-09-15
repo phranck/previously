@@ -79,7 +79,15 @@ The NeXTSTEP draft is a set of custom elements that plug into one another:
 
 `nx-viewer` is the File Viewer: a shelf that keeps what is dropped on it, a line of status, the path as a row of icons with an arrow between each pair, and the contents of the last step in a scroller. It is given what to show and says what was chosen, so it serves machines and directories alike.
 
-The rest: `nx-menu` with `nx-menu-item`, `nx-dock` with `nx-tile`, `nx-shelf` with `nx-thing`, and `nx-portrait`, `nx-row` and `nx-field` for panels. They use the light DOM rather than a shadow root, so one stylesheet and one set of design tokens reach all of them.
+The rest: `nx-menu` with `nx-menu-item`, `nx-dock` with `nx-tile`, `nx-floor` for the tiles that are not in the dock, `nx-shelf` with `nx-thing`, and `nx-portrait`, `nx-row` and `nx-field` for panels. They use the light DOM rather than a shadow root, so one stylesheet and one set of design tokens reach all of them.
+
+## How a tile behaves
+
+NeXT wrote down why, so it is written down here. A tile acts on a double click and a single click does nothing, because a tile is moved by dragging it and a click that acted would fire whenever somebody began a drag and thought better of it. The File Viewer works the same way, one click to choose and two to open.
+
+The three marks in the lower left corner of a tile say the application is **not** running, and they go when it starts. That is the direction the OpenStep guidelines give and the direction the running system shows: Mail, Librarian and the console carry them whilst the Workspace and the clock do not.
+
+An application that is running and is not in the dock puts its tile on the floor of the screen instead, from the left corner rightwards, and takes it away again when it stops. `nx-floor` is that floor. The tile is the dock's own, because `Workspace.app/tile.tiff` is a plain 64 by 64 grey square with the icon on it and no lettering.
 
 ## A note on the icons
 
