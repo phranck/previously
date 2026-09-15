@@ -83,4 +83,8 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
 }
 
 .note { margin: 8px 0 0; font-size: 11px; flex: 0 0 auto; }
+/* A note with nothing in it takes no room at all. Its margin would otherwise
+   hold a gap open under whatever is above it, which in the File Viewer is the
+   band that has to reach the resize bar. */
+.note:empty { display: none; }
 

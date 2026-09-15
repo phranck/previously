@@ -64,3 +64,8 @@ nx-viewer .step-arrow {
    the window's own grey, measured between the two boxes in the original. */
 nx-viewer > nx-scroller + nx-scroller { margin-top: var(--band-gap); }
 
+/* The last band has no bottom edge. It runs to the foot of the window, where
+   the resize bar closes it, and the original draws no line there: its left and
+   right edges reach the bar and stop. */
+nx-viewer > nx-scroller:last-child { border-bottom: 0; }
+
