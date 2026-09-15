@@ -79,7 +79,11 @@ PARTS_IN_SCREENSHOT = {
     "wbtn-mini": (156, 16, 171, 31),
     "wbtn-close": (796, 305, 811, 320),
     # The three marks in the corner of a dock tile, which said the application
-    # was running. Each is three pixels by two, pressed into the face.
+    # was NOT running: they are there whilst it is off and go when it starts.
+    # Read off the running system, where Mail, Librarian and the console carry
+    # them whilst the Workspace and the clock do not, and stated the same way
+    # in the OpenStep User Interface Guidelines. Each is three pixels by two,
+    # pressed into the face.
     "dock-marks": (1057, 186, 1070, 188),
 }
 
