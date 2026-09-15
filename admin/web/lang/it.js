@@ -79,6 +79,8 @@ NX_STRINGS.it = {
   "viewer.unreachable": "Irraggiungibile",
 
   /* --- the terminal --------------------------------------------------- */
+  "terminal.login": "login: ",
+  "terminal.refused": "[nessuna sessione: la macchina ha rifiutato, o una è già aperta]",
   "terminal.ended": "[la sessione è terminata]",
 
   /* --- the buttons ------------------------------------------------------ */

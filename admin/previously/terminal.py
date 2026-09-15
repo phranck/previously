@@ -1,9 +1,20 @@
 """A shell session, on a pseudo terminal this process owns.
 
-The service forks it, so the shell is exactly as able as the service: the same
-user, and the same sandbox the unit puts around it. That means a shell which
-reads the machine and writes almost nothing, which is the escape hatch this
-tool can honestly offer. Anything beyond it is what SSH is for.
+What runs on that terminal is `ssh` to this machine's own SSH server, so what
+somebody sees is the login prompt sshd puts up and what they get afterwards is
+an ordinary login shell. This service never learns a password, never changes
+user, and needs no privilege to hand out a shell that can do everything the
+person logging in can do.
+
+Forking a shell directly is the other way, and it is worse in both directions.
+It would give a shell without asking anybody who they are, and that shell would
+inherit this service's sandbox: no sudo, a read-only home, and a person left
+wondering why. `/bin/login` would ask, but it changes user, which needs a
+privilege the unit refuses for this whole process tree, and on current Debian
+it no longer works when called from another program at all.
+
+The same shape is what WeTTY uses when it is not running as root, for the same
+reasons.
 
 One session at a time, because a person at one browser is what this is for and
 a second one would be a second shell nobody is watching.
@@ -12,6 +23,7 @@ a second one would be a second shell nobody is watching.
 import fcntl
 import os
 import pty
+import re
 import signal
 import struct
 import termios
@@ -20,8 +32,39 @@ import time
 
 from . import websocket
 
-#: What is run, unless the user's own shell says otherwise. Read from the
-#: environment the way login does, because a person's shell is their business.
+#: The client that carries the login, and where it goes. The loopback rather
+#: than a name, so nothing is looked up, and this machine rather than another,
+#: because a tool for one Pi has no business reaching further.
+SSH = "/usr/bin/ssh"
+SSH_HOST = "127.0.0.1"
+
+#: How that client is told to behave.
+#:
+#: The host key is not checked and not written down, because the service's home
+#: is read only and because the other end of the loopback is this machine: an
+#: impostor there would already be root on it. Passwords rather than keys, so
+#: that a key put in authorized_keys later cannot quietly turn the login prompt
+#: off. The banner is quieted because it would otherwise print a line about the
+#: host key above every login.
+SSH_OPTIONS = (
+    "-o", "StrictHostKeyChecking=no",
+    "-o", "UserKnownHostsFile=/dev/null",
+    "-o", "LogLevel=ERROR",
+    "-o", "PubkeyAuthentication=no",
+    "-o", "PreferredAuthentications=keyboard-interactive,password",
+    "-o", "ConnectTimeout=5",
+)
+
+#: What a login name may look like, which is what a Unix login name may look
+#: like. Checked because it goes into an argument list, and a name beginning
+#: with a dash would be read as an option to the client rather than as a person.
+LOGIN_NAME = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
+
+#: How long a browser has to say who is logging in before the session is given
+#: up. Without it, connecting and saying nothing holds the one session there is.
+FIRST_WORD_SECONDS = 10
+
+#: What is run when a test asks for a shell rather than a login.
 FALLBACK_SHELL = "/bin/sh"
 
 #: What the shell is told it is. A terminal that claims more than the browser
@@ -40,12 +83,16 @@ MOUTHFUL = 4096
 class Session:
     """One shell on one pseudo terminal."""
 
-    def __init__(self, rows=24, columns=80, shell=None, environment=None):
-        """Forks the shell and keeps the terminal's end of it.
+    def __init__(self, rows=24, columns=80, login=None, shell=None,
+                 environment=None):
+        """Starts the login and keeps the terminal's end of it.
 
         @param rows - How tall the browser's terminal is.
         @param columns - How wide.
-        @param shell - What to run. The user's own by default.
+        @param login - Who is logging in. What runs is then the SSH client,
+          and what answers is this machine's own SSH server.
+        @param shell - A program to run instead, which is how the tests get a
+          terminal without a login.
         @param environment - What it runs with, for tests. The service's own
           by default, with TERM set to what the browser draws.
 
@@ -64,10 +111,14 @@ class Session:
         """
         self.rows = rows
         self.columns = columns
-        command = shell or os.environ.get("SHELL") or FALLBACK_SHELL
-        # A login shell, so a person gets their own prompt and their own path
-        # rather than whatever the service was started with.
-        argv = [command, "-l"]
+        if shell:
+            command = shell
+            argv = [shell, "-l"]
+        else:
+            if not is_a_login_name(login):
+                raise ValueError("not a login name: %r" % (login,))
+            command = SSH
+            argv = [SSH, *SSH_OPTIONS, "-l", login, SSH_HOST]
         values = dict(environment or os.environ, TERM=TERM)
 
         self.ended = False
@@ -241,3 +292,49 @@ def listen(session, connection):
         # the browser having gone ends the session, and the session ending is
         # what the other side sees.
         session.close()
+
+
+def is_a_login_name(name):
+    """Whether this is a name somebody could be called on a Unix machine.
+
+    @param name - What the browser said.
+    @returns bool
+
+    Checked rather than trusted, because it becomes an argument to the SSH
+    client and one beginning with a dash would be read as an option. Whether
+    such a person exists is sshd's business and not this one's.
+    """
+    return isinstance(name, str) and bool(LOGIN_NAME.match(name))
+
+
+def open_for(connection, waiting=FIRST_WORD_SECONDS):
+    """Waits for a browser to say who is logging in, and starts that login.
+
+    @param connection - A websocket.Connection.
+    @param waiting - How long to wait for the first word, in seconds. The
+      caller is expected to have put a timeout on the socket itself.
+    @returns Session, or None where nothing usable was said.
+
+    The first thing a browser sends is a text frame carrying the name and how
+    large its terminal is, so the login starts at the size it will be read at
+    rather than at a size it is corrected from a moment later.
+    """
+    try:
+        kind, data = connection.receive()
+    except (websocket.Closed, OSError, ValueError):
+        return None
+    if kind != websocket.TEXT:
+        return None
+
+    said = websocket.message(data.decode("utf-8", "replace"))
+    login = said.get("login")
+    if not is_a_login_name(login):
+        return None
+
+    size = said.get("size")
+    if not (isinstance(size, list) and len(size) == 2):
+        size = [24, 80]
+    try:
+        return Session(rows=size[0], columns=size[1], login=login)
+    except (ValueError, OSError):
+        return None

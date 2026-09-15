@@ -200,12 +200,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return answer
 
     def _terminal(self):
-        """Hands out a shell on a WebSocket, to one browser at a time.
+        """Carries a login on a WebSocket, to one browser at a time.
 
-        A shell changes the machine, so it is behind the token like everything
-        else that does. A browser cannot put a header on a WebSocket and the
-        token may not be in a URL, so it arrives as the second protocol
-        offered and is read from there.
+        No token here, and that is the point of it: what is on the other end
+        is this machine's own SSH server, so whoever is connecting says who
+        they are and proves it to sshd the way they would at any other door
+        into this machine. The token guards what this service does itself.
         """
         if not websocket.wants_a_socket(self.headers):
             return self._json({"error": "not a websocket request"}, status=400)
@@ -213,14 +213,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         speaks = websocket.offered(self.headers.get("Sec-WebSocket-Protocol"))
         if not speaks or speaks[0] != websocket.PROTOCOL:
             return self._json({"error": "another protocol"}, status=400)
-        if not self._holds_the_token(speaks[1] if len(speaks) > 1 else None):
-            return self._json({"error": "a token is needed"}, status=403)
 
         key = self.headers.get("Sec-WebSocket-Key")
         if not key:
             return self._json({"error": "no key"}, status=400)
 
-        # One at a time. A second browser would get a second shell that the
+        # One at a time. A second browser would get a second session that the
         # first one cannot see, which is one more thing running than anybody
         # is watching.
         if not self.terminals.acquire(blocking=False):
@@ -244,19 +242,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.wfile.flush()
 
             connection = websocket.Connection(self.rfile, self.connection)
-            terminal.attach(terminal.Session(), connection)
+            # A browser that connects and says nothing would otherwise hold
+            # the one session there is for as long as it liked.
+            self.connection.settimeout(terminal.FIRST_WORD_SECONDS)
+            session = terminal.open_for(connection)
+            if session is None:
+                return connection.close()
+            self.connection.settimeout(None)
+            terminal.attach(session, connection)
         finally:
             self.terminals.release()
-
-    def _holds_the_token(self, offered):
-        """Whether what came with the upgrade is the token.
-
-        @param offered - What the second protocol carried, or None.
-        @returns bool
-        """
-        if self.token is None:
-            return False
-        return self.token.matches(offered)
 
     def _carries_the_token(self):
         """Whether this request carried the token.

@@ -79,6 +79,8 @@ NX_STRINGS.de = {
   "viewer.unreachable": "Nicht erreichbar",
 
   /* --- the terminal --------------------------------------------------- */
+  "terminal.login": "login: ",
+  "terminal.refused": "[keine Sitzung: die Maschine hat abgelehnt, oder es läuft schon eine]",
   "terminal.ended": "[die Sitzung ist beendet]",
 
   /* --- the buttons ------------------------------------------------------ */

@@ -79,6 +79,8 @@ NX_STRINGS.es = {
   "viewer.unreachable": "Inalcanzable",
 
   /* --- the terminal --------------------------------------------------- */
+  "terminal.login": "login: ",
+  "terminal.refused": "[sin sesión: la máquina se ha negado, o ya hay una abierta]",
   "terminal.ended": "[la sesión ha terminado]",
 
   /* --- the buttons ------------------------------------------------------ */

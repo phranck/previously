@@ -84,6 +84,8 @@ NX_STRINGS.en = {
   "viewer.unreachable": "Not reachable",
 
   /* --- the terminal --------------------------------------------------- */
+  "terminal.login": "login: ",
+  "terminal.refused": "[no session: the machine refused, or one is open already]",
   "terminal.ended": "[the session has ended]",
 
   /* --- the buttons ------------------------------------------------------ */

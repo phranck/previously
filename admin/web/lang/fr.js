@@ -79,6 +79,8 @@ NX_STRINGS.fr = {
   "viewer.unreachable": "Injoignable",
 
   /* --- the terminal --------------------------------------------------- */
+  "terminal.login": "login: ",
+  "terminal.refused": "[pas de session : la machine a refusé, ou une session est déjà ouverte]",
   "terminal.ended": "[la session est terminée]",
 
   /* --- the buttons ------------------------------------------------------ */

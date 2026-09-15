@@ -79,6 +79,8 @@ NX_STRINGS.sv = {
   "viewer.unreachable": "Onåbar",
 
   /* --- the terminal --------------------------------------------------- */
+  "terminal.login": "login: ",
+  "terminal.refused": "[ingen session: maskinen sa nej, eller en är redan öppen]",
   "terminal.ended": "[sessionen är avslutad]",
 
   /* --- the buttons ------------------------------------------------------ */
