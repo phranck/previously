@@ -29,6 +29,17 @@ nx-tile {
 }
 nx-tile:active { border-color: var(--black) var(--white) var(--white) var(--black); }
 nx-tile[spaced] { margin-top: auto; }
+
+/* The floor of the screen, where an application that is not in the dock puts
+   its icon. From the left corner rightwards, which is the order they were
+   started in, and clear of the dock at the other end. */
+nx-floor {
+  position: fixed;
+  left: 0; bottom: 0;
+  right: var(--dock-width);
+  display: flex;
+  z-index: 50;
+}
 nx-tile .art { width: 56px; height: 56px; background-size: contain; }
 
 /* Three marks pressed into the corner said the application was not started. In

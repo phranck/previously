@@ -537,6 +537,9 @@ async function drawMachines() {
 
   root = answer;
   catalogue = allMachines(root);
+  /* The applications are in the tree, so what is running can only be drawn
+     once it has arrived. */
+  noticeTheApplications();
   /* Stay where the reader was, by path rather than by object, because the
      tree they are looking at was fetched again. */
   at = at.map((step) => find(root, step.path)).filter(Boolean);
@@ -1037,8 +1040,9 @@ function wireMachines() {
     openMachineMenu(thing, event.clientX, event.clientY);
   });
 
+  /* Two clicks, like every other tile: one does nothing on purpose. */
   document.querySelector('nx-tile[name="editor"]')
-    ?.addEventListener("click", () => notYet(t("app.config-editor")));
+    ?.addEventListener("dblclick", () => notYet(t("app.config-editor")));
 
   /* Carried onto the info window, or double clicked in the viewer. The kit
      raises the same event for both, so this is one answer to two gestures,
@@ -1182,6 +1186,81 @@ function drawLanguages() {
     option.addEventListener("click", () => speak(code));
     return option;
   }));
+}
+
+/**
+ * Every application this tool holds, as the tree gives them.
+ * @returns {object[]} Each with its path, its picture and the window it opens.
+ */
+function applications() {
+  const apps = find(root, "/Apps");
+  return (apps?.entries ?? []).filter((entry) => entry.kind === "application");
+}
+
+/**
+ * Whether an application is running, which here is its window being open.
+ * @param {object} application - An entry of the Apps folder.
+ * @returns {boolean}
+ *
+ * In NeXTSTEP an application outlives its windows. Here it does not: the
+ * window is the application, so closing it is quitting, and saying otherwise
+ * would be a light that means nothing.
+ */
+function isRunning(application) {
+  const window_ = document.querySelector(`nx-window[name="${application.opens}"]`);
+  return Boolean(window_) && !window_.hidden;
+}
+
+/** Which applications are running, oldest first, so their icons keep the
+ *  places they took when they started. */
+let started = [];
+
+/**
+ * Draws which applications are running and where their icons go.
+ *
+ * A tile in the dock carries the three marks whilst its application is not
+ * running and loses them when it is, which is what NeXTSTEP's dock did. An
+ * application that is running and is not in the dock stands on the floor of
+ * the screen instead, from the left corner rightwards.
+ */
+function drawWhatIsRunning() {
+  const docked = [...document.querySelectorAll("nx-dock nx-tile[app]")];
+  for (const tile of docked) {
+    const application = applications().find((entry) => entry.path === tile.getAttribute("app"));
+    tile.toggleAttribute("idle", Boolean(application) && !isRunning(application));
+  }
+
+  const inTheDock = new Set(docked.map((tile) => tile.getAttribute("app")));
+  const standing = applications()
+    .filter((application) => !inTheDock.has(application.path) && isRunning(application))
+    /* The order they were started in, which is the order they arrived in the
+       list this keeps. */
+    .sort((one, other) => started.indexOf(one.path) - started.indexOf(other.path));
+  document.getElementById("floor")?.show(standing);
+}
+
+/**
+ * Reads which applications are running now and draws them.
+ *
+ * A window that opens or closes is an application starting or stopping, and
+ * an application that has just started takes the next place on the floor.
+ */
+function noticeTheApplications() {
+  for (const application of applications()) {
+    const running = isRunning(application);
+    const known = started.includes(application.path);
+    if (running && !known) started.push(application.path);
+    if (!running && known) started = started.filter((path) => path !== application.path);
+  }
+  drawWhatIsRunning();
+}
+
+/** Listens for a window opening or closing, which is what starting and
+ *  stopping an application is here. Wired once. */
+function watchTheApplications() {
+  document.addEventListener("nx-open", noticeTheApplications);
+  document.addEventListener("nx-close", noticeTheApplications);
+  noticeTheApplications();
 }
 
 /** The shell session behind the terminal window, or null when none is open.
@@ -1361,6 +1440,7 @@ wireMachines();
 wireBoard();
 wireOpening();
 wireTerminal();
+watchTheApplications();
 drawLanguages();
 drawMachines();
 refresh();

@@ -26,10 +26,17 @@
   <nx-menu-item name="token" key="t" data-t="menu.token"></nx-menu-item>
 </nx-menu>
 
+<!-- The Workspace is always running and never carries the marks. The editor
+     is in the dock and is not built, so it always does. -->
 <nx-dock>
   <nx-tile icon="Workspace" title="NeXT"></nx-tile>
-  <nx-tile icon="defaultAppIcon" data-t-title="app.config-editor" name="editor"></nx-tile>
+  <nx-tile icon="defaultAppIcon" data-t-title="app.config-editor"
+           name="editor" app="/Apps/Config Editor.app"></nx-tile>
 </nx-dock>
+
+<!-- Where an application that is not in the dock puts its icon whilst it is
+     running, from the left corner rightwards. -->
+<nx-floor id="floor"></nx-floor>
 
 <nx-window name="info" data-t-title="window.info" fixed drop x="180" y="16" w="400">
   <div class="info-body">

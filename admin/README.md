@@ -162,7 +162,11 @@ Stopping writes that file, presses F10 and waits for the guest to go. Starting r
 
 ## The interface
 
-`web/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`, `nx-viewer`.
+`web/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-tile`, `nx-floor`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`, `nx-viewer`.
+
+**An application here is its window.** The Apps folder holds three, and one is running when the window it opens is open, so closing that window is quitting it. NeXTSTEP kept an application alive without windows; this tool has nothing for such an application to be, and a light saying it was running would mean nothing.
+
+What follows is what the dock does: the Workspace tile is Previously itself and never carries the three marks, the Config Editor carries them because it is not built, and Preferences and the Terminal put their tiles on the floor of the screen whilst they are open, because they are not in the dock.
 
 ## The six languages
 
