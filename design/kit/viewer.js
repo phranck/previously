@@ -49,7 +49,7 @@ class NxViewer extends HTMLElement {
     this.status.textContent = this.getAttribute("status") ?? "";
 
     this.path = document.createElement("div");
-    this.path.className = "path sunken";
+    this.path.className = "path";
     this.path.addEventListener("click", (event) => {
       const thing = event.target.closest("nx-thing");
       if (!thing || !this.path.contains(thing)) return;
@@ -59,12 +59,20 @@ class NxViewer extends HTMLElement {
       }));
     });
 
+    /* The path is a browser in the original and scrolls sideways as it grows,
+       with its trough under it whether there is anything to scroll or not. */
+    const way = document.createElement("nx-scroller");
+    way.setAttribute("bars", "across");
+    way.className = "way";
+    way.append(this.path);
+
     this.contents = document.createElement("nx-shelf");
     this.contents.className = "contents";
     const scroller = document.createElement("nx-scroller");
+    scroller.setAttribute("bars", "down across");
     scroller.append(this.contents);
 
-    this.append(this.keep, this.status, this.path, scroller);
+    this.append(this.keep, this.status, way, scroller);
   }
 
   /**

@@ -34,14 +34,18 @@ nx-viewer .status {
   color: var(--dark);
 }
 
-/* The way here, as one row that does not wrap: a path that runs out of room
-   is a path with too many steps in it, not one to fold. */
+/* The way here, as one row that does not wrap. A path too long for the window
+   is scrolled rather than folded, which is what the scroller around it is
+   for. */
+nx-viewer .way { flex: 0 0 auto; }
 nx-viewer .path {
-  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 4px;
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
   background: var(--light);
 }
 
@@ -56,6 +60,7 @@ nx-viewer .step-arrow {
   border-left: 6px solid var(--dark);
 }
 
-/* Room under the path, so the two framed bands do not touch. */
-nx-viewer > nx-scroller { margin-top: var(--reading-gap); }
+/* Room under the path, so the two framed bands do not touch. Six pixels of
+   the window's own grey, measured between the two boxes in the original. */
+nx-viewer > nx-scroller + nx-scroller { margin-top: var(--band-gap); }
 

@@ -1,10 +1,37 @@
 /* --- nx-scroller -------------------------------------------------------- */
 
+/** What differs between the two directions, so that everything else does not
+ *  have to know there are two. */
+const WAYS = {
+  down: {
+    steps: ["up", "down"],
+    length: "scrollHeight", showing: "clientHeight", along: "scrollTop",
+    edge: "top", size: "height", pointer: "clientY", offset: "offsetTop",
+    room: "clientHeight",
+  },
+  across: {
+    steps: ["left", "right"],
+    length: "scrollWidth", showing: "clientWidth", along: "scrollLeft",
+    edge: "left", size: "width", pointer: "clientX", offset: "offsetLeft",
+    room: "clientWidth",
+  },
+};
+
 /**
  * A view with NeXT's scroller on its left: a chequered trough, a knob that
  * takes its size from how much of the content is showing, and both arrows at
- * the foot. With nothing to scroll the whole bar goes empty, which is how an
- * idle terminal looks.
+ * the far end. With nothing to scroll the whole bar goes empty, which is how
+ * an idle terminal looks.
+ *
+ * @attr bars - Which scrollers this view has: "down", "across", or both.
+ *   A view says so because the original's do: the File Viewer's contents have
+ *   both, and the band above them, which is a path and only ever grows
+ *   sideways, has the one along its foot and nothing down its side. Left out,
+ *   it is the vertical one alone, which is what a list wants.
+ *
+ * A scroller is there whether or not there is anything to scroll. It is part
+ * of the view rather than something that appears when it is needed, and an
+ * empty trough is what the original shows.
  */
 class NxScroller extends HTMLElement {
   connectedCallback() {
@@ -12,27 +39,11 @@ class NxScroller extends HTMLElement {
     this.ready = true;
 
     this.view = this.firstElementChild;
-    const bar = document.createElement("div");
-    bar.className = "bar";
-    this.trough = document.createElement("div");
-    this.trough.className = "trough";
-    this.knob = document.createElement("div");
-    this.knob.className = "knob";
-    this.trough.append(this.knob);
-    this.arrows = document.createElement("div");
-    this.arrows.className = "arrows";
-    for (const direction of ["up", "down"]) {
-      const step = document.createElement("div");
-      step.className = "step " + direction;
-      step.append(document.createElement("i"));
-      step.addEventListener("pointerdown", (event) => {
-        event.stopPropagation();
-        this.view.scrollTop += (direction === "up" ? -1 : 1) * NxScroller.LINE;
-      });
-      this.arrows.append(step);
+    const wanted = (this.getAttribute("bars") || "down").split(/\s+/);
+    this.bars = {};
+    for (const way of ["down", "across"]) {
+      if (wanted.includes(way)) this.bars[way] = this.addBar(way);
     }
-    bar.append(this.trough, this.arrows);
-    this.prepend(bar);
 
     this.view.addEventListener("scroll", () => this.refresh());
     /* Two things change what there is to scroll, and they are seen by two
@@ -43,31 +54,77 @@ class NxScroller extends HTMLElement {
     new MutationObserver(() => this.refresh())
       .observe(this.view, { childList: true, subtree: true, characterData: true });
 
-    gesture(this.knob,
-      (event, start) => {
-        const room = this.trough.clientHeight - this.knob.offsetHeight;
-        const top = Math.max(0, Math.min(event.clientY - start.grab, room));
-        this.view.scrollTop = (top / room) * (this.view.scrollHeight - this.view.clientHeight);
-      },
-      (event) => ({ grab: event.clientY - this.knob.offsetTop }));
-
     this.refresh();
   }
 
-  /** Redraws the bar from the view's current state. */
+  /**
+   * Builds one scroller.
+   * @param {string} way - "down" or "across".
+   * @returns {object} Its trough, its knob and its arrows.
+   */
+  addBar(way) {
+    const how = WAYS[way];
+    const bar = document.createElement("div");
+    bar.className = way === "across" ? "bar across" : "bar";
+    const trough = document.createElement("div");
+    trough.className = "trough";
+    const knob = document.createElement("div");
+    knob.className = "knob";
+    trough.append(knob);
+
+    const arrows = document.createElement("div");
+    arrows.className = "arrows";
+    for (const step of how.steps) {
+      const one = document.createElement("div");
+      one.className = "step " + step;
+      one.append(document.createElement("i"));
+      one.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+        const back = step === "up" || step === "left";
+        this.view[how.along] += (back ? -1 : 1) * NxScroller.LINE;
+      });
+      arrows.append(one);
+    }
+    bar.append(trough, arrows);
+    this.prepend(bar);
+
+    gesture(knob,
+      (event, start) => {
+        const room = trough[how.room] - knob[how.size === "height" ? "offsetHeight" : "offsetWidth"];
+        const at = Math.max(0, Math.min(event[how.pointer] - start.grab, room));
+        this.view[how.along] =
+          (at / room) * (this.view[how.length] - this.view[how.showing]);
+      },
+      (event) => ({ grab: event[how.pointer] - knob[how.offset] }));
+
+    return { trough, knob, arrows, how };
+  }
+
+  /** Redraws both bars from the view's current state. */
   refresh() {
-    const overflow = this.view.scrollHeight - this.view.clientHeight;
-    this.knob.hidden = overflow <= 0;
-    this.arrows.hidden = overflow <= 0;
+    for (const bar of Object.values(this.bars)) this.fit(bar);
+  }
+
+  /**
+   * Draws one bar.
+   * @param {object} bar - What addBar returned.
+   *
+   * A bar with nothing to scroll keeps its trough and loses its knob and its
+   * arrows, which is what the original shows: the trough is part of the view
+   * rather than a thing that appears when it is needed.
+   */
+  fit({ trough, knob, arrows, how }) {
+    const overflow = this.view[how.length] - this.view[how.showing];
+    knob.hidden = overflow <= 0;
+    arrows.hidden = overflow <= 0;
     if (overflow <= 0) return;
 
-    const room = this.trough.clientHeight;
-    const height = Math.max(NxScroller.SMALLEST_KNOB,
-                            room * this.view.clientHeight / this.view.scrollHeight);
-    this.knob.style.height = height + "px";
-    this.knob.style.top = (this.view.scrollTop / overflow) * (room - height) + "px";
+    const room = trough[how.room];
+    const size = Math.max(NxScroller.SMALLEST_KNOB,
+                          room * this.view[how.showing] / this.view[how.length]);
+    knob.style[how.size] = size + "px";
+    knob.style[how.edge] = (this.view[how.along] / overflow) * (room - size) + "px";
   }
 }
 NxScroller.LINE = 18;            /* how far one press of an arrow moves the view */
 NxScroller.SMALLEST_KNOB = 16;   /* below this the knob is no longer a target */
-
