@@ -78,6 +78,9 @@ NX_STRINGS.sv = {
   "viewer.read-only": ", endast läsbar",
   "viewer.unreachable": "Onåbar",
 
+  /* --- the terminal --------------------------------------------------- */
+  "terminal.ended": "[sessionen är avslutad]",
+
   /* --- the buttons ------------------------------------------------------ */
   "button.power-off": "Stäng av",
   "button.restart": "Starta om",

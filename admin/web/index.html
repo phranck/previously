@@ -6,6 +6,7 @@
 <title>NeXTSTEP</title>
 <!-- The kit first and this application's own second, because what is here
      names windows the kit only knows as windows. -->
+<link rel="stylesheet" href="vendor/xterm.css">
 <link rel="stylesheet" href="nextstep.css">
 <link rel="stylesheet" href="previously.css">
 </head>
@@ -141,6 +142,14 @@
   </nx-scroller>
 </nx-window>
 
+<!-- A real shell on the Pi, drawn by the one library this interface takes.
+     Flush, because a terminal runs to its frame, and as tall as it is wide
+     enough for eighty columns to start with. -->
+<nx-window name="terminal" title="Terminal" flush drop
+           x="180" y="330" w="574" h="420" min-w="320" min-h="200" closed>
+  <nx-terminal id="session"></nx-terminal>
+</nx-window>
+
 <nx-ask id="ask"></nx-ask>
 
 <!-- The words load first, then the kit, then the page. Every element is
@@ -155,6 +164,11 @@
 <script src="lang/sv.js"></script>
 <script>translate();</script>
 <script src="nextstep.js"></script>
+<!-- The one library this interface takes, and the view that uses it. Why it
+     is not part of the kit is at the head of terminal.js. -->
+<script src="vendor/xterm.js"></script>
+<script src="vendor/xterm-addon-fit.js"></script>
+<script src="terminal.js"></script>
 <script src="app.js"></script>
 
 </body>

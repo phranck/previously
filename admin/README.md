@@ -47,6 +47,7 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/server.py` | Which addresses exist and what answers them |
 | `previously/token.py` | The one secret, and what a request may do without it |
 | `web/` | What the browser gets, including one catalogue of words per language |
+| `web/vendor/` | The one library this interface takes, with its licence |
 | `packaging/` | The unit and the default configuration |
 
 `kiosk.py` is one module because it is the whole surface: reviewing what this tool may do to the machine means reading that one file.
@@ -97,6 +98,12 @@ Every POST is checked for the token before anything looks at what was sent, and 
 **It ends when the socket does.** The browser closing, the network going, or the shell exiting all end the other side, and the hangup goes to the whole process group so that what was left running goes with it.
 
 `websocket.py` is the protocol, out of the standard library: the handshake from `hashlib`, the frames from `struct`. `terminal.py` is the session and the two directions it is pumped in.
+
+In the browser, `web/terminal.js` is the view and `app.js` holds the socket. The view draws what it is given, says what was typed into it and says how large it has become; what is on the other end is the page's business.
+
+**The one library.** Everything else here is written from nothing, and a terminal is not: what arrives from a shell is a stream of escape sequences that move a cursor, switch to an alternate screen and scroll a region. `xterm.js` 5.5.0 and its fit addon 0.10.0 do that, both MIT, in `web/vendor/` with the licence beside them. That is also why the terminal view is not part of the kit, which takes nothing from anybody.
+
+It is themed to what NeXT's Terminal was, black on white with a blinking block cursor. The sixteen ANSI colours stay, because a shell that paints its prompt is saying something with them, and the pale ones are darkened to be readable on white. The scroller NeXTSTEP put on the left of its own terminal is #107.
 
 **Nothing here answers in sentences.** A machine crosses the wire as what the file holds, so `"model": "NeXTcube", "turbo": true, "dimension": true` rather than `NeXTcube Turbo mit NeXTdimension`, and the browser writes the name. What a chip is called is a fact and travels as it is; what is said about it is the browser's.
 

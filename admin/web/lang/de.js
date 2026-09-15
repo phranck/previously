@@ -78,6 +78,9 @@ NX_STRINGS.de = {
   "viewer.read-only": ", nur lesbar",
   "viewer.unreachable": "Nicht erreichbar",
 
+  /* --- the terminal --------------------------------------------------- */
+  "terminal.ended": "[die Sitzung ist beendet]",
+
   /* --- the buttons ------------------------------------------------------ */
   "button.power-off": "Ausschalten",
   "button.restart": "Neu starten",

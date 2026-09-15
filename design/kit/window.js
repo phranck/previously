@@ -156,10 +156,16 @@ class NxWindow extends HTMLElement {
     this.dispatchEvent(new CustomEvent("nx-open", { bubbles: true }));
   }
 
-  /** Hides it, keeping its geometry for the next time. */
+  /** Hides it, keeping its geometry for the next time.
+   *
+   * Says so as it goes, because what a window holds may be more than a
+   * drawing: a session on the other side of a socket has to be told that
+   * nobody is looking any more.
+   */
   close() {
     this.hidden = true;
     this.save();
+    this.dispatchEvent(new CustomEvent("nx-close", { bubbles: true }));
   }
 
   /**

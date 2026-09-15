@@ -64,3 +64,27 @@ nx-window[name="preferences"] .modules nx-thing .icon {
   background: var(--black);
   color: var(--white);
 }
+
+/* --- the terminal window -------------------------------------------------- */
+
+/* The view is as large as the window gives it and no larger. Without this it
+   is as tall as the session it holds, which grows past the frame the moment
+   anything scrolls, and the library measures a box that is not the one on the
+   screen. */
+nx-terminal {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--white);
+}
+
+/* The library keeps a column for a scrollbar of its own, which on this desk is
+   thirty pixels of nothing beside the text. It scrolls with the wheel, and the
+   scroller NeXTSTEP put on the left of its own terminal is #107. */
+nx-terminal .xterm-viewport {
+  scrollbar-width: none;
+}
+nx-terminal .xterm-viewport::-webkit-scrollbar {
+  display: none;
+}

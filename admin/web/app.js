@@ -70,6 +70,11 @@ function say(told) {
   return t(key, values);
 }
 
+/** Where a shell session comes from. Not a POST like everything that changes
+ *  the machine, because what comes back is a connection rather than an
+ *  answer, but guarded by the same token. */
+const TERMINAL = "/api/terminal";
+
 /** What the buttons ask the service to do, by the route that does it. */
 const Kiosk = {
   Start: "/api/kiosk/start",
@@ -1179,6 +1184,92 @@ function drawLanguages() {
   }));
 }
 
+/** The shell session behind the terminal window, or null when none is open.
+ *  One at a time, which is also all the service hands out. */
+let shell = null;
+
+/**
+ * Opens a session in the terminal window.
+ *
+ * Asks for the token first where there is none, because the service refuses
+ * the connection without one and a refused WebSocket says nothing a person
+ * can act on: the browser reports it as a failed connection and no more.
+ */
+async function openShell() {
+  const view = document.getElementById("session");
+  if (shell || !view.write) return;
+
+  let token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    if (!await askForToken(t("ask.token.needed"))) return;
+    token = localStorage.getItem(TOKEN_KEY);
+  }
+
+  view.clear();
+  const where = location.origin.replace(/^http/, "ws") + TERMINAL;
+  /* The token rides as the second protocol offered, because a browser cannot
+     put a header on a WebSocket and a URL ends up in logs and in history. */
+  shell = new WebSocket(where, ["previously", token]);
+  shell.binaryType = "arraybuffer";
+
+  shell.onopen = () => {
+    view.fit();
+    tellTheShellItsSize(view.size);
+    view.focus();
+  };
+  shell.onmessage = (event) => view.write(new Uint8Array(event.data));
+  shell.onclose = () => {
+    if (shell) view.write("\r\n" + t("terminal.ended") + "\r\n");
+    shell = null;
+  };
+}
+
+/** Ends the session, which the service answers by ending the shell. */
+function closeShell() {
+  const going = shell;
+  shell = null;
+  going?.close();
+}
+
+/**
+ * Tells the shell how large the window has become.
+ * @param {object} size - `{rows, columns}`.
+ *
+ * A text frame, which the service reads as being about the session. Anything
+ * binary is what the shell itself sees.
+ */
+function tellTheShellItsSize(size) {
+  if (shell?.readyState !== WebSocket.OPEN) return;
+  shell.send(JSON.stringify({ resize: [size.rows, size.columns] }));
+}
+
+/** Wires the terminal window to the session behind it. */
+function wireTerminal() {
+  const window_ = document.querySelector('nx-window[name="terminal"]');
+  const view = document.getElementById("session");
+  if (!window_ || !view) return;
+
+  window_.addEventListener("nx-open", openShell);
+  window_.addEventListener("nx-close", closeShell);
+
+  view.addEventListener("nx-typed", (event) => {
+    if (shell?.readyState === WebSocket.OPEN) {
+      shell.send(new TextEncoder().encode(event.detail.data));
+    }
+  });
+  view.addEventListener("nx-sized", (event) => tellTheShellItsSize(event.detail));
+
+  /* A browser that goes away without closing the window would otherwise leave
+     the service holding a session nobody is looking at until the socket times
+     out. */
+  addEventListener("pagehide", closeShell);
+
+  /* A window that was open when the page was last left comes back open, and
+     nothing opened it, so nothing said so. Without this the terminal is there
+     with no session behind it until somebody closes and opens it again. */
+  if (!window_.hidden) openShell();
+}
+
 /**
  * Changes the language the whole interface speaks.
  * @param {string} code - One of `en`, `de`, `fr`, `it`, `es` and `sv`.
@@ -1202,6 +1293,7 @@ wireButtons();
 wireMachines();
 wireBoard();
 wireOpening();
+wireTerminal();
 drawLanguages();
 drawMachines();
 refresh();

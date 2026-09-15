@@ -78,6 +78,9 @@ NX_STRINGS.it = {
   "viewer.read-only": ", sola lettura",
   "viewer.unreachable": "Irraggiungibile",
 
+  /* --- the terminal --------------------------------------------------- */
+  "terminal.ended": "[la sessione è terminata]",
+
   /* --- the buttons ------------------------------------------------------ */
   "button.power-off": "Spegni",
   "button.restart": "Riavvia",
