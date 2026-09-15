@@ -50,9 +50,13 @@ nx-window .title { flex: 1; text-align: center; font-weight: bold; }
 
 /* Most windows hold their content clear of the frame. A terminal does not: its
    text view runs to the edge on every side, which is what flush says. */
+/* Eight pixels of the window's own grey between the frame and what is in it,
+   which is what the original leaves: one row of border, then eight of face,
+   then the content. Measured in the File Viewer and again in the Preferences
+   panel, so it is what a window does rather than what one window does. */
 nx-window .pane {
   flex: 1 1 auto;
-  padding: 10px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   min-height: 0;

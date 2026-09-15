@@ -55,6 +55,8 @@
   --slot-w: 66px;        /* hilite.tiff is 66 by 52, so the slot is too */
   --slot-h: 52px;
   --reading-gap: 5px;    /* between one reading and the next, anywhere */
+  --band-gap: 6px;       /* between two framed bands of the File Viewer, which
+                            is what the original leaves between its boxes */
   --slot-top: 2px;       /* air above the icon, inside the mark */
   --name-air: 3px;       /* air above and below a name, inside the mark */
 
@@ -216,9 +218,13 @@ nx-window .title { flex: 1; text-align: center; font-weight: bold; }
 
 /* Most windows hold their content clear of the frame. A terminal does not: its
    text view runs to the edge on every side, which is what flush says. */
+/* Eight pixels of the window's own grey between the frame and what is in it,
+   which is what the original leaves: one row of border, then eight of face,
+   then the content. Measured in the File Viewer and again in the Preferences
+   panel, so it is what a window does rather than what one window does. */
 nx-window .pane {
   flex: 1 1 auto;
-  padding: 10px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -421,11 +427,24 @@ nx-tile[idle]::after {
    place in the whole stylesheet that hands out overflow, so a surface outside
    one cannot scroll and therefore cannot show the browser's own bar. The
    sunken edge belongs to the scroller as well, not to the view inside it. */
+/* The bar down the left, the view beside it, and where the element asks for
+   one, a second bar along the foot of the view. A grid rather than a row,
+   because the foot's bar runs under the view and not under the other bar:
+   the original keeps that corner for the vertical one. */
 nx-scroller {
   flex: 1 1 auto;
   min-height: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: 1fr auto;
 }
+nx-scroller > .bar { grid-row: 1 / -1; grid-column: 1; }
+nx-scroller > .bar.across { grid-row: 2; grid-column: 2; }
+nx-scroller > :not(.bar) { grid-row: 1; grid-column: 2; }
+
+/* A view with no scroller down its side keeps no room for one. */
+nx-scroller[bars="across"] > .bar.across { grid-column: 1 / -1; }
+nx-scroller[bars="across"] > :not(.bar) { grid-column: 1 / -1; }
 
 nx-scroller .bar {
   width: var(--scroller);
@@ -436,12 +455,24 @@ nx-scroller .bar {
   background: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 2px 2px;
 }
 
+/* The same bar turned on its side: as tall as the other is wide, its line
+   against the view along its top rather than its right, and its arrows at the
+   far end, which for this one is the right. */
+nx-scroller .bar.across {
+  width: auto;
+  height: var(--scroller);
+  flex-direction: row;
+  border-right: 0;
+  border-top: 1px solid var(--black);
+}
+
 /* The trough holds the knob and gives it the room it slides in. */
-nx-scroller .trough { flex: 1 1 auto; position: relative; min-height: 0; }
+nx-scroller .trough { flex: 1 1 auto; position: relative; min-height: 0; min-width: 0; }
 
 nx-scroller .knob {
   position: absolute;
   left: 1px; right: 1px;
+  top: 0;
   background: var(--light);
   border: 1px solid;
   border-color: var(--white) var(--black) var(--black) var(--white);
@@ -461,9 +492,17 @@ nx-scroller .knob::after {
   border-right-color: var(--white);
 }
 
-/* Both arrows sit at the foot of the bar, one above the other, and they go
-   away with the knob when there is nothing to scroll. */
+/* A knob in the bar along the foot slides the other way, so what is pinned is
+   its height rather than its width. */
+nx-scroller .bar.across .knob {
+  left: 0; right: auto;
+  top: 1px; bottom: 1px;
+}
+
+/* Both arrows sit at the far end of the bar, side by side, and they go away
+   with the knob when there is nothing to scroll. */
 nx-scroller .arrows { flex: 0 0 auto; }
+nx-scroller .bar.across .arrows { display: flex; }
 nx-scroller .step {
   width: 100%;
   height: var(--scroller);
@@ -487,11 +526,19 @@ nx-scroller .step i {
 nx-scroller .step.up i { border-bottom: 6px solid var(--black); }
 nx-scroller .step.down i { border-top: 6px solid var(--black); }
 
+nx-scroller .bar.across .step { width: var(--scroller); height: 100%; }
+nx-scroller .bar.across .step i {
+  border-left: 0; border-right: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+nx-scroller .step.left i { border-right: 6px solid var(--black); }
+nx-scroller .step.right i { border-left: 6px solid var(--black); }
+
 /* The view beside the bar scrolls; the bar draws the state, so the browser's
    own scrollbar stays out of the way. WebKit ignores scrollbar-width, which is
    why the pseudo-element is there too. */
 nx-scroller > :not(.bar) {
-  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   overflow: auto;
@@ -743,14 +790,18 @@ nx-viewer .status {
   color: var(--dark);
 }
 
-/* The way here, as one row that does not wrap: a path that runs out of room
-   is a path with too many steps in it, not one to fold. */
+/* The way here, as one row that does not wrap. A path too long for the window
+   is scrolled rather than folded, which is what the scroller around it is
+   for. */
+nx-viewer .way { flex: 0 0 auto; }
 nx-viewer .path {
-  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 4px;
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
   background: var(--light);
 }
 
@@ -765,8 +816,9 @@ nx-viewer .step-arrow {
   border-left: 6px solid var(--dark);
 }
 
-/* Room under the path, so the two framed bands do not touch. */
-nx-viewer > nx-scroller { margin-top: var(--reading-gap); }
+/* Room under the path, so the two framed bands do not touch. Six pixels of
+   the window's own grey, measured between the two boxes in the original. */
+nx-viewer > nx-scroller + nx-scroller { margin-top: var(--band-gap); }
 
 /* --- the info panel ----------------------------------------------------- */
 
@@ -1692,11 +1744,38 @@ function fly(icon, from, to) {
 
 /* --- nx-scroller -------------------------------------------------------- */
 
+/** What differs between the two directions, so that everything else does not
+ *  have to know there are two. */
+const WAYS = {
+  down: {
+    steps: ["up", "down"],
+    length: "scrollHeight", showing: "clientHeight", along: "scrollTop",
+    edge: "top", size: "height", pointer: "clientY", offset: "offsetTop",
+    room: "clientHeight",
+  },
+  across: {
+    steps: ["left", "right"],
+    length: "scrollWidth", showing: "clientWidth", along: "scrollLeft",
+    edge: "left", size: "width", pointer: "clientX", offset: "offsetLeft",
+    room: "clientWidth",
+  },
+};
+
 /**
  * A view with NeXT's scroller on its left: a chequered trough, a knob that
  * takes its size from how much of the content is showing, and both arrows at
- * the foot. With nothing to scroll the whole bar goes empty, which is how an
- * idle terminal looks.
+ * the far end. With nothing to scroll the whole bar goes empty, which is how
+ * an idle terminal looks.
+ *
+ * @attr bars - Which scrollers this view has: "down", "across", or both.
+ *   A view says so because the original's do: the File Viewer's contents have
+ *   both, and the band above them, which is a path and only ever grows
+ *   sideways, has the one along its foot and nothing down its side. Left out,
+ *   it is the vertical one alone, which is what a list wants.
+ *
+ * A scroller is there whether or not there is anything to scroll. It is part
+ * of the view rather than something that appears when it is needed, and an
+ * empty trough is what the original shows.
  */
 class NxScroller extends HTMLElement {
   connectedCallback() {
@@ -1704,27 +1783,11 @@ class NxScroller extends HTMLElement {
     this.ready = true;
 
     this.view = this.firstElementChild;
-    const bar = document.createElement("div");
-    bar.className = "bar";
-    this.trough = document.createElement("div");
-    this.trough.className = "trough";
-    this.knob = document.createElement("div");
-    this.knob.className = "knob";
-    this.trough.append(this.knob);
-    this.arrows = document.createElement("div");
-    this.arrows.className = "arrows";
-    for (const direction of ["up", "down"]) {
-      const step = document.createElement("div");
-      step.className = "step " + direction;
-      step.append(document.createElement("i"));
-      step.addEventListener("pointerdown", (event) => {
-        event.stopPropagation();
-        this.view.scrollTop += (direction === "up" ? -1 : 1) * NxScroller.LINE;
-      });
-      this.arrows.append(step);
+    const wanted = (this.getAttribute("bars") || "down").split(/\s+/);
+    this.bars = {};
+    for (const way of ["down", "across"]) {
+      if (wanted.includes(way)) this.bars[way] = this.addBar(way);
     }
-    bar.append(this.trough, this.arrows);
-    this.prepend(bar);
 
     this.view.addEventListener("scroll", () => this.refresh());
     /* Two things change what there is to scroll, and they are seen by two
@@ -1735,29 +1798,76 @@ class NxScroller extends HTMLElement {
     new MutationObserver(() => this.refresh())
       .observe(this.view, { childList: true, subtree: true, characterData: true });
 
-    gesture(this.knob,
-      (event, start) => {
-        const room = this.trough.clientHeight - this.knob.offsetHeight;
-        const top = Math.max(0, Math.min(event.clientY - start.grab, room));
-        this.view.scrollTop = (top / room) * (this.view.scrollHeight - this.view.clientHeight);
-      },
-      (event) => ({ grab: event.clientY - this.knob.offsetTop }));
-
     this.refresh();
   }
 
-  /** Redraws the bar from the view's current state. */
+  /**
+   * Builds one scroller.
+   * @param {string} way - "down" or "across".
+   * @returns {object} Its trough, its knob and its arrows.
+   */
+  addBar(way) {
+    const how = WAYS[way];
+    const bar = document.createElement("div");
+    bar.className = way === "across" ? "bar across" : "bar";
+    const trough = document.createElement("div");
+    trough.className = "trough";
+    const knob = document.createElement("div");
+    knob.className = "knob";
+    trough.append(knob);
+
+    const arrows = document.createElement("div");
+    arrows.className = "arrows";
+    for (const step of how.steps) {
+      const one = document.createElement("div");
+      one.className = "step " + step;
+      one.append(document.createElement("i"));
+      one.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+        const back = step === "up" || step === "left";
+        this.view[how.along] += (back ? -1 : 1) * NxScroller.LINE;
+      });
+      arrows.append(one);
+    }
+    bar.append(trough, arrows);
+    this.prepend(bar);
+
+    gesture(knob,
+      (event, start) => {
+        const room = trough[how.room] - knob[how.size === "height" ? "offsetHeight" : "offsetWidth"];
+        const at = Math.max(0, Math.min(event[how.pointer] - start.grab, room));
+        this.view[how.along] =
+          (at / room) * (this.view[how.length] - this.view[how.showing]);
+      },
+      (event) => ({ grab: event[how.pointer] - knob[how.offset] }));
+
+    return { trough, knob, arrows, how };
+  }
+
+  /** Redraws both bars from the view's current state. */
   refresh() {
-    const overflow = this.view.scrollHeight - this.view.clientHeight;
-    this.knob.hidden = overflow <= 0;
-    this.arrows.hidden = overflow <= 0;
+    for (const bar of Object.values(this.bars)) this.fit(bar);
+  }
+
+  /**
+   * Draws one bar.
+   * @param {object} bar - What addBar returned.
+   *
+   * A bar with nothing to scroll keeps its trough and loses its knob and its
+   * arrows, which is what the original shows: the trough is part of the view
+   * rather than a thing that appears when it is needed.
+   */
+  fit({ trough, knob, arrows, how }) {
+    const overflow = this.view[how.length] - this.view[how.showing];
+    knob.hidden = overflow <= 0;
+    arrows.hidden = overflow <= 0;
     if (overflow <= 0) return;
 
-    const room = this.trough.clientHeight;
-    const height = Math.max(NxScroller.SMALLEST_KNOB,
-                            room * this.view.clientHeight / this.view.scrollHeight);
-    this.knob.style.height = height + "px";
-    this.knob.style.top = (this.view.scrollTop / overflow) * (room - height) + "px";
+    const room = trough[how.room];
+    const size = Math.max(NxScroller.SMALLEST_KNOB,
+                          room * this.view[how.showing] / this.view[how.length]);
+    knob.style[how.size] = size + "px";
+    knob.style[how.edge] = (this.view[how.along] / overflow) * (room - size) + "px";
   }
 }
 NxScroller.LINE = 18;            /* how far one press of an arrow moves the view */
@@ -2029,7 +2139,7 @@ class NxViewer extends HTMLElement {
     this.status.textContent = this.getAttribute("status") ?? "";
 
     this.path = document.createElement("div");
-    this.path.className = "path sunken";
+    this.path.className = "path";
     this.path.addEventListener("click", (event) => {
       const thing = event.target.closest("nx-thing");
       if (!thing || !this.path.contains(thing)) return;
@@ -2039,12 +2149,20 @@ class NxViewer extends HTMLElement {
       }));
     });
 
+    /* The path is a browser in the original and scrolls sideways as it grows,
+       with its trough under it whether there is anything to scroll or not. */
+    const way = document.createElement("nx-scroller");
+    way.setAttribute("bars", "across");
+    way.className = "way";
+    way.append(this.path);
+
     this.contents = document.createElement("nx-shelf");
     this.contents.className = "contents";
     const scroller = document.createElement("nx-scroller");
+    scroller.setAttribute("bars", "down across");
     scroller.append(this.contents);
 
-    this.append(this.keep, this.status, this.path, scroller);
+    this.append(this.keep, this.status, way, scroller);
   }
 
   /**
