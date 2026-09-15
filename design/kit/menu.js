@@ -103,7 +103,7 @@ class NxMenuItem extends HTMLElement {
     if (target) {
       this.addEventListener("click", () => {
         if (this.hasAttribute("disabled")) return;
-        document.querySelector(`nx-window[name="${target}"]`)?.open();
+        document.querySelector(`nx-window[name="${target}"]`)?.open(this);
       });
     }
   }
