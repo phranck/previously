@@ -63,6 +63,12 @@ nx-window .pane {
 }
 nx-window[flush] .pane { padding: 0; }
 
+/* Except at the foot of a window that can be resized, where the content runs
+   straight into the bar. Measured in the File Viewer: its contents reach row
+   534, the bar's shadow is row 535, and there is no grey between them. A
+   window with no bar keeps its eight, which the Preferences panel does. */
+nx-window:not([fixed]) .pane { padding-bottom: 0; }
+
 /* A resizable window ends in a bar across its whole width, not in a corner.
    Measured off the original: one row of shadow, one of light, then six of
    face, with an upright divider 29 pixels in from either end. */

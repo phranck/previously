@@ -231,6 +231,12 @@ nx-window .pane {
 }
 nx-window[flush] .pane { padding: 0; }
 
+/* Except at the foot of a window that can be resized, where the content runs
+   straight into the bar. Measured in the File Viewer: its contents reach row
+   534, the bar's shadow is row 535, and there is no grey between them. A
+   window with no bar keeps its eight, which the Preferences panel does. */
+nx-window:not([fixed]) .pane { padding-bottom: 0; }
+
 /* A resizable window ends in a bar across its whole width, not in a corner.
    Measured off the original: one row of shadow, one of light, then six of
    face, with an upright divider 29 pixels in from either end. */
@@ -820,6 +826,11 @@ nx-viewer .step-arrow {
    the window's own grey, measured between the two boxes in the original. */
 nx-viewer > nx-scroller + nx-scroller { margin-top: var(--band-gap); }
 
+/* The last band has no bottom edge. It runs to the foot of the window, where
+   the resize bar closes it, and the original draws no line there: its left and
+   right edges reach the bar and stop. */
+nx-viewer > nx-scroller:last-child { border-bottom: 0; }
+
 /* --- the info panel ----------------------------------------------------- */
 
 /* Picture on the left, readings on the right. The picture is also the target:
@@ -905,6 +916,10 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
 }
 
 .note { margin: 8px 0 0; font-size: 11px; flex: 0 0 auto; }
+/* A note with nothing in it takes no room at all. Its margin would otherwise
+   hold a gap open under whatever is above it, which in the File Viewer is the
+   band that has to reach the resize bar. */
+.note:empty { display: none; }
 
 /* --- the terminal ------------------------------------------------------- */
 
