@@ -67,10 +67,15 @@ GRAB_ICON = "Grab"
 PREFERENCES_ICON = "Preferences"
 TERMINAL_ICON = "Terminal"
 
-#: What a picture wears, and what Preview wears with it. Preview's bundle held
-#: no icon file, so the picture it drew for a document is what the application
-#: went by, and the same picture is right for both.
-PICTURE_ICON = "tiff"
+#: What Preview wears. Its bundle held no icon file, so the picture it drew for
+#: a document is what the application went by.
+PREVIEW_ICON = "tiff"
+
+#: And what a picture wears, by its format. NeXTSTEP had no generic icon for a
+#: picture: it drew one per format, a sheet with the name across the top and
+#: the kind of content underneath. There was no PNG then, so design/makepng.py
+#: draws that one in the same manner out of the same sheet.
+PICTURE_ICONS = {".png": "png", ".tiff": "tiff", ".tif": "tiff"}
 
 #: And what anything else in a folder wears: a sheet with lines on it, which is
 #: what the Workspace drew for a file it knew nothing about.
@@ -89,7 +94,7 @@ APPLICATIONS = (
     ("Config Editor.app", DEFAULT_APP_ICON, "editor", "app.config-editor"),
     ("Grab.app", GRAB_ICON, "grab", "app.grab"),
     ("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences"),
-    ("Preview.app", PICTURE_ICON, "preview", "app.preview"),
+    ("Preview.app", PREVIEW_ICON, "preview", "app.preview"),
     ("Terminal.app", TERMINAL_ICON, "terminal", "app.terminal"),
 )
 
@@ -191,8 +196,13 @@ def is_a_picture(path):
 
 
 def _picture_icon(path):
-    """@param path @returns str, what that file wears in a viewer."""
-    return PICTURE_ICON if is_a_picture(path) else OTHER_FILE_ICON
+    """@param path @returns str, what that file wears in a viewer.
+
+    A format with no icon of its own falls back to the one the Workspace drew
+    for a file it knew nothing about, which is honest: nothing here claims a
+    JPEG is a PNG.
+    """
+    return PICTURE_ICONS.get(path.suffix.lower(), OTHER_FILE_ICON)
 
 
 def picture_directory(documents):
