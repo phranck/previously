@@ -79,9 +79,10 @@ nx-terminal {
   background: var(--white);
 }
 
-/* The library keeps a column for a scrollbar of its own, which on this desk is
-   thirty pixels of nothing beside the text. It scrolls with the wheel, and the
-   scroller NeXTSTEP put on the left of its own terminal is #107. */
+/* The viewport is what scrolls, and the scroller on the left of the window
+   draws that. The library's own bar would be a second one saying the same
+   thing, so it is taken off. WebKit ignores scrollbar-width, which is why the
+   pseudo-element is here too. */
 nx-terminal .xterm-viewport {
   scrollbar-width: none;
 }
