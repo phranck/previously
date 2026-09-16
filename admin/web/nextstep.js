@@ -1075,13 +1075,17 @@ class NxScroller extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
+    /* Taken before the bars exist. Each of them is prepended, so afterwards
+       the first child is a bar and not the view. */
+    const view = this.firstElementChild;
+
     const wanted = (this.getAttribute("bars") || "down").split(/\s+/);
     this.bars = {};
     for (const way of ["down", "across"]) {
       if (wanted.includes(way)) this.bars[way] = this.addBar(way);
     }
 
-    this.drive(this.firstElementChild);
+    this.drive(view);
   }
 
   /**
@@ -1115,8 +1119,10 @@ class NxScroller extends HTMLElement {
     this.watch = [sized, changed];
 
     /* Says in the markup that the child is not what scrolls, so the stylesheet
-       can leave the child's own overflow alone. */
-    this.toggleAttribute("inner", view !== this.firstElementChild);
+       can leave the child's own overflow alone. Asked of the view's own
+       parent rather than of this element's first child, which by now is a
+       bar. */
+    this.toggleAttribute("inner", view.parentElement !== this);
     this.refresh();
   }
 
