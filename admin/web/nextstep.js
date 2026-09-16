@@ -48,6 +48,60 @@ function recall(name) {
   return readState()[name] ?? {};
 }
 
+/* --- how large the desk is drawn -----------------------------------------
+
+   Everything here is measured off NeXTSTEP at its own 1120 by 832: a tile is
+   68, a menu row is 20, the type is 12. On the screen that machine had, that
+   is what those things were. On a 32 inch panel it is small, and the answer is
+   to draw the same desk larger rather than to pick new numbers, which would
+   be a second set of measurements and the end of every one of them being the
+   original's.
+
+   CSS zoom, because it is the one thing that scales a layout rather than a
+   picture of one: the pointer lands where it looks, a window measures what it
+   is, and the dock stays against the edge. Whole and half steps only, since
+   every icon here is a bitmap and anything else draws them between pixels. */
+
+/** How large the desk is drawn, as a multiplier. */
+function deskScale() {
+  return Number(getComputedStyle(document.body).zoom) || 1;
+}
+
+/**
+ * Draws the desk at that size.
+ * @param {number} scale - 1, 1.5 or 2.
+ *
+ * Drawing larger leaves less room: at twice the size a desk 1200 across is
+ * 600 wide in the units a window's own position is written in, and a window
+ * at 700 is then off the screen with no way back to it. So everything is
+ * gathered in afterwards.
+ */
+function setDeskScale(scale) {
+  document.body.style.zoom = scale;
+  gatherWindows();
+}
+
+/** Brings any window that is off the desk back onto it. */
+function gatherWindows() {
+  const room = deskRoom();
+  for (const window_ of document.querySelectorAll("nx-window")) {
+    if (window_.hidden) continue;
+    const left = Math.min(window_.offsetLeft, Math.max(0, room.width - 90));
+    const top = Math.min(window_.offsetTop, Math.max(0, room.height - 40));
+    if (left === window_.offsetLeft && top === window_.offsetTop) continue;
+    window_.style.left = left + "px";
+    window_.style.top = top + "px";
+    window_.save?.();
+  }
+}
+
+/** @returns {object} How much room there is for windows, in the units a
+ *  window's own left and top are written in, which zoom does not change. */
+function deskRoom() {
+  const scale = deskScale();
+  return { width: innerWidth / scale, height: innerHeight / scale };
+}
+
 /**
  * Points an element at one of the pictures build.py baked into the stylesheet.
  * @param {HTMLElement} el
@@ -126,8 +180,9 @@ function draggable(element, handle, { onGrab, onSettled } = {}) {
   gesture(handle,
     (event, start) => {
       /* Never past the top or left edge, and never wholly behind the dock. */
-      start.left = Math.max(0, Math.min(event.clientX - start.grabX, innerWidth - 90));
-      start.top = Math.max(0, Math.min(event.clientY - start.grabY, innerHeight - 24));
+      const room = deskRoom();
+      start.left = Math.max(0, Math.min(event.clientX - start.grabX, room.width - 90));
+      start.top = Math.max(0, Math.min(event.clientY - start.grabY, room.height - 24));
       element.style.transform =
         `translate(${start.left - start.fromLeft}px, ${start.top - start.fromTop}px)`;
     },
@@ -419,8 +474,9 @@ class NxWindow extends HTMLElement {
       ? (_key, attribute) => Number(this.getAttribute(attribute))
       : number;
 
-    this.style.left = Math.min(number("x", "x"), Math.max(0, innerWidth - 90)) + "px";
-    this.style.top = Math.min(number("y", "y"), Math.max(0, innerHeight - 40)) + "px";
+    const room = deskRoom();
+    this.style.left = Math.min(number("x", "x"), Math.max(0, room.width - 90)) + "px";
+    this.style.top = Math.min(number("y", "y"), Math.max(0, room.height - 40)) + "px";
 
     /* Before the size, because the floor is read off these and a size saved
        when the window held something else has to be held to what it holds
@@ -709,8 +765,9 @@ class NxMenu extends HTMLElement {
     /* Measured after it is shown, because a hidden element has no size, and
        kept inside the window so a menu near an edge is not half off it. */
     const own = this.getBoundingClientRect();
-    this.style.left = Math.min(x, innerWidth - own.width - 2) + "px";
-    this.style.top = Math.min(y, innerHeight - own.height - 2) + "px";
+    const room = deskRoom();
+    this.style.left = Math.min(x, room.width - own.width - 2) + "px";
+    this.style.top = Math.min(y, room.height - own.height - 2) + "px";
 
     const away = (event) => {
       if (this.contains(event.target)) return;
@@ -820,7 +877,7 @@ class NxDock extends HTMLElement {
 
   /** @returns {number} How many slots are on the screen. */
   get slots() {
-    return Math.max(1, Math.floor(innerHeight / this.step));
+    return Math.max(1, Math.floor(deskRoom().height / this.step));
   }
 
   /**

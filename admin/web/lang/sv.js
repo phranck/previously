@@ -32,6 +32,10 @@ NX_STRINGS.sv = {
   "window.machine": "Maskin",
   "app.preferences": "Preferences",
   "preferences.localization": "Lokala inställningar",
+  "preferences.monitor": "Bildskärmsinställningar",
+  "size.normal": "Normal",
+  "size.large": "Stor",
+  "size.largest": "Störst",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Konfigurationsredigerare",

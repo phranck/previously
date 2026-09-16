@@ -66,6 +66,12 @@ ICONS = {
     # here.
     "/NextApps/Preferences.app/Localization.preferences/Localization":
         ("Localization", "the language the tool speaks, as Preferences drew it"),
+    # The second module this tool offers, which NeXTSTEP had no use for: how
+    # large the interface is drawn. Its own Monitor module set the screen's
+    # resolution, which is the nearest thing to the same question, and a single
+    # screen on a stand is what it drew for it.
+    "/NextApps/Preferences.app/Monitor.preferences/Monitor":
+        ("Monitor", "how large the interface is drawn, as Preferences drew a screen"),
     "/NextApps/Preferences.app/Preferences":
         ("Preferences", "the application itself, as it sat in NextApps"),
     # NeXT shipped an application for exactly this and called it Grab, so the

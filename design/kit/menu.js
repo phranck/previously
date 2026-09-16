@@ -78,8 +78,9 @@ class NxMenu extends HTMLElement {
     /* Measured after it is shown, because a hidden element has no size, and
        kept inside the window so a menu near an edge is not half off it. */
     const own = this.getBoundingClientRect();
-    this.style.left = Math.min(x, innerWidth - own.width - 2) + "px";
-    this.style.top = Math.min(y, innerHeight - own.height - 2) + "px";
+    const room = deskRoom();
+    this.style.left = Math.min(x, room.width - own.width - 2) + "px";
+    this.style.top = Math.min(y, room.height - own.height - 2) + "px";
 
     const away = (event) => {
       if (this.contains(event.target)) return;

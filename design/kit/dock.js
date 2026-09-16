@@ -50,7 +50,7 @@ class NxDock extends HTMLElement {
 
   /** @returns {number} How many slots are on the screen. */
   get slots() {
-    return Math.max(1, Math.floor(innerHeight / this.step));
+    return Math.max(1, Math.floor(deskRoom().height / this.step));
   }
 
   /**
