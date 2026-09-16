@@ -291,7 +291,14 @@ nx-window .resizer .middle { flex: 1; }
 nx-menu {
   position: absolute;
   display: block;
-  width: 148px;
+  /* As wide as its longest entry, and never narrower than the 148 the
+     original's own menu measures. NeXTSTEP's menus were the width of what
+     was in them: the Workspace's holds ten entries and Preferences' five,
+     and neither wraps. An entry that wraps writes its second line over the
+     next one, which is what a fixed width does the first time a wording
+     runs long. */
+  min-width: 148px;
+  width: max-content;
   z-index: 60;
   border: 1px solid var(--black);
   background: var(--light);
@@ -320,6 +327,12 @@ nx-menu .title {
   display: block;
   line-height: var(--row);
   padding: 0 6px;
+  /* And it has no say in how wide the menu is. A title is the name of a
+     thing, which can be any length, whilst the entries are what the menu is
+     for. Zero takes it out of the width the entries decide, and the minimum
+     puts it back across the whole of it afterwards. */
+  width: 0;
+  min-width: 100%;
 }
 
 nx-menu-item {
@@ -327,6 +340,9 @@ nx-menu-item {
      takes itself to the right edge, which is what its own margin does. */
   justify-content: flex-start;
   gap: 0;
+  /* One line each. An entry is one row tall, so a wrapped one writes over the
+     entry below it. */
+  white-space: nowrap;
   border-top: 1px solid var(--white);
   /* One pixel of black at the very bottom, one of grey above it. The later
      shadow is painted under the earlier one, so black wins the last row. */
