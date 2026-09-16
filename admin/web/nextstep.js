@@ -1183,7 +1183,10 @@ class NxViewer extends HTMLElement {
     this.keep.addEventListener("click", (event) => {
       const thing = event.target.closest("nx-thing");
       if (!thing || !this.keep.contains(thing)) return;
-      this.dispatchEvent(new CustomEvent("nx-visit", {
+      /* Raised on the thing rather than on the viewer, so that whoever
+         answers knows which icon was clicked and not merely that one was.
+         An icon that travels has to start where it is. */
+      thing.dispatchEvent(new CustomEvent("nx-visit", {
         bubbles: true,
         detail: { value: thing.getAttribute("value") },
       }));
