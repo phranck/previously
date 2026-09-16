@@ -152,8 +152,8 @@ class NxDock extends HTMLElement {
    */
   carry(tile) {
     gesture(tile,
-      (event, start) => {
-        const moved = event.clientY - start.grabbedAt;
+      (point, start) => {
+        const moved = point.y - start.grabbedAt;
         if (!start.carrying && Math.abs(moved) < GRIP_PX) return;
 
         start.carrying = true;
@@ -162,8 +162,8 @@ class NxDock extends HTMLElement {
         start.landing = this.slotUnder(start.from + moved);
         this.aimAt(this.isFree(start.landing, tile) ? start.landing : 0);
       },
-      (event) => ({
-        grabbedAt: event.clientY,
+      (point) => ({
+        grabbedAt: point.y,
         from: tile.offsetTop,
         carrying: false,
         landing: 0,
@@ -251,8 +251,7 @@ class NxFloor extends HTMLElement {
        will actually take: the tiles beside it decide that, not this one. */
     this.replaceChildren(...tiles);
     newcomer.style.visibility = "hidden";
-    await fly(newcomer.getAttribute("icon"), arriving.from,
-              newcomer.getBoundingClientRect());
+    await fly(newcomer.getAttribute("icon"), arriving.from, deskRect(newcomer));
     newcomer.style.visibility = "";
   }
 

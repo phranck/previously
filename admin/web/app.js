@@ -698,7 +698,7 @@ async function openFolder(asker) {
   const fromTheBand = asker?.closest?.(".contents");
   if (!fromTheBand || !band) return drawPlace();
 
-  await zoom(asker.getBoundingClientRect(), band.getBoundingClientRect());
+  await zoom(deskRect(asker), deskRect(band));
   drawPlace();
 }
 
@@ -722,7 +722,7 @@ async function visitFromTheShelf(where, thing) {
      nothing did. */
   if (at.at(-1)?.path === entry.path) return;
 
-  const from = thing?.getBoundingClientRect?.();
+  const from = deskRect(thing);
   at = chainTo(entry.path);
   drawPlace();
 
@@ -731,8 +731,7 @@ async function visitFromTheShelf(where, thing) {
   if (!from || !landing) return;
 
   landing.style.visibility = "hidden";
-  await fly(landing.getAttribute("icon"), from, landing.getBoundingClientRect(),
-            NEAR_FLIGHT_MS);
+  await fly(landing.getAttribute("icon"), from, deskRect(landing), NEAR_FLIGHT_MS);
   landing.style.visibility = "";
 }
 

@@ -72,11 +72,59 @@ function gatherWindows() {
   }
 }
 
+/* --- the two units, and the three doors between them ---------------------
+
+   A pointer answers in the viewport's pixels, and so does
+   getBoundingClientRect. Everything the desk is laid out in answers in its
+   own: offsetLeft, style.left, clientHeight and a transform are all in the
+   pixels an element has before zoom multiplies them.
+
+   At twice the size a hand that travelled 100 viewport pixels has moved a
+   window 50 of its own, so one cannot be subtracted from the other. There are
+   three ways a viewport number reaches this desk, and each of them is a
+   function below: a pointer, an element's rectangle, and the size of the
+   window itself. Nothing past them divides by anything. */
+
+/**
+ * @param {number} length - A viewport measurement.
+ * @returns {number} The same length as the desk writes it.
+ */
+function onDesk(length) {
+  return length / deskScale();
+}
+
+/**
+ * @param {PointerEvent} event
+ * @returns {object} Where the pointer is, as `{x, y}` on the desk.
+ */
+function deskPoint(event) {
+  return { x: onDesk(event.clientX), y: onDesk(event.clientY) };
+}
+
+/**
+ * Where an element is, on the desk.
+ * @param {HTMLElement} [element] - Anything drawn there.
+ * @returns {?object} Its `left`, `top`, `width` and `height`, or null where
+ *   there is no element. A DOMRect's shape, so it goes wherever one went.
+ *
+ * What draws a picture of something moving puts that picture against the
+ * viewport, and anything put there is still a child of the body and carries
+ * the desk's zoom. A rect taken straight off an element would be scaled a
+ * second time by it.
+ */
+function deskRect(element) {
+  const rect = element?.getBoundingClientRect?.();
+  if (!rect) return null;
+  return {
+    left: onDesk(rect.left), top: onDesk(rect.top),
+    width: onDesk(rect.width), height: onDesk(rect.height),
+  };
+}
+
 /** @returns {object} How much room there is for windows, in the units a
  *  window's own left and top are written in, which zoom does not change. */
 function deskRoom() {
-  const scale = deskScale();
-  return { width: innerWidth / scale, height: innerHeight / scale };
+  return { width: onDesk(innerWidth), height: onDesk(innerHeight) };
 }
 
 /**
@@ -91,11 +139,16 @@ function showArt(el, name) {
 /**
  * Runs a pointer gesture and reports the result when it ends.
  * @param {HTMLElement} handle - Where the gesture starts.
- * @param {(event: PointerEvent, start: object) => void} onMove
- * @param {(event: PointerEvent) => object} onStart - Whatever the mover needs
- *   to know about the moment the gesture began.
+ * @param {(point: object, start: object) => void} onMove - Given where the
+ *   pointer is now, as `{x, y}` on the desk.
+ * @param {(point: object) => object} onStart - Whatever the mover needs to
+ *   know about the moment the gesture began, given the same.
  * @param {(start: object) => void} [onEnd] - Given what onStart returned,
  *   which by then carries whatever the moves wrote into it.
+ *
+ * The pointer is converted here, so what a gesture hands on is already in the
+ * units of the element it moves and nothing downstream has to know the desk
+ * can be drawn larger.
  */
 function gesture(handle, onMove, onStart, onEnd) {
   handle.addEventListener("pointerdown", (event) => {
@@ -104,7 +157,7 @@ function gesture(handle, onMove, onStart, onEnd) {
        pointer, and dragging a window paints half the desk blue. */
     event.preventDefault();
     handle.setPointerCapture(event.pointerId);
-    const start = onStart(event);
+    const start = onStart(deskPoint(event));
 
     /* A pointer reports faster than the screen redraws, so the moves are
        coalesced into one update per frame. Everything beyond the last one in
@@ -114,7 +167,7 @@ function gesture(handle, onMove, onStart, onEnd) {
 
     const apply = () => {
       frame = 0;
-      onMove(latest, start);
+      onMove(deskPoint(latest), start);
     };
 
     const move = (moveEvent) => {
@@ -155,20 +208,20 @@ function gesture(handle, onMove, onStart, onEnd) {
  */
 function draggable(element, handle, { onGrab, onSettled } = {}) {
   gesture(handle,
-    (event, start) => {
+    (point, start) => {
       /* Never past the top or left edge, and never wholly behind the dock. */
       const room = deskRoom();
-      start.left = Math.max(0, Math.min(event.clientX - start.grabX, room.width - 90));
-      start.top = Math.max(0, Math.min(event.clientY - start.grabY, room.height - 24));
+      start.left = Math.max(0, Math.min(point.x - start.grabX, room.width - 90));
+      start.top = Math.max(0, Math.min(point.y - start.grabY, room.height - 24));
       element.style.transform =
         `translate(${start.left - start.fromLeft}px, ${start.top - start.fromTop}px)`;
     },
-    (event) => {
+    (point) => {
       onGrab?.();
       const fromLeft = element.offsetLeft;
       const fromTop = element.offsetTop;
       return {
-        grabX: event.clientX - fromLeft, grabY: event.clientY - fromTop,
+        grabX: point.x - fromLeft, grabY: point.y - fromTop,
         fromLeft, fromTop, left: fromLeft, top: fromTop,
       };
     },
@@ -257,7 +310,12 @@ function restoreFront() {
    Two of them, and both are pictures rather than the things themselves: an
    icon on its way to the floor of the screen, and the way from a folder to
    the place its contents will appear. Neither is asked about by anything: a
-   caller says where from and where to, and waits for it to land. */
+   caller says where from and where to, and waits for it to land.
+
+   Both put their picture against the viewport, and both take their two places
+   on the desk, which is what deskRect answers in. A caller reaching for
+   getBoundingClientRect here would hand over the one unit that does not
+   work. */
 
 /** How long an icon takes to reach its place on the floor. Brisk, because it
  *  is a thing moving rather than an effect: long enough to be followed by the
@@ -283,8 +341,8 @@ function stillness() {
 /**
  * Sends a picture of an icon from one place to another.
  * @param {string} icon - Which picture.
- * @param {DOMRect} from - Where it starts.
- * @param {DOMRect} to - Where it lands.
+ * @param {object} from - Where it starts, as deskRect answers.
+ * @param {object} to - Where it lands, as deskRect answers.
  * @param {number} howLong - How long it takes, in milliseconds. The default
  *   is the way across the screen; a way inside one window is shorter and is
  *   given NEAR_FLIGHT_MS.
@@ -322,9 +380,10 @@ function fly(icon, from, to, howLong = FLIGHT_MS) {
 
 /**
  * Draws the way from one place to another, as a run of rectangles.
- * @param {DOMRect} from - Where it starts, which is the mark around an icon.
- * @param {DOMRect} to - Where it ends, which is the box about to hold what
- *   was in that folder.
+ * @param {object} from - Where it starts, which is the mark around an icon,
+ *   as deskRect answers.
+ * @param {object} to - Where it ends, which is the box about to hold what was
+ *   in that folder, in the same units.
  * @returns {Promise} Settled when they have gone.
  *
  * Several, and none of them is rubbed out: each is drawn at its own size a

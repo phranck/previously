@@ -174,7 +174,7 @@ class NxWindow extends HTMLElement {
        poll, which is up to five seconds of dashes. */
     this.dispatchEvent(new CustomEvent("nx-open", {
       bubbles: true,
-      detail: { from: asker?.getBoundingClientRect?.() ?? null },
+      detail: { from: deskRect(asker) },
     }));
   }
 
@@ -239,25 +239,25 @@ class NxWindow extends HTMLElement {
     for (const handle of bar.children) {
       const corner = handle.dataset.corner;
       gesture(handle,
-        (event, start) => {
+        (point, start) => {
           const floor = this.floor;
-          this.style.height = Math.max(floor.height, start.height + event.clientY) + "px";
+          this.style.height = Math.max(floor.height, start.height + point.y) + "px";
           if (corner === "right") {
-            this.style.width = Math.max(floor.width, start.width + event.clientX) + "px";
+            this.style.width = Math.max(floor.width, start.width + point.x) + "px";
           } else if (corner === "left") {
             /* Dragging the left end moves that edge and holds the right one
                still, so the two have to change together. */
-            const left = Math.min(event.clientX - start.grabX, start.right - floor.width);
+            const left = Math.min(point.x - start.grabX, start.right - floor.width);
             this.style.left = left + "px";
             this.style.width = (start.right - left) + "px";
           }
         },
-        (event) => {
+        (point) => {
           this.raise();
           return {
-            width: this.offsetWidth - event.clientX,
-            height: this.offsetHeight - event.clientY,
-            grabX: event.clientX - this.offsetLeft,
+            width: this.offsetWidth - point.x,
+            height: this.offsetHeight - point.y,
+            grabX: point.x - this.offsetLeft,
             right: this.offsetLeft + this.offsetWidth,
           };
         },

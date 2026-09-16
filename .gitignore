@@ -10,3 +10,7 @@ __pycache__/
 # What packaging/build.py lays out and writes. Built from the tree beside it,
 # so keeping it would be keeping a copy of the repository in the repository.
 admin/packaging/build/
+
+# An index one editing assistant keeps of this tree. It is rebuilt from the
+# source on demand and says nothing about the project.
+.serena/
