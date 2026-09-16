@@ -72,7 +72,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if route == "/api/status":
             return self._json(self._status())
         if route == "/api/pi":
-            return self._json(pi.readings())
+            # The tool's own version rides along with the board's readings,
+            # because the window that says what this Pi is running is where
+            # somebody looks to find out what they are looking at. It comes
+            # from here rather than from pi.py, which reads the board itself
+            # and nothing else.
+            return self._json({"version": VERSION, **pi.readings()})
         if route == "/api/files":
             return self._json(files.tree(self.settings.state_directory,
                                          self.settings.documents))

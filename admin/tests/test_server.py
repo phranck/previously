@@ -67,6 +67,22 @@ def test_status_carries_the_machine_and_whether_it_runs(service):
     assert payload["uptime_seconds"] is None
 
 
+def test_the_board_readings_say_which_version_is_answering(service):
+    """The window that shows what a Pi is running says what put it there.
+
+    Without it a machine left on an old release looks exactly like a current
+    one, and the only way to tell them apart is to notice a fault.
+    """
+    status, _, body = fetch(service + "/api/pi")
+    payload = json.loads(body)
+
+    assert status == 200
+    assert payload["version"] == server.VERSION
+    # Beside the board's own readings rather than instead of them.
+    assert "model" in payload
+    assert "uptime_seconds" in payload
+
+
 def test_nothing_is_cached(service):
     """Every answer is about right now, and a cached one is a wrong one."""
     _, headers, _ = fetch(service + "/api/status")

@@ -1232,6 +1232,11 @@ function drawPi(pi) {
     ? t("pi.disk.free",
         { gb: Math.round(pi.disk.free_mb / 1024), percent: pi.disk.used_percent })
     : NOTHING);
+
+  /* Which tool is answering. The one reading here that is about this program
+     rather than about the board, and it is here because this is the window
+     somebody opens to find out what a machine is running. */
+  show("pi-version", pi.version ?? NOTHING);
 }
 
 /** Fetches the status and draws it, and the board's readings where its window

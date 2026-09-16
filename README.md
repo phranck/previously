@@ -89,6 +89,24 @@ Afterwards `sudo systemctl start getty@tty1` brings the machine back.
 
 The package owns `/usr/bin` and `/usr/share/previous`. The disk image and the configuration belong to you and are never touched by a package operation. What does cause damage is quitting Previous while NeXTSTEP is still running, and that damage shows up after the update rather than before it.
 
+## Updating the admin tool
+
+Nothing needs stopping, and NeXTSTEP keeps running throughout. The tool is a Debian package like Previous, but it comes from this repository rather than from an archive, so the install script replaces it:
+
+```bash
+curl -fsSL https://previously.layered.work/install.sh | bash -s -- --update-admin
+```
+
+From a checkout on the Pi, the same script builds the package out of what is beside it:
+
+```bash
+./install.sh --update-admin
+```
+
+It touches nothing else. The token in `/var/lib/previously/token` and the configuration in `/etc/previously/config.ini` both survive, because the token is state the tool wrote itself and the configuration is a conffile that an upgrade never overwrites. The service is restarted by the package, so the browser has the new tool on its next load.
+
+The version it put there is in the Raspberry Pi window, on the line marked Previously, which is also how to tell a machine that is up to date from one that was left behind.
+
 ## Getting back in
 
 The first console belongs to Previous once the kiosk is active. SSH sessions carry no `XDG_VTNR`, so they fall through the autostart and remain the way to change anything on the system. Make sure SSH works before handing the screen over: from the boot-silencing step onwards the screen shows no error messages either, and `journalctl -b -e` over the network is then the only way to find out why something did not start.

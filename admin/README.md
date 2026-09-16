@@ -76,7 +76,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/kiosk/start` | Lets the emulated machine come back |
 | `POST /api/kiosk/stop` | Shuts it down properly and keeps it down |
 | `POST /api/kiosk/restart` | Both, in that order |
-| `GET /api/pi` | Temperature, power, sound, disk, and what the emulator costs |
+| `GET /api/pi` | Temperature, power, sound, disk, what the emulator costs, and which version of this tool is answering |
 | `GET /api/files` | Everything this tool holds, as a place with places in it |
 | `POST /api/machine` | Makes the emulated machine the one named |
 | `POST /api/pi/reboot` | Shuts NeXTSTEP down, then restarts the board |
