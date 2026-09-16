@@ -29,9 +29,8 @@ DEFAULTS = {
     "previous_config": "~/.config/previous/previous.cfg",
     # Where the Previously tree is a real one. Everything else the File Viewer
     # shows is described in files.py and exists nowhere, but a picture is a
-    # file. Under the home directory on purpose: previous.cfg exports that to
-    # the emulated machine over NFS, so a picture written here is one NeXTSTEP
-    # itself can open.
+    # file. In the emulator owner's home, which is the user this service runs
+    # as, so it needs nothing but its own permission to write there.
     "documents": "~/Previously",
     "kiosk_unit": "getty@tty1.service",
     "state_directory": STATE_DIRECTORY,

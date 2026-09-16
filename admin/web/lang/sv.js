@@ -25,6 +25,7 @@ NX_STRINGS.sv = {
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Konfigurationsredigerare",
   "app.grab": "Grab",
+  "app.preview": "Preview",
   "app.terminal": "Terminal",
 
   /* --- what a machine is ----------------------------------------------- */
@@ -90,6 +91,7 @@ NX_STRINGS.sv = {
   "terminal.ended": "[sessionen är avslutad]",
 
   /* --- the buttons ------------------------------------------------------ */
+  "preview.empty": "Ingenting att visa.",
   "grab.take": "Ta en bild",
   "grab.idle": "Ingenting att fotografera. Maskinen körs inte.",
   "grab.failed": "Skärmen kunde inte läsas.",

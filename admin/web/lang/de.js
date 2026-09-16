@@ -25,6 +25,7 @@ NX_STRINGS.de = {
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Konfigurationseditor",
   "app.grab": "Grab",
+  "app.preview": "Preview",
   "app.terminal": "Terminal",
 
   /* --- what a machine is ----------------------------------------------- */
@@ -90,6 +91,7 @@ NX_STRINGS.de = {
   "terminal.ended": "[die Sitzung ist beendet]",
 
   /* --- the buttons ------------------------------------------------------ */
+  "preview.empty": "Nichts zu zeigen.",
   "grab.take": "Aufnehmen",
   "grab.idle": "Nichts zu fotografieren. Die Maschine läuft nicht.",
   "grab.failed": "Der Bildschirm konnte nicht gelesen werden.",

@@ -59,9 +59,9 @@ readonly CONFIG_FILE="${CONFIG_DIR}/previous.cfg"
 readonly WORK_DIR="${HOME}/.cache/previously"
 
 # The real part of the Previously tree, which the admin tool shows as
-# /Documents. A screenshot is kept in Documents/Pictures under it. Inside the
-# home on purpose: the emulator exports the home to the emulated machine over
-# NFS, so what is filed here is also what NeXTSTEP can open.
+# /Documents. A screenshot is kept in Documents/Pictures under it. In the
+# emulator owner's home because that is the user the admin runs as, and it is
+# the only part of the tree that is on the card at all.
 readonly DOCUMENTS_DIR="${HOME}/Previously"
 readonly PICTURES_DIR="${DOCUMENTS_DIR}/Documents/Pictures"
 # ~/.profile and not ~/.bash_profile. Bash reads only the first of the login

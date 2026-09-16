@@ -672,9 +672,10 @@ function open(path, asker) {
     const window_ = document.querySelector(`nx-window[name="${entry.opens}"]`);
     return window_ ? window_.open(asker) : notYet(appName(entry));
   }
+  if (entry.kind === "picture") return showInPreview(entry);
   /* Named rather than left as what everything else falls through to, because
-     what else is in here has grown: a picture is opened by nothing yet, and
-     falling through would have asked the machine to become one. */
+     what else is in here has grown and falling through would have asked the
+     machine to become whatever was double clicked. */
   if (entry.kind === "machine") changeTo(entry.id);
 }
 
@@ -1531,20 +1532,70 @@ async function takeAPicture() {
  * @param {Blob} picture - What the service answered with, or null.
  */
 function showTheScreen(picture) {
-  const view = document.getElementById("shot");
-  const note = document.getElementById("shot-note");
-
-  if (shownScreen) URL.revokeObjectURL(shownScreen);
-  shownScreen = picture ? URL.createObjectURL(picture) : null;
-
-  view.style.backgroundImage = shownScreen ? `url("${shownScreen}")` : "";
-  note.textContent = picture
+  drawPicture("shot", picture);
+  document.getElementById("shot-note").textContent = picture
     ? ""
     : t(lastStatus?.running === false ? "grab.idle" : "grab.failed");
 }
 
-/** The picture in the window, so the one before it can be released. */
-let shownScreen = null;
+/**
+ * Draws a picture into a view, and releases the one it replaces.
+ * @param {string} id - Which view, which is its element's id.
+ * @param {Blob} picture - The picture, or null to empty the view.
+ *
+ * One place, because two windows show a picture: Grab shows what it has just
+ * taken and Preview shows one that was kept. A blob has to be released or the
+ * browser holds every picture ever shown, and the only way to do that is to
+ * remember the last one per view.
+ */
+function drawPicture(id, picture) {
+  const view = document.getElementById(id);
+  if (!view) return;
+
+  if (shownPictures[id]) URL.revokeObjectURL(shownPictures[id]);
+  shownPictures[id] = picture ? URL.createObjectURL(picture) : null;
+  view.style.backgroundImage = shownPictures[id]
+    ? `url("${shownPictures[id]}")` : "";
+}
+
+/** What each picture view is showing, so it can be released when replaced. */
+const shownPictures = {};
+
+/**
+ * Shows one kept picture in Preview.
+ * @param {object} entry - What the tree says about it.
+ *
+ * Fetched rather than pointed at, because the route takes the token and an
+ * img src carries no headers. The window is titled with the picture's name,
+ * the way a document window is.
+ */
+async function showInPreview(entry) {
+  const window_ = document.querySelector('nx-window[name="preview"]');
+  const note = document.getElementById("preview-note");
+  if (!window_) return;
+
+  window_.rename(entry.name);
+  window_.open();
+  drawPicture("preview-picture", null);
+  note.textContent = "";
+
+  try {
+    const answer = await fetch(
+      "/api/picture?name=" + encodeURIComponent(entry.name),
+      { cache: "no-store", headers: headers() });
+    if (answer.status === 403) return askForToken(t("ask.token.needed"));
+    if (!answer.ok) return void (note.textContent = t("preview.empty"));
+    drawPicture("preview-picture", await answer.blob());
+  } catch {
+    note.textContent = t("preview.empty");
+  }
+}
+
+/** Wires Preview, which holds nothing of its own once it is closed. */
+function wirePreview() {
+  document.querySelector('nx-window[name="preview"]')
+    ?.addEventListener("nx-close", () => drawPicture("preview-picture", null));
+}
 
 /** Wires the window that shows the emulated screen. */
 function wireGrab() {
@@ -1585,6 +1636,7 @@ wireBoard();
 wireOpening();
 wireTerminal();
 wireGrab();
+wirePreview();
 watchTheApplications();
 drawLanguages();
 drawMachines();
