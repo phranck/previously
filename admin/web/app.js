@@ -716,6 +716,12 @@ async function visitFromTheShelf(where, thing) {
   const entry = find(root, where);
   if (!entry || !(entry.kind === "folder" || entry.path === "/")) return;
 
+  /* Already where the viewer is standing, which the path shows by ending on
+     it. There is nothing to fly to and nothing to redraw, and an icon that
+     travels to the place it is already in says something happened when
+     nothing did. */
+  if (at.at(-1)?.path === entry.path) return;
+
   const from = thing?.getBoundingClientRect?.();
   at = chainTo(entry.path);
   drawPlace();
