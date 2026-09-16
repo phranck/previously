@@ -24,7 +24,7 @@ NX_STRINGS.it = {
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Editor di configurazione",
-  "app.screenshot": "Istantanea",
+  "app.grab": "Grab",
   "app.terminal": "Terminal",
 
   /* --- what a machine is ----------------------------------------------- */
@@ -90,9 +90,9 @@ NX_STRINGS.it = {
   "terminal.ended": "[la sessione è terminata]",
 
   /* --- the buttons ------------------------------------------------------ */
-  "screenshot.take": "Scatta un’immagine",
-  "screenshot.idle": "Niente da fotografare. La macchina non è in funzione.",
-  "screenshot.failed": "Non è stato possibile leggere lo schermo.",
+  "grab.take": "Scatta un’immagine",
+  "grab.idle": "Niente da fotografare. La macchina non è in funzione.",
+  "grab.failed": "Non è stato possibile leggere lo schermo.",
   "button.power-off": "Spegni",
   "button.restart": "Riavvia",
   "button.power-on": "Accendi",

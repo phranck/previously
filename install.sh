@@ -57,6 +57,13 @@ readonly CONFIG_FILE="${CONFIG_DIR}/previous.cfg"
 # away again, which it can only do somewhere it is allowed to write. Started in
 # the home directory instead, the grabs pile up there and nothing removes them.
 readonly WORK_DIR="${HOME}/.cache/previously"
+
+# The real part of the Previously tree, which the admin tool shows as
+# /Documents. A screenshot is kept in Documents/Pictures under it. Inside the
+# home on purpose: the emulator exports the home to the emulated machine over
+# NFS, so what is filed here is also what NeXTSTEP can open.
+readonly DOCUMENTS_DIR="${HOME}/Previously"
+readonly PICTURES_DIR="${DOCUMENTS_DIR}/Documents/Pictures"
 # ~/.profile and not ~/.bash_profile. Bash reads only the first of the login
 # files that exists, and on Raspberry Pi OS that is ~/.profile, which pulls in
 # ~/.bashrc. Creating ~/.bash_profile would switch both off, including for SSH
@@ -315,6 +322,21 @@ fetch_disk_image() {
 # ---------------------------------------------------------------------------
 # 6  Configuration, with the image path filled in from this machine.
 # ---------------------------------------------------------------------------
+
+make_documents() {
+  info "Making ${PICTURES_DIR}"
+
+  if [[ -d "$PICTURES_DIR" ]]; then
+    skip "already present"
+    return
+  fi
+
+  mkdir -p "$PICTURES_DIR"
+  # Only the directories this run created, and rmdir rather than rm, so a
+  # folder somebody has put pictures in is left where it is.
+  undo "remove ${DOCUMENTS_DIR} if it is empty" \
+       "rmdir -p $(printf '%q' "$PICTURES_DIR") 2>/dev/null || true"
+}
 
 write_config() {
   info "Writing ${CONFIG_FILE}"
@@ -595,6 +617,7 @@ main() {
   add_repository
   install_previous
   fetch_disk_image
+  make_documents
   write_config
   enable_autologin
   quieten_boot

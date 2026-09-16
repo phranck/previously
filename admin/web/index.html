@@ -163,18 +163,18 @@
   </nx-scroller>
 </nx-window>
 
-<!-- What the emulated machine is showing. The picture is the machine's own
-     1120 by 832, and the window opens at half of that with room for the
-     button under it, so the whole screen is in view before anything is
-     resized. -->
-<nx-window name="screenshot" data-t-title="app.screenshot" drop
+<!-- Grab, which is what NeXT called the application that takes a picture of
+     the screen. The picture is the machine's own 1120 by 832, and the window
+     opens at half of that with room for the button under it, so the whole
+     screen is in view before anything is resized. -->
+<nx-window name="grab" data-t-title="app.grab" drop
            x="600" y="330" w="576" h="480" min-w="320" min-h="260" closed>
   <nx-scroller>
     <div class="shot" id="shot"></div>
   </nx-scroller>
   <p class="note" id="shot-note"></p>
   <div class="buttons">
-    <button id="shot-take" class="default" data-t="screenshot.take"></button>
+    <button id="shot-take" class="default" data-t="grab.take"></button>
   </div>
 </nx-window>
 

@@ -274,7 +274,8 @@ def test_the_tree_is_open(service):
 
     assert status == 200
     assert tree["name"] == "Previously"
-    assert [entry["name"] for entry in tree["entries"]] == ["Apps", "Machines"]
+    assert [entry["name"] for entry in tree["entries"]] == [
+        "Apps", "Documents", "Machines"]
 
 
 def test_the_eleven_sit_in_a_folder_that_cannot_be_written(service):
@@ -315,9 +316,9 @@ def test_the_applications_are_there_and_say_what_they_open(service):
     apps = next(e for e in tree["entries"] if e["name"] == "Apps")
 
     assert [entry["name"] for entry in apps["entries"]] == [
-        "Config Editor.app", "Preferences.app", "Screenshot.app", "Terminal.app"]
+        "Config Editor.app", "Grab.app", "Preferences.app", "Terminal.app"]
     assert [entry["opens"] for entry in apps["entries"]] == [
-        "editor", "preferences", "screenshot", "terminal"]
+        "editor", "grab", "preferences", "terminal"]
 
 
 def test_changing_the_machine_needs_the_token(service):
@@ -389,3 +390,46 @@ def test_a_screen_that_cannot_be_read_says_so(service, monkeypatch):
         urllib.request.urlopen(request, timeout=5)
 
     assert failed.value.code == 503
+
+
+def test_the_picture_is_kept_as_well_as_sent(service, tmp_path, monkeypatch):
+    """A screenshot is a document. It goes into the folder the File Viewer
+    shows as Documents/Pictures, where the emulated machine reaches it too."""
+    monkeypatch.setattr(server.grab, "take", lambda: b"\x89PNG\r\n\x1a\npixels")
+    request = urllib.request.Request(service + "/api/screen")
+    request.add_header(HEADER, server.Handler.token.value)
+
+    with urllib.request.urlopen(request, timeout=5) as answer:
+        filed = answer.headers["X-Previously-Kept"]
+
+    kept = tmp_path / "Previously" / "Documents" / "Pictures"
+    assert [path.name for path in kept.iterdir()] == [filed]
+    assert (kept / filed).stat().st_size > 0
+
+
+def test_a_kept_picture_is_in_the_tree(service, tmp_path, monkeypatch):
+    monkeypatch.setattr(server.grab, "take", lambda: b"\x89PNG\r\n\x1a\npixels")
+    request = urllib.request.Request(service + "/api/screen")
+    request.add_header(HEADER, server.Handler.token.value)
+    with urllib.request.urlopen(request, timeout=5) as answer:
+        filed = answer.headers["X-Previously-Kept"]
+
+    _, _, body = fetch(service + "/api/files")
+    tree = json.loads(body)
+    documents = next(e for e in tree["entries"] if e["name"] == "Documents")
+    pictures = next(e for e in documents["entries"] if e["name"] == "Pictures")
+
+    assert [entry["name"] for entry in pictures["entries"]] == [filed]
+    assert pictures["entries"][0]["kind"] == "picture"
+    assert pictures["entries"][0]["path"] == "/Documents/Pictures/" + filed
+
+
+def test_documents_is_there_before_anything_is_in_it(service):
+    """The place a picture goes is visible before the first one is taken,
+    rather than appearing once something lands in it."""
+    _, _, body = fetch(service + "/api/files")
+    tree = json.loads(body)
+    documents = next(e for e in tree["entries"] if e["name"] == "Documents")
+
+    assert [entry["name"] for entry in documents["entries"]] == ["Pictures"]
+    assert documents["entries"][0]["entries"] == []

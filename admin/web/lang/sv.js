@@ -24,7 +24,7 @@ NX_STRINGS.sv = {
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Konfigurationsredigerare",
-  "app.screenshot": "Skärmbild",
+  "app.grab": "Grab",
   "app.terminal": "Terminal",
 
   /* --- what a machine is ----------------------------------------------- */
@@ -90,9 +90,9 @@ NX_STRINGS.sv = {
   "terminal.ended": "[sessionen är avslutad]",
 
   /* --- the buttons ------------------------------------------------------ */
-  "screenshot.take": "Ta en bild",
-  "screenshot.idle": "Ingenting att fotografera. Maskinen körs inte.",
-  "screenshot.failed": "Skärmen kunde inte läsas.",
+  "grab.take": "Ta en bild",
+  "grab.idle": "Ingenting att fotografera. Maskinen körs inte.",
+  "grab.failed": "Skärmen kunde inte läsas.",
   "button.power-off": "Stäng av",
   "button.restart": "Starta om",
   "button.power-on": "Slå på",

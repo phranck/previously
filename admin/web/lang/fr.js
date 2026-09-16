@@ -24,7 +24,7 @@ NX_STRINGS.fr = {
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Éditeur de configuration",
-  "app.screenshot": "Capture d’écran",
+  "app.grab": "Grab",
   "app.terminal": "Terminal",
 
   /* --- what a machine is ----------------------------------------------- */
@@ -90,9 +90,9 @@ NX_STRINGS.fr = {
   "terminal.ended": "[la session est terminée]",
 
   /* --- the buttons ------------------------------------------------------ */
-  "screenshot.take": "Prendre une image",
-  "screenshot.idle": "Rien à photographier. La machine ne tourne pas.",
-  "screenshot.failed": "L’écran n’a pas pu être lu.",
+  "grab.take": "Prendre une image",
+  "grab.idle": "Rien à photographier. La machine ne tourne pas.",
+  "grab.failed": "L’écran n’a pas pu être lu.",
   "button.power-off": "Éteindre",
   "button.restart": "Redémarrer",
   "button.power-on": "Allumer",
