@@ -2210,6 +2210,8 @@ class NxAsk extends HTMLElement {
  *   particular to say.
  * @fires nx-path - A step of the path was chosen, carrying its index in
  *   `detail.index` and its value in `detail.value`.
+ * @fires nx-visit - Something on the shelf was clicked once, carrying its
+ *   value. One click there is an act rather than a selection.
  * @fires nx-choose - Something in the contents or on the shelf was chosen,
  *   from nx-thing, carrying its value.
  */
@@ -2220,6 +2222,19 @@ class NxViewer extends HTMLElement {
 
     this.keep = document.createElement("nx-shelf");
     this.keep.className = "keep";
+
+    /* One click on the shelf is an act, which is the one place in this viewer
+       where that is true: NeXT's guidelines say that clicking a folder there
+       changes what the viewer shows, and that a drag must not do the same,
+       which is why the shelf is the example they use for it. */
+    this.keep.addEventListener("click", (event) => {
+      const thing = event.target.closest("nx-thing");
+      if (!thing || !this.keep.contains(thing)) return;
+      this.dispatchEvent(new CustomEvent("nx-visit", {
+        bubbles: true,
+        detail: { value: thing.getAttribute("value") },
+      }));
+    });
     this.keep.addEventListener("dragover", (event) => {
       event.preventDefault();
       event.dataTransfer.dropEffect = "copy";

@@ -683,10 +683,41 @@ function open(path, asker) {
  */
 async function openFolder(asker) {
   const band = document.querySelector("#file-viewer nx-scroller:last-child");
-  if (!asker?.getBoundingClientRect || !band) return drawPlace();
+  /* Only from the band below. The original draws this nowhere else: what is
+     opened from the shelf flies to the path instead, and a step of the path
+     is a way back rather than something being opened. */
+  const fromTheBand = asker?.closest?.(".contents");
+  if (!fromTheBand || !band) return drawPlace();
 
   await zoom(asker.getBoundingClientRect(), band.getBoundingClientRect());
   drawPlace();
+}
+
+/**
+ * Answers one click on the shelf.
+ * @param {string} where - The path of what was clicked.
+ * @param {HTMLElement} thing - What was clicked, which is where its icon
+ *   starts from.
+ *
+ * A folder on the shelf changes what the viewer shows, and its icon travels
+ * to the place it takes in the path as it does. Anything else there is a
+ * machine, and clicking one chooses it and nothing more.
+ */
+async function visitFromTheShelf(where, thing) {
+  const entry = find(root, where);
+  if (!entry || !(entry.kind === "folder" || entry.path === "/")) return;
+
+  const from = thing?.getBoundingClientRect?.();
+  at = chainTo(entry.path);
+  drawPlace();
+
+  const steps = document.querySelectorAll("#file-viewer .path nx-thing");
+  const landing = steps[steps.length - 1];
+  if (!from || !landing) return;
+
+  landing.style.visibility = "hidden";
+  await fly(landing.getAttribute("icon"), from, landing.getBoundingClientRect());
+  landing.style.visibility = "";
 }
 
 /**
@@ -1072,6 +1103,10 @@ function wireMachines() {
 
   /* A step of the path was clicked, so go back to it. */
   document.addEventListener("nx-path", (event) => goTo(event.detail.index));
+
+  /* One click on the shelf, which is the one place a single click acts. */
+  document.addEventListener("nx-visit",
+    (event) => visitFromTheShelf(event.detail.value, event.target));
 
   /* Carried onto the viewer's own shelf, which means keep this one to hand
      rather than start it. */
