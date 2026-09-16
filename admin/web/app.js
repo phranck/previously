@@ -1303,17 +1303,36 @@ function drawAtSize(scale) {
   drawSizes();
 }
 
-/** Draws the list of sizes, with the one in force marked. */
+/** Draws the row of sizes, with the one in force marked.
+ *
+ * Each button shows a letter at the size it sets, which is what Preferences
+ * does wherever a setting can be shown rather than described: its Keyboard
+ * module draws the repeat rate as letters at four spacings. The name is under
+ * the letter, because a letter alone says which is larger and not what any of
+ * them is called.
+ */
 function drawSizes() {
-  const list = document.getElementById("sizes");
-  if (!list) return;
-  list.replaceChildren(...SIZES.map(({ name, scale }) => {
-    const option = document.createElement("div");
-    option.className = "option";
-    option.textContent = t(name);
-    option.toggleAttribute("chosen", scale === chosenSize());
-    option.addEventListener("click", () => drawAtSize(scale));
-    return option;
+  const row = document.getElementById("size-choices");
+  if (!row) return;
+  row.replaceChildren(...SIZES.map(({ name, scale }) => {
+    const choice = document.createElement("div");
+    choice.className = "choice";
+    choice.toggleAttribute("chosen", scale === chosenSize());
+
+    const sample = document.createElement("div");
+    sample.className = "sample";
+    sample.textContent = "A";
+    /* The size this button sets, shown at that size against the interface's
+       own, so the three of them read as one scale. */
+    sample.style.fontSize = `calc(var(--text-size) * ${scale})`;
+
+    const under = document.createElement("div");
+    under.className = "choice-name";
+    under.textContent = t(name);
+
+    choice.append(sample, under);
+    choice.addEventListener("click", () => drawAtSize(scale));
+    return choice;
   }));
 }
 

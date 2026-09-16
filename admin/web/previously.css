@@ -29,13 +29,15 @@ nx-window[name="preferences"] .modules {
 
 nx-window[name="preferences"] .module-row {
   display: flex;
-  /* Never narrower than what is in it, so the row scrolls rather than
-     squeezing its cells. */
-  width: max-content;
 }
 
-/* One cell. Square, and parted from the next by the sunken line this
-   interface uses everywhere: one row of shadow and one of light. */
+/* One cell, raised the way every button in this interface is: white on the
+   top and the left, black outside and grey inside on the other two. Read off
+   the original at the seam between two cells, which goes light, black, white
+   across: the right edge of one and the left edge of the next.
+
+   The row they sit in is sunken, which nx-scroller already draws. A raised
+   row of cells in a sunken well is the whole of the effect. */
 .module {
   width: var(--module-cell);
   height: var(--module-cell);
@@ -43,12 +45,11 @@ nx-window[name="preferences"] .module-row {
   display: grid;
   place-items: center;
   background: var(--light);
-  border: 1px solid var(--dark);
-  border-left-width: 0;
-  box-shadow: inset 1px 0 0 var(--white);
+  border: 1px solid;
+  border-color: var(--white) var(--black) var(--black) var(--white);
+  box-shadow: inset -1px -1px 0 var(--dark);
   cursor: default;
 }
-.module:first-child { border-left-width: 1px; box-shadow: none; }
 
 /* The chosen one, which NeXTSTEP drew by turning the cell white rather than
    by putting a mark in it. */
@@ -132,3 +133,54 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   background-size: contain;
   image-rendering: pixelated;
 }
+
+
+/* --- a titled group of buttons ------------------------------------------- */
+
+/* What Preferences uses wherever it offers a choice of a few: a groove around
+   the group with its name set into the top of it, and the buttons in a row
+   that touch. Measured off the Keyboard module on the running system: the
+   groove is one row of shadow with one of light inside it, and the chosen
+   button is white where the others are grey. */
+.panel { padding: 10px; }
+
+.group {
+  margin: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--dark);
+  box-shadow: inset 1px 1px 0 var(--white), inset -1px -1px 0 var(--white);
+}
+
+.group legend {
+  padding: 0 6px;
+  font-size: var(--text-size);
+}
+
+/* The buttons of one group, touching, in the middle of it. */
+.choices {
+  display: flex;
+  justify-content: center;
+}
+
+/* One of them. The same raised cell as a module picture, which is the one
+   shape this interface gives anything that can be chosen. */
+.choice {
+  min-width: 60px;
+  height: 52px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--white) var(--black) var(--black) var(--white);
+  box-shadow: inset -1px -1px 0 var(--dark);
+  cursor: default;
+  padding: 0 8px;
+}
+.choice[chosen] { background: var(--white); }
+
+/* The letter each one shows, at the size that button sets, so somebody can
+   see what they are choosing rather than read about it, with its name under
+   it because a letter alone says which is larger and not what it is called. */
+.choice .sample { line-height: 1.1; }
+.choice .choice-name { font-size: var(--status-size); }

@@ -33,6 +33,7 @@ NX_STRINGS.de = {
   "app.preferences": "Präferenzen",
   "preferences.localization": "Lokalisierungs-Präferenzen",
   "preferences.monitor": "Monitor-Präferenzen",
+  "size.title": "Grösse",
   "size.normal": "Normal",
   "size.large": "Gross",
   "size.largest": "Am grössten",
