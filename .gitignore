@@ -6,3 +6,7 @@ admin/.venv/
 __pycache__/
 .pytest_cache/
 *.pyc
+
+# What packaging/build.py lays out and writes. Built from the tree beside it,
+# so keeping it would be keeping a copy of the repository in the repository.
+admin/packaging/build/

@@ -32,7 +32,13 @@ set -euo pipefail
 # Where this script is, so it can find the files that ship beside it. Resolved
 # rather than taken from $0, because the script is meant to be runnable from
 # anywhere and through a symlink.
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+#
+# Run through a pipe there is no file to resolve, which is how the line on the
+# Previously page runs it: BASH_SOURCE is unset, and under `set -u` reading it
+# ends the script before its first line of work. The fallback is the current
+# directory, where nothing will be found, and everything that looks beside the
+# script is written to take that as an answer.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd -P || pwd -P)"
 readonly SCRIPT_DIR
 
 export DEBIAN_FRONTEND=noninteractive
@@ -46,6 +52,12 @@ readonly REPO_PREFS="/etc/apt/preferences.d/wmlive"
 
 readonly DISK_ARCHIVE="Nextstep 3.3 HD Image With Previous.7z"
 readonly DISK_ARCHIVE_URL="https://archive.org/download/nextstep-3.3-hd-image-with-previous.-7z/Nextstep%203.3%20HD%20Image%20With%20Previous.7z"
+
+# The admin tool, for a run that has no checkout beside it. The name carries no
+# version, so this address is the latest release whatever that is, and the
+# version is in the package where dpkg can report it.
+readonly PACKAGE_FILE="previously_all.deb"
+readonly PACKAGE_URL="https://github.com/phranck/previously/releases/latest/download/${PACKAGE_FILE}"
 
 readonly NEXTSTEP_DIR="${HOME}/nextstep"
 readonly CONFIG_DIR="${HOME}/.config/previous"
@@ -478,29 +490,43 @@ quieten_login() {
 #     The name of the file is the whole of the request. Nothing is passed and
 #     there is no shell to pass it through, so these units cannot be talked
 #     into doing anything but the one command each names.
+#
+#     All of that arrives with the package: the service, its configuration and
+#     the four units. This step builds that package out of the checkout and
+#     lets apt install it, so there is one place the tool comes from and one
+#     command that takes it away again.
 # ---------------------------------------------------------------------------
 
-readonly BOARD_UNITS=(previously-reboot.path previously-reboot.service
-                      previously-poweroff.path previously-poweroff.service)
+install_admin() {
+  info "Installing the admin tool"
 
-install_board_units() {
-  info "Letting the browser restart and switch off the Pi"
-
-  local source_dir="${SCRIPT_DIR}/admin/packaging"
-  if [[ ! -f "${source_dir}/previously-reboot.path" ]]; then
-    skip "the admin tool is not in this checkout"
+  if dpkg-query -W -f='${Status}' previously 2>/dev/null | grep -q "ok installed"; then
+    skip "already installed"
     return
   fi
 
-  local unit
-  for unit in "${BOARD_UNITS[@]}"; do
-    sudo install -o root -g root -m 0644 "${source_dir}/${unit}" "/etc/systemd/system/${unit}"
-  done
-  sudo systemctl daemon-reload
-  sudo systemctl enable --now previously-reboot.path previously-poweroff.path
+  # Two ways in, because this script arrives two ways. Run out of a checkout it
+  # builds the package from what is already beside it, which is a second and
+  # always matches that checkout. Run from the web, through the line on the
+  # Previously page, there is nothing beside it and it takes the package from
+  # the latest release.
+  local package
+  local packaging="${SCRIPT_DIR}/admin/packaging"
+  if [[ -f "${packaging}/build.py" ]]; then
+    package="$(python3 "${packaging}/build.py" | awk '{print $2}')" \
+      || abort "Could not build the admin package."
+  else
+    package="$(mktemp -d)/${PACKAGE_FILE}"
+    curl -fsSL -o "$package" "$PACKAGE_URL" \
+      || abort "Could not fetch ${PACKAGE_URL}."
+    undo "remove the downloaded package" "rm -f $(printf '%q' "$package")"
+  fi
 
-  undo "stop watching for restart and shutdown requests" \
-       "sudo systemctl disable --now previously-reboot.path previously-poweroff.path; sudo rm -f /etc/systemd/system/previously-{reboot,poweroff}.{path,service}; sudo systemctl daemon-reload"
+  # apt rather than dpkg, so the dependencies it declares are resolved. The
+  # package enables and starts the service and both path units itself.
+  sudo apt-get install -y -qq "$package" || abort "Could not install ${package}."
+
+  undo "remove the admin tool" "sudo apt-get purge -y -qq previously"
 }
 
 # ---------------------------------------------------------------------------
@@ -621,7 +647,7 @@ main() {
   write_config
   enable_autologin
   quieten_boot
-  install_board_units
+  install_admin
   install_autostart
   install_audio
 
@@ -635,6 +661,15 @@ main() {
   skip "cmdline saved as ${CMDLINE}.nextstep-rpi.backup"
   skip "sound:        through PipeWire, to a USB speaker where one is plugged in"
   skip ""
+  if dpkg-query -W -f='${Status}' previously 2>/dev/null | grep -q "ok installed"; then
+    # The one thing somebody needs after this finishes, and the reason they
+    # ran it. The name rather than the address, because a Pi answers to
+    # <hostname>.local on the network it is on and its address may not last.
+    info "The admin tool is at http://$(hostname).local:2342"
+    skip "Its token, which the browser asks for once:"
+    skip "  sudo cat /var/lib/previously/token"
+    skip ""
+  fi
   skip "Log in at the Pi's own keyboard to check it before rebooting."
   skip "NeXTSTEP account: me, no password."
 }

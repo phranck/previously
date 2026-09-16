@@ -14,6 +14,12 @@ Group=next
 ExecStart=/usr/bin/python3 -m previously
 WorkingDirectory=/usr/lib/previously
 Environment=PYTHONPATH=/usr/lib/previously
+# And nothing of its own in that directory. Python caches compiled modules
+# beside the source by default, which puts files in /usr/lib that belong to no
+# package: dpkg then leaves the directory standing on purge, because what is in
+# it is not its to remove. The cost is compiling eleven small modules at every
+# start, on a machine that starts this once a boot.
+Environment=PYTHONDONTWRITEBYTECODE=1
 Restart=on-failure
 RestartSec=5
 
