@@ -6,13 +6,13 @@ const WAYS = {
   down: {
     steps: ["up", "down"],
     length: "scrollHeight", showing: "clientHeight", along: "scrollTop",
-    edge: "top", size: "height", pointer: "clientY", offset: "offsetTop",
+    edge: "top", size: "height", pointer: "y", offset: "offsetTop",
     room: "clientHeight",
   },
   across: {
     steps: ["left", "right"],
     length: "scrollWidth", showing: "clientWidth", along: "scrollLeft",
-    edge: "left", size: "width", pointer: "clientX", offset: "offsetLeft",
+    edge: "left", size: "width", pointer: "x", offset: "offsetLeft",
     room: "clientWidth",
   },
 };
@@ -121,13 +121,13 @@ class NxScroller extends HTMLElement {
     this.prepend(bar);
 
     gesture(knob,
-      (event, start) => {
+      (point, start) => {
         const room = trough[how.room] - knob[how.size === "height" ? "offsetHeight" : "offsetWidth"];
-        const at = Math.max(0, Math.min(event[how.pointer] - start.grab, room));
+        const at = Math.max(0, Math.min(point[how.pointer] - start.grab, room));
         this.view[how.along] =
           (at / room) * (this.view[how.length] - this.view[how.showing]);
       },
-      (event) => ({ grab: event[how.pointer] - knob[how.offset] }));
+      (point) => ({ grab: point[how.pointer] - knob[how.offset] }));
 
     return { trough, knob, arrows, how };
   }

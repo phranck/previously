@@ -70,17 +70,21 @@ class NxMenu extends HTMLElement {
 
   /**
    * Puts a context menu at the pointer and takes it away on the next click.
-   * @param {number} x - Where the pointer was, in the page.
+   * @param {number} x - Where the pointer was, as an event reports it.
    * @param {number} y
+   *
+   * A pointer's own coordinates, so that whoever answers a right click can
+   * pass on what the event handed them without knowing how large the desk is
+   * drawn. Converted here, where the menu's own position is written.
    */
   openAt(x, y) {
     this.hidden = false;
     /* Measured after it is shown, because a hidden element has no size, and
        kept inside the window so a menu near an edge is not half off it. */
-    const own = this.getBoundingClientRect();
+    const own = deskRect(this);
     const room = deskRoom();
-    this.style.left = Math.min(x, room.width - own.width - 2) + "px";
-    this.style.top = Math.min(y, room.height - own.height - 2) + "px";
+    this.style.left = Math.min(onDesk(x), room.width - own.width - 2) + "px";
+    this.style.top = Math.min(onDesk(y), room.height - own.height - 2) + "px";
 
     const away = (event) => {
       if (this.contains(event.target)) return;
