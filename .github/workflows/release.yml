@@ -1,0 +1,59 @@
+# Builds the admin tool's package and attaches it to the release for a tag.
+#
+# The package is Architecture: all, so nothing here has to run on a Pi: it is
+# Python, static files and five unit files copied into place. Ubuntu's runner
+# has dpkg-deb, which is all the build needs.
+#
+# The name it is attached under carries no version, so
+# releases/latest/download/previously_all.deb is always the newest one. That is
+# where install.sh fetches from when it runs with no checkout beside it, which
+# is how the line on previously.layered.work installs this.
+#
+# Nothing here puts anything from an event into a command. The only expressions
+# are github.ref in two conditions, which decide whether a step runs and are
+# never interpolated into a shell.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  # So the build can be exercised without spending a tag on it.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the service before packaging it
+        working-directory: admin
+        run: |
+          python3 -m pip install --quiet --break-system-packages flake8 pytest
+          make check
+
+      - name: Build the package
+        working-directory: admin
+        run: |
+          python3 packaging/build.py
+          cp packaging/build/previously_*_all.deb packaging/build/previously_all.deb
+          dpkg-deb --info packaging/build/previously_all.deb
+
+      - name: Attach it to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: admin/packaging/build/previously_all.deb
+          fail_on_unmatched_files: true
+
+      - name: Keep it on the run, where there is no tag
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: previously_all.deb
+          path: admin/packaging/build/previously_all.deb
+          if-no-files-found: error
