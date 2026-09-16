@@ -8,6 +8,7 @@ and three applications is choosing in a place rather than reading a list.
       Apps
         Config Editor.app
         Preferences.app
+        Screenshot.app
         Terminal.app
       Machines
         System          the eleven this project ships, which cannot be changed
@@ -38,21 +39,23 @@ from . import config, machines
 ROOT = "Previously"
 HOME_ICON = "home"
 
-#: A folder, and the three applications, by the pictures they carry. Two wear
-#: what NeXTSTEP drew for them; the editor has no face of its own yet, so it
-#: wears what NeXTSTEP drew for an application that brought none.
+#: A folder, and the four applications, by the pictures they carry. Two wear
+#: what NeXTSTEP drew for them. The editor and the screenshot taker have no
+#: face of their own, so both wear what NeXTSTEP drew for an application that
+#: brought none: it had no picture for either, having had neither application.
 FOLDER_ICON = "folder"
-EDITOR_ICON = "defaultAppIcon"
+DEFAULT_APP_ICON = "defaultAppIcon"
 PREFERENCES_ICON = "Preferences"
 TERMINAL_ICON = "Terminal"
 
 #: The applications, in the order a viewer sorts them. Each carries its
 #: picture, the window it opens and the name of what it is called in words,
-#: which is not what its bundle is called. Preferences is built; the editor is
-#: #50 and the terminal is #6, and until those exist choosing one says so.
+#: which is not what its bundle is called. The editor is #50, and until it
+#: exists choosing it says so.
 APPLICATIONS = (
-    ("Config Editor.app", EDITOR_ICON, "editor", "app.config-editor"),
+    ("Config Editor.app", DEFAULT_APP_ICON, "editor", "app.config-editor"),
     ("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences"),
+    ("Screenshot.app", DEFAULT_APP_ICON, "screenshot", "app.screenshot"),
     ("Terminal.app", TERMINAL_ICON, "terminal", "app.terminal"),
 )
 

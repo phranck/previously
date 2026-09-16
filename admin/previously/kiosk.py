@@ -15,8 +15,6 @@ name of the file is the whole of the request, so there is nothing to pass and
 no shell to pass it through.
 """
 
-import os
-import shutil
 import subprocess
 import time
 
@@ -56,11 +54,6 @@ QUIT_TIMEOUT_SECONDS = 15
 #: after the power key lands on the desktop when the panel is not up yet, which
 #: leaves the panel standing and the machine running.
 CONFIRM_EVERY_POLLS = 4
-
-#: The emulator's process name. Whether it is running is the only honest
-#: signal that the guest has finished shutting down, because the unit stays
-#: active either way: it holds a login shell, not the emulator.
-EMULATOR_PROCESS = "previous"
 
 #: How long to give the guest after the power button. NeXTSTEP flushes and
 #: unmounts at its own pace, and a guest still writing is the one case where
@@ -165,7 +158,7 @@ def emulator_is_running():
     Distinct from is_running, which answers about the unit. The unit is active
     whether the emulator runs or not, because what it holds is a login shell.
     """
-    return _ask(["pgrep", "-x", EMULATOR_PROCESS]) != ""
+    return _ask(["pgrep", "-x", screen.EMULATOR]) != ""
 
 
 def emulator_uptime_seconds():
@@ -179,7 +172,7 @@ def emulator_uptime_seconds():
     up from one that is restarting over and over because it cannot run the
     configuration it was given.
     """
-    answer = _ask(["ps", "-o", "etimes=", "-C", EMULATOR_PROCESS])
+    answer = _ask(["ps", "-o", "etimes=", "-C", screen.EMULATOR])
     ages = [int(line) for line in answer.split() if line.isdigit()]
     return min(ages) if ages else None
 
@@ -192,41 +185,8 @@ def press_power():
     This raises a panel inside the guest asking whether the machine should
     really switch off. Answering it is the waiting's business, because when the
     panel appears is the guest's business and not ours.
-
-    Sent through the X server. Previous runs as an X client under the kiosk's
-    Xwayland, so keys reach it through XTEST and not through Wayland. That was
-    measured rather than assumed, and measured in both directions: a Wayland
-    virtual keyboard binds its protocol against the compositor and reports
-    success, and the emulator never sees the key. If this ever stops working,
-    the first thing to check is whether Previous has become a Wayland client,
-    because then the whole route changes rather than the key names.
     """
-    return _press(POWER_KEY)
-
-
-def _press(key):
-    """Sends one key to whatever the kiosk has in front.
-
-    @param key - An X keysym name, such as "F10".
-    @returns bool
-    """
-    where = screen.display()
-    if where is None or shutil.which("xdotool") is None:
-        return False
-
-    environment = dict(os.environ, DISPLAY=where)
-    try:
-        result = subprocess.run(
-            ["xdotool", "key", "--clearmodifiers", key],
-            capture_output=True,
-            text=True,
-            timeout=TIMEOUT_SECONDS,
-            check=False,
-            env=environment,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return result.returncode == 0
+    return screen.press(POWER_KEY)
 
 
 def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
@@ -302,11 +262,11 @@ def quit_emulator(timeout=QUIT_TIMEOUT_SECONDS, sleep=time.sleep):
     was = emulator_uptime_seconds()
     if was is None:
         return True
-    if not _press(QUIT_KEYS):
+    if not screen.press(QUIT_KEYS):
         return False
 
     sleep(1)
-    _press(CONFIRM_KEY)
+    screen.press(CONFIRM_KEY)
 
     # Gone means this one is gone, not that nothing is running. Nothing holds
     # the console here, so a fresh emulator is often up within a second of the
@@ -414,7 +374,7 @@ def _wait_for_shutdown(timeout, sleep):
         if not emulator_is_running():
             return True
         if attempt % CONFIRM_EVERY_POLLS == 0:
-            _press(CONFIRM_KEY)
+            screen.press(CONFIRM_KEY)
         sleep(POLL_SECONDS)
     return not emulator_is_running()
 

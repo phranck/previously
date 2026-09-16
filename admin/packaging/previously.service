@@ -38,11 +38,19 @@ PrivateTmp=yes
 # directory rather than the whole of /tmp.
 BindReadOnlyPaths=/tmp/.X11-unix
 
-# The one place in the home this service may write, which ProtectHome above
-# otherwise forbids. Previous keeps its configuration here and this tool's job
-# is to change it. The directory rather than the file, because the copy it
-# makes before every write is a second file beside the first.
+# The two places in the home this service may write, which ProtectHome above
+# otherwise forbids.
+#
+# Previous keeps its configuration in the first and this tool's job is to
+# change it. The directory rather than the file, because the copy it makes
+# before every write is a second file beside the first.
+#
+# The second is where the emulator runs, so it is where a screen grab lands.
+# This service asks for one, reads it and removes it again, and without the
+# write it could ask and read but never tidy up. Where the emulator was started
+# somewhere else, it photographs the window instead and leaves nothing behind.
 ReadWritePaths=-/home/next/.config/previous
+ReadWritePaths=-/home/next/.cache/previously
 ProtectSystem=strict
 ProtectHome=read-only
 ProtectKernelTunables=yes
