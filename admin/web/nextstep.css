@@ -114,6 +114,7 @@
   --nextcube: url("parts/nextcube.png");
   --nextstation: url("parts/nextstation.png");
   --optical: url("parts/optical.png");
+  --png: url("parts/png.png");
   --Preferences: url("parts/Preferences.png");
   --root: url("parts/root.png");
   --scsi: url("parts/scsi.png");
@@ -324,6 +325,16 @@ nx-menu .title {
   color: var(--white);
   font-weight: bold;
   cursor: move;
+  /* One line, whatever it says. The bar is one row tall, so a title that
+     wraps writes its second line over the first entry, and the name of a
+     thing is exactly what runs long: a file's name is as long as somebody
+     made it. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  line-height: var(--row);
+  padding: 0 6px;
 }
 
 nx-menu-item {

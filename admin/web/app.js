@@ -1726,6 +1726,11 @@ async function deleteThePicture(name) {
  * @param {HTMLElement} thing - The icon under the pointer.
  * @param {number} x @param {number} y - Where the pointer was.
  * @returns {boolean} Whether this menu was the right one for what was clicked.
+ *
+ * Titled for the kind of thing rather than for the file, because a file's
+ * name is as long as somebody made it and a menu bar is one row. Which file
+ * this is about is said by where the menu stands and by the question that
+ * follows it.
  */
 function openPictureMenu(thing, x, y) {
   const where = thing.getAttribute("value");
@@ -1733,7 +1738,6 @@ function openPictureMenu(thing, x, y) {
   if (entry?.kind !== "picture") return false;
 
   const menu = document.querySelector('nx-menu[name="picture-menu"]');
-  menu.querySelector(".title").textContent = entry.name;
   menu.querySelector('nx-menu-item[name="delete"]').onclick = async () => {
     menu.close();
     await deleteThePicture(entry.name);
