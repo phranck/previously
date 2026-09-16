@@ -6,6 +6,13 @@
   command, and anything more would be a second thing to keep in step with the
   tool it installs. The colours and the raised edge are the workspace's own,
   read off a screenshot of NeXTSTEP at its own 1120 by 832.
+
+  It sits in the root rather than in docs/ because the line it carries fetches
+  install.sh from the same host, and install.sh belongs beside the repository
+  it installs from rather than inside a folder for the website. Serving the
+  root is what lets both be true without the script existing twice. .nojekyll
+  beside this keeps Pages from building anything and hands every file over as
+  it is, which a shell script has to be.
 -->
 <html lang="en">
 <head>
@@ -132,7 +139,7 @@
       a network. Paste this and let it finish:</p>
 
     <div class="line">
-      <code class="command" id="command">curl -fsSL https://raw.githubusercontent.com/phranck/previously/main/install.sh | bash</code>
+      <code class="command" id="command">curl -fsSL https://previously.layered.work/install.sh | bash</code>
       <button id="copy" type="button">Copy</button>
     </div>
 
