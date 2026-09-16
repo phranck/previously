@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<!--
+  The page the install line is copied from.
+
+  One file, no build and nothing fetched: it exists so somebody can copy a
+  command, and anything more would be a second thing to keep in step with the
+  tool it installs. The colours and the raised edge are the workspace's own,
+  read off a screenshot of NeXTSTEP at its own 1120 by 832.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Previously</title>
+<meta name="description"
+      content="A Raspberry Pi that boots into NeXTSTEP, and a web admin built to look like it.">
+<style>
+  :root {
+    --desktop: #555577;
+    --light: #aaaaaa;
+    --dark: #555555;
+    --black: #000000;
+    --white: #ffffff;
+    --font: Helvetica, "Helvetica Neue", Arial, sans-serif;
+    --mono: Menlo, "DejaVu Sans Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--desktop);
+    font: 15px/1.6 var(--font);
+    color: var(--black);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 6vh 16px;
+  }
+
+  /* One window on a workspace, with the edge NeXTSTEP lit from the top left. */
+  main {
+    width: min(720px, 100%);
+    background: var(--light);
+    border: 1px solid;
+    border-color: var(--white) var(--black) var(--black) var(--white);
+    box-shadow: inset -1px -1px 0 var(--dark), 2px 2px 0 rgba(0, 0, 0, .35);
+  }
+
+  .bar {
+    background: var(--black);
+    color: var(--white);
+    font-weight: bold;
+    text-align: center;
+    padding: 3px 8px;
+  }
+
+  .pane { padding: 20px; }
+
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p { margin: 0 0 14px; }
+  .lead { margin-bottom: 20px; }
+
+  h2 {
+    font-size: 15px;
+    margin: 22px 0 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--dark);
+  }
+  h2:first-of-type { border-top: 0; padding-top: 0; }
+
+  /* The line itself, in a sunken field the way this interface draws one. */
+  .line {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+  code.command {
+    flex: 1 1 auto;
+    background: var(--white);
+    border: 1px solid;
+    border-color: var(--dark) var(--white) var(--white) var(--dark);
+    box-shadow: inset 1px 1px 0 var(--black);
+    padding: 8px 10px;
+    font: 13px/1.5 var(--mono);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  button {
+    flex: 0 0 auto;
+    font: bold 13px var(--font);
+    color: var(--black);
+    background: var(--light);
+    border: 1px solid;
+    border-color: var(--white) var(--black) var(--black) var(--white);
+    box-shadow: inset -1px -1px 0 var(--dark);
+    padding: 4px 16px;
+    cursor: pointer;
+  }
+  button:active {
+    border-color: var(--dark) var(--white) var(--white) var(--dark);
+    box-shadow: inset 1px 1px 0 var(--black);
+  }
+
+  ul { margin: 0 0 14px; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+
+  a { color: #000080; }
+
+  .after {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #333;
+  }
+  code { font-family: var(--mono); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="bar">Previously</div>
+  <div class="pane">
+    <h1>A Raspberry Pi that boots into NeXTSTEP</h1>
+    <p class="lead">It starts straight into a NeXT machine under the Previous
+      emulator, with no desktop behind it and no login to get past. What
+      configures it is a web admin built to look like the machine it
+      configures.</p>
+
+    <h2>Install it</h2>
+    <p>On a Raspberry Pi 5 running a fresh Raspberry Pi OS Lite, updated, with
+      a network. Paste this and let it finish:</p>
+
+    <div class="line">
+      <code class="command" id="command">curl -fsSL https://raw.githubusercontent.com/phranck/previously/main/install.sh | bash</code>
+      <button id="copy" type="button">Copy</button>
+    </div>
+
+    <p class="after">It fetches the NeXTSTEP disk image, installs the emulator
+      and the admin tool, and takes the first console. When it is done it says
+      where the admin is and how to read the token it asks for once.</p>
+
+    <h2>What it does to the machine</h2>
+    <ul>
+      <li>Installs the Previous emulator from its own archive, and the admin
+        tool as a Debian package.</li>
+      <li>Starts NeXTSTEP on the first console at boot. SSH stays the way in.</li>
+      <li>Writes down everything it changed, so one flag puts all of it back.</li>
+    </ul>
+
+    <h2>Then</h2>
+    <p>The admin answers at <code>http://&lt;your-pi&gt;.local:2342</code>, and
+      the source is on <a href="https://github.com/phranck/previously">GitHub</a>.</p>
+  </div>
+</main>
+
+<script>
+  // Copies the line and says so on the button for a moment, because a copy
+  // that says nothing leaves somebody pressing it twice.
+  const button = document.getElementById("copy");
+  const said = button.textContent;
+
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(document.getElementById("command").textContent);
+      button.textContent = "Copied";
+    } catch {
+      // A browser that refuses the clipboard, which is every one of them
+      // without a secure context. Selecting it is then the way.
+      const range = document.createRange();
+      range.selectNodeContents(document.getElementById("command"));
+      getSelection().removeAllRanges();
+      getSelection().addRange(range);
+      button.textContent = "Selected";
+    }
+    setTimeout(() => { button.textContent = said; }, 1500);
+  });
+</script>
+</body>
+</html>
