@@ -166,37 +166,50 @@ KEY_OF = re.compile(r'data-t-key="([^"]+)"')
 WORDS_OF = re.compile(r'data-t="([^"]+)"')
 
 
-def menu_entries():
-    """@returns list of (letter key, words key or None) for the main menu.
+#: Which application an entry belongs to, or nothing for the workspace's own.
+OWNER_OF = re.compile(r'\bfor="([^"]+)"')
 
-    The main menu only. A context menu's entries act on what was right
-    clicked, and no key press reaches them.
+
+def menus():
+    """@returns dict of owner to list of (letter key, words key or None).
+
+    The main menu only, and one list per application whose entries live in it.
+    A context menu's entries act on what was right clicked, and no key press
+    reaches them.
+
+    The main menu is one menu whose contents are replaced, so the letters have
+    to be distinct within each application's set rather than across all of
+    them: only one set is ever showing.
     """
     markup = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
     menu = re.search(r'<nx-menu name="menu".*?</nx-menu>', markup, re.S)
     assert menu, "the main menu is not in the markup"
 
-    entries = []
+    found = {}
     for attributes in MENU_ITEM.findall(menu.group(0)):
         letter = KEY_OF.search(attributes)
         words = WORDS_OF.search(attributes)
+        owner = OWNER_OF.search(attributes)
         assert letter, attributes
-        entries.append((letter.group(1), words.group(1) if words else None))
-    return entries
+        found.setdefault(owner.group(1) if owner else "", []).append(
+            (letter.group(1), words.group(1) if words else None))
+    return found
 
 
 def test_the_main_menu_has_entries_to_check():
-    assert len(menu_entries()) >= 5
+    assert len(menus()[""]) >= 5
+    assert len(menus()) > 1, "no application carries a menu of its own"
 
 
 @pytest.mark.parametrize("language", LANGUAGES)
 def test_no_two_menu_entries_share_a_letter(language):
     """The page acts on the first entry whose letter matches, so a letter used
-    twice makes the second entry unreachable and says nothing about it."""
+    twice makes the second entry unreachable and says nothing about it. Within
+    one application, because only one application's entries are ever up."""
     words = catalogue(language)
-    letters = [words[key] for key, _ in menu_entries() if key in words]
-
-    assert len(letters) == len(set(letters)), letters
+    for owner, entries in menus().items():
+        letters = [words[key] for key, _ in entries if key in words]
+        assert len(letters) == len(set(letters)), (owner, letters)
 
 
 @pytest.mark.parametrize("language", LANGUAGES)
@@ -204,9 +217,11 @@ def test_every_menu_letter_is_in_the_word_beside_it(language):
     """A shortcut whose letter is not in its word is one nobody will guess,
     which is the thing this is for."""
     words = catalogue(language)
-    for key, shown in menu_entries():
-        if shown is None:
-            continue
-        assert key in words, key
-        assert shown in words, shown
-        assert words[key].lower() in words[shown].lower(), (key, words[key], words[shown])
+    for entries in menus().values():
+        for key, shown in entries:
+            if shown is None:
+                continue
+            assert key in words, key
+            assert shown in words, shown
+            assert words[key].lower() in words[shown].lower(), (
+                key, words[key], words[shown])
