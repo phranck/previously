@@ -148,7 +148,15 @@ class Session:
         """What the person typed.
 
         @param data - bytes for the shell.
-        @returns bool, False once the shell has gone.
+        @returns bool, False where the terminal refused it.
+
+        Not a way of asking whether the shell is still there. Measured on
+        Linux: writing to the terminal of a shell that has gone goes on being
+        taken, because what it is written into is the terminal's own buffer
+        and nothing is reading it. On a Mac the same write fails at once.
+
+        What says the shell has gone is read returning nothing, which is what
+        attach watches, so nothing here depends on this answering that.
         """
         try:
             os.write(self.descriptor, data)
