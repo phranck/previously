@@ -379,15 +379,31 @@ nx-menu-item .key { font-size: 11px; margin-left: auto; }
 
 /* --- nx-dock ------------------------------------------------------------ */
 
-/* The tiles touch. There is no gap in the original and the column has no
-   padding either, so the dock is one strip against the right edge. */
+/* A column of slots, each one tile high, running the height of the screen.
+   The tiles touch, because the original leaves no gap and the column has no
+   padding either, so the dock is one strip against the right edge.
+
+   A grid rather than a stack, because a person arranges this column and what
+   they arrange includes the empty slots: a tile sits on the row it was put
+   on, and a row nobody put anything on stays open. A stack would close every
+   gap the moment it was made. */
 nx-dock {
   position: fixed;
   top: 0; right: 0; bottom: 0;
   width: var(--dock-width);
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-auto-rows: var(--dock-width);
+  align-content: start;
   z-index: 50;
+}
+
+/* The slot a travelling tile would land on. Flat and pale, with none of a
+   tile's bevel or diagonal face, so it reads as a place rather than as a
+   second tile. It is in the column only whilst something is being carried. */
+nx-dock .slot {
+  grid-column: 1;
+  background: var(--light);
+  pointer-events: none;
 }
 
 nx-tile {
@@ -397,6 +413,7 @@ nx-tile {
   position: relative;
   cursor: default;
   flex: 0 0 auto;
+  grid-column: 1;
   /* The tile's bevel is two pixels rather than the usual one. */
   border-width: 2px;
   border-color: var(--white) var(--black) var(--black) var(--white);
@@ -410,7 +427,10 @@ nx-tile {
    depress under the pointer, and a click on one is not an answer to anything.
    What a tile does say is whether its application is running, which is the
    marks below. */
-nx-tile[spaced] { margin-top: auto; }
+
+/* Lifted out of the column and carried. Above the tiles it passes, so that it
+   is seen crossing them rather than behind them. */
+nx-tile[carried] { z-index: 60; }
 
 /* An icon on its way to the floor. Above everything, because it passes over
    the windows, and deaf to the pointer, because it is a picture of something
