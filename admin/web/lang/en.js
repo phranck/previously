@@ -15,6 +15,8 @@ NX_STRINGS.en = {
   "menu.files.key": "f",
   "menu.preferences.key": "p",
   "menu.token.key": "t",
+  "menu.save": "Save",
+  "menu.save.key": "s",
   "menu.quit": "Quit",
   "menu.quit.key": "q",
   "grab.take.key": "t",

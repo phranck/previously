@@ -7,6 +7,8 @@ NX_STRINGS.sv = {
   "menu.files.key": "f",
   "menu.preferences.key": "p",
   "menu.token.key": "t",
+  "menu.save": "Spara",
+  "menu.save.key": "p",
   "menu.quit": "Avsluta",
   "menu.quit.key": "v",
   "grab.take.key": "t",

@@ -1516,10 +1516,11 @@ async function takeAPicture() {
     const answer = await fetch("/api/screen", { cache: "no-store", headers: headers() });
     if (answer.status === 403) return askForToken(t("ask.token.needed"));
     if (!answer.ok) return showTheScreen(null);
-    showTheScreen(await answer.blob());
+    const filed = answer.headers.get(KEPT_HEADER);
+    showTheScreen(await answer.blob(), filed);
     /* It was filed as well as shown, so the folder it went into has one more
        thing in it than the viewer is drawing. */
-    if (answer.headers.get(KEPT_HEADER)) drawMachines();
+    if (filed) drawMachines();
   } catch {
     showTheScreen(null);
   } finally {
@@ -1530,9 +1531,10 @@ async function takeAPicture() {
 /**
  * Puts a picture in the window, or says why there is none.
  * @param {Blob} picture - What the service answered with, or null.
+ * @param {string} [name] - What the service filed it as.
  */
-function showTheScreen(picture) {
-  drawPicture("shot", picture);
+function showTheScreen(picture, name) {
+  drawPicture("shot", picture, name);
   document.getElementById("shot-note").textContent = picture
     ? ""
     : t(lastStatus?.running === false ? "grab.idle" : "grab.failed");
@@ -1542,24 +1544,46 @@ function showTheScreen(picture) {
  * Draws a picture into a view, and releases the one it replaces.
  * @param {string} id - Which view, which is its element's id.
  * @param {Blob} picture - The picture, or null to empty the view.
+ * @param {string} [name] - What it is called, for saving it later.
  *
  * One place, because two windows show a picture: Grab shows what it has just
  * taken and Preview shows one that was kept. A blob has to be released or the
  * browser holds every picture ever shown, and the only way to do that is to
  * remember the last one per view.
  */
-function drawPicture(id, picture) {
+function drawPicture(id, picture, name) {
   const view = document.getElementById(id);
   if (!view) return;
 
-  if (shownPictures[id]) URL.revokeObjectURL(shownPictures[id]);
-  shownPictures[id] = picture ? URL.createObjectURL(picture) : null;
+  if (shownPictures[id]) URL.revokeObjectURL(shownPictures[id].url);
+  shownPictures[id] = picture
+    ? { url: URL.createObjectURL(picture), name }
+    : null;
   view.style.backgroundImage = shownPictures[id]
-    ? `url("${shownPictures[id]}")` : "";
+    ? `url("${shownPictures[id].url}")` : "";
 }
 
-/** What each picture view is showing, so it can be released when replaced. */
+/** What each picture view is showing and what it is called, so it can be
+ *  released when it is replaced and saved whilst it is up. */
 const shownPictures = {};
+
+/**
+ * Hands the picture a window is showing to the browser to save.
+ * @param {string} id - Which view is showing it.
+ *
+ * The picture is already here, so this is a link to what is in memory rather
+ * than a second request: nothing is fetched, the service is not asked again,
+ * and the token does not have to reach a place it cannot go.
+ */
+function saveThePicture(id) {
+  const showing = shownPictures[id];
+  if (!showing) return;
+
+  const link = document.createElement("a");
+  link.href = showing.url;
+  link.download = showing.name ?? "Screen.png";
+  link.click();
+}
 
 /* --- the menu belongs to whatever is in front -----------------------------
 
@@ -1619,6 +1643,10 @@ function watchTheFrontWindow() {
   }
   document.querySelector('nx-menu-item[name="grab-take"]')
     ?.addEventListener("click", takeAPicture);
+  for (const [entry, view] of [["grab-save", "shot"], ["preview-save", "preview-picture"]]) {
+    document.querySelector(`nx-menu-item[name="${entry}"]`)
+      ?.addEventListener("click", () => saveThePicture(view));
+  }
 
   drawTheMenu();
 }
@@ -1647,7 +1675,7 @@ async function showInPreview(entry) {
       { cache: "no-store", headers: headers() });
     if (answer.status === 403) return askForToken(t("ask.token.needed"));
     if (!answer.ok) return void (note.textContent = t("preview.empty"));
-    drawPicture("preview-picture", await answer.blob());
+    drawPicture("preview-picture", await answer.blob(), entry.name);
   } catch {
     note.textContent = t("preview.empty");
   }

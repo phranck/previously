@@ -7,6 +7,8 @@ NX_STRINGS.es = {
   "menu.files.key": "a",
   "menu.preferences.key": "p",
   "menu.token.key": "t",
+  "menu.save": "Guardar",
+  "menu.save.key": "g",
   "menu.quit": "Salir",
   "menu.quit.key": "s",
   "grab.take.key": "t",
