@@ -154,7 +154,9 @@
      enough for eighty columns to start with. -->
 <nx-window name="terminal" title="Terminal" flush drop
            x="180" y="330" w="574" h="420" min-w="320" min-h="200" closed>
-  <nx-terminal id="session"></nx-terminal>
+  <nx-scroller>
+    <nx-terminal id="session"></nx-terminal>
+  </nx-scroller>
 </nx-window>
 
 <nx-ask id="ask"></nx-ask>

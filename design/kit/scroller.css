@@ -129,3 +129,8 @@ nx-scroller > :not(.bar) {
 }
 nx-scroller > :not(.bar)::-webkit-scrollbar { display: none; }
 
+/* Where what scrolls is deeper in, which the element says by carrying this,
+   the child is a frame around it and scrolls nothing itself. Two scrolling
+   boxes inside one another would each take part of the wheel. */
+nx-scroller[inner] > :not(.bar) { overflow: hidden; }
+

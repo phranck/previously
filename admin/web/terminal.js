@@ -80,6 +80,11 @@ class NxTerminal extends HTMLElement {
     });
     this.terminal.open(this);
 
+    /* What scrolls is the viewport the library builds, not this element, so
+       the scroller around it is pointed at that. It exists only once open has
+       run, which is why this is said here rather than in the markup. */
+    this.closest("nx-scroller")?.drive(this.querySelector(".xterm-viewport"));
+
     if (typeof FitAddon === "object" && FitAddon.FitAddon) {
       this.fitter = new FitAddon.FitAddon();
       this.terminal.loadAddon(this.fitter);

@@ -38,22 +38,48 @@ class NxScroller extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
-    this.view = this.firstElementChild;
     const wanted = (this.getAttribute("bars") || "down").split(/\s+/);
     this.bars = {};
     for (const way of ["down", "across"]) {
       if (wanted.includes(way)) this.bars[way] = this.addBar(way);
     }
 
-    this.view.addEventListener("scroll", () => this.refresh());
+    this.drive(this.firstElementChild);
+  }
+
+  /**
+   * Points the bars at whatever actually scrolls.
+   * @param {HTMLElement} view - The element whose scrollTop the knob moves.
+   *
+   * The child of this element, ordinarily. Some views scroll something of
+   * their own further in, because a library built the markup: a terminal
+   * draws its lines into a viewport it owns, and that viewport is what
+   * scrolls. Such a view says so by calling this once it exists, and the bars
+   * follow it from then on.
+   */
+  drive(view) {
+    if (!view || view === this.view) return;
+
+    this.watch?.forEach((observer) => observer.disconnect());
+    this.view?.removeEventListener("scroll", this.onScroll);
+
+    this.view = view;
+    this.onScroll ??= () => this.refresh();
+    this.view.addEventListener("scroll", this.onScroll);
+
     /* Two things change what there is to scroll, and they are seen by two
        different observers: the view being resized, and its content being
        replaced. Content that grows inside an unchanged box moves no edge, so
        the resize observer alone would miss a shelf being redrawn. */
-    new ResizeObserver(() => this.refresh()).observe(this.view);
-    new MutationObserver(() => this.refresh())
-      .observe(this.view, { childList: true, subtree: true, characterData: true });
+    const sized = new ResizeObserver(() => this.refresh());
+    sized.observe(this.view);
+    const changed = new MutationObserver(() => this.refresh());
+    changed.observe(this.view, { childList: true, subtree: true, characterData: true });
+    this.watch = [sized, changed];
 
+    /* Says in the markup that the child is not what scrolls, so the stylesheet
+       can leave the child's own overflow alone. */
+    this.toggleAttribute("inner", view !== this.firstElementChild);
     this.refresh();
   }
 
