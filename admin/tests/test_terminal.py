@@ -98,9 +98,12 @@ def test_the_shell_is_this_user_and_not_root(session):
     session.write(b"id -u\n")
 
     # Past the echo of the line itself, which arrives first and holds no
-    # answer, to what the shell says back.
-    heard = says(session, b"\r\n" + mine)
-    assert b"\r\n" + mine in heard
+    # answer, to what the shell says back. What is between the two is the
+    # shell's own: measured in CI it answers `id -u\r\n$ 1001\r\n$ `, with
+    # the prompt ahead of the number, and on a Mac it answers without one.
+    heard = says(session, mine)
+    answer = heard.split(b"\r\n", 1)[-1]
+    assert mine in answer, heard
 
 
 @pytest.mark.skipif(not pathlib.Path(SHELL).exists(), reason="no " + SHELL)
@@ -129,6 +132,21 @@ def test_nothing_is_left_running_when_the_session_ends():
 
 
 @pytest.mark.skipif(not pathlib.Path(SHELL).exists(), reason="no " + SHELL)
+def refuses_to_take_anything(session, patience=PATIENCE):
+    """@returns bool, whether writing to it has stopped working.
+
+    Tried more than once, because the first write after a shell has gone can
+    be taken into the terminal's buffer and reported as written. The second
+    finds the buffer where nobody is reading and fails.
+    """
+    deadline = time.monotonic() + patience
+    while time.monotonic() < deadline:
+        if not session.write(b"ls\n"):
+            return True
+        time.sleep(0.05)
+    return False
+
+
 def test_a_shell_that_has_gone_says_nothing_more(session):
     session.write(b"exit\n")
     # Read what it says on the way out first, and only then ask whether it has
@@ -137,7 +155,11 @@ def test_a_shell_that_has_gone_says_nothing_more(session):
 
     assert has_gone(session), "the shell is still there"
     assert session.read() == b""
-    assert session.write(b"ls\n") is False
+    # A write to the terminal of a shell that has gone fails, though not
+    # necessarily the first one: on Linux the first can be taken into the
+    # buffer and reported as written, whilst on a Mac it fails at once. What
+    # holds on both is that it stops being taken.
+    assert refuses_to_take_anything(session), "it is still taking what is typed"
 
 
 # -- who is logging in ----------------------------------------------------
