@@ -68,6 +68,18 @@ ICONS = {
         ("Localization", "the language the tool speaks, as Preferences drew it"),
     "/NextApps/Preferences.app/Preferences":
         ("Preferences", "the application itself, as it sat in NextApps"),
+    # NeXT shipped an application for exactly this and called it Grab, so the
+    # one here carries its name and its face. The camera is the picture inside
+    # its own window rather than a Workspace icon, which is why it is 64 square
+    # where the others are 48: Grab.app carries no icon file of its own, and
+    # its Info.tiff is a photograph of whoever wrote it.
+    "/NextApps/Grab.app/CameraNormal.tiff":
+        ("Grab", "the camera Grab.app drew, for the application that takes a picture"),
+    # What a picture of a screen wears in a viewer. From Preview, which is the
+    # application that opened one, and it says TIFF because that is what
+    # NeXTSTEP's pictures were and what this tool writes for it.
+    "/NextApps/Preview.app/tiff.tiff":
+        ("tiff", "a picture, as Preview.app drew one"),
     "Workspace": ("Workspace", "the NeXT wordmark on its cube"),
     "trash.1.alpha": ("trash", "the recycler, in the first of its four frames"),
     "hilite": ("hilite", "the white a selected icon sits on"),

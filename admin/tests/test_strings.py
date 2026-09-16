@@ -137,11 +137,12 @@ def test_nothing_in_the_viewer_is_shown_by_a_key(english):
     from previously import files
 
     tree = files.tree()
-    apps, machines = tree["entries"]
+    apps, documents, machines = tree["entries"]
+    pictures = documents["entries"][0]
     system = machines["entries"][0]
 
     assert tree["name"] == "Previously"
-    for folder in [tree, apps, machines, system]:
+    for folder in [tree, apps, documents, pictures, machines, system]:
         assert "label" not in folder or folder["label"] is None, folder["name"]
     assert system["entries"]
     assert all("label" not in machine for machine in system["entries"])

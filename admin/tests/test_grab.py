@@ -7,6 +7,8 @@ shortcut reaches Previous at all, was measured on the machine and is written
 down in the issue rather than pretended at here.
 """
 
+import re
+
 import pytest
 
 from previously import grab
@@ -149,3 +151,66 @@ def test_something_that_is_not_a_png_at_all_is_not_the_picture(where, monkeypatc
                         writes(where, content=b"not a picture" + grab.PNG_TAIL))
 
     assert grab.grabbed() is None
+
+
+# -- keeping a picture ----------------------------------------------------
+
+
+def test_a_picture_is_written_where_pictures_are_kept(tmp_path, monkeypatch):
+    monkeypatch.setattr(grab.shutil, "which", lambda name: None)
+
+    kept = grab.keep(PICTURE, tmp_path / "Documents" / "Pictures")
+
+    assert kept.read_bytes() == PICTURE
+    assert kept.parent == tmp_path / "Documents" / "Pictures"
+
+
+def test_a_picture_is_kept_as_tiff_for_the_machine_in_it(tmp_path, monkeypatch):
+    """NeXTSTEP 3.3 has no idea of PNG, and the emulator exports this
+    directory to it, so a picture it cannot open would sit there unreadable."""
+    monkeypatch.setattr(grab, "_as_tiff", lambda picture: b"II*\x00 a tiff")
+
+    kept = grab.keep(PICTURE, tmp_path)
+
+    assert kept.suffix == ".tiff"
+    assert kept.read_bytes() == b"II*\x00 a tiff"
+
+
+def test_a_png_is_kept_where_nothing_can_convert_it(tmp_path, monkeypatch):
+    """A picture nobody can open is still better than no picture."""
+    monkeypatch.setattr(grab.shutil, "which", lambda name: None)
+
+    kept = grab.keep(PICTURE, tmp_path)
+
+    assert kept.suffix == ".png"
+    assert kept.read_bytes() == PICTURE
+
+
+def test_the_folder_is_made_where_it_is_not_there(tmp_path, monkeypatch):
+    """A fresh card has never been photographed, so the first picture is what
+    creates the place it goes."""
+    monkeypatch.setattr(grab.shutil, "which", lambda name: None)
+    where = tmp_path / "Previously" / "Documents" / "Pictures"
+
+    grab.keep(PICTURE, where)
+
+    assert where.is_dir()
+
+
+def test_a_picture_is_named_for_the_moment_it_was_taken(tmp_path):
+    """Two pictures of the same screen are told apart by when they were
+    taken, and by nothing else."""
+    kept = grab.keep(PICTURE, tmp_path)
+
+    assert re.fullmatch(
+        r"Screen \d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}\.(tiff|png)", kept.name)
+
+
+def test_a_folder_that_cannot_be_written_in_is_not_an_error(tmp_path, monkeypatch):
+    """The picture has been taken either way, and the browser gets it. Only
+    the copy on the card is lost."""
+    monkeypatch.setattr(grab.shutil, "which", lambda name: None)
+    in_the_way = tmp_path / "Pictures"
+    in_the_way.write_text("a file where the folder should be")
+
+    assert grab.keep(PICTURE, in_the_way) is None

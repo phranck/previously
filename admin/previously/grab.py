@@ -7,7 +7,8 @@ emulator offers it as a keyboard shortcut and writes the file into whatever
 directory it was started in.
 
 So taking a picture is three steps: press the keys, wait for a file that was
-not there before and is finished, and read it. The file is then removed,
+not there before and is finished, and read it. It is then kept in the folder
+Previously shows as Documents/Pictures, and the emulator's own copy is removed,
 because a picture already sent to a browser is one nobody will ask the disk for
 again, and a directory that fills up with them is this service's doing. Where
 that directory cannot be written in, the grab is not asked for at all, since
@@ -18,6 +19,7 @@ smaller picture and the one that is scaled, and it is here so that a screen can
 still be seen when the better way is out of reach.
 """
 
+import datetime
 import os
 import pathlib
 import shutil
@@ -44,6 +46,9 @@ LOOK_EVERY_SECONDS = 0.1
 #: cannot reach it at all.
 IMPORT_TIMEOUT_SECONDS = 10
 
+#: What turns one picture format into another, from the same suite as import.
+CONVERT = "convert"
+
 #: What a picture is, for whoever sends it on.
 PNG = "image/png"
 
@@ -62,6 +67,64 @@ def take():
     and ImageMagick against the window second.
     """
     return grabbed() or photographed()
+
+
+def keep(picture, where):
+    """Writes a picture into the folder pictures are kept in.
+
+    @param picture - The bytes of a PNG.
+    @param where - pathlib.Path of that folder, which is created where it is
+      not there.
+    @returns pathlib.Path of what was written, or None where it could not be.
+
+    Kept as TIFF, because the machine in the picture is the one most likely to
+    want to look at it. NeXTSTEP 3.3 has no idea of PNG, and its Preview opens
+    TIFF and EPS; the emulator exports this directory to it over NFS, so a
+    file it cannot open would be one sitting in plain sight and unreadable.
+    LZW because that is what NeXT's own pictures use, so it is a compression
+    that machine is known to read.
+
+    Named for the moment it was taken, because that is the one thing that
+    tells two pictures of the same screen apart, and written in a form that
+    sorts the way it reads. The seconds are separated with full stops rather
+    than colons, which a filesystem takes and a colon is not worth arguing
+    with.
+    """
+    converted = _as_tiff(picture)
+    try:
+        where.mkdir(parents=True, exist_ok=True)
+        path = where / _a_name_for_now(".tiff" if converted else ".png")
+        path.write_bytes(converted or picture)
+    except OSError:
+        return None
+    return path
+
+
+def _as_tiff(picture):
+    """Turns a PNG into the TIFF the emulated machine can open.
+
+    @param picture - bytes of a PNG.
+    @returns bytes of a TIFF, or None where the conversion is not to be had,
+      which leaves the PNG to be kept as it is. A picture nobody can open is
+      still better than no picture.
+    """
+    if shutil.which(CONVERT) is None:
+        return None
+    try:
+        result = subprocess.run(
+            [CONVERT, "png:-", "-compress", "LZW", "tiff:-"],
+            input=picture, capture_output=True, check=False,
+            timeout=IMPORT_TIMEOUT_SECONDS)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return result.stdout or None
+
+
+def _a_name_for_now(suffix):
+    """@param suffix @returns str, what to call a picture taken at this
+      moment."""
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H.%M.%S")
+    return "Screen %s%s" % (now, suffix)
 
 
 def working_directory():

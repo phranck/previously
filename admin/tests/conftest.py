@@ -25,6 +25,7 @@ def settings_for(tmp_path, **overrides):
         "address": "127.0.0.1",
         "port": "0",
         "previous_config": str(tmp_path / "previous.cfg"),
+        "documents": str(tmp_path / "Previously"),
         "kiosk_unit": "does-not-exist.service",
         "token_file": str(tmp_path / "token"),
         "runtime_directory": str(tmp_path),

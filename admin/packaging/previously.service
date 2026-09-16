@@ -49,8 +49,14 @@ BindReadOnlyPaths=/tmp/.X11-unix
 # This service asks for one, reads it and removes it again, and without the
 # write it could ask and read but never tidy up. Where the emulator was started
 # somewhere else, it photographs the window instead and leaves nothing behind.
+#
+# The third is the real part of the Previously tree, which today is the folder
+# the File Viewer shows as Documents/Pictures. It is under the home on purpose:
+# previous.cfg exports that directory to the emulated machine over NFS, so a
+# screenshot kept here is one NeXTSTEP itself can open.
 ReadWritePaths=-/home/next/.config/previous
 ReadWritePaths=-/home/next/.cache/previously
+ReadWritePaths=-/home/next/Previously
 ProtectSystem=strict
 ProtectHome=read-only
 ProtectKernelTunables=yes

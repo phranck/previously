@@ -7,12 +7,19 @@ and three applications is choosing in a place rather than reading a list.
     Previously          the root, drawn as a home the way NeXTSTEP drew one
       Apps
         Config Editor.app
+        Grab.app
         Preferences.app
-        Screenshot.app
         Terminal.app
+      Documents
+        Pictures        the one real place here, holding the screenshots
       Machines
         System          the eleven this project ships, which cannot be changed
         User            what somebody saved, and only once there is something
+
+Documents is the exception and is read off the card, because a picture is a
+file and files change. It sits under the emulator owner's home, which
+previous.cfg exports to the emulated machine over NFS, so what is written
+there is also what NeXTSTEP itself can open.
 
 The whole thing is small enough to hand over at once, so there is one route and
 the browser walks it. Paths are written the way they read, with slashes, and
@@ -31,6 +38,9 @@ application carries the name of a string as well, and that name is used
 wherever it is spoken rather than where its bundle is shown.
 """
 
+import datetime
+import pathlib
+
 from . import config, machines
 
 #: What the root is called and what it wears. NeXTSTEP drew a person's own
@@ -39,12 +49,34 @@ from . import config, machines
 ROOT = "Previously"
 HOME_ICON = "home"
 
-#: A folder, and the four applications, by the pictures they carry. Two wear
-#: what NeXTSTEP drew for them. The editor and the screenshot taker have no
-#: face of their own, so both wear what NeXTSTEP drew for an application that
-#: brought none: it had no picture for either, having had neither application.
+#: Where the real part of this tree stands, as the viewer reads it. The same
+#: two steps are the path under the directory the service is configured with,
+#: so what is on the screen says where the file is.
+DOCUMENTS = "/Documents"
+PICTURES = "/Documents/Pictures"
+
+#: A folder, and the four applications, by the pictures they carry. Three wear
+#: what NeXTSTEP drew for them, Grab included: NeXT shipped an application for
+#: taking a picture of the screen and called it that, and this one carries its
+#: name and its camera. The editor has no face of its own, so it wears what
+#: NeXTSTEP drew for an application that brought none.
 FOLDER_ICON = "folder"
 DEFAULT_APP_ICON = "defaultAppIcon"
+GRAB_ICON = "Grab"
+PREFERENCES_ICON = "Preferences"
+TERMINAL_ICON = "Terminal"
+
+#: What a picture wears, from Preview.app, which is what opened one. It says
+#: TIFF because that is the format a picture is kept in here, which is the
+#: format the emulated machine can open.
+PICTURE_ICON = "tiff"
+
+#: And what anything else in that folder wears, which is what NeXTSTEP drew for
+#: a file it had nothing better for.
+OTHER_FILE_ICON = "defaultUnixIcon"
+
+#: Which files the picture icon is right for.
+TIFF_SUFFIXES = (".tiff", ".tif")
 PREFERENCES_ICON = "Preferences"
 TERMINAL_ICON = "Terminal"
 
@@ -54,17 +86,20 @@ TERMINAL_ICON = "Terminal"
 #: exists choosing it says so.
 APPLICATIONS = (
     ("Config Editor.app", DEFAULT_APP_ICON, "editor", "app.config-editor"),
+    ("Grab.app", GRAB_ICON, "grab", "app.grab"),
     ("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences"),
-    ("Screenshot.app", DEFAULT_APP_ICON, "screenshot", "app.screenshot"),
     ("Terminal.app", TERMINAL_ICON, "terminal", "app.terminal"),
 )
 
 
-def tree(state_directory=None):
+def tree(state_directory=None, documents=None):
     """Everything Previously holds, as one place with places in it.
 
     @param state_directory - pathlib.Path the service keeps its own state in,
       where a User configuration would live. None means there are none.
+    @param documents - pathlib.Path the real part of this tree stands in.
+      None leaves Documents empty rather than leaving it out, so the place a
+      picture goes is visible before the first one is taken.
     @returns dict, a folder with `name`, `icon`, `path` and `entries`, and a
       `label` on the applications, which is what each is called in words.
     """
@@ -80,8 +115,64 @@ def tree(state_directory=None):
             }
             for name, icon, opens, label in APPLICATIONS
         ]),
+        _folder("Documents", DOCUMENTS, FOLDER_ICON, [
+            _folder("Pictures", PICTURES, FOLDER_ICON, pictures(documents)),
+        ]),
         _folder("Machines", "/Machines", FOLDER_ICON, _machine_folders(state_directory)),
     ])
+
+
+def pictures(documents):
+    """The screenshots that have been kept.
+
+    @param documents - pathlib.Path the tree's real part stands in, or None.
+    @returns list, newest first, and empty where the directory is not there.
+
+    Newest first because the reason to open this folder is almost always the
+    last picture taken. A directory that does not exist is the ordinary state
+    of a machine nobody has photographed yet, so it is an empty folder rather
+    than an error.
+    """
+    where = picture_directory(documents)
+    if where is None:
+        return []
+    try:
+        found = [path for path in where.iterdir() if path.is_file()]
+    except OSError:
+        return []
+
+    found.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    return [
+        {
+            "name": path.name,
+            "icon": _picture_icon(path),
+            "path": PICTURES + "/" + path.name,
+            "kind": "picture",
+            "bytes": path.stat().st_size,
+            "changed": datetime.datetime.fromtimestamp(
+                path.stat().st_mtime, datetime.timezone.utc).isoformat(),
+        }
+        for path in found
+    ]
+
+
+def _picture_icon(path):
+    """@param path @returns str, what that file wears in a viewer."""
+    return PICTURE_ICON if path.suffix.lower() in TIFF_SUFFIXES else OTHER_FILE_ICON
+
+
+def picture_directory(documents):
+    """Where a picture is kept on the card.
+
+    @param documents - pathlib.Path the tree's real part stands in, or None.
+    @returns pathlib.Path, or None where nothing was configured.
+
+    The path under `documents` mirrors the path in the viewer, so what somebody
+    reads on the screen is where the file is.
+    """
+    if documents is None:
+        return None
+    return pathlib.Path(documents).joinpath(*PICTURES.strip("/").split("/"))
 
 
 def _machine_folders(state_directory):

@@ -27,6 +27,12 @@ DEFAULTS = {
     "address": "0.0.0.0",
     "port": "2342",
     "previous_config": "~/.config/previous/previous.cfg",
+    # Where the Previously tree is a real one. Everything else the File Viewer
+    # shows is described in files.py and exists nowhere, but a picture is a
+    # file. Under the home directory on purpose: previous.cfg exports that to
+    # the emulated machine over NFS, so a picture written here is one NeXTSTEP
+    # itself can open.
+    "documents": "~/Previously",
     "kiosk_unit": "getty@tty1.service",
     "state_directory": STATE_DIRECTORY,
     "runtime_directory": RUNTIME_DIRECTORY,
@@ -59,6 +65,7 @@ class Settings:
         self.address = values["address"]
         self.port = int(values["port"])
         self.previous_config = _path(values["previous_config"])
+        self.documents = _path(values["documents"])
         self.kiosk_unit = values["kiosk_unit"]
         self.state_directory = _path(values["state_directory"])
         self.runtime_directory = _path(values["runtime_directory"])

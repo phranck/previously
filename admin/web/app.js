@@ -18,6 +18,10 @@ const TOKEN_KEY = "previously:token";
  *  in logs, in history and in whatever somebody pastes into a chat window. */
 const TOKEN_HEADER = "X-Previously-Token";
 
+/** What the service names a screenshot it filed, so the viewer can be redrawn
+ *  without asking for the whole tree to find out whether it should be. */
+const KEPT_HEADER = "X-Previously-Kept";
+
 /** What stands in a field that has nothing to say. An em dash rather than an
  *  empty field, because an empty one reads as a value that is missing and this
  *  one is a question that does not arise. */
@@ -668,7 +672,10 @@ function open(path, asker) {
     const window_ = document.querySelector(`nx-window[name="${entry.opens}"]`);
     return window_ ? window_.open(asker) : notYet(appName(entry));
   }
-  changeTo(entry.id);
+  /* Named rather than left as what everything else falls through to, because
+     what else is in here has grown: a picture is opened by nothing yet, and
+     falling through would have asked the machine to become one. */
+  if (entry.kind === "machine") changeTo(entry.id);
 }
 
 /**
@@ -1483,7 +1490,7 @@ function wireTerminal() {
   if (!window_.hidden) askAtTheTerminal();
 }
 
-/* --- what the emulated machine is showing --------------------------------
+/* --- Grab, which takes a picture of the emulated screen --------------------------------
 
    The picture is the machine's own framebuffer, taken at the moment it is
    asked for. Nothing here polls: a screen that redrew itself every few seconds
@@ -1509,6 +1516,9 @@ async function takeAPicture() {
     if (answer.status === 403) return askForToken(t("ask.token.needed"));
     if (!answer.ok) return showTheScreen(null);
     showTheScreen(await answer.blob());
+    /* It was filed as well as shown, so the folder it went into has one more
+       thing in it than the viewer is drawing. */
+    if (answer.headers.get(KEPT_HEADER)) drawMachines();
   } catch {
     showTheScreen(null);
   } finally {
@@ -1530,15 +1540,15 @@ function showTheScreen(picture) {
   view.style.backgroundImage = shownScreen ? `url("${shownScreen}")` : "";
   note.textContent = picture
     ? ""
-    : t(lastStatus?.running === false ? "screenshot.idle" : "screenshot.failed");
+    : t(lastStatus?.running === false ? "grab.idle" : "grab.failed");
 }
 
 /** The picture in the window, so the one before it can be released. */
 let shownScreen = null;
 
 /** Wires the window that shows the emulated screen. */
-function wireTheScreenshot() {
-  const window_ = document.querySelector('nx-window[name="screenshot"]');
+function wireGrab() {
+  const window_ = document.querySelector('nx-window[name="grab"]');
   const button = document.getElementById("shot-take");
   if (!window_ || !button) return;
 
@@ -1574,7 +1584,7 @@ wireMachines();
 wireBoard();
 wireOpening();
 wireTerminal();
-wireTheScreenshot();
+wireGrab();
 watchTheApplications();
 drawLanguages();
 drawMachines();

@@ -90,7 +90,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   display: none;
 }
 
-/* --- the screenshot window ------------------------------------------------ */
+/* --- the Grab window ------------------------------------------------ */
 
 /* The picture of the emulated screen, drawn to the width of the view and never
    smoothed: it is the machine's own 1120 by 832 and every pixel in it was put

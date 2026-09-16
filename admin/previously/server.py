@@ -70,7 +70,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if route == "/api/pi":
             return self._json(pi.readings())
         if route == "/api/files":
-            return self._json(files.tree(self.settings.state_directory))
+            return self._json(files.tree(self.settings.state_directory,
+                                         self.settings.documents))
         if route == "/api/token":
             return self._json({"valid": self._carries_the_token()})
         if route == "/api/terminal":
@@ -271,9 +272,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
         picture = grab.take()
         if picture is None:
             return self._json({"error": "no screen"}, status=503)
+
+        # Kept as well as sent, because a screenshot is a document: it goes
+        # into the folder the File Viewer shows as Documents/Pictures, where
+        # the emulated machine can reach it too. Whether that worked does not
+        # decide what the browser gets, which is the picture either way.
+        kept = grab.keep(picture, files.picture_directory(self.settings.documents))
+
         self.send_response(200)
         self.send_header("Content-Type", grab.PNG)
         self.send_header("Content-Length", str(len(picture)))
+        # The name it was filed under, so the page can say where it went
+        # without asking for the whole tree again.
+        if kept is not None:
+            self.send_header("X-Previously-Kept", kept.name)
         # Every one of these is a different moment, and a browser that kept
         # the first would show that moment for ever.
         self.send_header("Cache-Control", "no-store")
