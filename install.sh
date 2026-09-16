@@ -3,7 +3,13 @@
 # Turns a freshly imaged Raspberry Pi OS Lite (64 bit, Trixie) into a machine
 # that boots straight into NeXTSTEP under the Previous emulator.
 #
-#   curl -fsSL https://layered.work/nextstep-rpi/install.sh | bash
+#   curl -fsSL https://previously.layered.work/install.sh | bash
+#
+# And afterwards, to put the newest admin tool on a machine that already has
+# one, which is the one part of this that changes often enough to be worth
+# replacing by itself:
+#
+#   curl -fsSL https://previously.layered.work/install.sh | bash -s -- --update-admin
 #
 # Written to run straight off the network, so it carries everything it needs
 # and reads no file beside itself. Two details make that safe.
@@ -492,41 +498,99 @@ quieten_login() {
 #     into doing anything but the one command each names.
 #
 #     All of that arrives with the package: the service, its configuration and
-#     the four units. This step builds that package out of the checkout and
-#     lets apt install it, so there is one place the tool comes from and one
+#     the four units. The steps here build that package out of the checkout and
+#     let apt install it, so there is one place the tool comes from and one
 #     command that takes it away again.
+#
+#     Two of them, because the tool outlives the installation. install_admin
+#     puts it on a machine that has none, and update_admin replaces the one a
+#     machine already has, which is what a person does whenever this repository
+#     has moved on and their Pi has not.
 # ---------------------------------------------------------------------------
+
+# Where fetch_admin_package left the package. A variable rather than something
+# printed, because the two callers below also print as they go and a function
+# that answers through stdout could only do one or the other.
+ADMIN_PACKAGE=""
+
+# The version dpkg has, or nothing at all where the tool is absent.
+admin_version() {
+  dpkg-query -W -f='${Version}' previously 2>/dev/null || true
+}
+
+admin_is_installed() {
+  dpkg-query -W -f='${Status}' previously 2>/dev/null | grep -q "ok installed"
+}
+
+# Two ways in, because this script arrives two ways. Run out of a checkout it
+# builds the package from what is already beside it, which is a second and
+# always matches that checkout. Run from the web, through the line on the
+# Previously page, there is nothing beside it and it takes the package from the
+# latest release.
+fetch_admin_package() {
+  local packaging="${SCRIPT_DIR}/admin/packaging"
+  if [[ -f "${packaging}/build.py" ]]; then
+    ADMIN_PACKAGE="$(python3 "${packaging}/build.py" | awk '{print $2}')" \
+      || abort "Could not build the admin package."
+  else
+    ADMIN_PACKAGE="$(mktemp -d)/${PACKAGE_FILE}"
+    curl -fsSL -o "$ADMIN_PACKAGE" "$PACKAGE_URL" \
+      || abort "Could not fetch ${PACKAGE_URL}."
+    undo "remove the downloaded package" "rm -f $(printf '%q' "$ADMIN_PACKAGE")"
+  fi
+}
 
 install_admin() {
   info "Installing the admin tool"
 
-  if dpkg-query -W -f='${Status}' previously 2>/dev/null | grep -q "ok installed"; then
-    skip "already installed"
+  if admin_is_installed; then
+    skip "already installed, $(admin_version). --update-admin replaces it."
     return
   fi
 
-  # Two ways in, because this script arrives two ways. Run out of a checkout it
-  # builds the package from what is already beside it, which is a second and
-  # always matches that checkout. Run from the web, through the line on the
-  # Previously page, there is nothing beside it and it takes the package from
-  # the latest release.
-  local package
-  local packaging="${SCRIPT_DIR}/admin/packaging"
-  if [[ -f "${packaging}/build.py" ]]; then
-    package="$(python3 "${packaging}/build.py" | awk '{print $2}')" \
-      || abort "Could not build the admin package."
-  else
-    package="$(mktemp -d)/${PACKAGE_FILE}"
-    curl -fsSL -o "$package" "$PACKAGE_URL" \
-      || abort "Could not fetch ${PACKAGE_URL}."
-    undo "remove the downloaded package" "rm -f $(printf '%q' "$package")"
-  fi
+  fetch_admin_package
 
   # apt rather than dpkg, so the dependencies it declares are resolved. The
   # package enables and starts the service and both path units itself.
-  sudo apt-get install -y -qq "$package" || abort "Could not install ${package}."
+  sudo apt-get install -y -qq "$ADMIN_PACKAGE" \
+    || abort "Could not install ${ADMIN_PACKAGE}."
 
   undo "remove the admin tool" "sudo apt-get purge -y -qq previously"
+}
+
+# The admin tool on its own, for a machine that already has everything else.
+# It is the one part that changes often enough to be worth replacing by itself,
+# and the only one a person watches through a browser, where a stale copy looks
+# exactly like a current one.
+#
+# Nothing here is written to the undo record. A run that fails half way leaves
+# the tool that was already installed, and rolling that back would take away a
+# working one to answer for a replacement that never happened.
+update_admin() {
+  info "Updating the admin tool"
+
+  local before
+  before="$(admin_version)"
+  [[ -n "$before" ]] || abort "The admin tool is not installed. Run this without --update-admin."
+
+  fetch_admin_package
+
+  # --reinstall because a package built from a checkout carries the version in
+  # server.py, which is the last release's until the next one is cut. Without
+  # it apt calls an identically numbered package the newest one it has and does
+  # nothing, silently. --allow-downgrades is for the other direction, which is
+  # somebody going back to a release from a checkout that ran ahead of it.
+  sudo apt-get install -y -qq --reinstall --allow-downgrades "$ADMIN_PACKAGE" \
+    || abort "Could not install ${ADMIN_PACKAGE}."
+
+  local after
+  after="$(admin_version)"
+  if [[ "$before" == "$after" ]]; then
+    skip "${after}, put in place again"
+  else
+    skip "${before} replaced by ${after}"
+  fi
+  skip "The service is restarted by the package, so the browser has it on the next load."
 }
 
 # ---------------------------------------------------------------------------
@@ -637,7 +701,36 @@ EOF
   undo "remove ${WIREPLUMBER_CONF}" "sudo rm -f $(printf '%q' "$WIREPLUMBER_CONF")"
 }
 
+usage() {
+  cat <<'EOF'
+Usage: install.sh [--update-admin]
+
+With no arguments it sets a Raspberry Pi up from nothing, and skips every step
+it finds already done.
+
+  --update-admin   Replace the admin tool with the newest one and touch nothing
+                   else. Built from the checkout this script sits in, or taken
+                   from the latest release where there is no checkout.
+EOF
+}
+
 main() {
+  case "${1:-}" in
+    --update-admin)
+      check_host
+      update_admin
+      COMPLETED=true
+      return
+      ;;
+    --help | -h)
+      usage
+      COMPLETED=true
+      return
+      ;;
+    "") ;;
+    *) abort "Unknown option: ${1}. Try --help." ;;
+  esac
+
   check_host
   install_packages
   add_repository
