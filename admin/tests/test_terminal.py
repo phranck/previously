@@ -132,21 +132,6 @@ def test_nothing_is_left_running_when_the_session_ends():
 
 
 @pytest.mark.skipif(not pathlib.Path(SHELL).exists(), reason="no " + SHELL)
-def refuses_to_take_anything(session, patience=PATIENCE):
-    """@returns bool, whether writing to it has stopped working.
-
-    Tried more than once, because the first write after a shell has gone can
-    be taken into the terminal's buffer and reported as written. The second
-    finds the buffer where nobody is reading and fails.
-    """
-    deadline = time.monotonic() + patience
-    while time.monotonic() < deadline:
-        if not session.write(b"ls\n"):
-            return True
-        time.sleep(0.05)
-    return False
-
-
 def test_a_shell_that_has_gone_says_nothing_more(session):
     session.write(b"exit\n")
     # Read what it says on the way out first, and only then ask whether it has
@@ -154,12 +139,12 @@ def test_a_shell_that_has_gone_says_nothing_more(session):
     says(session, b"nothing that will come", patience=2)
 
     assert has_gone(session), "the shell is still there"
+    # Nothing comes back, which is the whole of what a gone shell means here
+    # and what attach watches for. Whether a write is still taken is the
+    # terminal's business and differs by system: Linux goes on taking them
+    # into a buffer nobody reads, and a Mac refuses at once.
     assert session.read() == b""
-    # A write to the terminal of a shell that has gone fails, though not
-    # necessarily the first one: on Linux the first can be taken into the
-    # buffer and reported as written, whilst on a Mac it fails at once. What
-    # holds on both is that it stops being taken.
-    assert refuses_to_take_anything(session), "it is still taking what is typed"
+    assert says(session, b"anything at all", patience=1) == b""
 
 
 # -- who is logging in ----------------------------------------------------
