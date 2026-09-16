@@ -27,6 +27,10 @@ permissions:
 jobs:
   package:
     runs-on: ubuntu-latest
+    # A run that hangs is worse than one that fails: it says nothing and holds
+    # the tag. The suite takes half a minute on a laptop, so ten minutes is a
+    # ceiling rather than a budget.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -34,7 +38,10 @@ jobs:
         working-directory: admin
         run: |
           python3 -m pip install --quiet --break-system-packages flake8 pytest
-          make check
+          python3 -m flake8 --max-line-length=100 previously tests
+          # The five slowest, because a suite that is slow here and quick on a
+          # laptop is a suite waiting for something this machine does not have.
+          python3 -m pytest tests -q --durations=5
 
       - name: Build the package
         working-directory: admin
