@@ -51,7 +51,13 @@
 
   ul { margin: 0 0 14px; padding-left: 20px; }
   li { margin-bottom: 3px; }
-  .quiet { font-size: var(--status-size); color: var(--dark); }
+  /* The line's own note. The same air below the field as the paragraph above
+     it has, because a note pressed against a field reads as part of it. */
+  .quiet {
+    margin-top: 14px;
+    font-size: var(--status-size);
+    color: var(--dark);
+  }
   a { color: #000080; }
 </style>
 </head>
