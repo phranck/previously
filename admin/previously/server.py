@@ -18,7 +18,7 @@ import urllib.parse
 from . import change, config, files, grab, kiosk, machines, pi, terminal, websocket
 from .token import HEADER
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 #: The most a POST may carry. Everything sent here is a short object naming
 #: one thing, so anything past this is not this interface talking.
