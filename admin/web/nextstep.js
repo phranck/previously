@@ -232,6 +232,11 @@ function restoreFront() {
  *  eye and short enough that anybody waits for it. */
 const FLIGHT_MS = 260;
 
+/** The same inside one window, where the way is a fraction as long. A hundred
+ *  pixels crossed at the speed of half a screen reads as hesitant, so a short
+ *  way is given a short time. */
+const NEAR_FLIGHT_MS = 130;
+
 /** How many rectangles the way is drawn with, and over how long. Few and
  *  fast: what is wanted is a run of outlines standing on the screen for a
  *  moment, not a box growing. */
@@ -248,13 +253,16 @@ function stillness() {
  * @param {string} icon - Which picture.
  * @param {DOMRect} from - Where it starts.
  * @param {DOMRect} to - Where it lands.
+ * @param {number} howLong - How long it takes, in milliseconds. The default
+ *   is the way across the screen; a way inside one window is shorter and is
+ *   given NEAR_FLIGHT_MS.
  * @returns {Promise} Settled when it has landed.
  *
  * A transform and nothing else, so this costs the compositor and not the
  * layout. Where the reader has asked for less movement there is no flight at
  * all: the tile is simply there, which is what they asked for.
  */
-function fly(icon, from, to) {
+function fly(icon, from, to, howLong = FLIGHT_MS) {
   if (stillness()) return Promise.resolve();
 
   const ghost = document.createElement("i");
@@ -273,7 +281,7 @@ function fly(icon, from, to) {
   const flight = ghost.animate([
     { transform: `translate(${across}px, ${down}px) scale(${smaller})` },
     { transform: "translate(0, 0) scale(1)" },
-  ], { duration: FLIGHT_MS, easing: "ease-out" });
+  ], { duration: howLong, easing: "ease-out" });
 
   return flight.finished.catch(() => {}).finally(() => ghost.remove());
 }
