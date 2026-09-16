@@ -11,6 +11,7 @@ that can be told to.
 
 import os
 import pathlib
+import select
 import time
 
 import pytest
@@ -32,15 +33,42 @@ def says(session, until, patience=PATIENCE):
     @param until - The bytes being waited for.
     @param patience - Seconds.
     @returns bytes, everything read so far.
+
+    Asked whether there is anything before reading, because a read on a
+    terminal blocks until there is. A shell that says nothing would otherwise
+    hold this in its first read and the deadline below would never be looked
+    at again: measured in CI, where the suite sat in one test for ten minutes
+    with a patience of ten seconds.
     """
     heard = b""
     deadline = time.monotonic() + patience
     while time.monotonic() < deadline:
-        heard += session.read()
-        if until in heard:
-            return heard
-        time.sleep(0.02)
+        if select.select([session.descriptor], [], [], 0.05)[0]:
+            heard += session.read()
+            if until in heard:
+                return heard
     return heard
+
+
+def has_gone(session, patience=PATIENCE):
+    """Waits for the shell to end.
+
+    @returns bool, whether it had gone in time.
+
+    Asked of the process rather than of the clock. How long a shell takes to
+    leave is the machine's business, and a test that waits a fixed two seconds
+    for it is one that passes where that is enough and fails where it is not.
+    """
+    deadline = time.monotonic() + patience
+    while time.monotonic() < deadline:
+        try:
+            gone, _ = os.waitpid(session.pid, os.WNOHANG)
+        except ChildProcessError:
+            return True
+        if gone:
+            return True
+        time.sleep(0.02)
+    return False
 
 
 @pytest.fixture
@@ -103,8 +131,11 @@ def test_nothing_is_left_running_when_the_session_ends():
 @pytest.mark.skipif(not pathlib.Path(SHELL).exists(), reason="no " + SHELL)
 def test_a_shell_that_has_gone_says_nothing_more(session):
     session.write(b"exit\n")
+    # Read what it says on the way out first, and only then ask whether it has
+    # gone: a shell that nobody is reading from can be waiting to be read.
     says(session, b"nothing that will come", patience=2)
 
+    assert has_gone(session), "the shell is still there"
     assert session.read() == b""
     assert session.write(b"ls\n") is False
 
