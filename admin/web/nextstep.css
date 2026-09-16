@@ -93,6 +93,7 @@
   --Grab: url("parts/Grab.png");
   --home: url("parts/home.png");
   --Localization: url("parts/Localization.png");
+  --Monitor: url("parts/Monitor.png");
   /* NeXTSTEP's own selection was a white rounded shape, and this is the corner
      it drew, read off hilite.tiff: white begins five pixels in on the first
      row and reaches the edge on the sixth. */

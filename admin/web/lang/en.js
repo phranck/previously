@@ -40,6 +40,10 @@ NX_STRINGS.en = {
   "window.machine": "Machine",
   "app.preferences": "Preferences",
   "preferences.localization": "Localization Preferences",
+  "preferences.monitor": "Monitor Preferences",
+  "size.normal": "Normal",
+  "size.large": "Large",
+  "size.largest": "Largest",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Config Editor",

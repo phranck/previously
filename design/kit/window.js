@@ -73,8 +73,9 @@ class NxWindow extends HTMLElement {
       ? (_key, attribute) => Number(this.getAttribute(attribute))
       : number;
 
-    this.style.left = Math.min(number("x", "x"), Math.max(0, innerWidth - 90)) + "px";
-    this.style.top = Math.min(number("y", "y"), Math.max(0, innerHeight - 40)) + "px";
+    const room = deskRoom();
+    this.style.left = Math.min(number("x", "x"), Math.max(0, room.width - 90)) + "px";
+    this.style.top = Math.min(number("y", "y"), Math.max(0, room.height - 40)) + "px";
 
     /* Before the size, because the floor is read off these and a size saved
        when the window held something else has to be held to what it holds

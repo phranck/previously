@@ -170,11 +170,13 @@
 <nx-window name="preferences" data-t-title="app.preferences" fixed
            x="620" y="120" w="300" h="290" min-h="200" closed>
   <nx-shelf class="modules">
-    <nx-thing icon="Localization" chosen></nx-thing>
+    <nx-thing icon="Localization" value="localization" chosen></nx-thing>
+    <nx-thing icon="Monitor" value="monitor"></nx-thing>
   </nx-shelf>
-  <p class="module-name" data-t="preferences.localization"></p>
+  <p class="module-name" id="module-name"></p>
   <nx-scroller>
     <div class="options" id="languages"></div>
+    <div class="options" id="sizes" hidden></div>
   </nx-scroller>
 </nx-window>
 

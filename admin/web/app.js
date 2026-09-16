@@ -1263,6 +1263,100 @@ function drawLanguages() {
   }));
 }
 
+/* --- how large the interface is drawn -------------------------------------
+
+   NeXTSTEP's own measurements are what everything here is built from, and on
+   a large panel at a low resolution they are small. So the same desk is drawn
+   larger rather than measured again.
+
+   Whole and half steps only: every icon is a bitmap, and anything between
+   draws them across pixel boundaries. */
+
+/** What the interface can be drawn at, by the name each step carries. */
+const SIZES = [
+  { name: "size.normal", scale: 1 },
+  { name: "size.large", scale: 1.5 },
+  { name: "size.largest", scale: 2 },
+];
+
+/** Where the choice is kept. The browser's, like the language: how large one
+ *  person needs this drawn is not a property of the machine. */
+const SIZE_KEY = "previously:size";
+
+/** @returns {number} The size last chosen, or the original's own. */
+function chosenSize() {
+  const saved = Number(localStorage.getItem(SIZE_KEY));
+  return SIZES.some((size) => size.scale === saved) ? saved : 1;
+}
+
+/**
+ * Draws the interface at that size and keeps the choice.
+ * @param {number} scale - One of what SIZES offers.
+ */
+function drawAtSize(scale) {
+  setDeskScale(scale);
+  try {
+    localStorage.setItem(SIZE_KEY, String(scale));
+  } catch {
+    /* A browser that refuses to store it still draws it this way for now. */
+  }
+  drawSizes();
+}
+
+/** Draws the list of sizes, with the one in force marked. */
+function drawSizes() {
+  const list = document.getElementById("sizes");
+  if (!list) return;
+  list.replaceChildren(...SIZES.map(({ name, scale }) => {
+    const option = document.createElement("div");
+    option.className = "option";
+    option.textContent = t(name);
+    option.toggleAttribute("chosen", scale === chosenSize());
+    option.addEventListener("click", () => drawAtSize(scale));
+    return option;
+  }));
+}
+
+/** What each module of Preferences is called and which panel it shows. */
+const MODULES = {
+  localization: { name: "preferences.localization", panel: "languages" },
+  monitor: { name: "preferences.monitor", panel: "sizes" },
+};
+
+/**
+ * Shows one module of Preferences.
+ * @param {string} which - Its name, as the picture in the row carries it.
+ *
+ * A row of pictures with the chosen one's panel underneath, which is how
+ * NeXTSTEP built this window. Only one panel is up at a time, and the name
+ * between the row and the panel is that module's own.
+ */
+function showModule(which) {
+  const module = MODULES[which];
+  if (!module) return;
+
+  for (const picture of document.querySelectorAll("nx-window[name='preferences'] .modules nx-thing")) {
+    picture.toggleAttribute("chosen", picture.getAttribute("value") === which);
+  }
+  for (const [name, one] of Object.entries(MODULES)) {
+    document.getElementById(one.panel).hidden = name !== which;
+  }
+  writeWords(document.getElementById("module-name"), t(module.name));
+}
+
+/** Wires the row of modules, and draws the one that starts up chosen. */
+function wirePreferences() {
+  const row = document.querySelector("nx-window[name='preferences'] .modules");
+  if (!row) return;
+
+  row.addEventListener("click", (event) => {
+    const picture = event.target.closest("nx-thing");
+    if (picture) showModule(picture.getAttribute("value"));
+  });
+  showModule("localization");
+  drawSizes();
+}
+
 /**
  * Every application this tool holds, as the tree gives them.
  * @returns {object[]} Each with its path, its picture and the window it opens.
@@ -1786,6 +1880,10 @@ function wireGrab() {
 function speak(code) {
   return setLanguage(code, () => {
     drawLanguages();
+    drawSizes();
+    showModule(document.querySelector(
+      "nx-window[name='preferences'] .modules nx-thing[chosen]")?.getAttribute("value")
+      ?? "localization");
     drawPlace();
     /* The menu's title is a name this page chooses rather than a string in
        the markup, so translate() does not reach it. */
@@ -1794,7 +1892,9 @@ function speak(code) {
   });
 }
 
+drawAtSize(chosenSize());
 wireButtons();
+wirePreferences();
 wireMachines();
 wireBoard();
 wireOpening();
