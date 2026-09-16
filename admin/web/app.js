@@ -1335,8 +1335,8 @@ function showModule(which) {
   const module = MODULES[which];
   if (!module) return;
 
-  for (const picture of document.querySelectorAll("nx-window[name='preferences'] .modules nx-thing")) {
-    picture.toggleAttribute("chosen", picture.getAttribute("value") === which);
+  for (const cell of document.querySelectorAll("nx-window[name='preferences'] .module")) {
+    cell.toggleAttribute("chosen", cell.getAttribute("value") === which);
   }
   for (const [name, one] of Object.entries(MODULES)) {
     document.getElementById(one.panel).hidden = name !== which;
@@ -1350,8 +1350,8 @@ function wirePreferences() {
   if (!row) return;
 
   row.addEventListener("click", (event) => {
-    const picture = event.target.closest("nx-thing");
-    if (picture) showModule(picture.getAttribute("value"));
+    const cell = event.target.closest(".module");
+    if (cell) showModule(cell.getAttribute("value"));
   });
   showModule("localization");
   drawSizes();
@@ -1882,7 +1882,7 @@ function speak(code) {
     drawLanguages();
     drawSizes();
     showModule(document.querySelector(
-      "nx-window[name='preferences'] .modules nx-thing[chosen]")?.getAttribute("value")
+      "nx-window[name='preferences'] .module[chosen]")?.getAttribute("value")
       ?? "localization");
     drawPlace();
     /* The menu's title is a name this page chooses rather than a string in

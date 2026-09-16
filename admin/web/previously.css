@@ -9,33 +9,61 @@
 /* The module pictures are not the 48 of an icon. Preferences drew its own at
    sizes of their own, and Localization.tiff is 52 by 49. */
 :root {
-  --module-w: 52px;
-  --module-h: 49px;
+  /* One cell of the module row, read off the running system: 66 square, on a
+     68 grid once the line parting two cells is counted. */
+  --module-cell: 66px;
 }
 
 
-/* NeXTSTEP's Preferences is a row of module pictures with the chosen module's
-   panel underneath. One module has anything to set on this machine, and the
-   row stays because it is the shape of the window rather than a count: the
-   next module arrives into it instead of introducing it. */
+/* NeXTSTEP's Preferences is a row of module cells with the chosen module's
+   panel underneath, and a scroller along the row because fourteen modules do
+   not fit across it. Two of them do fit here, and the scroller stays: it is
+   the shape of the window rather than a count, and an empty trough is what
+   the original shows wherever there is nothing to scroll. */
 nx-window[name="preferences"] .modules {
-  /* One row, from the left, rather than the grid a shelf of files wants, and
-     as tall as the pictures in it rather than taking the room the panel needs. */
+  /* As tall as one cell and its scroller, rather than taking the room the
+     panel needs. */
   flex: 0 0 auto;
+  height: calc(var(--module-cell) + var(--scroller) + 2px);
+}
+
+nx-window[name="preferences"] .module-row {
   display: flex;
-  justify-content: flex-start;
-  padding: 6px;
+  /* Never narrower than what is in it, so the row scrolls rather than
+     squeezing its cells. */
+  width: max-content;
 }
 
-/* A module picture is not an icon of a thing, so it carries no name under it.
-   What it is stands under the row, where there is room for the whole of it. */
-nx-window[name="preferences"] .modules nx-thing .name { display: none; }
-
-nx-window[name="preferences"] .modules nx-thing .icon {
-  width: var(--module-w);
-  height: var(--module-h);
-  background-size: var(--module-w) var(--module-h);
+/* One cell. Square, and parted from the next by the sunken line this
+   interface uses everywhere: one row of shadow and one of light. */
+.module {
+  width: var(--module-cell);
+  height: var(--module-cell);
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  background: var(--light);
+  border: 1px solid var(--dark);
+  border-left-width: 0;
+  box-shadow: inset 1px 0 0 var(--white);
+  cursor: default;
 }
+.module:first-child { border-left-width: 1px; box-shadow: none; }
+
+/* The chosen one, which NeXTSTEP drew by turning the cell white rather than
+   by putting a mark in it. */
+.module[chosen] { background: var(--white); }
+
+/* Each module's own picture, at its own size: they are bitmaps and differ,
+   52 by 49 for Localization and 66 by 57 for Monitor, so nothing here scales
+   them to a common box. */
+.module .art {
+  width: var(--module-cell);
+  height: var(--module-cell);
+  background-size: auto;
+}
+.module[value="localization"] .art { background-image: var(--Localization); }
+.module[value="monitor"] .art { background-image: var(--Monitor); }
 
 /* The chosen module's own name, as Preferences itself called it. */
 .module-name {

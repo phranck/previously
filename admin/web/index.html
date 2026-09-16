@@ -169,10 +169,17 @@
      language are Preferences.app's own. -->
 <nx-window name="preferences" data-t-title="app.preferences" fixed
            x="620" y="120" w="300" h="290" min-h="200" closed>
-  <nx-shelf class="modules">
-    <nx-thing icon="Localization" value="localization" chosen></nx-thing>
-    <nx-thing icon="Monitor" value="monitor"></nx-thing>
-  </nx-shelf>
+  <!-- A row of cells with a scroller under it, which is what NeXTSTEP drew:
+       fourteen modules do not fit across a panel this wide, so the row scrolls
+       and the chosen module's cell is white where the others are grey. Read off
+       the running system: a cell is 66 square on a 68 grid, parted by the
+       sunken line this interface uses everywhere. -->
+  <nx-scroller class="modules" bars="across">
+    <div class="module-row">
+      <div class="module" value="localization" chosen><i class="art"></i></div>
+      <div class="module" value="monitor"><i class="art"></i></div>
+    </div>
+  </nx-scroller>
   <p class="module-name" id="module-name"></p>
   <nx-scroller>
     <div class="options" id="languages"></div>
