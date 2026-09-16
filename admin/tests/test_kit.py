@@ -7,6 +7,7 @@ drift, because a drifted copy fails here.
 """
 
 import importlib.util
+import re
 
 import pytest
 
@@ -55,3 +56,17 @@ def test_every_element_it_defines_is_in_its_own_part(build):
         script = build.source(name, "js")
         for _, class_name in tags:
             assert f"class {class_name} " in script, (name, class_name)
+
+
+def test_a_tile_that_can_be_carried_carries_a_name():
+    """The dock remembers where a tile was put under that tile's name, so one
+    without a name goes back to where the markup has it at every reload, and
+    nothing says why."""
+    markup = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+    dock = re.search(r"<nx-dock>(.*?)</nx-dock>", markup, re.S)
+    assert dock, "the dock is not in the markup"
+
+    for tile in re.findall(r"<nx-tile\b[^>]*>", dock.group(1), re.S):
+        if re.search(r"\bfixed\b", tile):
+            continue
+        assert re.search(r'\bname="[^"]+"', tile), tile
