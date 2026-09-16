@@ -18,16 +18,31 @@
      stays as it is written are names: NeXT's, the machine's own, and the
      applications'. -->
 
-<!-- The letter beside an entry is a letter of the word that entry shows, so it
-     is a catalogue entry like the word itself. Raspberry Pi keeps its name in
-     every language and still needs a letter of its own, because whichever
-     letter Preferences takes cannot also be this one. -->
+<!-- One menu, and it belongs to whatever is in front. NeXTSTEP had exactly
+     one: its title and its entries were replaced when another application
+     became active, and it stayed wherever somebody had dragged it. So every
+     entry any of them has is here, each saying through `for` which
+     application it belongs to, and the ones that do not belong are hidden.
+     An entry with no `for` is the workspace's own.
+
+     The letter beside an entry is a letter of the word that entry shows, so
+     it is a catalogue entry like the word itself, and the letters have to be
+     distinct within one menu rather than across all of them. Raspberry Pi
+     keeps its name in every language and still needs a letter of its own,
+     because whichever letter Preferences takes cannot also be this one. -->
 <nx-menu name="menu" title="Cube" x="8" y="8">
   <nx-menu-item opens="info" data-t-key="menu.info.key" data-t="window.info"></nx-menu-item>
   <nx-menu-item opens="pi" data-t-key="menu.pi.key">Raspberry Pi</nx-menu-item>
   <nx-menu-item opens="files" data-t-key="menu.files.key" data-t="menu.files"></nx-menu-item>
   <nx-menu-item opens="preferences" data-t-key="menu.preferences.key" data-t="app.preferences"></nx-menu-item>
   <nx-menu-item name="token" data-t-key="menu.token.key" data-t="menu.token"></nx-menu-item>
+
+  <nx-menu-item for="grab" name="grab-take" data-t-key="grab.take.key" data-t="grab.take"></nx-menu-item>
+  <nx-menu-item for="grab" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
+
+  <nx-menu-item for="preview" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
+  <nx-menu-item for="terminal" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
+  <nx-menu-item for="preferences" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
 </nx-menu>
 
 <!-- The Workspace is always running and never carries the marks. The editor

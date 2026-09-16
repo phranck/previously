@@ -38,7 +38,8 @@ nx-menu-item {
   box-shadow: inset 0 -2px 0 var(--dark), inset 0 -1px 0 var(--black);
   cursor: default;
 }
-nx-menu-item:last-child { box-shadow: none; }
+nx-menu-item:last-child,
+nx-menu-item[last] { box-shadow: none; }
 
 /* The entry under the pointer takes the white a selection takes elsewhere in
    here, and holding the mouse on it inverts it. Two steps rather than one, so

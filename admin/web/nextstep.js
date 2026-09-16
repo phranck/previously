@@ -358,6 +358,9 @@ function between(start, end, part) {
  * @attr title  - The text in the bar.
  * @attr x y w h - Where it starts, before anything was remembered.
  * @attr min-w min-h - The floor its content needs.
+ *
+ * @fires nx-front - It has come to the front, carrying its `name`. The main
+ *   menu belongs to whatever is in front, so this is what it follows.
  */
 class NxWindow extends HTMLElement {
   connectedCallback() {
@@ -479,6 +482,9 @@ class NxWindow extends HTMLElement {
    * front is part of what the desk remembers, because exactly one is active at
    * a time and a reload that made them all active would be a desk nobody has
    * ever seen.
+   *
+   * @fires nx-front - Only where something changed, so a window already in
+   *   front raises nothing and the menu is not rewritten for nothing.
    */
   raise() {
     if (!this.hasAttribute("inactive") && this.style.zIndex) return;
@@ -490,6 +496,12 @@ class NxWindow extends HTMLElement {
     this.style.zIndex = highest + 1;
     this.removeAttribute("inactive");
     remember("desk", { front: this.name });
+    /* The main menu belongs to whatever is in front, so the one thing that
+       decides which window that is has to say when it changes. */
+    this.dispatchEvent(new CustomEvent("nx-front", {
+      bubbles: true,
+      detail: { name: this.name },
+    }));
   }
 
   /**
@@ -519,6 +531,12 @@ class NxWindow extends HTMLElement {
    */
   close() {
     this.hidden = true;
+    /* A window that is not on the screen is not the active one, and saying so
+       is what lets it come to the front again: raise does nothing for a
+       window that already believes it is there, so without this a window
+       closed and opened again would arrive silently and the menu would go on
+       showing whatever was in front before it. */
+    this.setAttribute("inactive", "");
     this.save();
     this.dispatchEvent(new CustomEvent("nx-close", { bubbles: true }));
   }
@@ -651,6 +669,34 @@ class NxMenu extends HTMLElement {
     draggable(this, title, {
       onSettled: () => remember(name, { x: this.offsetLeft, y: this.offsetTop }),
     });
+  }
+
+  /**
+   * Shows the entries belonging to one application, under its name.
+   * @param {string} owner - What the entries say they belong to through
+   *   their own `for`, or "" for the ones the workspace itself owns.
+   * @param {string} title - What to put in the bar.
+   *
+   * One menu rather than one per application, which is what NeXTSTEP had:
+   * the menu stays where somebody dragged it and its contents change under
+   * the title. Every entry is in the markup and the ones that do not belong
+   * are hidden, so nothing is built or thrown away and the strings in them
+   * are written once for all of them.
+   */
+  showFor(owner, title) {
+    const bar = this.querySelector(":scope > .title");
+    if (bar) bar.textContent = title;
+
+    let last = null;
+    for (const entry of this.querySelectorAll(":scope > nx-menu-item")) {
+      const belongs = (entry.getAttribute("for") ?? "") === owner;
+      entry.hidden = !belongs;
+      entry.removeAttribute("last");
+      if (belongs) last = entry;
+    }
+    /* The foot of the menu is drawn on the last entry that is showing, which
+       is not the last child once some of them are hidden. */
+    last?.setAttribute("last", "");
   }
 
   /**

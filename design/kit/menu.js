@@ -41,6 +41,34 @@ class NxMenu extends HTMLElement {
   }
 
   /**
+   * Shows the entries belonging to one application, under its name.
+   * @param {string} owner - What the entries say they belong to through
+   *   their own `for`, or "" for the ones the workspace itself owns.
+   * @param {string} title - What to put in the bar.
+   *
+   * One menu rather than one per application, which is what NeXTSTEP had:
+   * the menu stays where somebody dragged it and its contents change under
+   * the title. Every entry is in the markup and the ones that do not belong
+   * are hidden, so nothing is built or thrown away and the strings in them
+   * are written once for all of them.
+   */
+  showFor(owner, title) {
+    const bar = this.querySelector(":scope > .title");
+    if (bar) bar.textContent = title;
+
+    let last = null;
+    for (const entry of this.querySelectorAll(":scope > nx-menu-item")) {
+      const belongs = (entry.getAttribute("for") ?? "") === owner;
+      entry.hidden = !belongs;
+      entry.removeAttribute("last");
+      if (belongs) last = entry;
+    }
+    /* The foot of the menu is drawn on the last entry that is showing, which
+       is not the last child once some of them are hidden. */
+    last?.setAttribute("last", "");
+  }
+
+  /**
    * Puts a context menu at the pointer and takes it away on the next click.
    * @param {number} x - Where the pointer was, in the page.
    * @param {number} y
