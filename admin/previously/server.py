@@ -20,6 +20,10 @@ from .token import HEADER
 
 VERSION = "0.1.0"
 
+#: The most a POST may carry. Everything sent here is a short object naming
+#: one thing, so anything past this is not this interface talking.
+LARGEST_BODY = 64 * 1024
+
 #: Where the browser's files live, beside the package rather than inside it.
 WEB_ROOT = pathlib.Path(__file__).resolve().parent.parent / "web"
 
@@ -95,6 +99,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if route == "/api/machine":
             return self._change_machine()
+        if route == "/api/picture/delete":
+            return self._delete_picture()
 
         board = BOARD_OPERATIONS.get(route)
         if board is not None:
@@ -121,10 +127,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         the file is copied and written, the machine comes back, and anything
         that does not come back is put straight back the way it was.
         """
-        try:
-            body = json.loads(self.rfile.read(
-                int(self.headers.get("Content-Length") or 0)) or b"{}")
-        except (ValueError, OSError):
+        body = self._sent()
+        if body is None:
             return self._json({"error": "unreadable request"}, status=400)
 
         finished, told = change.to_machine(body.get("machine"), self.settings)
@@ -293,6 +297,40 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(picture)
+
+    def _delete_picture(self):
+        """Takes one picture out of the folder pictures are kept in.
+
+        A POST, because it changes something, which is what makes the token
+        checked before this is reached at all. What is named is read as a name
+        rather than as a way to a file, so there is nothing here that reaches
+        outside that one folder and nothing that deletes anything but a
+        picture.
+        """
+        asked = (self._sent() or {}).get("name")
+        gone = files.remove_picture(self.settings.documents, asked)
+        return self._json({"ok": gone}, status=200 if gone else 404)
+
+    def _sent(self):
+        """What a POST carried.
+
+        @returns dict, empty where nothing was sent, and None where something
+          was sent that cannot be read as an object.
+
+        The two are kept apart because they are different mistakes: a request
+        that names nothing is answered by whatever it asked of, and a request
+        whose body is not JSON is the caller's error and is told so.
+        """
+        length = int(self.headers.get("Content-Length") or 0)
+        if length == 0:
+            return {}
+        if length > LARGEST_BODY:
+            return None
+        try:
+            found = json.loads(self.rfile.read(length))
+        except (ValueError, OSError):
+            return None
+        return found if isinstance(found, dict) else None
 
     def _picture(self):
         """Answers with one picture out of the folder pictures are kept in.

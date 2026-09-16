@@ -504,3 +504,69 @@ def test_a_file_that_is_not_a_picture_is_not_served(service, tmp_path):
         ask_for(service, "notes.txt")
 
     assert refused.value.code == 404
+
+
+# -- taking a picture away ------------------------------------------------
+
+
+def ask_to_delete(service, name, with_token=True):
+    """Asks for one picture to go, the way the page does."""
+    request = urllib.request.Request(
+        service + "/api/picture/delete",
+        data=json.dumps({"name": name}).encode("utf-8"), method="POST")
+    request.add_header("Content-Type", "application/json")
+    if with_token:
+        request.add_header(HEADER, server.Handler.token.value)
+    return urllib.request.urlopen(request, timeout=5)
+
+
+def test_a_picture_can_be_deleted(service, tmp_path):
+    name = kept_picture(tmp_path)
+    where = tmp_path / "Previously" / "Documents" / "Pictures"
+
+    with ask_to_delete(service, name) as answer:
+        assert answer.status == 200
+        assert json.loads(answer.read())["ok"] is True
+    assert list(where.iterdir()) == []
+
+
+def test_deleting_needs_the_token(service, tmp_path):
+    name = kept_picture(tmp_path)
+    where = tmp_path / "Previously" / "Documents" / "Pictures"
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        ask_to_delete(service, name, with_token=False)
+
+    assert refused.value.code == 403
+    assert (where / name).is_file(), "refused and deleted it anyway"
+
+
+@pytest.mark.parametrize("asked", [
+    "../../../etc/passwd",
+    "/etc/passwd",
+    "",
+    "nothing-of-that-name.png",
+])
+def test_nothing_outside_the_pictures_folder_is_deleted(service, tmp_path, asked):
+    """The name is read as a name, so a request naming a path asks for that
+    name inside the one folder, where it is not."""
+    name = kept_picture(tmp_path)
+    where = tmp_path / "Previously" / "Documents" / "Pictures"
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        ask_to_delete(service, asked)
+
+    assert refused.value.code == 404
+    assert (where / name).is_file()
+
+
+def test_a_file_that_is_not_a_picture_is_not_deleted(service, tmp_path):
+    """Nothing else in that folder is this service's to delete."""
+    kept_picture(tmp_path, name="notes.txt", content=b"not a picture")
+    where = tmp_path / "Previously" / "Documents" / "Pictures"
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        ask_to_delete(service, "notes.txt")
+
+    assert refused.value.code == 404
+    assert (where / "notes.txt").is_file()
