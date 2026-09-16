@@ -51,9 +51,8 @@ BindReadOnlyPaths=/tmp/.X11-unix
 # somewhere else, it photographs the window instead and leaves nothing behind.
 #
 # The third is the real part of the Previously tree, which today is the folder
-# the File Viewer shows as Documents/Pictures. It is under the home on purpose:
-# previous.cfg exports that directory to the emulated machine over NFS, so a
-# screenshot kept here is one NeXTSTEP itself can open.
+# the File Viewer shows as Documents/Pictures. Grab writes a screenshot there
+# and Preview reads it back, and it is the only part of that tree on the card.
 ReadWritePaths=-/home/next/.config/previous
 ReadWritePaths=-/home/next/.cache/previously
 ReadWritePaths=-/home/next/Previously

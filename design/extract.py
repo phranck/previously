@@ -75,11 +75,16 @@ ICONS = {
     # its Info.tiff is a photograph of whoever wrote it.
     "/NextApps/Grab.app/CameraNormal.tiff":
         ("Grab", "the camera Grab.app drew, for the application that takes a picture"),
-    # What a picture of a screen wears in a viewer. From Preview, which is the
-    # application that opened one, and it says TIFF because that is what
-    # NeXTSTEP's pictures were and what this tool writes for it.
+    # What a picture wears in a viewer, and what Preview.app itself wears.
+    # From Preview's own bundle, which holds no icon file: this is the picture
+    # it drew for a document, and the application went by it. It says TIFF
+    # because that was NeXTSTEP's picture format, and it is read here as
+    # meaning a picture.
     "/NextApps/Preview.app/tiff.tiff":
-        ("tiff", "a picture, as Preview.app drew one"),
+        ("tiff", "a picture, and Preview.app itself, as it drew one"),
+    # And what anything else in a folder wears: a sheet with lines on it,
+    # which is what the Workspace drew for a file it knew nothing about.
+    "defaultIcon": ("defaultIcon", "a file the Workspace has nothing better for"),
     "Workspace": ("Workspace", "the NeXT wordmark on its cube"),
     "trash.1.alpha": ("trash", "the recycler, in the first of its four frames"),
     "hilite": ("hilite", "the white a selected icon sits on"),

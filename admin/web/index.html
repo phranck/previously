@@ -178,6 +178,18 @@
   </div>
 </nx-window>
 
+<!-- Preview, which NeXT shipped for looking at a picture. It shows one at a
+     time, which is what a double click in the File Viewer hands it. Its title
+     is the picture's name rather than the application's, the way a document
+     window is titled. -->
+<nx-window name="preview" data-t-title="app.preview" drop
+           x="640" y="120" w="576" h="480" min-w="320" min-h="240" closed>
+  <nx-scroller>
+    <div class="shot" id="preview-picture"></div>
+  </nx-scroller>
+  <p class="note" id="preview-note"></p>
+</nx-window>
+
 <nx-ask id="ask"></nx-ask>
 
 <!-- The words load first, then the kit, then the page. Every element is

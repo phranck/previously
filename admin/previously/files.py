@@ -9,6 +9,7 @@ and three applications is choosing in a place rather than reading a list.
         Config Editor.app
         Grab.app
         Preferences.app
+        Preview.app
         Terminal.app
       Documents
         Pictures        the one real place here, holding the screenshots
@@ -17,9 +18,9 @@ and three applications is choosing in a place rather than reading a list.
         User            what somebody saved, and only once there is something
 
 Documents is the exception and is read off the card, because a picture is a
-file and files change. It sits under the emulator owner's home, which
-previous.cfg exports to the emulated machine over NFS, so what is written
-there is also what NeXTSTEP itself can open.
+file and files change. These are looked at here rather than in NeXTSTEP, so
+they are PNG, which is what a browser reads and what keeps a screen's edges
+and lettering sharp.
 
 The whole thing is small enough to hand over at once, so there is one route and
 the browser walks it. Paths are written the way they read, with slashes, and
@@ -66,17 +67,17 @@ GRAB_ICON = "Grab"
 PREFERENCES_ICON = "Preferences"
 TERMINAL_ICON = "Terminal"
 
-#: What a picture wears, from Preview.app, which is what opened one. It says
-#: TIFF because that is the format a picture is kept in here, which is the
-#: format the emulated machine can open.
+#: What a picture wears, and what Preview wears with it. Preview's bundle held
+#: no icon file, so the picture it drew for a document is what the application
+#: went by, and the same picture is right for both.
 PICTURE_ICON = "tiff"
 
-#: And what anything else in that folder wears, which is what NeXTSTEP drew for
-#: a file it had nothing better for.
-OTHER_FILE_ICON = "defaultUnixIcon"
+#: And what anything else in a folder wears: a sheet with lines on it, which is
+#: what the Workspace drew for a file it knew nothing about.
+OTHER_FILE_ICON = "defaultIcon"
 
-#: Which files the picture icon is right for.
-TIFF_SUFFIXES = (".tiff", ".tif")
+#: Which files are pictures, and therefore wear the one and open in Preview.
+PICTURE_SUFFIXES = (".png", ".tiff", ".tif", ".jpg", ".jpeg", ".gif")
 PREFERENCES_ICON = "Preferences"
 TERMINAL_ICON = "Terminal"
 
@@ -88,6 +89,7 @@ APPLICATIONS = (
     ("Config Editor.app", DEFAULT_APP_ICON, "editor", "app.config-editor"),
     ("Grab.app", GRAB_ICON, "grab", "app.grab"),
     ("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences"),
+    ("Preview.app", PICTURE_ICON, "preview", "app.preview"),
     ("Terminal.app", TERMINAL_ICON, "terminal", "app.terminal"),
 )
 
@@ -156,9 +158,15 @@ def pictures(documents):
     ]
 
 
+def is_a_picture(path):
+    """@param path - pathlib.Path or anything with a name.
+    @returns bool, whether Preview would open it."""
+    return pathlib.Path(path).suffix.lower() in PICTURE_SUFFIXES
+
+
 def _picture_icon(path):
     """@param path @returns str, what that file wears in a viewer."""
-    return PICTURE_ICON if path.suffix.lower() in TIFF_SUFFIXES else OTHER_FILE_ICON
+    return PICTURE_ICON if is_a_picture(path) else OTHER_FILE_ICON
 
 
 def picture_directory(documents):

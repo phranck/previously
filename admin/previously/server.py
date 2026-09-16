@@ -78,6 +78,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._terminal()
         if route == "/api/screen":
             return self._screen()
+        if route == "/api/picture":
+            return self._picture()
         return self._file(route)
 
     def do_POST(self):
@@ -291,6 +293,42 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(picture)
+
+    def _picture(self):
+        """Answers with one picture out of the folder pictures are kept in.
+
+        Behind the token for the same reason the route that takes one is: a
+        picture of the screen shows whoever was sitting at it.
+
+        Asked for by name and by nothing else. The name is read as a name, so
+        a request naming a path is answered with the file of that name if
+        there is one and with nothing if there is not, and there is no way
+        from here to a file outside that folder.
+        """
+        if not self._carries_the_token():
+            return self._json({"error": "token required"}, status=403)
+
+        asked = urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.path).query).get("name", [""])[0]
+        where = files.picture_directory(self.settings.documents)
+        if where is None or not asked:
+            return self._json({"error": "not found"}, status=404)
+
+        # The name of the file and not a way to it: everything up to the last
+        # separator is thrown away, so "../../etc/passwd" asks for "passwd" in
+        # the pictures folder, which is not there.
+        wanted = where / pathlib.PurePosixPath(asked).name
+        if not (wanted.is_file() and files.is_a_picture(wanted)):
+            return self._json({"error": "not found"}, status=404)
+
+        body = wanted.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type",
+                         mimetypes.guess_type(wanted.name)[0] or grab.PNG)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def _carries_the_token(self):
         """Whether this request carried the token.

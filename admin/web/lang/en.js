@@ -33,6 +33,7 @@ NX_STRINGS.en = {
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Config Editor",
   "app.grab": "Grab",
+  "app.preview": "Preview",
   "app.terminal": "Terminal",
 
   /* --- what a machine is ----------------------------------------------- */
@@ -98,6 +99,7 @@ NX_STRINGS.en = {
   "terminal.ended": "[the session has ended]",
 
   /* --- the buttons ------------------------------------------------------ */
+  "preview.empty": "Nothing to show.",
   "grab.take": "Take a picture",
   "grab.idle": "Nothing to photograph. The machine is not running.",
   "grab.failed": "The screen could not be read.",

@@ -9,6 +9,7 @@ import json
 import threading
 import http.server
 import urllib.error
+import urllib.parse
 import urllib.request
 
 import pytest
@@ -316,9 +317,10 @@ def test_the_applications_are_there_and_say_what_they_open(service):
     apps = next(e for e in tree["entries"] if e["name"] == "Apps")
 
     assert [entry["name"] for entry in apps["entries"]] == [
-        "Config Editor.app", "Grab.app", "Preferences.app", "Terminal.app"]
+        "Config Editor.app", "Grab.app", "Preferences.app", "Preview.app",
+        "Terminal.app"]
     assert [entry["opens"] for entry in apps["entries"]] == [
-        "editor", "grab", "preferences", "terminal"]
+        "editor", "grab", "preferences", "preview", "terminal"]
 
 
 def test_changing_the_machine_needs_the_token(service):
@@ -433,3 +435,72 @@ def test_documents_is_there_before_anything_is_in_it(service):
 
     assert [entry["name"] for entry in documents["entries"]] == ["Pictures"]
     assert documents["entries"][0]["entries"] == []
+
+
+# -- one kept picture -----------------------------------------------------
+
+
+def kept_picture(tmp_path, name="Screen 2026-09-16 08.00.00.png",
+                 content=b"\x89PNG\r\n\x1a\nkept"):
+    """Puts a picture where the service keeps them, as Grab would have."""
+    where = tmp_path / "Previously" / "Documents" / "Pictures"
+    where.mkdir(parents=True, exist_ok=True)
+    (where / name).write_bytes(content)
+    return name
+
+
+def ask_for(service, name):
+    """Asks for one picture by name, with the token."""
+    request = urllib.request.Request(
+        service + "/api/picture?name=" + urllib.parse.quote(name))
+    request.add_header(HEADER, server.Handler.token.value)
+    return urllib.request.urlopen(request, timeout=5)
+
+
+def test_a_kept_picture_is_served(service, tmp_path):
+    name = kept_picture(tmp_path)
+
+    with ask_for(service, name) as answer:
+        assert answer.status == 200
+        assert answer.headers["Content-Type"] == "image/png"
+        assert answer.read() == b"\x89PNG\r\n\x1a\nkept"
+
+
+def test_a_picture_needs_the_token(service, tmp_path):
+    """Same reason as the route that takes one: it shows whoever was sitting
+    at that machine."""
+    name = kept_picture(tmp_path)
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        fetch(service + "/api/picture?name=" + urllib.parse.quote(name))
+
+    assert refused.value.code == 403
+
+
+@pytest.mark.parametrize("asked", [
+    "../../../etc/passwd",
+    "..%2f..%2ftoken",
+    "/etc/passwd",
+    "",
+    "nothing-of-that-name.png",
+])
+def test_nothing_outside_the_pictures_folder_is_served(service, tmp_path, asked):
+    """The name is read as a name, so everything up to the last separator is
+    thrown away and what is left is looked for in that one folder."""
+    kept_picture(tmp_path)
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        ask_for(service, asked)
+
+    assert refused.value.code == 404
+
+
+def test_a_file_that_is_not_a_picture_is_not_served(service, tmp_path):
+    """Preview opens pictures, so that is what this hands out, whatever else
+    somebody has put in the folder."""
+    kept_picture(tmp_path, name="notes.txt", content=b"not a picture")
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        ask_for(service, "notes.txt")
+
+    assert refused.value.code == 404
