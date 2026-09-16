@@ -799,16 +799,24 @@ nx-thing[lifting] { opacity: .45; }
 
 /* --- the panel that asks before it changes anything --------------------- */
 
-.scrim {
+/* Every selector here begins at nx-ask, and the element itself is what dims
+   the desk rather than a class written onto it.
+
+   A kit is read into somebody else's document, so a plain name at the top
+   level of one is a name taken from them. This panel is 430 wide because
+   NeXTSTEP's attention panel was, and an application with a panel of its own
+   was handed those 430 pixels without anything saying so: its own rule is
+   still there, and this one simply also sets a width. */
+nx-ask {
   position: fixed;
   inset: 0;
   z-index: 90;
   display: none;
   place-items: center;
 }
-.scrim[data-open] { display: grid; }
+nx-ask[data-open] { display: grid; }
 
-.panel {
+nx-ask .panel {
   width: 430px;
   border: 1px solid var(--black);
   background: var(--light);
@@ -816,7 +824,7 @@ nx-thing[lifting] { opacity: .45; }
   display: flex;
   flex-direction: column;
 }
-.panel .titlebar {
+nx-ask .titlebar {
   height: var(--title-height);
   display: flex;
   align-items: center;
@@ -826,16 +834,21 @@ nx-thing[lifting] { opacity: .45; }
   background: linear-gradient(to bottom,
     var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
 }
-.panel .title { flex: 1; text-align: center; font-weight: bold; }
-.panel .pane { padding: 14px; }
-.panel-body { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; }
-.panel-body .icon { width: 48px; height: 48px; background-size: contain; }
-.panel-body p { margin: 0 0 8px; }
-.panel-body p:last-child { margin: 0; }
+nx-ask .title { flex: 1; text-align: center; font-weight: bold; }
+nx-ask .pane { padding: 14px; }
+nx-ask .panel-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+}
+nx-ask .panel-body .icon { width: 48px; height: 48px; background-size: contain; }
+nx-ask .panel-body p { margin: 0 0 8px; }
+nx-ask .panel-body p:last-child { margin: 0; }
 
 /* The line a panel takes a token on. NeXT's text fields are white, sunken and
    one line tall, and this is the same field the readings use, made editable. */
-.panel .entry {
+nx-ask .entry {
   width: 100%;
   margin-top: 10px;
   font: 12px var(--mono);
@@ -845,7 +858,7 @@ nx-thing[lifting] { opacity: .45; }
   box-shadow: inset 1px 1px 0 var(--black);
   padding: 3px 5px;
 }
-.panel .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
+nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
 
 /* --- nx-viewer ---------------------------------------------------------- */
 

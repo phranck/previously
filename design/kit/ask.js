@@ -16,7 +16,6 @@ class NxAsk extends HTMLElement {
   connectedCallback() {
     if (this.ready) return;
     this.ready = true;
-    this.className = "scrim";
 
     this.innerHTML = `
       <div class="panel">
