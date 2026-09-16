@@ -16,7 +16,7 @@ import re
 import shutil
 import subprocess
 
-from . import kiosk
+from . import screen
 
 #: How long to wait for vcgencmd. It answers in milliseconds, so anything
 #: slower than this has gone wrong rather than got busy.
@@ -131,7 +131,7 @@ def _emulator():
     Two threads run when a NeXTdimension is configured, so around 150 per cent
     of one core is ordinary here and says nothing is wrong.
     """
-    answer = _ask(["ps", "-o", "etimes=,pcpu=,rss=", "-C", kiosk.EMULATOR_PROCESS])
+    answer = _ask(["ps", "-o", "etimes=,pcpu=,rss=", "-C", screen.EMULATOR])
     fields = answer.split()
     if len(fields) < 3:
         return None

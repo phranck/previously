@@ -3,8 +3,9 @@
 Built on http.server from the standard library, which is enough for a handful
 of routes on a single-user device and costs no interpreter, no pip and no venv.
 
-Reading is open. Everything that changes the machine arrives as a POST and
-is refused without the token, which token.py decides.
+Reading is open, with one exception at /api/screen. Everything that changes
+the machine arrives as a POST and is refused without the token, which token.py
+decides.
 """
 
 import http.server
@@ -14,7 +15,7 @@ import pathlib
 import threading
 import urllib.parse
 
-from . import change, config, files, kiosk, machines, pi, terminal, websocket
+from . import change, config, files, grab, kiosk, machines, pi, terminal, websocket
 from .token import HEADER
 
 VERSION = "0.1.0"
@@ -74,6 +75,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json({"valid": self._carries_the_token()})
         if route == "/api/terminal":
             return self._terminal()
+        if route == "/api/screen":
+            return self._screen()
         return self._file(route)
 
     def do_POST(self):
@@ -252,6 +255,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
             terminal.attach(session, connection)
         finally:
             self.terminals.release()
+
+    def _screen(self):
+        """Answers with a picture of what the emulated machine is showing.
+
+        The one reading behind the token. Everything else this service tells
+        is about the machine as a thing, so which processor it has and whether
+        it is running, and a picture is about whoever is sitting at it: their
+        files, their windows and whatever they have open. That is a different
+        question and it takes the token.
+        """
+        if not self._carries_the_token():
+            return self._json({"error": "token required"}, status=403)
+
+        picture = grab.take()
+        if picture is None:
+            return self._json({"error": "no screen"}, status=503)
+        self.send_response(200)
+        self.send_header("Content-Type", grab.PNG)
+        self.send_header("Content-Length", str(len(picture)))
+        # Every one of these is a different moment, and a browser that kept
+        # the first would show that moment for ever.
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(picture)
 
     def _carries_the_token(self):
         """Whether this request carried the token.

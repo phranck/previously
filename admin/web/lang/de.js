@@ -24,6 +24,7 @@ NX_STRINGS.de = {
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Konfigurationseditor",
+  "app.screenshot": "Screenshot",
   "app.terminal": "Terminal",
 
   /* --- what a machine is ----------------------------------------------- */
@@ -89,6 +90,9 @@ NX_STRINGS.de = {
   "terminal.ended": "[die Sitzung ist beendet]",
 
   /* --- the buttons ------------------------------------------------------ */
+  "screenshot.take": "Aufnehmen",
+  "screenshot.idle": "Nichts zu fotografieren. Die Maschine läuft nicht.",
+  "screenshot.failed": "Der Bildschirm konnte nicht gelesen werden.",
   "button.power-off": "Ausschalten",
   "button.restart": "Neu starten",
   "button.power-on": "Einschalten",

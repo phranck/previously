@@ -215,7 +215,7 @@ def test_the_power_button_is_the_power_key(tmp_path, monkeypatch):
     """Answering the panel it raises is the waiting's business, because when
     that panel appears is the guest's business and not ours."""
     sent = []
-    monkeypatch.setattr(kiosk, "_press", lambda key: sent.append(key) or True)
+    monkeypatch.setattr(kiosk.screen, "press", lambda key: sent.append(key) or True)
 
     assert kiosk.press_power() is True
     assert sent == [kiosk.POWER_KEY]
@@ -228,7 +228,7 @@ def test_the_confirmation_is_pressed_again_until_the_guest_goes(tmp_path, world,
     not up yet, and the panel then stands unanswered until the time runs out.
     That happened on the machine on 14 September 2026."""
     sent = []
-    monkeypatch.setattr(kiosk, "_press", lambda key: sent.append(key) or True)
+    monkeypatch.setattr(kiosk.screen, "press", lambda key: sent.append(key) or True)
     monkeypatch.setattr(kiosk, "press_power", REAL_PRESS_POWER)
     world.shutdown_after_polls = 9
 
@@ -248,7 +248,7 @@ def test_a_power_key_that_does_not_arrive_stops_there(tmp_path, world, monkeypat
         sent.append(key)
         return False
 
-    monkeypatch.setattr(kiosk, "_press", refuse)
+    monkeypatch.setattr(kiosk.screen, "press", refuse)
     monkeypatch.setattr(kiosk, "press_power", REAL_PRESS_POWER)
 
     finished, told = kiosk.stop(tmp_path, sleep=world.sleep)
@@ -261,7 +261,7 @@ def test_a_power_key_that_does_not_arrive_stops_there(tmp_path, world, monkeypat
 def test_no_x_server_means_no_key(tmp_path, monkeypatch):
     """The emulator is not running, so there is nothing to press against."""
     monkeypatch.setattr(screen, "X11_SOCKETS", str(tmp_path / "absent"))
-    assert kiosk._press(kiosk.POWER_KEY) is False
+    assert kiosk.screen.press(kiosk.POWER_KEY) is False
 
 
 def test_a_guest_that_never_started_is_not_waited_for(tmp_path, world, monkeypatch):
@@ -269,7 +269,7 @@ def test_a_guest_that_never_started_is_not_waited_for(tmp_path, world, monkeypat
     no NeXTSTEP to reach. Waiting the whole timeout for one is what left a
     machine that could not be changed back on 14 September 2026."""
     monkeypatch.setattr(screen, "looks_alive", lambda: False)
-    monkeypatch.setattr(kiosk, "_press", lambda _key: True)
+    monkeypatch.setattr(kiosk.screen, "press", lambda _key: True)
     world.shutdown_after_polls = 1
 
     finished, told = kiosk.stop(tmp_path, sleep=world.sleep)
@@ -282,7 +282,7 @@ def test_a_guest_that_never_started_is_not_waited_for(tmp_path, world, monkeypat
 
 def test_a_blank_machine_that_will_not_even_quit_is_reported(tmp_path, world, monkeypatch):
     monkeypatch.setattr(screen, "looks_alive", lambda: False)
-    monkeypatch.setattr(kiosk, "_press", lambda _key: False)
+    monkeypatch.setattr(kiosk.screen, "press", lambda _key: False)
 
     finished, told = kiosk.stop(tmp_path, sleep=world.sleep)
 
@@ -308,7 +308,7 @@ def test_quitting_asks_previous_rather_than_the_guest(tmp_path, world, monkeypat
     """For a machine that never booted. The power key reaches NeXTSTEP, and
     where NeXTSTEP never started there is nothing for it to reach."""
     sent = []
-    monkeypatch.setattr(kiosk, "_press", lambda key: sent.append(key) or True)
+    monkeypatch.setattr(kiosk.screen, "press", lambda key: sent.append(key) or True)
     world.shutdown_after_polls = 1
 
     assert kiosk.quit_emulator(sleep=world.sleep) is True
@@ -326,7 +326,7 @@ def test_one_replaced_at_once_still_counts_as_gone(tmp_path, world, monkeypatch)
     """Nothing holds the console here, so a fresh emulator is often up within a
     second of the old one going. Asking whether one is running would see that
     and call it a failure. Measured on the machine on 14 September 2026."""
-    monkeypatch.setattr(kiosk, "_press", lambda _key: True)
+    monkeypatch.setattr(kiosk.screen, "press", lambda _key: True)
     ages = iter([3600, 3600, 2, 2, 2])
     monkeypatch.setattr(kiosk, "emulator_uptime_seconds", lambda: next(ages))
 
@@ -334,13 +334,13 @@ def test_one_replaced_at_once_still_counts_as_gone(tmp_path, world, monkeypatch)
 
 
 def test_a_quit_key_that_does_not_arrive_is_reported(tmp_path, world, monkeypatch):
-    monkeypatch.setattr(kiosk, "_press", lambda _key: False)
+    monkeypatch.setattr(kiosk.screen, "press", lambda _key: False)
 
     assert kiosk.quit_emulator(sleep=world.sleep) is False
 
 
 def test_an_emulator_that_will_not_go_is_reported(tmp_path, world, monkeypatch):
-    monkeypatch.setattr(kiosk, "_press", lambda _key: True)
+    monkeypatch.setattr(kiosk.screen, "press", lambda _key: True)
     world.shutdown_after_polls = None
 
     assert kiosk.quit_emulator(timeout=3, sleep=world.sleep) is False

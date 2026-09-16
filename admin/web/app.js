@@ -1483,6 +1483,73 @@ function wireTerminal() {
   if (!window_.hidden) askAtTheTerminal();
 }
 
+/* --- what the emulated machine is showing --------------------------------
+
+   The picture is the machine's own framebuffer, taken at the moment it is
+   asked for. Nothing here polls: a screen that redrew itself every few seconds
+   would be a window that costs the emulator something for as long as it is
+   open, and what a person wants is to look now. */
+
+/**
+ * Takes a picture of the emulated screen and puts it in the window.
+ *
+ * Fetched as a blob rather than pointed at, because the route takes the token
+ * and an img src carries no headers. The last one is released when the next
+ * arrives, so a window left open all day holds one picture rather than all of
+ * them.
+ */
+async function takeAPicture() {
+  const view = document.getElementById("shot");
+  const button = document.getElementById("shot-take");
+  if (!view) return;
+
+  button.disabled = true;
+  try {
+    const answer = await fetch("/api/screen", { cache: "no-store", headers: headers() });
+    if (answer.status === 403) return askForToken(t("ask.token.needed"));
+    if (!answer.ok) return showTheScreen(null);
+    showTheScreen(await answer.blob());
+  } catch {
+    showTheScreen(null);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+/**
+ * Puts a picture in the window, or says why there is none.
+ * @param {Blob} picture - What the service answered with, or null.
+ */
+function showTheScreen(picture) {
+  const view = document.getElementById("shot");
+  const note = document.getElementById("shot-note");
+
+  if (shownScreen) URL.revokeObjectURL(shownScreen);
+  shownScreen = picture ? URL.createObjectURL(picture) : null;
+
+  view.style.backgroundImage = shownScreen ? `url("${shownScreen}")` : "";
+  note.textContent = picture
+    ? ""
+    : t(lastStatus?.running === false ? "screenshot.idle" : "screenshot.failed");
+}
+
+/** The picture in the window, so the one before it can be released. */
+let shownScreen = null;
+
+/** Wires the window that shows the emulated screen. */
+function wireTheScreenshot() {
+  const window_ = document.querySelector('nx-window[name="screenshot"]');
+  const button = document.getElementById("shot-take");
+  if (!window_ || !button) return;
+
+  button.addEventListener("click", takeAPicture);
+  /* Opening it takes one straight away, because an empty window would ask
+     somebody to press a button to find out what they opened it for. */
+  window_.addEventListener("nx-open", takeAPicture);
+  window_.addEventListener("nx-close", () => showTheScreen(null));
+  if (!window_.hidden) takeAPicture();
+}
+
 /**
  * Changes the language the whole interface speaks.
  * @param {string} code - One of `en`, `de`, `fr`, `it`, `es` and `sv`.
@@ -1507,6 +1574,7 @@ wireMachines();
 wireBoard();
 wireOpening();
 wireTerminal();
+wireTheScreenshot();
 watchTheApplications();
 drawLanguages();
 drawMachines();

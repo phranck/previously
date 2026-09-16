@@ -50,6 +50,13 @@ readonly DISK_ARCHIVE_URL="https://archive.org/download/nextstep-3.3-hd-image-wi
 readonly NEXTSTEP_DIR="${HOME}/nextstep"
 readonly CONFIG_DIR="${HOME}/.config/previous"
 readonly CONFIG_FILE="${CONFIG_DIR}/previous.cfg"
+
+# Where the emulator runs, and therefore where it writes what it is asked to
+# write. Previous puts a screen grab in its working directory under a name of
+# its own choosing, and the admin tool reads that picture and takes the file
+# away again, which it can only do somewhere it is allowed to write. Started in
+# the home directory instead, the grabs pile up there and nothing removes them.
+readonly WORK_DIR="${HOME}/.cache/previously"
 # ~/.profile and not ~/.bash_profile. Bash reads only the first of the login
 # files that exists, and on Raspberry Pi OS that is ~/.profile, which pulls in
 # ~/.bashrc. Creating ~/.bash_profile would switch both off, including for SSH
@@ -506,9 +513,15 @@ ${AUTOSTART_MARKER}
 #
 # The file is on a tmpfs, so a board that has just booted never finds one and
 # always starts its emulator.
+#
+# The directory it runs in is where it writes a screen grab, and the admin tool
+# reads those and removes them. Its own rather than the home directory, so the
+# tool needs write access to that one directory and to nothing else of yours.
 if [ "\$XDG_VTNR" = 1 ] && [ -z "\$WAYLAND_DISPLAY" ]; then
   clear
   while [ -f ${HOLD_FILE} ]; do sleep 2; done
+  mkdir -p ${WORK_DIR}
+  cd ${WORK_DIR}
   exec cage -- /usr/bin/previous
 fi
 ${AUTOSTART_END}

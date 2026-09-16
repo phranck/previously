@@ -89,3 +89,18 @@ nx-terminal .xterm-viewport {
 nx-terminal .xterm-viewport::-webkit-scrollbar {
   display: none;
 }
+
+/* --- the screenshot window ------------------------------------------------ */
+
+/* The picture of the emulated screen, drawn to the width of the view and never
+   smoothed: it is the machine's own 1120 by 832 and every pixel in it was put
+   there one at a time. Contained rather than covering, because a screen with a
+   corner cut off answers a different question from the one that was asked. */
+.shot {
+  min-height: 100%;
+  background-color: var(--black);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  image-rendering: pixelated;
+}

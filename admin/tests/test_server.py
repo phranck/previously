@@ -315,9 +315,9 @@ def test_the_applications_are_there_and_say_what_they_open(service):
     apps = next(e for e in tree["entries"] if e["name"] == "Apps")
 
     assert [entry["name"] for entry in apps["entries"]] == [
-        "Config Editor.app", "Preferences.app", "Terminal.app"]
+        "Config Editor.app", "Preferences.app", "Screenshot.app", "Terminal.app"]
     assert [entry["opens"] for entry in apps["entries"]] == [
-        "editor", "preferences", "terminal"]
+        "editor", "preferences", "screenshot", "terminal"]
 
 
 def test_changing_the_machine_needs_the_token(service):
@@ -347,3 +347,45 @@ def test_a_machine_that_does_not_exist_is_refused(service):
         urllib.request.urlopen(request, timeout=5)
     assert raised.value.code == 409
     assert json.loads(raised.value.read())["reason"] == "machine.no-such"
+
+
+# -- a picture of the emulated screen -------------------------------------
+
+
+def test_a_picture_of_the_screen_needs_the_token(service, monkeypatch):
+    """The one reading that does. Everything else this service tells is about
+    the machine; a picture is about whoever is sitting at it."""
+    monkeypatch.setattr(server.grab, "take",
+                        lambda: pytest.fail("refused before it was taken"))
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        fetch(service + "/api/screen")
+
+    assert refused.value.code == 403
+
+
+def test_the_picture_arrives_as_a_png(service, monkeypatch):
+    monkeypatch.setattr(server.grab, "take", lambda: b"\x89PNG\r\n\x1a\npixels")
+    request = urllib.request.Request(service + "/api/screen")
+    request.add_header(HEADER, server.Handler.token.value)
+
+    with urllib.request.urlopen(request, timeout=5) as answer:
+        body = answer.read()
+        assert answer.status == 200
+        assert answer.headers["Content-Type"] == "image/png"
+        assert answer.headers["Content-Length"] == str(len(body))
+        assert answer.headers["Cache-Control"] == "no-store"
+    assert body == b"\x89PNG\r\n\x1a\npixels"
+
+
+def test_a_screen_that_cannot_be_read_says_so(service, monkeypatch):
+    """Rather than sending an empty picture, which a browser draws as a
+    broken one and nobody can tell from a black screen."""
+    monkeypatch.setattr(server.grab, "take", lambda: None)
+    request = urllib.request.Request(service + "/api/screen")
+    request.add_header(HEADER, server.Handler.token.value)
+
+    with pytest.raises(urllib.error.HTTPError) as failed:
+        urllib.request.urlopen(request, timeout=5)
+
+    assert failed.value.code == 503
