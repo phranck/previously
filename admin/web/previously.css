@@ -142,10 +142,16 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    that touch. Measured off the Keyboard module on the running system: the
    groove is one row of shadow with one of light inside it, and the chosen
    button is white where the others are grey. */
+/* The one child of the scroller, holding whichever module's panel is up. */
+.module-panel { min-height: 100%; }
+
 .panel { padding: 10px; }
 
 .group {
   margin: 0;
+  /* A fieldset will not go below its content's width without this, which is
+     the one thing about it that is not like any other box. */
+  min-width: 0;
   padding: 10px 12px 12px;
   border: 1px solid var(--dark);
   box-shadow: inset 1px 1px 0 var(--white), inset -1px -1px 0 var(--white);

@@ -181,7 +181,11 @@
     </div>
   </nx-scroller>
   <p class="module-name" id="module-name"></p>
+  <!-- One thing inside the scroller, because a scroller drives the child it
+       wraps and cannot drive whichever of two is showing. The modules'
+       panels live inside it and take turns. -->
   <nx-scroller>
+   <div class="module-panel">
     <div class="options" id="languages"></div>
     <div class="panel" id="sizes" hidden>
       <!-- A titled group holding a row of buttons that touch, which is how
@@ -193,6 +197,7 @@
         <div class="choices" id="size-choices"></div>
       </fieldset>
     </div>
+   </div>
   </nx-scroller>
 </nx-window>
 
