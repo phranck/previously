@@ -158,6 +158,32 @@ def pictures(documents):
     ]
 
 
+def remove_picture(documents, name):
+    """Takes one picture out of the folder pictures are kept in.
+
+    @param documents - pathlib.Path the tree's real part stands in, or None.
+    @param name - What the picture is called, as a name and not as a way to
+      one. Everything up to the last separator is thrown away, so a request
+      naming a path asks for that name inside this one folder.
+    @returns bool, whether a picture of that name was there and has gone.
+
+    Only a picture, and only one in that folder. Nothing else in there is this
+    service's to delete, and a deletion is the one thing it cannot take back.
+    """
+    where = picture_directory(documents)
+    if where is None or not name:
+        return False
+
+    wanted = where / pathlib.PurePosixPath(name).name
+    if not (wanted.is_file() and is_a_picture(wanted)):
+        return False
+    try:
+        wanted.unlink()
+    except OSError:
+        return False
+    return True
+
+
 def is_a_picture(path):
     """@param path - pathlib.Path or anything with a name.
     @returns bool, whether Preview would open it."""

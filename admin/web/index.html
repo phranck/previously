@@ -42,6 +42,7 @@
   <nx-menu-item for="grab" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
 
   <nx-menu-item for="preview" name="preview-save" data-t-key="menu.save.key" data-t="menu.save"></nx-menu-item>
+  <nx-menu-item for="preview" name="preview-delete" data-t-key="menu.delete.key" data-t="menu.delete"></nx-menu-item>
   <nx-menu-item for="preview" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
   <nx-menu-item for="terminal" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
   <nx-menu-item for="preferences" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
@@ -153,6 +154,13 @@
        that can stand alone has to be it. The page writes its wording, which is
        one of two depending on where the thing already lies. -->
   <nx-menu-item name="shelf" data-t="menu.keep"></nx-menu-item>
+</nx-menu>
+
+<!-- What can be done to a picture, on a right click over one. The one entry
+     it has, because opening it is the double click and saving it needs the
+     picture in hand, which only the window showing it has. -->
+<nx-menu name="picture-menu" context data-t-title="menu.picture">
+  <nx-menu-item name="delete" data-t="menu.delete"></nx-menu-item>
 </nx-menu>
 
 <!-- Preferences, as NeXTSTEP built one: a row of module pictures across the

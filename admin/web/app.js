@@ -38,6 +38,7 @@ const Art = {
   Cube: "nextcube",
   Station: "nextstation",
   Editor: "defaultAppIcon",
+  Picture: "tiff",
 };
 
 /** Which picture a machine wears, by the case the service says it comes in.
@@ -1095,7 +1096,10 @@ function wireMachines() {
     const thing = event.target.closest("nx-thing");
     if (!thing) return;
     event.preventDefault();
-    openMachineMenu(thing, event.clientX, event.clientY);
+    /* Each menu says whether what was clicked is its own, so the one that
+       belongs to it opens and nothing opens over something neither covers. */
+    openMachineMenu(thing, event.clientX, event.clientY)
+      || openPictureMenu(thing, event.clientX, event.clientY);
   });
 
   /* Two clicks, like every other tile: one does nothing on purpose. */
@@ -1647,6 +1651,16 @@ function watchTheFrontWindow() {
     document.querySelector(`nx-menu-item[name="${entry}"]`)
       ?.addEventListener("click", () => saveThePicture(view));
   }
+  document.querySelector('nx-menu-item[name="preview-delete"]')
+    ?.addEventListener("click", async () => {
+      const showing = shownPictures["preview-picture"];
+      if (!showing?.name) return;
+      /* The window goes with the picture, because a window showing something
+         that is no longer there is worse than no window. */
+      if (await deleteThePicture(showing.name)) {
+        document.querySelector('nx-window[name="preview"]')?.close();
+      }
+    });
 
   drawTheMenu();
 }
@@ -1679,6 +1693,53 @@ async function showInPreview(entry) {
   } catch {
     note.textContent = t("preview.empty");
   }
+}
+
+/**
+ * Asks whether a picture should go, and takes it away if so.
+ * @param {string} name - What it is called in the Pictures folder.
+ * @returns {Promise<boolean>} Whether it went.
+ *
+ * Asked first, because a picture that has gone does not come back and there
+ * is no wastebasket here to fish it out of.
+ */
+async function deleteThePicture(name) {
+  const sure = await askPanel({
+    title: t("ask.delete.title", { name }),
+    text: [t("ask.delete.loss")],
+    icon: Art.Picture,
+    confirm: t("button.delete"),
+  });
+  if (!sure) return false;
+
+  const answer = await tell("/api/picture/delete", { name });
+  if (!answer?.ok) return false;
+
+  /* The folder has one thing fewer in it than the viewer is drawing, and a
+     window showing what has gone is showing something that is not there. */
+  drawMachines();
+  return true;
+}
+
+/**
+ * Offers what can be done to a picture, where one was right clicked.
+ * @param {HTMLElement} thing - The icon under the pointer.
+ * @param {number} x @param {number} y - Where the pointer was.
+ * @returns {boolean} Whether this menu was the right one for what was clicked.
+ */
+function openPictureMenu(thing, x, y) {
+  const where = thing.getAttribute("value");
+  const entry = find(root, where);
+  if (entry?.kind !== "picture") return false;
+
+  const menu = document.querySelector('nx-menu[name="picture-menu"]');
+  menu.querySelector(".title").textContent = entry.name;
+  menu.querySelector('nx-menu-item[name="delete"]').onclick = async () => {
+    menu.close();
+    await deleteThePicture(entry.name);
+  };
+  menu.openAt(x, y);
+  return true;
 }
 
 /** Wires Preview, which holds nothing of its own once it is closed. */
