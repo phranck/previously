@@ -2,6 +2,8 @@
 
 Turns a freshly imaged Raspberry Pi 5 into a machine that boots straight into NeXTSTEP under the [Previous](https://previous.nextcommunity.net/) emulator. No desktop, no compiler, no window furniture: the screen shows the NeXT login panel and nothing else.
 
+What configures it afterwards is a web admin built in NeXTSTEP's own idiom, which the same script installs. The line to install all of it is on [previously.layered.work](https://previously.layered.work/).
+
 ## Requirements
 
 Raspberry Pi OS Lite, 64 bit, based on Debian 13 (trixie). The script refuses to run anywhere else, because the Previous package needs SDL3 and no earlier release carries it.
@@ -11,12 +13,14 @@ Raspberry Pi OS Lite, 64 bit, based on Debian 13 (trixie). The script refuses to
 On the Pi, as the user the machine will belong to. An SSH session is the comfortable way to do this.
 
 ```bash
-curl -fsSL https://layered.work/nextstep-rpi/install.sh | bash
+curl -fsSL https://previously.layered.work/install.sh | bash
 ```
 
 Not under `sudo`: it writes the configuration and the startup line into your home directory, and it raises its own privileges where it needs them, asking for your password once. The pipe does not get in the way of that, because `sudo` reads the password from the terminal device rather than from stdin.
 
-It installs `cage` and `7zip`, adds the signed [Window Maker Live archive](https://wmlive.rumbero.org/repo/) pinned to Previous alone, installs Previous from it, fetches a preinstalled NeXTSTEP 3.3 disk image, writes `~/.config/previous/previous.cfg`, enables console autologin, silences the boot and hands the first console to Previous.
+It installs `cage` and `7zip`, adds the signed [Window Maker Live archive](https://wmlive.rumbero.org/repo/) pinned to Previous alone, installs Previous from it, fetches a preinstalled NeXTSTEP 3.3 disk image, writes `~/.config/previous/previous.cfg`, installs the admin tool as a Debian package, enables console autologin, silences the boot and hands the first console to Previous.
+
+When it finishes it says where the admin tool is, which is `http://<your-pi>.local:2342`, and how to read the token it asks for once.
 
 Running it a second time changes nothing that is already in place. An existing disk image, an existing configuration file and an autostart entry that is already there are all left alone.
 
