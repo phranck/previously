@@ -154,6 +154,16 @@ body {
   image-rendering: pixelated;
 }
 
+/* A rectangle on its way from one place to another, which is how the desk
+   says that what was in there is now in here. An outline and nothing else:
+   filled, it would be a black flash across half the window. */
+.zooming {
+  position: fixed;
+  z-index: 85;
+  pointer-events: none;
+  border: 1px solid var(--black);
+}
+
 /* --- the two edges everything in this interface is built from ------------ */
 
 /* NeXTSTEP lit its surfaces from the top left, and every edge in the system is

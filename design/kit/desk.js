@@ -196,3 +196,97 @@ function restoreFront() {
   const front = open.find((window_) => window_.name === remembered) ?? open.at(-1);
   front?.raise();
 }
+
+/* --- pictures of things moving -------------------------------------------
+
+   Two of them, and both are pictures rather than the things themselves: an
+   icon on its way to the floor of the screen, and the way from a folder to
+   the place its contents will appear. Neither is asked about by anything: a
+   caller says where from and where to, and waits for it to land. */
+
+/** How long an icon takes to reach its place on the floor. Brisk, because it
+ *  is a thing moving rather than an effect: long enough to be followed by the
+ *  eye and short enough that anybody waits for it. */
+const FLIGHT_MS = 260;
+
+/** How many rectangles the way is drawn with, and how long they take. Few and
+ *  fast: the original drew them as quickly as the machine could and rubbed
+ *  each one out again, and what is left of that is a flicker rather than a
+ *  slide. */
+const ZOOM_STEPS = 8;
+const ZOOM_MS = 200;
+
+/** @returns {boolean} Whether the reader has asked for less movement. */
+function stillness() {
+  return matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * Sends a picture of an icon from one place to another.
+ * @param {string} icon - Which picture.
+ * @param {DOMRect} from - Where it starts.
+ * @param {DOMRect} to - Where it lands.
+ * @returns {Promise} Settled when it has landed.
+ *
+ * A transform and nothing else, so this costs the compositor and not the
+ * layout. Where the reader has asked for less movement there is no flight at
+ * all: the tile is simply there, which is what they asked for.
+ */
+function fly(icon, from, to) {
+  if (stillness()) return Promise.resolve();
+
+  const ghost = document.createElement("i");
+  ghost.className = "art flying";
+  showArt(ghost, icon);
+  ghost.style.left = to.left + "px";
+  ghost.style.top = to.top + "px";
+  ghost.style.width = to.width + "px";
+  ghost.style.height = to.height + "px";
+  document.body.append(ghost);
+
+  const across = (from.left + from.width / 2) - (to.left + to.width / 2);
+  const down = (from.top + from.height / 2) - (to.top + to.height / 2);
+  const smaller = to.width ? Math.max(0.2, from.width / to.width) : 1;
+
+  const flight = ghost.animate([
+    { transform: `translate(${across}px, ${down}px) scale(${smaller})` },
+    { transform: "translate(0, 0) scale(1)" },
+  ], { duration: FLIGHT_MS, easing: "ease-out" });
+
+  return flight.finished.catch(() => {}).finally(() => ghost.remove());
+}
+
+
+
+/**
+ * Draws the way from one place to another, as rectangles stepping outwards.
+ * @param {DOMRect} from - Where it starts, which is the mark around an icon.
+ * @param {DOMRect} to - Where it ends, which is the box about to hold what
+ *   was in that folder.
+ * @returns {Promise} Settled when the last rectangle has gone.
+ *
+ * An outline rather than a filled rectangle, because a filled one would be a
+ * black flash across half the window. It steps rather than slides, which is
+ * what the original looks like: each rectangle was drawn as fast as the
+ * machine could and rubbed out again.
+ *
+ * The geometry is animated rather than a transform, which is the one place in
+ * this kit where that is right: scaling a rectangle would scale its outline
+ * with it, and what is wanted is the same hairline at every size.
+ */
+function zoom(from, to) {
+  if (stillness()) return Promise.resolve();
+
+  const box = document.createElement("div");
+  box.className = "zooming";
+  document.body.append(box);
+
+  const drawing = box.animate([
+    { left: `${from.left}px`, top: `${from.top}px`,
+      width: `${from.width}px`, height: `${from.height}px` },
+    { left: `${to.left}px`, top: `${to.top}px`,
+      width: `${to.width}px`, height: `${to.height}px` },
+  ], { duration: ZOOM_MS, easing: `steps(${ZOOM_STEPS})` });
+
+  return drawing.finished.catch(() => {}).finally(() => box.remove());
+}

@@ -659,7 +659,7 @@ function open(path, asker) {
     /* Built from the path rather than by adding a step, because a folder on
        the shelf can be anywhere and the way there is not the way from here. */
     at = chainTo(entry.path);
-    return drawPlace();
+    return openFolder(asker);
   }
   if (entry.kind === "application") {
     /* An application this tool has is a window it already holds. One it does
@@ -669,6 +669,24 @@ function open(path, asker) {
     return window_ ? window_.open(asker) : notYet(appName(entry));
   }
   changeTo(entry.id);
+}
+
+/**
+ * Draws the place the viewer has moved to, with the way there where it is
+ * known.
+ * @param {HTMLElement} [asker] - The thing that was opened, if one was.
+ *
+ * The rectangles run from the mark around that thing to the band that is
+ * about to hold what was inside it, and the contents change when they arrive.
+ * Without a thing to start from, which is what a step of the path is, the
+ * place simply changes.
+ */
+async function openFolder(asker) {
+  const band = document.querySelector("#file-viewer nx-scroller:last-child");
+  if (!asker?.getBoundingClientRect || !band) return drawPlace();
+
+  await zoom(asker.getBoundingClientRect(), band.getBoundingClientRect());
+  drawPlace();
 }
 
 /**

@@ -33,11 +33,6 @@ class NxTile extends HTMLElement {
   }
 }
 
-/** How long an icon takes to reach its place on the floor. Brisk, because it
- *  is a thing moving rather than an effect: long enough to be followed by the
- *  eye and short enough that nobody waits for it. */
-const FLIGHT_MS = 260;
-
 /**
  * Where an application that is not in the dock puts its icon.
  *
@@ -86,39 +81,3 @@ class NxFloor extends HTMLElement {
     return tile;
   }
 }
-
-/**
- * Sends a picture of an icon from one place to another.
- * @param {string} icon - Which picture.
- * @param {DOMRect} from - Where it starts.
- * @param {DOMRect} to - Where it lands.
- * @returns {Promise} Settled when it has landed.
- *
- * A transform and nothing else, so this costs the compositor and not the
- * layout. Where the reader has asked for less movement there is no flight at
- * all: the tile is simply there, which is what they asked for.
- */
-function fly(icon, from, to) {
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return Promise.resolve();
-
-  const ghost = document.createElement("i");
-  ghost.className = "art flying";
-  showArt(ghost, icon);
-  ghost.style.left = to.left + "px";
-  ghost.style.top = to.top + "px";
-  ghost.style.width = to.width + "px";
-  ghost.style.height = to.height + "px";
-  document.body.append(ghost);
-
-  const across = (from.left + from.width / 2) - (to.left + to.width / 2);
-  const down = (from.top + from.height / 2) - (to.top + to.height / 2);
-  const smaller = to.width ? Math.max(0.2, from.width / to.width) : 1;
-
-  const flight = ghost.animate([
-    { transform: `translate(${across}px, ${down}px) scale(${smaller})` },
-    { transform: "translate(0, 0) scale(1)" },
-  ], { duration: FLIGHT_MS, easing: "ease-out" });
-
-  return flight.finished.catch(() => {}).finally(() => ghost.remove());
-}
-
