@@ -155,3 +155,57 @@ def test_every_word_the_board_can_report_has_a_sentence(english):
 
     for name in set(pi.THROTTLING_NOW.values()) | set(pi.THROTTLING_SINCE_BOOT.values()):
         assert f"throttling.{name}" in english
+
+
+#: One entry of the main menu, with whatever attributes it carries.
+MENU_ITEM = re.compile(r"<nx-menu-item\b([^>]*)>")
+
+#: What an entry says its letter and its words are called.
+KEY_OF = re.compile(r'data-t-key="([^"]+)"')
+WORDS_OF = re.compile(r'data-t="([^"]+)"')
+
+
+def menu_entries():
+    """@returns list of (letter key, words key or None) for the main menu.
+
+    The main menu only. A context menu's entries act on what was right
+    clicked, and no key press reaches them.
+    """
+    markup = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+    menu = re.search(r'<nx-menu name="menu".*?</nx-menu>', markup, re.S)
+    assert menu, "the main menu is not in the markup"
+
+    entries = []
+    for attributes in MENU_ITEM.findall(menu.group(0)):
+        letter = KEY_OF.search(attributes)
+        words = WORDS_OF.search(attributes)
+        assert letter, attributes
+        entries.append((letter.group(1), words.group(1) if words else None))
+    return entries
+
+
+def test_the_main_menu_has_entries_to_check():
+    assert len(menu_entries()) >= 5
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_no_two_menu_entries_share_a_letter(language):
+    """The page acts on the first entry whose letter matches, so a letter used
+    twice makes the second entry unreachable and says nothing about it."""
+    words = catalogue(language)
+    letters = [words[key] for key, _ in menu_entries() if key in words]
+
+    assert len(letters) == len(set(letters)), letters
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_every_menu_letter_is_in_the_word_beside_it(language):
+    """A shortcut whose letter is not in its word is one nobody will guess,
+    which is the thing this is for."""
+    words = catalogue(language)
+    for key, shown in menu_entries():
+        if shown is None:
+            continue
+        assert key in words, key
+        assert shown in words, shown
+        assert words[key].lower() in words[shown].lower(), (key, words[key], words[shown])

@@ -2,6 +2,11 @@
 
 NX_STRINGS.de = {
   /* --- the menus ------------------------------------------------------- */
+  "menu.info.key": "i",
+  "menu.pi.key": "r",
+  "menu.files.key": "d",
+  "menu.preferences.key": "p",
+  "menu.token.key": "t",
   "menu.files": "Dateien",
   "menu.token": "Token",
   "menu.machine": "Maschine",

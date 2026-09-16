@@ -7,6 +7,14 @@
 
 NX_STRINGS.en = {
   /* --- the menus ------------------------------------------------------- */
+  /* The letter beside each main-menu entry, which is a letter of the
+     word that entry shows. Distinct within the language, because the page
+     acts on the first entry whose letter matches. */
+  "menu.info.key": "i",
+  "menu.pi.key": "r",
+  "menu.files.key": "f",
+  "menu.preferences.key": "p",
+  "menu.token.key": "t",
   "menu.files": "Files",
   "menu.token": "Token",
   "menu.machine": "Machine",

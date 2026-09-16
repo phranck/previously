@@ -112,10 +112,10 @@ function fill(line, values) {
  * Writes every string in the document, or in part of it.
  * @param {ParentNode} [root] - Where to look. The whole document by default.
  *
- * Two attributes, because a string reaches the screen two ways: as the text of
- * an element, and as the title of a window or a menu. The markup carries the
- * key and no text at all, so nothing can show the wrong language even for a
- * moment.
+ * Three attributes, because a string reaches the screen three ways: as the
+ * text of an element, as the title of a window or a menu, and as the letter
+ * beside a menu entry. The markup carries the key and no text at all, so
+ * nothing can show the wrong language even for a moment.
  *
  * Runs once before the kit builds its elements, and again whenever the
  * language changes, which is why each case below is written to hold both
@@ -129,6 +129,9 @@ function translate(root = document) {
   }
   for (const element of root.querySelectorAll("[data-t-title]")) {
     writeTitle(element, t(element.dataset.tTitle));
+  }
+  for (const element of root.querySelectorAll("[data-t-key]")) {
+    writeKey(element, t(element.dataset.tKey));
   }
 }
 
@@ -163,6 +166,25 @@ function writeTitle(element, text) {
   const bar = element.querySelector(":scope > .title");
   if (bar) bar.textContent = text;
   else element.setAttribute("title", text);
+}
+
+/**
+ * Puts the letter beside a menu entry, and gives the page the letter to act on.
+ * @param {HTMLElement} element - A menu entry.
+ * @param {string} letter
+ *
+ * Both, because they are two views of one thing: the attribute is what the
+ * key handler compares a press against, and the span is what a person reads.
+ * Writing only one of them would leave a shortcut whose letter is not the
+ * letter on the screen, which is the whole of what this answers.
+ *
+ * The span exists once the kit has built the entry, and before that the
+ * attribute is what the kit builds it from, so this holds at either moment.
+ */
+function writeKey(element, letter) {
+  element.setAttribute("key", letter);
+  const shown = element.querySelector(":scope > .key");
+  if (shown) shown.textContent = letter;
 }
 
 /**
