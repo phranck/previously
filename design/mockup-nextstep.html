@@ -1279,11 +1279,10 @@ function restoreFront() {
  *  eye and short enough that anybody waits for it. */
 const FLIGHT_MS = 260;
 
-/** How many rectangles the way is drawn with, and how long they take. Few and
- *  fast: the original drew them as quickly as the machine could and rubbed
- *  each one out again, and what is left of that is a flicker rather than a
- *  slide. */
-const ZOOM_STEPS = 8;
+/** How many rectangles the way is drawn with, and over how long. Few and
+ *  fast: what is wanted is a run of outlines standing on the screen for a
+ *  moment, not a box growing. */
+const ZOOM_RECTANGLES = 8;
 const ZOOM_MS = 200;
 
 /** @returns {boolean} Whether the reader has asked for less movement. */
@@ -1329,36 +1328,59 @@ function fly(icon, from, to) {
 
 
 /**
- * Draws the way from one place to another, as rectangles stepping outwards.
+ * Draws the way from one place to another, as a run of rectangles.
  * @param {DOMRect} from - Where it starts, which is the mark around an icon.
  * @param {DOMRect} to - Where it ends, which is the box about to hold what
  *   was in that folder.
- * @returns {Promise} Settled when the last rectangle has gone.
+ * @returns {Promise} Settled when they have gone.
  *
- * An outline rather than a filled rectangle, because a filled one would be a
- * black flash across half the window. It steps rather than slides, which is
- * what the original looks like: each rectangle was drawn as fast as the
- * machine could and rubbed out again.
+ * Several, and none of them is rubbed out: each is drawn at its own size a
+ * moment after the last, so what stands on the screen is a run of nested
+ * outlines from the icon to the band, and they all go together at the end.
+ * That is what makes it read as a wave rather than as one box growing.
  *
- * The geometry is animated rather than a transform, which is the one place in
- * this kit where that is right: scaling a rectangle would scale its outline
- * with it, and what is wanted is the same hairline at every size.
+ * Outlines rather than filled rectangles, because filled ones would be a
+ * black flash across half the window.
  */
 function zoom(from, to) {
   if (stillness()) return Promise.resolve();
 
-  const box = document.createElement("div");
-  box.className = "zooming";
-  document.body.append(box);
+  const drawn = [];
+  let last = null;
+  for (let step = 1; step <= ZOOM_RECTANGLES; step += 1) {
+    const part = step / ZOOM_RECTANGLES;
+    const box = document.createElement("div");
+    box.className = "zooming";
+    box.style.left = between(from.left, to.left, part) + "px";
+    box.style.top = between(from.top, to.top, part) + "px";
+    box.style.width = between(from.width, to.width, part) + "px";
+    box.style.height = between(from.height, to.height, part) + "px";
+    box.style.opacity = "0";
+    document.body.append(box);
+    drawn.push(box);
 
-  const drawing = box.animate([
-    { left: `${from.left}px`, top: `${from.top}px`,
-      width: `${from.width}px`, height: `${from.height}px` },
-    { left: `${to.left}px`, top: `${to.top}px`,
-      width: `${to.width}px`, height: `${to.height}px` },
-  ], { duration: ZOOM_MS, easing: `steps(${ZOOM_STEPS})` });
+    /* Turned on rather than faded in: a rectangle is there or it is not. */
+    last = box.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: 1,
+      delay: (step - 1) * (ZOOM_MS / ZOOM_RECTANGLES),
+      fill: "forwards",
+    });
+  }
 
-  return drawing.finished.catch(() => {}).finally(() => box.remove());
+  return last.finished
+    .catch(() => {})
+    .finally(() => drawn.forEach((box) => box.remove()));
+}
+
+/**
+ * @param {number} start
+ * @param {number} end
+ * @param {number} part - Where between them, from zero to one.
+ * @returns {number} Rounded, because a rectangle drawn on half a pixel is a
+ *   grey line rather than a black one.
+ */
+function between(start, end, part) {
+  return Math.round(start + (end - start) * part);
 }
 
 /* --- nx-window ---------------------------------------------------------- */
