@@ -2,6 +2,11 @@
 
 NX_STRINGS.es = {
   /* --- the menus ------------------------------------------------------- */
+  "menu.info.key": "i",
+  "menu.pi.key": "r",
+  "menu.files.key": "a",
+  "menu.preferences.key": "p",
+  "menu.token.key": "t",
   "menu.files": "Archivos",
   "menu.token": "Token",
   "menu.machine": "Máquina",

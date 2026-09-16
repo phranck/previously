@@ -18,12 +18,16 @@
      stays as it is written are names: NeXT's, the machine's own, and the
      applications'. -->
 
+<!-- The letter beside an entry is a letter of the word that entry shows, so it
+     is a catalogue entry like the word itself. Raspberry Pi keeps its name in
+     every language and still needs a letter of its own, because whichever
+     letter Preferences takes cannot also be this one. -->
 <nx-menu name="menu" title="Cube" x="8" y="8">
-  <nx-menu-item opens="info" key="i" data-t="window.info"></nx-menu-item>
-  <nx-menu-item opens="pi" key="p">Raspberry Pi</nx-menu-item>
-  <nx-menu-item opens="files" key="d" data-t="menu.files"></nx-menu-item>
-  <nx-menu-item opens="preferences" key="e" data-t="app.preferences"></nx-menu-item>
-  <nx-menu-item name="token" key="t" data-t="menu.token"></nx-menu-item>
+  <nx-menu-item opens="info" data-t-key="menu.info.key" data-t="window.info"></nx-menu-item>
+  <nx-menu-item opens="pi" data-t-key="menu.pi.key">Raspberry Pi</nx-menu-item>
+  <nx-menu-item opens="files" data-t-key="menu.files.key" data-t="menu.files"></nx-menu-item>
+  <nx-menu-item opens="preferences" data-t-key="menu.preferences.key" data-t="app.preferences"></nx-menu-item>
+  <nx-menu-item name="token" data-t-key="menu.token.key" data-t="menu.token"></nx-menu-item>
 </nx-menu>
 
 <!-- The Workspace is always running and never carries the marks. The editor

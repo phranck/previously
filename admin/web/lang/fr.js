@@ -2,6 +2,11 @@
 
 NX_STRINGS.fr = {
   /* --- the menus ------------------------------------------------------- */
+  "menu.info.key": "i",
+  "menu.pi.key": "r",
+  "menu.files.key": "f",
+  "menu.preferences.key": "p",
+  "menu.token.key": "j",
   "menu.files": "Fichiers",
   "menu.token": "Jeton",
   "menu.machine": "Machine",
