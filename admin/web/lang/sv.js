@@ -33,6 +33,7 @@ NX_STRINGS.sv = {
   "app.preferences": "Preferences",
   "preferences.localization": "Lokala inställningar",
   "preferences.monitor": "Bildskärmsinställningar",
+  "size.title": "Storlek",
   "size.normal": "Normal",
   "size.large": "Stor",
   "size.largest": "Störst",

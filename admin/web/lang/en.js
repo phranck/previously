@@ -41,6 +41,7 @@ NX_STRINGS.en = {
   "app.preferences": "Preferences",
   "preferences.localization": "Localization Preferences",
   "preferences.monitor": "Monitor Preferences",
+  "size.title": "Size",
   "size.normal": "Normal",
   "size.large": "Large",
   "size.largest": "Largest",

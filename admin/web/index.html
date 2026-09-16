@@ -168,7 +168,7 @@
      one NeXTSTEP called Localization, and its picture and its name in each
      language are Preferences.app's own. -->
 <nx-window name="preferences" data-t-title="app.preferences" fixed
-           x="620" y="120" w="300" h="290" min-h="200" closed>
+           x="560" y="120" w="440" h="330" min-h="240" closed>
   <!-- A row of cells with a scroller under it, which is what NeXTSTEP drew:
        fourteen modules do not fit across a panel this wide, so the row scrolls
        and the chosen module's cell is white where the others are grey. Read off
@@ -183,7 +183,16 @@
   <p class="module-name" id="module-name"></p>
   <nx-scroller>
     <div class="options" id="languages"></div>
-    <div class="options" id="sizes" hidden></div>
+    <div class="panel" id="sizes" hidden>
+      <!-- A titled group holding a row of buttons that touch, which is how
+           Preferences offers a choice of a few: its Keyboard module puts the
+           repeat delay and the repeat rate in two of these. Each button shows
+           a letter at the size it sets, so the choice shows its own answer. -->
+      <fieldset class="group">
+        <legend data-t="size.title"></legend>
+        <div class="choices" id="size-choices"></div>
+      </fieldset>
+    </div>
   </nx-scroller>
 </nx-window>
 
