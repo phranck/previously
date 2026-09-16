@@ -44,6 +44,7 @@
                             tighter: 96 between the two folders on its own */
   --slot-w: 66px;        /* hilite.tiff is 66 by 52, so the slot is too */
   --slot-h: 52px;
+  --pane-pad: 8px;       /* between a window's frame and what is in it */
   --reading-gap: 5px;    /* between one reading and the next, anywhere */
   --portrait: 112px;     /* the picture beside a panel's readings */
   --portrait-gap: 14px;  /* between that picture and those readings */

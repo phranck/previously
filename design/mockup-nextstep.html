@@ -54,6 +54,7 @@
                             tighter: 96 between the two folders on its own */
   --slot-w: 66px;        /* hilite.tiff is 66 by 52, so the slot is too */
   --slot-h: 52px;
+  --pane-pad: 8px;       /* between a window's frame and what is in it */
   --reading-gap: 5px;    /* between one reading and the next, anywhere */
   --portrait: 112px;     /* the picture beside a panel's readings */
   --portrait-gap: 14px;  /* between that picture and those readings */
@@ -239,7 +240,7 @@ nx-window .title { flex: 1; text-align: center; font-weight: bold; }
    panel, so it is what a window does rather than what one window does. */
 nx-window .pane {
   flex: 1 1 auto;
-  padding: 8px;
+  padding: var(--pane-pad);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -961,6 +962,13 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
   border-top: 1px solid var(--dark);
   flex: 0 0 auto;
 }
+
+/* A row of buttons at the foot of a window that can be resized brings its own
+   air with it. The pane gives such a window no padding at the bottom, because
+   the File Viewer's bands are meant to run into the resize bar, and a button
+   is not a band: without this it sits on the bar with its lower edge cut off.
+   */
+nx-window:not([fixed]) .buttons:last-child { padding-bottom: var(--pane-pad); }
 
 .note { margin: 8px 0 0; font-size: 11px; flex: 0 0 auto; }
 /* A note with nothing in it takes no room at all. Its margin would otherwise

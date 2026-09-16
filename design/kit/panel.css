@@ -86,6 +86,13 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
   flex: 0 0 auto;
 }
 
+/* A row of buttons at the foot of a window that can be resized brings its own
+   air with it. The pane gives such a window no padding at the bottom, because
+   the File Viewer's bands are meant to run into the resize bar, and a button
+   is not a band: without this it sits on the bar with its lower edge cut off.
+   */
+nx-window:not([fixed]) .buttons:last-child { padding-bottom: var(--pane-pad); }
+
 .note { margin: 8px 0 0; font-size: 11px; flex: 0 0 auto; }
 /* A note with nothing in it takes no room at all. Its margin would otherwise
    hold a gap open under whatever is above it, which in the File Viewer is the
