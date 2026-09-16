@@ -716,7 +716,8 @@ async function visitFromTheShelf(where, thing) {
   if (!from || !landing) return;
 
   landing.style.visibility = "hidden";
-  await fly(landing.getAttribute("icon"), from, landing.getBoundingClientRect());
+  await fly(landing.getAttribute("icon"), from, landing.getBoundingClientRect(),
+            NEAR_FLIGHT_MS);
   landing.style.visibility = "";
 }
 

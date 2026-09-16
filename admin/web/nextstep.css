@@ -47,6 +47,8 @@
   --slot-w: 66px;        /* hilite.tiff is 66 by 52, so the slot is too */
   --slot-h: 52px;
   --reading-gap: 5px;    /* between one reading and the next, anywhere */
+  --portrait: 112px;     /* the picture beside a panel's readings */
+  --portrait-gap: 14px;  /* between that picture and those readings */
   --band-gap: 6px;       /* between two framed bands of the File Viewer, which
                             is what the original leaves between its boxes */
   --slot-top: 2px;       /* air above the icon, inside the mark */
@@ -867,14 +869,18 @@ nx-viewer > nx-scroller:last-child { border-bottom: 0; }
   min-height: 0;
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 14px;
+  gap: var(--portrait-gap);
 }
 
 /* A second group of readings under the picture is the same list continued, so
-   the step between the two groups is the step inside them. Without this the
-   pane puts them flush against each other and the one join in the window is
-   tighter than every other. */
-.info-body + .readings { margin-top: var(--reading-gap); }
+   the step between the two groups is the step inside them, and it stands in
+   the same column. Indented by what the picture and its gap take, every label
+   in the window ends on one line and every field is the same length, which is
+   what makes seven readings read as one list rather than as two. */
+.info-body + .readings {
+  margin-top: var(--reading-gap);
+  padding-left: calc(var(--portrait) + var(--portrait-gap));
+}
 
 nx-portrait {
   display: grid;
@@ -883,7 +889,7 @@ nx-portrait {
   align-self: start;
   gap: 6px;
   padding: 8px 6px;
-  width: 112px;
+  width: var(--portrait);
   background: var(--light);
 }
 nx-portrait .icon { width: 48px; height: 48px; background-size: contain; }
