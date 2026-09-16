@@ -45,6 +45,8 @@
   --slot-w: 66px;        /* hilite.tiff is 66 by 52, so the slot is too */
   --slot-h: 52px;
   --reading-gap: 5px;    /* between one reading and the next, anywhere */
+  --portrait: 112px;     /* the picture beside a panel's readings */
+  --portrait-gap: 14px;  /* between that picture and those readings */
   --band-gap: 6px;       /* between two framed bands of the File Viewer, which
                             is what the original leaves between its boxes */
   --slot-top: 2px;       /* air above the icon, inside the mark */
