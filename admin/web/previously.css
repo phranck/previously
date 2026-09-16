@@ -148,18 +148,51 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 .panel { padding: 10px; }
 
 .group {
+  position: relative;
   margin: 0;
   /* A fieldset will not go below its content's width without this, which is
      the one thing about it that is not like any other box. */
   min-width: 0;
-  padding: 10px 12px 12px;
-  border: 1px solid var(--dark);
-  box-shadow: inset 1px 1px 0 var(--white), inset -1px -1px 0 var(--white);
+  /* The groove runs through the middle of the title, so the content begins
+     that half plus the air the original leaves under it. */
+  padding: calc(var(--line) / 2 + 10px) 12px 12px;
+  border: 0;
 }
 
+/* The groove, drawn here rather than as the fieldset's own border.
+   A browser places that border itself, from the height of the legend, and
+   where its arithmetic falls on half a pixel the line comes out as a blend of
+   two greys across two rows. Measured in Chrome 152: sharp at a title height
+   of 17 and soft at 16, 18 and 20, which is a rule about the browser rather
+   than about this design. Drawn from a length this stylesheet states, it lands
+   where it is put, in every browser and at every size. */
+.group::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--line) / 2) 0 0;
+  border: 1px solid var(--dark);
+  box-shadow: inset 1px 1px 0 var(--white), inset -1px -1px 0 var(--white);
+  pointer-events: none;
+}
+
+/* The title, centred, sitting over the groove and carrying the face colour so
+   that both rows of it stop at the words. Its own padding is how far short of
+   them they stop. A fieldset cuts its border for a legend and leaves an inset
+   shadow alone, so the light row would otherwise run on behind the word.
+   Taken out of the flow as well, because a legend left in it puts the
+   fieldset's padding box underneath itself, and everything positioned against
+   that box then begins half a title too low. */
 .group legend {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin-inline: auto;
   padding: 0 6px;
   font-size: var(--text-size);
+  line-height: var(--line);
+  background: var(--light);
 }
 
 /* The buttons of one group, touching, in the middle of it. */

@@ -70,6 +70,14 @@
      measured off the running system, all of them have a capital 9 pixels
      tall. */
   --text-size: 12px;
+  /* A whole number of pixels, and an even one. NeXTSTEP drew on the pixel
+     grid: it had four greys and no half of one, so a line that lands between
+     two rows comes out as a blend of the two and reads soft beside everything
+     around it. A ratio such as 1.4 gives 16.8 here, and every box measured off
+     a line of text then sits on a fraction, which travels down through
+     whatever it contains. Even, because a box that centres something in this
+     height halves it. */
+  --line: 16px;
   /* The one thing it set smaller, whose capital is 7. */
   --status-size: 10px;
 
@@ -118,7 +126,7 @@ body {
   margin: 0;
   height: 100vh;
   background: var(--desktop);
-  font: var(--text-size)/1.4 var(--font);
+  font: var(--text-size)/var(--line) var(--font);
   color: var(--black);
   overflow: hidden;
   /* A workspace is not a document. The prefixed form is written out because
