@@ -208,24 +208,38 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 }
 
 /* One of them. The same raised cell as a module picture, which is the one
-   shape this interface gives anything that can be chosen. */
+   shape this interface gives anything that can be chosen.
+
+   As tall as what stands in it and its padding, rather than a height written
+   down: the letter is the size that button sets, so the tallest of them is
+   what the row is built from, and a number here would be that number plus
+   whatever air was left over. They are in a flex row, so all five take the
+   height of the tallest. */
 .choice {
   min-width: 60px;
-  height: 52px;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--white) var(--black) var(--black) var(--white);
-  box-shadow: inset -1px -1px 0 var(--dark);
+  border-color: var(--raised-sides);
+  box-shadow: var(--raised-inside);
   cursor: default;
-  padding: 0 8px;
+  padding: 4px 8px;
 }
 .choice[chosen] { background: var(--white); }
 
 /* The letter each one shows, at the size that button sets, so somebody can
-   see what they are choosing rather than read about it, with its name under
-   it because a letter alone says which is larger and not what it is called. */
-.choice .sample { line-height: 1.1; }
-.choice .choice-name { font-size: var(--status-size); }
+   see what they are choosing rather than read about it, with the figure under
+   it because a letter alone says which is larger and not by how much.
+
+   The letter takes a line exactly its own height, so each of the five is a
+   whole number of pixels: a ratio such as 1.1 gives 13.2 and 16.5 and 19.8,
+   and a box measured off one of those sits on a fraction. The figure takes a
+   line of its own for the same reason, since it is set smaller than the
+   interface and the interface's line reserves six pixels it does not use. */
+.choice .sample { line-height: 1; }
+.choice .choice-name {
+  font-size: var(--status-size);
+  line-height: var(--status-line);
+}

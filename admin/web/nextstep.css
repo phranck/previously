@@ -72,6 +72,10 @@
   --line: 16px;
   /* The one thing it set smaller, whose capital is 7. */
   --status-size: 10px;
+  /* Its own line, because --line is measured for the interface's own type and
+     reserves six pixels this one does not use. Whole and even, for the reason
+     stated there. */
+  --status-line: 12px;
 
   --row: 20px;           /* the menu raster, and the height of one entry */
   --title-height: 21px;  /* 19 px of bar and 2 px of the shadow under it */
