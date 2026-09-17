@@ -167,17 +167,17 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    than about this design. Drawn from a length this stylesheet states, it lands
    where it is put, in every browser and at every size.
 
-   The kit's sunken edge, read from the two values base.css states it as. A
-   groove is recessed, so it is lit like everything else here: shadow above and
-   to the left, light below and to the right. Anything else is a third edge
-   beside the two this interface is built from. */
+   The kit's groove, read from the two values base.css states it as: two
+   rectangles lit against each other, which is a notch cut into a surface that
+   stays where it is. Not the sunken edge, which says the surface inside it
+   sits lower, and which this group's does not. */
 .group::before {
   content: "";
   position: absolute;
   inset: calc(var(--line) / 2) 0 0;
   border: 1px solid;
-  border-color: var(--sunken-sides);
-  box-shadow: var(--sunken-inside);
+  border-color: var(--groove-sides);
+  box-shadow: var(--groove-inside);
   pointer-events: none;
 }
 
