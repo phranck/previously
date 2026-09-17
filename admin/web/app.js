@@ -1273,15 +1273,16 @@ function drawLanguages() {
    a large panel at a low resolution they are small. So the same desk is drawn
    larger rather than measured again.
 
-   Whole and half steps only: every icon is a bitmap, and anything between
-   draws them across pixel boundaries. */
+   In quarters, which is a finer choice than the bitmaps are exact at. Measured
+   against the sizes they are actually drawn at: a quarter step puts five of
+   them on half pixels, a half step puts two there, and only 1 and 2 leave
+   every one whole. They carry image-rendering: pixelated, so a row of their
+   own pixels is doubled rather than smeared. Somebody at a large panel needs a
+   size between too small and too large more than they need a picture that is
+   exact at two settings out of five. */
 
-/** What the interface can be drawn at, by the name each step carries. */
-const SIZES = [
-  { name: "size.normal", scale: 1 },
-  { name: "size.large", scale: 1.5 },
-  { name: "size.largest", scale: 2 },
-];
+/** What the interface can be drawn at. */
+const SIZES = [1, 1.25, 1.5, 1.75, 2];
 
 /** Where the choice is kept. The browser's, like the language: how large one
  *  person needs this drawn is not a property of the machine. */
@@ -1290,7 +1291,7 @@ const SIZE_KEY = "previously:size";
 /** @returns {number} The size last chosen, or the original's own. */
 function chosenSize() {
   const saved = Number(localStorage.getItem(SIZE_KEY));
-  return SIZES.some((size) => size.scale === saved) ? saved : 1;
+  return SIZES.includes(saved) ? saved : 1;
 }
 
 /**
@@ -1311,14 +1312,18 @@ function drawAtSize(scale) {
  *
  * Each button shows a letter at the size it sets, which is what Preferences
  * does wherever a setting can be shown rather than described: its Keyboard
- * module draws the repeat rate as letters at four spacings. The name is under
- * the letter, because a letter alone says which is larger and not what any of
- * them is called.
+ * module draws the repeat rate as letters at four spacings.
+ *
+ * Under the letter is the figure the step is, because a letter alone says
+ * which is larger and not by how much. Five steps also outgrow a set of names:
+ * Normal, Large and Largest is a scale that does not extend, and two more
+ * words for the gaps would be a vocabulary rather than a scale. The figure
+ * reads the same in every language, and 100% says which one is the original.
  */
 function drawSizes() {
   const row = document.getElementById("size-choices");
   if (!row) return;
-  row.replaceChildren(...SIZES.map(({ name, scale }) => {
+  row.replaceChildren(...SIZES.map((scale) => {
     const choice = document.createElement("div");
     choice.className = "choice";
     choice.toggleAttribute("chosen", scale === chosenSize());
@@ -1327,12 +1332,12 @@ function drawSizes() {
     sample.className = "sample";
     sample.textContent = "A";
     /* The size this button sets, shown at that size against the interface's
-       own, so the three of them read as one scale. */
+       own, so the five of them read as one scale. */
     sample.style.fontSize = `calc(var(--text-size) * ${scale})`;
 
     const under = document.createElement("div");
     under.className = "choice-name";
-    under.textContent = t(name);
+    under.textContent = Math.round(scale * 100) + " %";
 
     choice.append(sample, under);
     choice.addEventListener("click", () => drawAtSize(scale));
