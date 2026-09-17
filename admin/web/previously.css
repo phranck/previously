@@ -165,13 +165,19 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    two greys across two rows. Measured in Chrome 152: sharp at a title height
    of 17 and soft at 16, 18 and 20, which is a rule about the browser rather
    than about this design. Drawn from a length this stylesheet states, it lands
-   where it is put, in every browser and at every size. */
+   where it is put, in every browser and at every size.
+
+   The kit's sunken edge, read from the two values base.css states it as. A
+   groove is recessed, so it is lit like everything else here: shadow above and
+   to the left, light below and to the right. Anything else is a third edge
+   beside the two this interface is built from. */
 .group::before {
   content: "";
   position: absolute;
   inset: calc(var(--line) / 2) 0 0;
-  border: 1px solid var(--dark);
-  box-shadow: inset 1px 1px 0 var(--white), inset -1px -1px 0 var(--white);
+  border: 1px solid;
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
   pointer-events: none;
 }
 
