@@ -189,22 +189,34 @@ body {
    differs by side: the lit side of a sunken surface carries two, its shadowed
    side one, and a raised surface is that turned around.
    Sunken: outer #555555, inner #000000 on top and left, #ffffff below and right.
-   Raised: #ffffff on top and left, outer #000000, inner #555555 below and right. */
+   Raised: #ffffff on top and left, outer #000000, inner #555555 below and right.
+
+   Each is two values rather than a rule alone, because a class cannot be put
+   on a pseudo-element and some surfaces are drawn as one. Whatever draws an
+   edge reads it from here, so there is one statement of what sunken means and
+   one of what raised means. */
+:root {
+  --sunken-sides: var(--dark) var(--white) var(--white) var(--dark);
+  --sunken-inside: inset 1px 1px 0 var(--black);
+  --raised-sides: var(--white) var(--black) var(--black) var(--white);
+  --raised-inside: inset -1px -1px 0 var(--dark);
+}
+
 .sunken,
 nx-portrait,
 nx-field,
 nx-scroller {
   border: 1px solid;
-  border-color: var(--dark) var(--white) var(--white) var(--dark);
-  box-shadow: inset 1px 1px 0 var(--black);
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
 }
 
 .raised,
 button,
 nx-tile {
   border: 1px solid;
-  border-color: var(--white) var(--black) var(--black) var(--white);
-  box-shadow: inset -1px -1px 0 var(--dark);
+  border-color: var(--raised-sides);
+  box-shadow: var(--raised-inside);
 }
 
 /* --- nx-window ---------------------------------------------------------- */
