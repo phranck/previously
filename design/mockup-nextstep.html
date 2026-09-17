@@ -167,24 +167,36 @@ body {
   border: 1px solid var(--black);
 }
 
-/* --- the two edges everything in this interface is built from ------------ */
+/* --- the three edges everything in this interface is built from ---------- */
 
 /* NeXTSTEP lit its surfaces from the top left, and every edge in the system is
-   one of these two. Both are measured off the original, and the count of lines
-   differs by side: the lit side of a sunken surface carries two, its shadowed
-   side one, and a raised surface is that turned around.
+   one of these three. All are measured off the original.
+
+   The first two say that a surface sits lower or higher than what surrounds
+   it, and the count of lines differs by side: the lit side of a sunken surface
+   carries two, its shadowed side one, and a raised surface is that turned
+   around.
    Sunken: outer #555555, inner #000000 on top and left, #ffffff below and right.
    Raised: #ffffff on top and left, outer #000000, inner #555555 below and right.
 
+   The third is a notch cut into a surface that stays where it is, which is
+   what a titled group of buttons is drawn with. Two rectangles lit against
+   each other: the outer one is the wall going down, shadowed on the side the
+   light comes from, and the inner one is the wall coming back up, which is the
+   same thing reversed. Both sides of it are one line.
+   Groove: outer #555555 on top and left with #ffffff below and right, and
+   inside that #ffffff on top and left with #555555 below and right.
+
    Each is two values rather than a rule alone, because a class cannot be put
    on a pseudo-element and some surfaces are drawn as one. Whatever draws an
-   edge reads it from here, so there is one statement of what sunken means and
-   one of what raised means. */
+   edge reads it from here, so there is one statement of what each one means. */
 :root {
   --sunken-sides: var(--dark) var(--white) var(--white) var(--dark);
   --sunken-inside: inset 1px 1px 0 var(--black);
   --raised-sides: var(--white) var(--black) var(--black) var(--white);
   --raised-inside: inset -1px -1px 0 var(--dark);
+  --groove-sides: var(--dark) var(--white) var(--white) var(--dark);
+  --groove-inside: inset 1px 1px 0 var(--white), inset -1px -1px 0 var(--dark);
 }
 
 .sunken,
