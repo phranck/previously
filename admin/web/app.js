@@ -1284,14 +1284,20 @@ function drawLanguages() {
 /** What the interface can be drawn at. */
 const SIZES = [1, 1.25, 1.5, 1.75, 2];
 
+/** What a browser that has never been told draws it at. Not the original's
+ *  own, because that is measured for a screen 1120 across and this is read on
+ *  panels several times that, where a first look at 100% is an interface
+ *  somebody has to go and enlarge before they can use it. */
+const SIZE_AT_FIRST = 1.25;
+
 /** Where the choice is kept. The browser's, like the language: how large one
  *  person needs this drawn is not a property of the machine. */
 const SIZE_KEY = "previously:size";
 
-/** @returns {number} The size last chosen, or the original's own. */
+/** @returns {number} The size last chosen, or the one a first look takes. */
 function chosenSize() {
   const saved = Number(localStorage.getItem(SIZE_KEY));
-  return SIZES.includes(saved) ? saved : 1;
+  return SIZES.includes(saved) ? saved : SIZE_AT_FIRST;
 }
 
 /**
