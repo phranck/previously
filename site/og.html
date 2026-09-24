@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<!--
+  The source of site/og.png, which is what a link to this page unfolds into on
+  a social network or in a chat window.
+
+  It is a page rather than a drawing so the preview is set in the same face and
+  the same colours as the site, and so changing either changes both. Take the
+  picture at exactly 1200 by 630, which is the size those services crop to:
+
+    python3 -m http.server 8193
+    (open /site/og.html, screenshot the viewport at 1200 by 630)
+
+  README.md says the same in one line.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Previously, as a link preview</title>
+<link rel="stylesheet" href="site.css">
+<style>
+  /* The card is the whole viewport, and the viewport is the crop. */
+  html, body { margin: 0; }
+
+  /* Everything on this card lifts off the colour the same way: a tight shadow
+     that sets the shape off the ground and a wide one that gives it somewhere
+     to sit. Stated once as a pair of complete shadow arguments, because
+     `text-shadow` and `drop-shadow()` take them in the same order, so the
+     letters and the drawings cannot end up floating at two heights.
+
+     The workspace is dark, so the colour is a deeper version of it and never
+     black, which would read as soot rather than as shade. */
+  :root {
+    --lift-near: 0 2px 4px rgb(16 16 28 / 55%);
+    --lift-far: 0 8px 22px rgb(16 16 28 / 60%);
+    --lift-near-soft: 0 2px 4px rgb(16 16 28 / 28%);
+    --lift-far-soft: 0 6px 16px rgb(16 16 28 / 30%);
+  }
+
+  body {
+    width: 1200px;
+    height: 630px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-6);
+    padding: var(--space-12);
+    /* The workspace colour, sinking a little towards the bottom edge. The
+       darker end is mixed from the same token rather than written out, so
+       there is one colour here and a rule about it. */
+    background: linear-gradient(
+      180deg,
+      var(--next-desktop),
+      color-mix(in oklab, var(--next-desktop) 82%, black)
+    );
+    color: var(--next-white);
+    text-align: center;
+    overflow: hidden;
+  }
+
+  /* One machine turning into another, which is the whole of what this project
+     does. The Pi is on the left because that is what somebody starts with. */
+  .journey {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  /* All three stand off the colour together. A drop shadow follows the shape
+     after a mask has cut it, so the arrow's slits stay open in its shadow
+     rather than filling in behind them. */
+  .journey > * {
+    filter: drop-shadow(var(--lift-near)) drop-shadow(var(--lift-far));
+  }
+
+  .journey__pi {
+    width: 132px;
+    height: 132px;
+  }
+
+  .journey__next {
+    width: 148px;
+    height: 148px;
+  }
+
+  /* Leaning the way it is travelling, at the angle the italic of this face
+     leans, so the arrow and the struck out word below it slant alike. It is
+     drawn at 210 by 140 and shown smaller, because it connects the two marks
+     rather than competing with them. */
+  .journey__arrow {
+    width: 150px;
+    height: 100px;
+    transform: skewX(-12deg);
+  }
+
+  /* The mark carries the name, and the sentence under it says what the name
+     is. A preview is read at the size of a thumbnail, so there is little on it
+     and all of it is large. */
+  .name {
+    font-size: 78px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    /* The workspace is dark, so the shadow is a deeper version of it rather
+       than black, and it carries a tight one under a wide one: the first sets
+       the letters off the colour, the second gives them somewhere to sit. */
+    text-shadow: 0 2px 4px rgb(16 16 28 / 55%), 0 8px 22px rgb(16 16 28 / 60%);
+  }
+
+  h1 {
+    font-size: 48px;
+    font-weight: 600;
+    max-width: 24ch;
+    /* The same shadow as the name above, at half its weight, so the two sit at
+       two depths rather than at one. */
+    text-shadow: 0 2px 4px rgb(16 16 28 / 28%), 0 6px 16px rgb(16 16 28 / 30%);
+  }
+
+  /* The word it nearly said. Struck through, leaning, and stepped back, so the
+     joke reads as a correction rather than as a word somebody left in. */
+  h1 s {
+    color: var(--on-workspace-soft);
+    font-style: italic;
+    text-decoration-thickness: 0.06em;
+  }
+</style>
+</head>
+<body>
+  <div class="journey">
+    <img class="journey__pi" src="raspberry-pi.png" alt="">
+
+    <!--
+      An arrow caught mid flight, drawn rather than blurred. Speed is told by
+      what is around the shape instead of by softening it: three strokes
+      trailing behind it, and four thin slits cut straight through everything,
+      which is how a drawing says movement without going out of focus.
+
+      Drawn here rather than taken from the icon family, because no interface
+      icon set carries this and it is an illustration rather than a control.
+    -->
+    <svg class="journey__arrow" width="210" height="140" viewBox="0 0 210 140"
+         aria-hidden="true">
+      <defs>
+        <!-- What every trailing streak fades along: solid where it leaves the
+             arrow, gone by the time it reaches the back. Declared in the
+             box of whatever uses it, so each streak fades over its own
+             length rather than over the whole drawing. -->
+        <linearGradient id="wake" x1="0" x2="1">
+          <stop offset="0" stop-color="currentColor" stop-opacity="0"/>
+          <stop offset="0.55" stop-color="currentColor" stop-opacity="0.12"/>
+          <stop offset="1" stop-color="currentColor" stop-opacity="0.4"/>
+        </linearGradient>
+
+        <!-- White is kept and black is cut away, so the four bars come out as
+             four slits of workspace running across the arrow.
+
+             Spread over the whole height of the arrow rather than over the
+             shaft, which is the part of it the head reaches past. The arrow
+             stands between y=14 and y=126, so four slits five high leave five
+             bands of 18.4, and the set is symmetrical about y=70. -->
+        <mask id="slits">
+          <rect width="210" height="140" fill="white"/>
+          <rect x="-10" y="32.4" width="230" height="5" fill="black"/>
+          <rect x="-10" y="55.8" width="230" height="5" fill="black"/>
+          <rect x="-10" y="79.2" width="230" height="5" fill="black"/>
+          <rect x="-10" y="102.6" width="230" height="5" fill="black"/>
+        </mask>
+      </defs>
+
+      <g fill="currentcolor" mask="url(#slits)">
+        <!-- Every edge at the back of the arrow drags a streak behind it, and
+             each one starts exactly where its edge is and keeps that edge's
+             height. There are three, because the arrow has three edges facing
+             backwards: the end of the shaft, and the two barbs of the head. -->
+        <rect x="0" y="48" width="66" height="44" fill="url(#wake)"/>
+        <rect x="62" y="14" width="72" height="8" fill="url(#wake)"/>
+        <rect x="62" y="118" width="72" height="8" fill="url(#wake)"/>
+
+        <!-- The arrow, as one path: a shaft running into the head, with the
+             tip a point rather than a rounded corner, because a blunt arrow
+             reads as an arrow that has stopped. -->
+        <path d="M66 48 H134 V14 L206 70 L134 126 V92 H66 Z"/>
+      </g>
+    </svg>
+
+    <img class="journey__next" src="next-cube.png" alt="">
+  </div>
+
+  <div class="name">Previously</div>
+  <h1>A Raspberry Pi that <s>boosts</s>... boots directly into NeXTSTEP</h1>
+</body>
+</html>

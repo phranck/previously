@@ -2,7 +2,7 @@
 
 Turns a freshly imaged Raspberry Pi 5 into a machine that boots straight into NeXTSTEP under the [Previous](https://previous.nextcommunity.net/) emulator. No desktop, no compiler, no window furniture: the screen shows the NeXT login panel and nothing else.
 
-What configures it afterwards is a web admin built in NeXTSTEP's own idiom, which the same script installs. The line to install all of it is on [previously.layered.work](https://previously.layered.work/).
+What configures it afterwards is a web admin built in NeXTSTEP's own idiom, which the same script installs. The line to install all of it is on [previous.li](https://previous.li/).
 
 ## Requirements
 
@@ -13,7 +13,7 @@ Raspberry Pi OS Lite, 64 bit, based on Debian 13 (trixie). The script refuses to
 On the Pi, as the user the machine will belong to. An SSH session is the comfortable way to do this.
 
 ```bash
-curl -fsSL https://previously.layered.work/install.sh | bash
+curl -fsSL https://previous.li/install.sh | bash
 ```
 
 Not under `sudo`: it writes the configuration and the startup line into your home directory, and it raises its own privileges where it needs them, asking for your password once. The pipe does not get in the way of that, because `sudo` reads the password from the terminal device rather than from stdin.
@@ -39,7 +39,29 @@ The script reads no file beside itself, so a single copy at a URL is the whole d
 - All the work sits in functions, and nothing executes until `main` is called on the last line. A download cut short runs nothing at all rather than half of it.
 - Nothing in it reads from stdin, which is where the script itself arrives when piped in. A program that did would swallow the rest of the script. `DEBIAN_FRONTEND=noninteractive` is set for that reason: a package asking a configuration question would reach for stdin.
 
-Anyone who wants to read it before running it can open the same URL in a browser.
+Anyone who wants to read it before running it can read the one file on GitHub. Pages serves it as `application/x-sh`, so a browser sent to that URL saves it rather than showing it.
+
+## The website
+
+`index.html` and everything under `site/` are the page at [previous.li](https://previous.li/). It does not reproduce NeXTSTEP, because the admin tool already does that. It alludes to it three times, and the top of `site/site.css` says which three.
+
+Nothing on the page is fetched from anywhere else, so opening it tells no third party that you did. What comes from outside the project is kept in the repository instead:
+
+- The interface icons are [Phosphor](https://phosphoricons.com/) in its duotone weight, under MIT, and the GitHub mark is [Simple Icons](https://simpleicons.org/), under CC0 1.0. `site/icons.py` fetches both from their published packages at a pinned version and writes `site/icons.svg`. Add a glyph there and run it rather than editing that file.
+- The face is [Inter](https://rsms.me/inter/), under the SIL Open Font License, whose text sits beside the font in `site/fonts/`.
+- `site/favicon.ico`, `site/apple-touch-icon.png` and `site/next-cube.png` are the NeXT cube, which is the same mark [Previous](https://previous.nextcommunity.net/) puts in its tab. All three are cut from a 2400 pixel drawing that lives with phranck's sticker artwork rather than in this repository. The favicon and the cube keep the transparent ground they came with, so they lie on whatever is behind them; only the touch icon carries the workspace colour, because iOS drops the alpha channel and leaves black behind it. The mark is NeXT's rather than this project's.
+- `site/raspberry-pi.png` is the Raspberry Pi symbol in colour, from [Raspberry Pi's own trademark page](https://www.raspberrypi.com/trademark-rules/), cropped to the drawing and kept at twice the size the preview shows it. It appears there to say which machine this runs on, which is what their rules allow it to be used for. The mark is theirs.
+- `site/shots/workspace.png` is a screenshot of the admin tool running on a Pi, taken at the interface size of 100 per cent so the page can show it one pixel per pixel.
+
+The switch in the bar walks through three states: following the system, which is where it starts and which moves with the machine whilst the page is open, then light, then dark. A chosen state is remembered and is set before the first paint, so nothing flashes. Both schemes are one set of tokens: every colour in `site/site.css` is a `light-dark()` pair, and the switch does nothing but set `color-scheme` on the root.
+
+`site/shots/og.png` is what a link to the page unfolds into elsewhere. It is a screenshot of `site/og.html`, so it is set in the same face and the same colours as the site rather than drawn by hand. Rebuild it by serving the repository and taking the viewport at exactly 1200 by 630:
+
+```bash
+python3 -m http.server 8193
+```
+
+`robots.txt` and `sitemap.xml` sit in the root, which is where a crawler looks for them.
 
 ## Checking the result
 
@@ -94,7 +116,7 @@ The package owns `/usr/bin` and `/usr/share/previous`. The disk image and the co
 Nothing needs stopping, and NeXTSTEP keeps running throughout. The tool is a Debian package like Previous, but it comes from this repository rather than from an archive, so the install script replaces it:
 
 ```bash
-curl -fsSL https://previously.layered.work/install.sh | bash -s -- --update-admin
+curl -fsSL https://previous.li/install.sh | bash -s -- --update-admin
 ```
 
 From a checkout on the Pi, the same script builds the package out of what is beside it:
