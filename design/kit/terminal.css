@@ -1,8 +1,9 @@
 /* --- the terminal ------------------------------------------------------- */
 
 /* NeXT's Terminal was black on white in a bitmap face called Ohlfs, so this
-   one is black on white in that same face. The session it shows is the Pi
-   underneath. base.css says why the size is what it is. */
+   one is black on white in that face, as outlines cut round its pixels. The
+   session it shows is the Pi underneath. base.css says why the size is what it
+   is. */
 .terminal {
   background: var(--white);
   padding: 5px 7px;
