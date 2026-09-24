@@ -1,14 +1,10 @@
-# Design drafts for the web admin tool
+# The kit the web admin tool is built from
 
-Three one-page drafts of the interface that configures Previous from a browser, plus the tools that fetch the pictures one of them uses.
+The interface that configures Previous from a browser, as one source per component, plus the tools that fetch the pictures it uses and the draft it is all shown in.
 
-| File | What it is |
-|---|---|
-| `mockup-nextstep.html` | A NeXTSTEP workspace. Machines and disks are things you pick up and drop on one another. |
-| `mockup-backplane.html` | The back of the cube. Changing the configuration means seating a card or fitting memory. |
-| `mockup-console.html` | An instrument. It answers one question in five seconds: is the machine running? |
+`mockup-nextstep.html` is that draft: a NeXTSTEP workspace where machines and disks are things you pick up and drop on one another. It opens in a browser with no server and no build step, because `build.py` writes the whole kit into it, pictures and faces included, on every run.
 
-Open any of them in a browser. They need no server and no build step.
+Two other drafts were tried and not taken up, one showing the back of the cube and one an instrument that answers whether the machine is running. They are in this repository's history rather than beside this file.
 
 ## Where the pictures come from
 
