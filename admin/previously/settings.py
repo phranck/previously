@@ -25,7 +25,7 @@ RUNTIME_DIRECTORY = "/run/previously"
 #: the default is expressed relative to that rather than to a name.
 DEFAULTS = {
     "address": "0.0.0.0",
-    "port": "2342",
+    "port": "8810",
     "previous_config": "~/.config/previous/previous.cfg",
     # Where the Previously tree is a real one. Everything else the File Viewer
     # shows is described in files.py and exists nowhere, but a picture is a

@@ -758,7 +758,7 @@ main() {
     # The one thing somebody needs after this finishes, and the reason they
     # ran it. The name rather than the address, because a Pi answers to
     # <hostname>.local on the network it is on and its address may not last.
-    info "The admin tool is at http://$(hostname).local:2342"
+    info "The admin tool is at http://$(hostname).local:8810"
     skip "Its token, which the browser asks for once:"
     skip "  sudo cat /var/lib/previously/token"
     skip ""
