@@ -28,7 +28,7 @@ python3 extract.py ~/nextstep/NS33_2GB.dd screenshot.png
 python3 build.py
 ```
 
-`extract.py` needs two things that are not in this repository. The first is a NeXTSTEP 3.3 disk image, which the paper PAP-NXR-001 says where to get. The second is a screenshot of NeXTSTEP 3.3 at its own resolution of 1120 by 832, because the pixel bounds in `extract.py` are that screenshot's and nothing else will line up.
+`extract.py` needs two things that are not in this repository. The first is a NeXTSTEP 3.3 disk image, which the paper PAP-PRE-001 says where to get. The second is a screenshot of NeXTSTEP 3.3 at its own resolution of 1120 by 832, because the pixel bounds in `extract.py` are that screenshot's and nothing else will line up.
 
 ## The two machines
 
