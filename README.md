@@ -44,7 +44,7 @@ None of it is approximated: the icons are the original files out of a NeXTSTEP 3
 
 To Andreas Grabher and everyone on [Previous](https://previous.nextcommunity.net/), without whom none of this would run at all.
 
-NeXT, NeXTSTEP, OPENSTEP and the NeXT cube logo are registered trademarks of Apple Computer, Inc. The Raspberry Pi mark belongs to Raspberry Pi Ltd. Neither of them has anything to do with this project.
+NeXT, NeXTSTEP, OPENSTEP and the NeXT cube logo are registered trademarks of Apple Computer, Inc. The Raspberry Pi mark belongs to Raspberry Pi Ltd. Neither of them has anything to do with this project, and neither the marks nor the icons taken from a NeXTSTEP disk image are covered by the licence below.
 
 ## License
 
