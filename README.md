@@ -20,7 +20,7 @@ Not under `sudo`: it writes the configuration and the startup line into your hom
 
 It installs `cage` and `7zip`, adds the signed [Window Maker Live archive](https://wmlive.rumbero.org/repo/) pinned to Previous alone, installs Previous from it, fetches a preinstalled NeXTSTEP 3.3 disk image, writes `~/.config/previous/previous.cfg`, installs the admin tool as a Debian package, enables console autologin, silences the boot and hands the first console to Previous.
 
-When it finishes it says where the admin tool is, which is `http://<your-pi>.local:2342`, and how to read the token it asks for once.
+When it finishes it says where the admin tool is, which is `http://<your-pi>.local:8810`, and how to read the token it asks for once.
 
 Running it a second time changes nothing that is already in place. An existing disk image, an existing configuration file and an autostart entry that is already there are all left alone.
 
@@ -45,7 +45,7 @@ Anyone who wants to read it before running it can read the one file on GitHub. P
 
 `index.html` and everything under `site/` are the page at [previous.li](https://previous.li/). It does not reproduce NeXTSTEP, because the admin tool already does that. It alludes to it three times, and the top of `site/site.css` says which three.
 
-Nothing on the page is fetched from anywhere else, so opening it tells no third party that you did. What comes from outside the project is kept in the repository instead:
+The one thing the page fetches from elsewhere is the counter, which is [Umami](https://umami.layered.work/) on phranck's own server. It sets no cookie and stores nothing that identifies a reader. Everything else is kept in the repository, so opening the page tells no third party that you did:
 
 - The interface icons are [Phosphor](https://phosphoricons.com/) in its duotone weight, under MIT, and the GitHub mark is [Simple Icons](https://simpleicons.org/), under CC0 1.0. `site/icons.py` fetches both from their published packages at a pinned version and writes `site/icons.svg`. Add a glyph there and run it rather than editing that file.
 - The face is [Inter](https://rsms.me/inter/), under the SIL Open Font License, whose text sits beside the font in `site/fonts/`.
@@ -53,7 +53,7 @@ Nothing on the page is fetched from anywhere else, so opening it tells no third 
 - `site/raspberry-pi.png` is the Raspberry Pi symbol in colour, from [Raspberry Pi's own trademark page](https://www.raspberrypi.com/trademark-rules/), cropped to the drawing and kept at twice the size the preview shows it. It appears there to say which machine this runs on, which is what their rules allow it to be used for. The mark is theirs.
 - `site/shots/workspace.png` is a screenshot of the admin tool running on a Pi, taken at the interface size of 100 per cent so the page can show it one pixel per pixel.
 
-The switch in the bar walks through three states: following the system, which is where it starts and which moves with the machine whilst the page is open, then light, then dark. A chosen state is remembered and is set before the first paint, so nothing flashes. Both schemes are one set of tokens: every colour in `site/site.css` is a `light-dark()` pair, and the switch does nothing but set `color-scheme` on the root.
+The page is dark, and only dark. A NeXTcube was black magnesium on a black stand, so a light version of this would be about some other computer. There is no switch and nothing follows the system.
 
 `site/shots/og.png` is what a link to the page unfolds into elsewhere. It is a screenshot of `site/og.html`, so it is set in the same face and the same colours as the site rather than drawn by hand. Rebuild it by serving the repository and taking the viewport at exactly 1200 by 630:
 

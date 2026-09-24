@@ -5,7 +5,7 @@ A small service on the Pi that shows what the emulator is set to, from a browser
 ## Running it
 
 ```bash
-make run          # in the foreground, on port 2342
+make run          # in the foreground, on port 8810
 make check        # lint and tests, which is what a commit needs
 ```
 

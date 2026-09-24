@@ -22,11 +22,9 @@
       content="One line turns a Raspberry Pi 5 into a machine that starts straight into NeXTSTEP under the Previous emulator, with a web admin built in the machine's own idiom.">
 <link rel="canonical" href="https://previous.li/">
 
-<meta name="color-scheme" content="light dark">
-<!-- The bar's own colour in each scheme, so a phone's address bar carries it
-     rather than guessing from the first pixels of the page. -->
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#121218" media="(prefers-color-scheme: dark)">
+<!-- One scheme, and it is dark, because NeXTSTEP ran on black hardware. -->
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#121218">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Previously">
@@ -52,21 +50,9 @@
 <link rel="preload" href="site/fonts/inter-variable-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="site/site.css">
 
-<!-- Before the first paint, so a reader who chose a scheme never sees the
-     other one flash past. Everything else this switch does is in site/site.js,
-     which cannot help here because it is deferred to the end of the body. -->
-<script>
-  (() => {
-    const chosen = localStorage.getItem("scheme");
-    if (chosen === "light" || chosen === "dark") {
-      document.documentElement.dataset.scheme = chosen;
-    }
-  })();
-</script>
-
-<!-- What this page is, for a search engine that reads structured data. The
-     software is free and runs on a Raspberry Pi, and saying so here is what
-     lets a result carry that rather than a guess. -->
+<!-- What this page is, in the form a search engine reads rather than guesses
+     at. There is no price and no rating in here: the first is not what this
+     is, and the second would have to be invented. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -77,11 +63,6 @@
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Raspberry Pi OS Lite, 64 bit, Debian 13",
   "image": "https://previous.li/site/shots/og.png",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "EUR"
-  },
   "author": {
     "@type": "Person",
     "name": "phranck",
@@ -104,12 +85,6 @@
       <a href="#admin">The admin</a>
       <a href="#install">Install</a>
     </nav>
-    <button class="scheme" id="scheme" type="button">
-      <svg class="icon scheme__system" aria-hidden="true"><use href="site/icons.svg#monitor"></use></svg>
-      <svg class="icon scheme__sun" aria-hidden="true"><use href="site/icons.svg#sun"></use></svg>
-      <svg class="icon scheme__moon" aria-hidden="true"><use href="site/icons.svg#moon"></use></svg>
-      <span class="visually-hidden" id="scheme-label">Colour scheme: following the system. Switch to light.</span>
-    </button>
   </div>
 </header>
 
@@ -119,9 +94,9 @@
     <div class="measure hero__grid">
       <div class="hero__copy">
         <h1>A Raspberry Pi that boots into NeXTSTEP</h1>
-        <p class="hero__lead">It starts straight into a NeXT machine under the Previous
-          emulator. No desktop behind it, no login to get past, and nothing on the screen
-          but the grey NeXT panel.</p>
+        <p class="hero__lead">Previously starts straight into a NeXT machine under the
+          Previous emulator. There is no desktop behind it, no login to get past, and
+          nothing on the screen but the grey NeXT panel.</p>
         <ul class="hero__facts">
           <li class="hero__fact">Raspberry Pi 5</li>
           <li class="hero__fact">Raspberry Pi OS Lite, 64 bit</li>
@@ -155,9 +130,10 @@
     <div class="measure">
       <div class="section__head">
         <p class="section__kicker">What it is</p>
-        <h2>One machine, one screen, one thing on it</h2>
-        <p class="section__lead">The Pi disappears into the NeXT. Everything you would
-          otherwise do at a keyboard happens in a browser on another machine.</p>
+        <h2>The shortest way to get NeXTSTEP up and running on your Raspberry Pi</h2>
+        <p class="section__lead">The Pi merges into a NeXT. Everything you would normally
+          do directly in the Previous Settings on the Pi can now be done conveniently in a
+          browser on another computer.</p>
       </div>
 
       <div class="cards">
@@ -176,19 +152,20 @@
             <svg class="icon" aria-hidden="true"><use href="site/icons.svg#sliders-horizontal"></use></svg>
           </div>
           <h3>An admin that looks like it</h3>
-          <p class="card__text">Machines, disks and screens are things you pick up rather
-            than values you type. It answers on the network, so the Pi never needs a
-            keyboard of its own.</p>
+          <p class="card__text">You select NeXT machines, drives, and displays instead of
+            entering values manually. You can switch between complete configurations using
+            D&amp;D. Change the values in the system configurations and save them as your
+            own.</p>
         </article>
 
         <article class="card">
           <div class="card__icon">
             <svg class="icon" aria-hidden="true"><use href="site/icons.svg#arrow-counter-clockwise"></use></svg>
           </div>
-          <h3>Every change written down</h3>
-          <p class="card__text">Each step records how to undo exactly what it changed, and
-            an interrupt walks that record backwards. What was already on the machine is
-            left where it was.</p>
+          <h3>An installation that undoes itself</h3>
+          <p class="card__text">Every step of the install script writes down how to undo
+            what it just did. Press Ctrl+C, or let a step fail, and it walks that record
+            backwards. Whatever was on the machine before is left where it was.</p>
         </article>
       </div>
     </div>
@@ -199,18 +176,29 @@
       <div class="section__head">
         <p class="section__kicker">The admin</p>
         <h2>It looks like the machine it configures</h2>
-        <p class="section__lead">Nothing in it is redrawn. The icons come out of a
-          NeXTSTEP 3.3 disk image, and the window furniture is cut pixel for pixel from a
-          screenshot of the running system.</p>
+        <p class="section__lead">Nothing here is approximated. The icons are the original
+          files out of a NeXTSTEP 3.3 disk image, the window buttons are cut pixel for
+          pixel out of the running system, and every colour, edge and raster is measured
+          off it.</p>
       </div>
 
-      <figure class="shot">
-        <img src="site/shots/workspace.png" width="1072" height="800" loading="lazy"
-             alt="The admin tool in a browser: a main menu, an Info panel for the emulated NeXTcube, a Raspberry Pi panel with the host's readings, and a File Viewer showing folders as icons.">
-        <figcaption class="shot__caption">Its menu and three of its windows, on a Pi that
-          has been running NeXTSTEP for 207 hours.</figcaption>
-      </figure>
     </div>
+
+    <!-- Outside the measure, because the window around the picture is wider
+         than the column and the picture inside it is shown at its own size. -->
+    <figure class="shot">
+      <div class="browser">
+        <div class="browser__bar">
+          <div class="browser__lights" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="browser__address">cube.local:8810</div>
+        </div>
+        <img src="site/shots/workspace.png" width="2144" height="1600" loading="lazy"
+             alt="The admin tool in a browser: a main menu, an Info panel for the emulated NeXTcube, a Raspberry Pi panel with the host's readings, Preferences offering six languages, and a File Viewer showing folders as icons.">
+      </div>
+      <figcaption class="shot__caption">This is a recent screenshot of Previously. Not
+        only does it look like NeXTSTEP, it feels like it, too. You'll love this admin
+        right away.</figcaption>
+    </figure>
   </section>
 
   <section class="section" id="install">
@@ -245,7 +233,7 @@
         <li class="step">
           <div class="step__body">
             <h3>Open the admin</h3>
-            <p class="step__text">It answers at <code>http://&lt;your-pi&gt;.local:2342</code>
+            <p class="step__text">It answers at <code>http://&lt;your-pi&gt;.local:8810</code>
               and asks once for a token, which the script tells you how to read.</p>
           </div>
         </li>
@@ -298,7 +286,6 @@
 
 <footer class="foot">
   <div class="measure foot__row">
-    <p>Built in Bregenz for 3D printed NeXTcube replicas at half scale.</p>
     <nav class="foot__links">
       <a href="https://github.com/phranck/previously">
         <svg class="icon" aria-hidden="true"><use href="site/icons.svg#github"></use></svg>
@@ -313,9 +300,20 @@
         <svg class="icon" aria-hidden="true"><use href="site/icons.svg#arrow-square-out"></use></svg>
       </a>
     </nav>
+
+    <p class="foot__copyright">Copyright © 2026 by
+      <a href="https://layered.work/" target="_blank" rel="noopener">LAYERED</a></p>
+
+    <p class="foot__trademarks">NeXT, NEXTSTEP, OPENSTEP, and the NeXT cube logo are
+      registered trademarks of Apple Computer, Inc.</p>
   </div>
 </footer>
 
 <script src="site/site.js"></script>
+
+<!-- Umami, on phranck's own server rather than a hosted one, so what it counts
+     stays with him. It sets no cookie and stores nothing that identifies a
+     reader, which is why this page carries no consent banner. -->
+<script defer src="https://umami.layered.work/script.js" data-website-id="490691ab-30ee-4131-87d3-ca58d8da2d5a"></script>
 </body>
 </html>

@@ -29,15 +29,13 @@ PHOSPHOR = {
     "cube": "the wordmark, which is a NeXTcube",
     "copy": "copies the install line",
     "check": "says the line has been copied",
-    "monitor": "the screen, and the scheme that follows whatever the screen is set to",
+    "monitor": "the screen, which shows NeXTSTEP and nothing else",
     "sliders-horizontal": "the admin tool, which configures the machine",
     "arrow-counter-clockwise": "every change the script makes can be undone",
     "terminal-window": "the shell the line is pasted into",
     "download-simple": "what the script fetches",
     "shield-check": "the script raises its own privileges and asks once",
     "arrow-square-out": "a link leaving this page",
-    "sun": "the switch offers the light scheme",
-    "moon": "the switch offers the dark scheme",
 }
 
 BRAND = {
