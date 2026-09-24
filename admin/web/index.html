@@ -207,10 +207,12 @@
 </nx-window>
 
 <!-- A real shell on the Pi, drawn by the one library this interface takes.
-     Flush, because a terminal runs to its frame, and as tall as it is wide
-     enough for eighty columns to start with. -->
+     Flush, because a terminal runs to its frame, and opening on eighty columns
+     by twenty-four, which is what NeXT's Terminal opened on and what a shell
+     expects of one. In Ohlfs that is a cell of 8 by 16, so the frame carries
+     640 by 384 of text and the rest is the scroller and the two edges. -->
 <nx-window name="terminal" title="Terminal" flush drop
-           x="180" y="330" w="574" h="420" min-w="320" min-h="200" closed>
+           x="180" y="330" w="694" h="436" min-w="320" min-h="200" closed>
   <nx-scroller>
     <nx-terminal id="session"></nx-terminal>
   </nx-scroller>

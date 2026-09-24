@@ -26,6 +26,43 @@
      Auswahl              eine weisse Flaeche hinter Icon und Namen, 5 px Radius
    --------------------------------------------------------------------------- */
 
+/* --- Ohlfs, which is what the Terminal is set in -------------------------- */
+
+/* Keith Ohlfs drew this face for NeXTSTEP as bitmaps, and Terminal.app was set
+   in its 12 pixel strike. jasonwoodland/ohlfs-font-extras decodes the original
+   Ohlfs.font bundle and writes the strikes out as TrueType; the Extra variants
+   carry glyphs the original never had, which is what a shell of today paints a
+   prompt with. design/README.md says where these four files came from.
+
+   A bitmap face has one size at which it is itself, and --terminal-size below
+   says which one that is here. Everything else in this stylesheet is set in
+   the host's own type, because NeXT's interface face is Helvetica and every
+   machine has one. */
+@font-face {
+  font-family: "Ohlfs 12 Extra";
+  src: url("fonts/Ohlfs-Screen-12-Extra.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Ohlfs 12 Extra";
+  src: url("fonts/Ohlfs-Screen-12-Extra-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Ohlfs 12 Extra";
+  src: url("fonts/Ohlfs-Screen-12-Extra-Italic.woff2") format("woff2");
+  font-weight: normal;
+  font-style: italic;
+}
+@font-face {
+  font-family: "Ohlfs 12 Extra";
+  src: url("fonts/Ohlfs-Screen-12-Extra-Bold-Italic.woff2") format("woff2");
+  font-weight: bold;
+  font-style: italic;
+}
+
 :root {
   /* The four values a mono NeXT could draw. Everything structural uses these. */
   --white: #ffffff;
@@ -57,6 +94,27 @@
 
   --font: Helvetica, "Helvetica Neue", Arial, sans-serif;
   --mono: Menlo, "DejaVu Sans Mono", monospace;
+  /* The Terminal's face, and the one size at which it is itself.
+
+     Every contour in Ohlfs 12 sits on a grid of 100 font units, in a face
+     whose em is 1500, so one drawn pixel is one screen pixel at fifteen and at
+     no other size. At any other size a drawn pixel covers a fraction of a
+     screen one, and since nothing here is smoothed the same stem comes out two
+     pixels wide in one letter and three in the next.
+
+     The cell is not stated anywhere, because the face already carries it: 8 px
+     across and 16 px down, which is the --line the rest of the interface is
+     built on without anything having been chosen to make it so. Whatever needs
+     those two reads them off the face as 1ch and 1lh, so there is no second
+     copy of them to fall out of step. design/fonts.py is where the 16 is
+     settled, and it says why it has to be settled there.
+
+     Like every other bitmap in this interface, the face is itself on a desk
+     drawn at a whole step and not on one drawn at a quarter of one, which is
+     what the note above setDeskScale says and what the icons have always
+     done. */
+  --terminal-font: "Ohlfs 12 Extra", var(--mono);
+  --terminal-size: 15px;
   /* What the interface is set at. NeXTSTEP put the names under its icons at
      this size too, and the menu entries and the window titles with them:
      measured off the running system, all of them have a capital 9 pixels
@@ -1071,19 +1129,30 @@ nx-window:not([fixed]) .buttons:last-child { padding-bottom: var(--pane-pad); }
 /* --- the terminal ------------------------------------------------------- */
 
 /* NeXT's Terminal was black on white in a bitmap face called Ohlfs, so this
-   one is black on white too. The session it shows is the Pi underneath. */
+   one is black on white in that same face. The session it shows is the Pi
+   underneath. base.css says why the size is what it is. */
 .terminal {
   background: var(--white);
   padding: 5px 7px;
-  font: 12px/1.35 var(--mono);
+  /* The line is the face's own, which fonts.py sets to 16 px in all three of
+     the tables a browser might read it from. Stating a number here would be a
+     second answer to that, and the two would part company the day one moved. */
+  font: var(--terminal-size)/normal var(--terminal-font);
+  /* All four faces are here as their own file, so anything the browser slants
+     or thickens by itself is a character Ohlfs does not have. Drawn rather
+     than refused, it lands off the pixel grid and reads as a smudge beside
+     everything around it. */
+  font-synthesis: none;
   white-space: pre-wrap;
   -webkit-user-select: text;
   user-select: text;
   cursor: text;
 }
+/* One cell, which is what NeXT's Terminal marked the place with. The face is
+   monospaced, so its own character width and its own line are that cell. */
 .terminal .cursor {
   display: inline-block;
-  width: 7px; height: 13px;
+  width: 1ch; height: 1lh;
   background: var(--black);
   vertical-align: text-bottom;
   animation: blink 1.06s steps(1) infinite;

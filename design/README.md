@@ -14,7 +14,7 @@ Open any of them in a browser. They need no server and no build step.
 
 The NeXTSTEP draft draws nothing by hand. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
 
-Five tools do that work:
+Six tools do that work:
 
 | Tool | What it does |
 |---|---|
@@ -22,7 +22,8 @@ Five tools do that work:
 | `nxtiff.py` | Decodes NeXT's TIFFs, which no current library reads: two bits per sample, alpha in its own plane, and a second copy of each picture at four bits per colour channel. |
 | `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `parts/`. |
 | `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
-| `build.py` | Puts the kit together, writes the two files the admin serves, and bakes `parts/` into the mockup as data URIs so it stays one file. |
+| `fonts.py` | Fetches Ohlfs and writes the four faces the Terminal is set in, into `../admin/web/fonts/`. |
+| `build.py` | Puts the kit together, writes the two files the admin serves, and bakes `parts/` and those faces into the mockup as data URIs so it stays one file. |
 
 `parts/` is committed, so the draft works without running any of this. Run it again when a picture needs to change:
 
@@ -44,6 +45,21 @@ python3 bootpicture.py next_screen_021.png ../admin/web/parts/nextstation.png
 ```
 
 Nothing in it is fixed to one screenshot. The panel is found by its own grey, and the machine by the gap that separates it from the text, so the same call works for either.
+
+## The Terminal's face
+
+Keith Ohlfs drew Ohlfs for NeXTSTEP as bitmaps, and Terminal.app was set in its 12 pixel strike. [jasonwoodland/ohlfs-font-extras](https://github.com/jasonwoodland/ohlfs-font-extras) decodes the original `Ohlfs.font` bundle and writes each strike out as TrueType, with the Extra variants adding glyphs the original never had. `fonts.py` takes the four Screen 12 Extra faces from one named commit there, checks each against its sum, and writes them into `../admin/web/fonts/` as WOFF2.
+
+```bash
+python3 fonts.py
+python3 build.py
+```
+
+The four files are committed, so nothing has to run for the Terminal to be set in it. Run it again to move to a later commit upstream, which means changing `UPSTREAM` and the four sums together.
+
+It changes two things on the way, both in metrics rather than in outlines. A font states its line in three tables and a browser picks one of them by platform, so all three are set to what the face itself says, which is 16 pixels. The flag that tells a browser to prefer the typographic pair needs a table one version newer, so the version is raised as well. Without the first of those, the same terminal draws rows two pixels taller on one machine than on the next.
+
+A bitmap face has one size at which it is itself. Every contour in this one sits on a grid of 100 font units in a face whose em is 1500, so one drawn pixel is one screen pixel at 15 and at no other size, and the cell that follows is 8 across by 16 down. That is why `--terminal-size` is 15 and why nothing states the cell: whatever needs it reads it off the face as `1ch` and `1lh`. Like every other bitmap here, it is itself on a desk drawn at a whole step and not at a quarter of one.
 
 ## The kit
 
@@ -91,9 +107,9 @@ The three marks in the lower left corner of a tile say the application is **not*
 
 An application that is running and is not in the dock puts its tile on the floor of the screen instead, from the left corner rightwards, and takes it away again when it stops. `nx-floor` is that floor. The tile is the dock's own, because `Workspace.app/tile.tiff` is a plain 64 by 64 grey square with the icon on it and no lettering.
 
-## A note on the icons
+## A note on the icons and the face
 
-The pictures in `parts/` are NeXT's, and NeXT's assets belong to Apple. They stay, and this repository can carry them: that was weighed and decided in #8 on 14 September 2026.
+The pictures in `parts/` are NeXT's, and NeXT's assets belong to Apple. They stay, and this repository can carry them: that was weighed and decided in #8 on 14 September 2026. Ohlfs is the same thing in another form, so the four faces in `../admin/web/fonts/` stand on that decision too. The repository they are built from states no licence of its own; what it holds is NeXT's bitmaps read out of NeXT's own font bundle, which is what the tools here do with the icons.
 
 Thirteen are read out of the Workspace Manager's own bundle in a NeXTSTEP 3.3 disk image, one out of Terminal.app and two out of Preferences.app in the same image. Three are cut from a screenshot of the running system, because NeXTSTEP drew its window buttons and dock marks in PostScript and they exist as no file at all. Two come from the boot ROM, through the emulator's own grab.
 

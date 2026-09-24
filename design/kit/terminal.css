@@ -1,19 +1,30 @@
 /* --- the terminal ------------------------------------------------------- */
 
 /* NeXT's Terminal was black on white in a bitmap face called Ohlfs, so this
-   one is black on white too. The session it shows is the Pi underneath. */
+   one is black on white in that same face. The session it shows is the Pi
+   underneath. base.css says why the size is what it is. */
 .terminal {
   background: var(--white);
   padding: 5px 7px;
-  font: 12px/1.35 var(--mono);
+  /* The line is the face's own, which fonts.py sets to 16 px in all three of
+     the tables a browser might read it from. Stating a number here would be a
+     second answer to that, and the two would part company the day one moved. */
+  font: var(--terminal-size)/normal var(--terminal-font);
+  /* All four faces are here as their own file, so anything the browser slants
+     or thickens by itself is a character Ohlfs does not have. Drawn rather
+     than refused, it lands off the pixel grid and reads as a smudge beside
+     everything around it. */
+  font-synthesis: none;
   white-space: pre-wrap;
   -webkit-user-select: text;
   user-select: text;
   cursor: text;
 }
+/* One cell, which is what NeXT's Terminal marked the place with. The face is
+   monospaced, so its own character width and its own line are that cell. */
 .terminal .cursor {
   display: inline-block;
-  width: 7px; height: 13px;
+  width: 1ch; height: 1lh;
   background: var(--black);
   vertical-align: text-bottom;
   animation: blink 1.06s steps(1) infinite;
