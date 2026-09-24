@@ -66,11 +66,45 @@ class NxTerminal extends HTMLElement {
        there would take the rest of the page with it. */
     if (typeof Terminal !== "function") return;
 
+    /* The library measures one character to learn how large a cell is, and it
+       does that once, as it opens. Opened before the face has arrived it
+       measures whatever the browser fell back to and keeps that cell for the
+       rest of the session, which on a first visit is every session. So the
+       view is built once the face is here, and anything the far side says in
+       the meantime waits in line rather than being lost. */
+    this.waiting = [];
+    document.fonts.load(`${this.token("--terminal-size")} `
+                        + this.token("--terminal-font"))
+      .catch(() => undefined)
+      .then(() => this.build());
+  }
+
+  /**
+   * Reads one of the kit's values.
+   * @param name - The custom property, such as "--terminal-size".
+   * @returns {string} What the desk says it is now.
+   */
+  token(name) {
+    return getComputedStyle(document.body).getPropertyValue(name).trim();
+  }
+
+  /** Builds the view, once the face it is set in can be drawn with.
+   *
+   *  The face and the size come from the kit, because the kit's own text view
+   *  is set in the same two, and two statements of one measurement part
+   *  company the day either moves.
+   */
+  build() {
     this.terminal = new Terminal({
       theme: NEXT_THEME,
-      fontFamily: getComputedStyle(document.body).getPropertyValue("--mono").trim(),
-      fontSize: 12,
-      lineHeight: 1.35,
+      fontFamily: this.token("--terminal-font"),
+      fontSize: parseFloat(this.token("--terminal-size")),
+      /* One, because the face carries its own line: design/fonts.py sets its
+         ascent and descent to the 16 px a row of this interface is, in all
+         three of the tables a browser reads that from. A ratio here would be a
+         second answer to the same question, and this library rounds the cell
+         it arrives at up to a whole pixel. */
+      lineHeight: 1,
       cursorBlink: true,
       cursorStyle: "block",
       /* NeXT's Terminal kept what had scrolled off, and so does this. */
@@ -99,6 +133,9 @@ class NxTerminal extends HTMLElement {
     /* The window is resized by dragging, which changes this box without
        anything telling it so. */
     new ResizeObserver(() => this.fit()).observe(this);
+
+    for (const data of this.waiting) this.terminal.write(data);
+    this.waiting = [];
   }
 
   /**
@@ -106,7 +143,8 @@ class NxTerminal extends HTMLElement {
    * @param {Uint8Array|string} data
    */
   write(data) {
-    this.terminal?.write(data);
+    if (this.terminal) this.terminal.write(data);
+    else this.waiting?.push(data);
   }
 
   /** Measures the view and tells the terminal how many rows and columns fit. */

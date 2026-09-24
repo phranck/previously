@@ -23,6 +23,9 @@ KIT = HERE / "kit"
 PARTS = HERE / "parts"
 MOCKUP = HERE / "mockup-nextstep.html"
 SERVED = HERE.parent / "admin" / "web"
+#: The Terminal's face, which fonts.py puts there. The admin serves these as
+#: files; the mockup carries them inside itself, like the pictures.
+FONTS = SERVED / "fonts"
 
 #: The kit, in the order its parts go together. Each entry names a source in
 #: kit/, the custom elements that source defines, and what the part is for.
@@ -131,18 +134,40 @@ def overview():
     return "\n".join(lines) + "\n"
 
 
-def data_uri(path):
-    """@returns the file as a base64 data URI, ready for url()."""
+def data_uri(path, kind):
+    """@returns the file as a base64 data URI, ready for url().
+
+    @param path - pathlib.Path to read.
+    @param kind - Its media type, such as "image/png".
+    """
     encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-    return 'url("data:image/png;base64,%s")' % encoded
+    return 'url("data:%s;base64,%s")' % (kind, encoded)
 
 
 def properties():
     """One custom property per picture, named after its file."""
     lines = [PARTS_MARKER]
     for path in sorted(PARTS.glob("*.png")):
-        lines.append("  --%s: %s;" % (path.stem, data_uri(path)))
+        lines.append("  --%s: %s;" % (path.stem, data_uri(path, "image/png")))
     return "\n".join(lines)
+
+
+def faces(css):
+    """@returns the stylesheet carrying the Terminal's face rather than naming it.
+
+    The admin serves the four files out of web/fonts and the stylesheet points
+    at them. The mockup is one document that opens from anywhere, with nothing
+    beside it to point at, so there they travel inside it as the pictures do.
+
+    @param css - The kit's stylesheet, as stylesheet() returns it.
+    """
+    def carried(match):
+        path = FONTS / match.group(1)
+        if not path.is_file():
+            raise SystemExit("no %s: run fonts.py first" % path)
+        return data_uri(path, "font/woff2")
+
+    return re.sub(r'url\("fonts/([^"]+\.woff2)"\)', carried, css)
 
 
 def between(text, marks, block, what):
@@ -166,7 +191,7 @@ def main():
     js = script()
 
     html = MOCKUP.read_text()
-    html = between(html, MARKS["css"], css, MOCKUP.name)
+    html = between(html, MARKS["css"], faces(css), MOCKUP.name)
     html = between(html, MARKS["js"], js, MOCKUP.name)
     # The pictures last, because the block they go in has just been written.
     pattern = re.compile(re.escape(PARTS_MARKER) + r".*?(?=\n\})", re.DOTALL)
@@ -181,9 +206,10 @@ def main():
     MOCKUP.write_text(html)
 
     print("wrote %d lines of stylesheet and %d of script from %d parts, "
-          "and baked %d pictures into %s"
+          "and baked %d pictures and %d faces into %s"
           % (len(css.splitlines()), len(js.splitlines()), len(KIT_PARTS),
-             len(list(PARTS.glob("*.png"))), MOCKUP.name))
+             len(list(PARTS.glob("*.png"))), len(list(FONTS.glob("*.woff2"))),
+             MOCKUP.name))
 
 
 if __name__ == "__main__":
