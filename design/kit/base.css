@@ -32,10 +32,19 @@
    carry glyphs the original never had, which is what a shell of today paints a
    prompt with. design/README.md says where these four files came from.
 
-   A bitmap face has one size at which it is itself, and --terminal-size below
-   says which one that is here. Everything else in this stylesheet is set in
-   the host's own type, because NeXT's interface face is Helvetica and every
-   machine has one. */
+   What the browser is handed is outlines rather than bitmaps: no strike table
+   of any kind, and 288 glyphs made of 7710 points, every one of them on a grid
+   of 100 units and not one of them a curve. Each contour is a rectangle
+   tracing one of the original's pixels.
+
+   It still has one size at which it is itself, and --terminal-size below says
+   which. An outline face is drawn sharp at any size because its hinting pulls
+   each stem onto the pixel grid; this one carries none, so it is on the grid
+   only where its own 100-unit step lands on a whole pixel. The em is 1500, so
+   that is a type size of 15 and whole multiples of it.
+
+   Everything else in this stylesheet is set in the host's own type, because
+   NeXT's interface face is Helvetica and every machine has one. */
 @font-face {
   font-family: "Ohlfs 12 Extra";
   src: url("fonts/Ohlfs-Screen-12-Extra.woff2") format("woff2");
@@ -107,10 +116,10 @@
      copy of them to fall out of step. design/fonts.py is where the 16 is
      settled, and it says why it has to be settled there.
 
-     Like every other bitmap in this interface, the face is itself on a desk
-     drawn at a whole step and not on one drawn at a quarter of one, which is
-     what the note above setDeskScale says and what the icons have always
-     done. */
+     The pictures in this interface are bitmaps outright and this face only
+     behaves as one, and the two want the same thing of the desk: a whole step
+     rather than a quarter of one, which is what the note above setDeskScale
+     says and what the icons have always needed. */
   --terminal-font: "Ohlfs 12 Extra", var(--mono);
   --terminal-size: 15px;
   /* What the interface is set at. NeXTSTEP put the names under its icons at

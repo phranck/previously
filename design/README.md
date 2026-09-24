@@ -59,7 +59,9 @@ The four files are committed, so nothing has to run for the Terminal to be set i
 
 It changes two things on the way, both in metrics rather than in outlines. A font states its line in three tables and a browser picks one of them by platform, so all three are set to what the face itself says, which is 16 pixels. The flag that tells a browser to prefer the typographic pair needs a table one version newer, so the version is raised as well. Without the first of those, the same terminal draws rows two pixels taller on one machine than on the next.
 
-A bitmap face has one size at which it is itself. Every contour in this one sits on a grid of 100 font units in a face whose em is 1500, so one drawn pixel is one screen pixel at 15 and at no other size, and the cell that follows is 8 across by 16 down. That is why `--terminal-size` is 15 and why nothing states the cell: whatever needs it reads it off the face as `1ch` and `1lh`. Like every other bitmap here, it is itself on a desk drawn at a whole step and not at a quarter of one.
+What comes out of it is outlines and not bitmaps, which matters when reading the files: they carry no strike table, and their 288 glyphs are made of 7710 points, every one on a grid of 100 units and not one of them a curve. Each contour is a rectangle around one of the original's pixels.
+
+It behaves like a bitmap face all the same, and that is down to hinting rather than to format. An outline face is drawn sharp at any size because its hinting pulls each stem onto the pixel grid; this one carries none, so it is on the grid only where its own 100-unit step lands on a whole pixel. The em is 1500, so that is a type size of 15 and whole multiples of it, and the cell that follows is 8 across by 16 down. That is why `--terminal-size` is 15 and why nothing states the cell: whatever needs it reads it off the face as `1ch` and `1lh`. The pictures here are bitmaps outright, and both want a desk drawn at a whole step rather than at a quarter of one.
 
 ## The kit
 
