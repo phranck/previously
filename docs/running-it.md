@@ -108,12 +108,6 @@ Shut NeXTSTEP down from within NeXTSTEP, never by pulling power. Its file system
 
 ## The website
 
-`index.html` and everything under `site/` are the page at [previous.li](https://previous.li/). It does not reproduce NeXTSTEP, because the admin tool already does that, and the top of `site/site.css` says which three things on it are allusions to the original.
+The page at [previous.li](https://previous.li/) is its own repository, [phranck/previous.li](https://github.com/phranck/previous.li), and its README says how it is made and where its pictures come from.
 
-The page is dark and only dark, it sets no cookie of its own, and the one thing it fetches from elsewhere is [Umami](https://umami.layered.work/) on our own server, which stores nothing that identifies a reader.
-
-- The interface icons are [Phosphor](https://phosphoricons.com/) in its duotone weight, under MIT, and the GitHub mark is [Simple Icons](https://simpleicons.org/), under CC0 1.0. `site/icons.py` fetches both at a pinned version and writes `site/icons.svg`. Add a glyph there and run it rather than editing that file.
-- The face is [Inter](https://rsms.me/inter/), under the SIL Open Font License, whose text sits beside the font in `site/fonts/`.
-- `site/shots/og.png` is what a link to the page unfolds into elsewhere. Its source is `design/og-image.svg`, where the gradient, the arrow, the shadows and the two lines of text are all editable, and where both pictures are embedded so the file stands on its own. Change that, then render it at exactly 1200 by 630: `site/og.html` holds it at that size for the purpose, so a screenshot of that page's viewport is the new `og.png`. The text is set in Helvetica, which macOS carries, with the two lines under the name in Helvetica Neue Medium, because Helvetica itself holds only Regular and Bold.
-- `site/shots/readme-hero.png` is that same picture with its corners rounded to 33 pixels, which is the site's own 24 point card radius at the width the README shows it. GitHub strips `style` out of the HTML in a Markdown file, so a rounded corner has to be in the file itself, and the social preview stays square because a service that puts it on its own background would show the cut corners.
-- `site/shots/workspace.png` is a screenshot of the admin tool running on a Pi, taken at twice the size it is shown at so a Retina display gets one picture pixel per device pixel.
+`install.sh` is the one thing the two share, and its source is here. That repository fetches it and serves it, so the line at the top of this documentation reaches the same script that sits beside the tool it installs. Editing the copy over there would put a second version of it in the world, and the one people run would be the one that drifted.
