@@ -409,9 +409,14 @@ kbd {
 
 /* The page opens on one thing, so the opening is centred on it: the sentence,
    the line to paste, and nothing to either side. Everything below this is
-   left aligned, because that is where reading starts. */
+   left aligned, because that is where reading starts.
+
+   It also opens a shade lighter than the page and sinks into it, so the first
+   screen has a horizon rather than an edge. The lower end is the page's own
+   colour, which is what makes the join invisible. */
 .hero {
   padding-block: var(--space-16) var(--space-12);
+  background: linear-gradient(180deg, #15151b, var(--paper));
   text-align: center;
 }
 
