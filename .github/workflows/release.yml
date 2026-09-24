@@ -7,7 +7,7 @@
 # The name it is attached under carries no version, so
 # releases/latest/download/previously_all.deb is always the newest one. That is
 # where install.sh fetches from when it runs with no checkout beside it, which
-# is how the line on previously.layered.work installs this.
+# is how the line on previous.li installs this.
 #
 # Nothing here puts anything from an event into a command. The only expressions
 # are github.ref in two conditions, which decide whether a step runs and are

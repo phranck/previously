@@ -2,136 +2,320 @@
 <!--
   The page the install line is copied from.
 
-  It sits in the root rather than in docs/ because the line it carries fetches
-  install.sh from the same host, and install.sh belongs beside the repository
-  it installs from rather than inside a folder for the website. Serving the
-  root is what lets both be true without the script existing twice. .nojekyll
-  beside this keeps Pages from building anything and hands every file over as
-  it is, which a shell script has to be.
+  It sits in the root rather than in a folder of its own, because the line it
+  carries fetches install.sh from the same host, and install.sh belongs beside
+  the repository it installs from. Serving the root is what lets both be true
+  without the script existing twice. .nojekyll beside this keeps Pages from
+  building anything and hands every file over as it is, which a shell script
+  has to be.
 
-  The window, the field and the button are the admin tool's own, taken from
-  admin/web/ rather than drawn again here: the same stylesheet and the same
-  elements the Pi serves. So the page cannot drift from the thing it installs,
-  and a change to the kit reaches both.
+  What the page is made of, and which three things on it are NeXTSTEP rather
+  than this page's own, is written at the top of site/site.css.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Previously</title>
+
+<title>Previously: a Raspberry Pi that boots into NeXTSTEP</title>
 <meta name="description"
-      content="A Raspberry Pi that boots into NeXTSTEP, and a web admin built to look like it.">
-<link rel="stylesheet" href="admin/web/nextstep.css">
-<style>
-  /* A window on a workspace, which is what the kit draws, so the page itself
-     needs no layout: the window says where it is and the desk is behind it. */
-  body { overflow: auto; }
+      content="One line turns a Raspberry Pi 5 into a machine that starts straight into NeXTSTEP under the Previous emulator, with a web admin built in the machine's own idiom.">
+<link rel="canonical" href="https://previous.li/">
 
-  h1 { font-size: 20px; margin: 0 0 6px; }
-  p { margin: 0 0 14px; }
+<meta name="color-scheme" content="light dark">
+<!-- The bar's own colour in each scheme, so a phone's address bar carries it
+     rather than guessing from the first pixels of the page. -->
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121218" media="(prefers-color-scheme: dark)">
 
-  h2 {
-    font-size: var(--text-size);
-    margin: 20px 0 8px;
-    padding-top: 14px;
-    border-top: 1px solid var(--dark);
-  }
-  h2:first-of-type { border-top: 0; padding-top: 0; margin-top: 4px; }
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Previously">
+<meta property="og:url" content="https://previous.li/">
+<meta property="og:title" content="A Raspberry Pi that boots into NeXTSTEP">
+<meta property="og:description"
+      content="One line, and the machine starts straight into a NeXT under the Previous emulator. What configures it afterwards is a web admin built to look like the machine it configures.">
+<meta property="og:image" content="https://previous.li/site/shots/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Raspberry Pi logo, an arrow trailing streaks behind it, and the NeXT cube, over the name Previously and the line about a Raspberry Pi that boots directly into NeXTSTEP.">
+<meta property="og:locale" content="en_GB">
 
-  /* The line and what copies it, side by side. The field is the kit's own
-     sunken one, which is where this interface puts a value to be read. */
-  .line { display: flex; gap: 8px; align-items: stretch; }
-  .line nx-field {
-    flex: 1 1 auto;
-    font: 12px/1.5 var(--mono);
-    display: flex;
-    align-items: center;
-  }
-  .line button { flex: 0 0 auto; }
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="A Raspberry Pi that boots into NeXTSTEP">
+<meta name="twitter:description"
+      content="One line, and the machine starts straight into a NeXT under the Previous emulator.">
+<meta name="twitter:image" content="https://previous.li/site/shots/og.png">
 
-  ul { margin: 0 0 14px; padding-left: 20px; }
-  li { margin-bottom: 3px; }
-  /* The line's own note. The same air below the field as the paragraph above
-     it has, because a note pressed against a field reads as part of it. */
-  .quiet {
-    margin-top: 14px;
-    font-size: var(--status-size);
-    color: var(--dark);
-  }
-  a { color: #000080; }
-</style>
+<link rel="icon" href="site/favicon.ico" sizes="16x16 32x32 48x48 64x64">
+<link rel="apple-touch-icon" href="site/apple-touch-icon.png" sizes="180x180">
+
+<link rel="preload" href="site/fonts/inter-variable-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="site/site.css">
+
+<!-- Before the first paint, so a reader who chose a scheme never sees the
+     other one flash past. Everything else this switch does is in site/site.js,
+     which cannot help here because it is deferred to the end of the body. -->
+<script>
+  (() => {
+    const chosen = localStorage.getItem("scheme");
+    if (chosen === "light" || chosen === "dark") {
+      document.documentElement.dataset.scheme = chosen;
+    }
+  })();
+</script>
+
+<!-- What this page is, for a search engine that reads structured data. The
+     software is free and runs on a Raspberry Pi, and saying so here is what
+     lets a result carry that rather than a guess. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Previously",
+  "url": "https://previous.li/",
+  "description": "Turns a Raspberry Pi 5 into a machine that boots straight into NeXTSTEP under the Previous emulator, with a web admin built in NeXTSTEP's own idiom.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Raspberry Pi OS Lite, 64 bit, Debian 13",
+  "image": "https://previous.li/site/shots/og.png",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "phranck",
+    "url": "https://github.com/phranck"
+  },
+  "codeRepository": "https://github.com/phranck/previously"
+}
+</script>
 </head>
 <body>
 
-<nx-window name="previously" title="Previously" fixed w="680">
-  <h1>A Raspberry Pi that boots into NeXTSTEP</h1>
-  <p>It starts straight into a NeXT machine under the Previous emulator, with
-    no desktop behind it and no login to get past. What configures it is a web
-    admin built to look like the machine it configures, and this page is drawn
-    with that admin's own windows and fields.</p>
-
-  <h2>Install it</h2>
-  <p>On a Raspberry Pi 5 running a fresh Raspberry Pi OS Lite, updated, with a
-    network. Paste this and let it finish:</p>
-
-  <div class="line">
-    <nx-field id="command">curl -fsSL https://previously.layered.work/install.sh | bash</nx-field>
-    <button id="copy" type="button" class="default">Copy</button>
+<header class="bar">
+  <div class="measure bar__row">
+    <a class="wordmark" href="#top">
+      <svg class="icon" aria-hidden="true"><use href="site/icons.svg#cube"></use></svg>
+      Previously
+    </a>
+    <nav class="bar__links" aria-label="Sections of this page">
+      <a href="#what">What it is</a>
+      <a href="#admin">The admin</a>
+      <a href="#install">Install</a>
+    </nav>
+    <button class="scheme" id="scheme" type="button">
+      <svg class="icon scheme__system" aria-hidden="true"><use href="site/icons.svg#monitor"></use></svg>
+      <svg class="icon scheme__sun" aria-hidden="true"><use href="site/icons.svg#sun"></use></svg>
+      <svg class="icon scheme__moon" aria-hidden="true"><use href="site/icons.svg#moon"></use></svg>
+      <span class="visually-hidden" id="scheme-label">Colour scheme: following the system. Switch to light.</span>
+    </button>
   </div>
+</header>
 
-  <p class="quiet">It fetches the NeXTSTEP disk image, installs the emulator
-    and the admin tool, and takes the first console. When it is done it says
-    where the admin is and how to read the token it asks for once.</p>
+<main id="top">
 
-  <h2>What it does to the machine</h2>
-  <ul>
-    <li>Installs the Previous emulator from its own archive, and the admin
-      tool as a Debian package.</li>
-    <li>Starts NeXTSTEP on the first console at boot. SSH stays the way in.</li>
-    <li>Writes down everything it changed, so one flag puts all of it back.</li>
-  </ul>
+  <section class="hero">
+    <div class="measure hero__grid">
+      <div class="hero__copy">
+        <h1>A Raspberry Pi that boots into NeXTSTEP</h1>
+        <p class="hero__lead">It starts straight into a NeXT machine under the Previous
+          emulator. No desktop behind it, no login to get past, and nothing on the screen
+          but the grey NeXT panel.</p>
+        <ul class="hero__facts">
+          <li class="hero__fact">Raspberry Pi 5</li>
+          <li class="hero__fact">Raspberry Pi OS Lite, 64 bit</li>
+          <li class="hero__fact">NeXTSTEP 3.3</li>
+        </ul>
+      </div>
 
-  <h2>Then</h2>
-  <p>The admin answers at <code>http://&lt;your-pi&gt;.local:2342</code>, and the
-    source is on <a href="https://github.com/phranck/previously">GitHub</a>.</p>
-</nx-window>
+      <div class="window">
+        <div class="window__title">
+          <svg class="icon" aria-hidden="true"><use href="site/icons.svg#terminal-window"></use></svg>
+          Terminal
+        </div>
+        <div class="window__body">
+          <div class="command">
+            <span class="command__prompt" aria-hidden="true">$</span>
+            <span id="command">curl -fsSL https://previous.li/install.sh | bash</span>
+          </div>
+          <button class="button" id="copy" type="button">
+            <svg class="icon" id="copy-icon" aria-hidden="true"><use href="site/icons.svg#copy"></use></svg>
+            <span id="copy-label">Copy</span>
+          </button>
+        </div>
+        <p class="window__note">Run it as the user the machine will belong to, not under
+          <code>sudo</code>. It asks for your password once and says when it is done where
+          the admin answers.</p>
+      </div>
+    </div>
+  </section>
 
-<script>
-  // Where the window opens the first time somebody comes here, which is the
-  // middle of what they are looking through. Set before the kit builds it,
-  // because that is when it reads these and it remembers wherever it is
-  // dragged to afterwards.
-  (() => {
-    const window_ = document.querySelector('nx-window[name="previously"]');
-    const wide = Math.min(680, innerWidth - 24);
-    window_.setAttribute("w", wide);
-    window_.setAttribute("x", Math.max(8, Math.round((innerWidth - wide) / 2)));
-    window_.setAttribute("y", Math.max(8, Math.round(innerHeight * 0.06)));
-  })();
-</script>
-<script src="admin/web/nextstep.js"></script>
-<script>
-  // Copies the line and says so on the button for a moment, because a copy
-  // that says nothing leaves somebody pressing it twice.
-  const button = document.getElementById("copy");
-  const said = button.textContent;
+  <section class="section section--sunk" id="what">
+    <div class="measure">
+      <div class="section__head">
+        <p class="section__kicker">What it is</p>
+        <h2>One machine, one screen, one thing on it</h2>
+        <p class="section__lead">The Pi disappears into the NeXT. Everything you would
+          otherwise do at a keyboard happens in a browser on another machine.</p>
+      </div>
 
-  button.addEventListener("click", async () => {
-    const line = document.getElementById("command").textContent.trim();
-    try {
-      await navigator.clipboard.writeText(line);
-      button.textContent = "Copied";
-    } catch {
-      // A browser that refuses the clipboard, which is every one of them
-      // without a secure context. Selecting it is then the way.
-      const range = document.createRange();
-      range.selectNodeContents(document.getElementById("command"));
-      getSelection().removeAllRanges();
-      getSelection().addRange(range);
-      button.textContent = "Selected";
-    }
-    setTimeout(() => { button.textContent = said; }, 1500);
-  });
-</script>
+      <div class="cards">
+        <article class="card">
+          <div class="card__icon">
+            <svg class="icon" aria-hidden="true"><use href="site/icons.svg#monitor"></use></svg>
+          </div>
+          <h3>Nothing but NeXTSTEP</h3>
+          <p class="card__text">The emulator takes the first console at boot and keeps it.
+            There is no desktop underneath and no console login to step past, so the
+            machine is the thing it is pretending to be.</p>
+        </article>
+
+        <article class="card">
+          <div class="card__icon">
+            <svg class="icon" aria-hidden="true"><use href="site/icons.svg#sliders-horizontal"></use></svg>
+          </div>
+          <h3>An admin that looks like it</h3>
+          <p class="card__text">Machines, disks and screens are things you pick up rather
+            than values you type. It answers on the network, so the Pi never needs a
+            keyboard of its own.</p>
+        </article>
+
+        <article class="card">
+          <div class="card__icon">
+            <svg class="icon" aria-hidden="true"><use href="site/icons.svg#arrow-counter-clockwise"></use></svg>
+          </div>
+          <h3>Every change written down</h3>
+          <p class="card__text">Each step records how to undo exactly what it changed, and
+            an interrupt walks that record backwards. What was already on the machine is
+            left where it was.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--workspace" id="admin">
+    <div class="measure">
+      <div class="section__head">
+        <p class="section__kicker">The admin</p>
+        <h2>It looks like the machine it configures</h2>
+        <p class="section__lead">Nothing in it is redrawn. The icons come out of a
+          NeXTSTEP 3.3 disk image, and the window furniture is cut pixel for pixel from a
+          screenshot of the running system.</p>
+      </div>
+
+      <figure class="shot">
+        <img src="site/shots/workspace.png" width="1072" height="800" loading="lazy"
+             alt="The admin tool in a browser: a main menu, an Info panel for the emulated NeXTcube, a Raspberry Pi panel with the host's readings, and a File Viewer showing folders as icons.">
+        <figcaption class="shot__caption">Its menu and three of its windows, on a Pi that
+          has been running NeXTSTEP for 207 hours.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" id="install">
+    <div class="measure">
+      <div class="section__head">
+        <p class="section__kicker">Install</p>
+        <h2>Three steps, and the second one is the line</h2>
+        <p class="section__lead">You need a Raspberry Pi 5 and a card imaged with Raspberry
+          Pi OS Lite, 64 bit, based on Debian 13. The script refuses anywhere else, because
+          Previous needs SDL3 and no earlier release carries it.</p>
+      </div>
+
+      <ol class="steps">
+        <li class="step">
+          <div class="step__body">
+            <h3>Reach the Pi</h3>
+            <p class="step__text">Over SSH is the comfortable way, and it stays the way in
+              afterwards: the emulator owns the screen once this is done.</p>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="step__body">
+            <h3>Paste the line and let it finish</h3>
+            <p class="step__text">It installs the emulator from its own signed archive,
+              fetches a preinstalled NeXTSTEP 3.3 disk image, writes the configuration,
+              installs the admin tool and hands the first console over.</p>
+            <code class="snippet">curl -fsSL https://previous.li/install.sh | bash</code>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="step__body">
+            <h3>Open the admin</h3>
+            <p class="step__text">It answers at <code>http://&lt;your-pi&gt;.local:2342</code>
+              and asks once for a token, which the script tells you how to read.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section section--sunk">
+    <div class="measure">
+      <div class="section__head">
+        <p class="section__kicker">Before you run it</p>
+        <h2>What a line off the network is allowed to do</h2>
+      </div>
+
+      <div class="cards">
+        <article class="card">
+          <div class="card__icon">
+            <svg class="icon" aria-hidden="true"><use href="site/icons.svg#shield-check"></use></svg>
+          </div>
+          <h3>Read it first</h3>
+          <p class="card__text">The script reads no file beside itself, so the one file on
+            GitHub is all of it. Nothing runs until the last line calls <code>main</code>,
+            which means a download cut short runs nothing at all.</p>
+        </article>
+
+        <article class="card">
+          <div class="card__icon">
+            <svg class="icon" aria-hidden="true"><use href="site/icons.svg#download-simple"></use></svg>
+          </div>
+          <h3>Safe to run again</h3>
+          <p class="card__text">An existing disk image, an existing configuration and a
+            startup entry that is already there are all left alone. Your own NeXTSTEP image
+            in <code>~/nextstep</code> is found and used instead of a download.</p>
+        </article>
+
+        <article class="card">
+          <div class="card__icon">
+            <svg class="icon" aria-hidden="true"><use href="site/icons.svg#arrow-counter-clockwise"></use></svg>
+          </div>
+          <h3>Ctrl+C leaves it as it was</h3>
+          <p class="card__text">An interrupt and a failing step both walk the record of
+            changes backwards. Only this run's own changes are reversed, and a step that
+            skipped itself has nothing to take back.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="measure foot__row">
+    <p>Built in Bregenz for 3D printed NeXTcube replicas at half scale.</p>
+    <nav class="foot__links">
+      <a href="https://github.com/phranck/previously">
+        <svg class="icon" aria-hidden="true"><use href="site/icons.svg#github"></use></svg>
+        Source
+      </a>
+      <a href="https://github.com/phranck/previously/blob/main/install.sh">
+        <svg class="icon" aria-hidden="true"><use href="site/icons.svg#terminal-window"></use></svg>
+        Read install.sh
+      </a>
+      <a href="https://previous.nextcommunity.net/">
+        Previous
+        <svg class="icon" aria-hidden="true"><use href="site/icons.svg#arrow-square-out"></use></svg>
+      </a>
+    </nav>
+  </div>
+</footer>
+
+<script src="site/site.js"></script>
 </body>
 </html>

@@ -3,13 +3,13 @@
 # Turns a freshly imaged Raspberry Pi OS Lite (64 bit, Trixie) into a machine
 # that boots straight into NeXTSTEP under the Previous emulator.
 #
-#   curl -fsSL https://previously.layered.work/install.sh | bash
+#   curl -fsSL https://previous.li/install.sh | bash
 #
 # And afterwards, to put the newest admin tool on a machine that already has
 # one, which is the one part of this that changes often enough to be worth
 # replacing by itself:
 #
-#   curl -fsSL https://previously.layered.work/install.sh | bash -s -- --update-admin
+#   curl -fsSL https://previous.li/install.sh | bash -s -- --update-admin
 #
 # Written to run straight off the network, so it carries everything it needs
 # and reads no file beside itself. Two details make that safe.
