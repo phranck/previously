@@ -1,17 +1,4 @@
 <!DOCTYPE html>
-<!--
-  The page the install line is copied from.
-
-  It sits in the root rather than in a folder of its own, because the line it
-  carries fetches install.sh from the same host, and install.sh belongs beside
-  the repository it installs from. Serving the root is what lets both be true
-  without the script existing twice. .nojekyll beside this keeps Pages from
-  building anything and hands every file over as it is, which a shell script
-  has to be.
-
-  What the page is made of, and which three things on it are NeXTSTEP rather
-  than this page's own, is written at the top of site/site.css.
--->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -22,7 +9,6 @@
       content="One line turns a Raspberry Pi 5 into a machine that starts straight into NeXTSTEP under the Previous emulator, with a web admin built in the machine's own idiom.">
 <link rel="canonical" href="https://previous.li/">
 
-<!-- One scheme, and it is dark, because NeXTSTEP ran on black hardware. -->
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#121218">
 
@@ -50,9 +36,6 @@
 <link rel="preload" href="site/fonts/inter-variable-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="site/site.css">
 
-<!-- What this page is, in the form a search engine reads rather than guesses
-     at. There is no price and no rating in here: the first is not what this
-     is, and the second would have to be invented. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -184,8 +167,6 @@
 
     </div>
 
-    <!-- Outside the measure, because the window around the picture is wider
-         than the column and the picture inside it is shown at its own size. -->
     <figure class="shot">
       <div class="browser">
         <div class="browser__bar">
@@ -311,9 +292,6 @@
 
 <script src="site/site.js"></script>
 
-<!-- Umami, on phranck's own server rather than a hosted one, so what it counts
-     stays with him. It sets no cookie and stores nothing that identifies a
-     reader, which is why this page carries no consent banner. -->
 <script defer src="https://umami.layered.work/script.js" data-website-id="490691ab-30ee-4131-87d3-ca58d8da2d5a"></script>
 </body>
 </html>
