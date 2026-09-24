@@ -18,6 +18,25 @@
                        which is what NeXTSTEP set its whole interface in.
 
    Everything else is ordinary modern layout with a great deal of air in it.
+
+   Four things about the page carry no comment of their own, because the markup
+   is served as it is written and nothing in it should be addressed to a reader
+   of the source:
+
+     Where it lives     index.html sits in the repository root rather than in a
+                        folder, because the line it carries fetches install.sh
+                        from the same host and that script belongs beside the
+                        repository it installs from. `.nojekyll` next to it
+                        keeps Pages from building anything and hands every file
+                        over untouched, which a shell script has to be.
+     One scheme         `color-scheme: dark` and a single theme colour, because
+                        NeXTSTEP ran on black hardware.
+     Structured data    The JSON-LD block names no price and no rating. The
+                        first is not what this is and the second would have to
+                        be invented.
+     The picture        Its figure stands outside the measure, because the
+                        window around it is wider than the column and the
+                        picture inside is shown at its own size.
    --------------------------------------------------------------------------- */
 
 /* --- the type ------------------------------------------------------------ */
