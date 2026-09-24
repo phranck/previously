@@ -50,37 +50,33 @@
   --next-desktop: #555577;
   --next-live: #2f7d32;
 
-  /* What the page is made of, stated once for both schemes. `light-dark()`
-     reads whichever of its two the `color-scheme` in force names, so the
-     switch in the bar sets that one property and every value below follows.
-     The alternative is a second block of the same tokens under a media query,
-     which is the same question answered twice.
+  /* What the page is made of. There is one scheme and it is dark, because the
+     machine this is about was black: a NeXTcube in black magnesium, on a black
+     monitor stand, with a black keyboard. A light page would be about some
+     other computer.
 
      The neutrals carry a trace of the workspace colour rather than being pure
      grey, so a surface next to the accent reads as belonging to it. */
-  --paper: light-dark(#ffffff, #121218);
-  --paper-sunk: light-dark(#f4f4f8, #1b1b23);
-  --ink: light-dark(#16161c, #f2f2f6);
-  --ink-soft: light-dark(#5a5a68, #a6a6b4);
-  --rule: light-dark(#e2e2ea, #2c2c38);
-  /* After dark the workspace colour is lifted, because the original was chosen
-     to sit behind black window frames rather than to carry text on a dark
-     page. */
-  --accent: light-dark(var(--next-desktop), #8f8fc4);
-  --accent-ink: light-dark(var(--next-white), #12121a);
-  /* What a main navigation entry lies on whilst the pointer is over it. The
-     same value in both schemes: on the light page it is a dark shape, and on
-     the dark one it is the surface a shade above the page, which is where
-     every other raised surface here sits too. Its letters stay light in both,
-     because the shape is dark in both. */
+  --paper: #121218;
+  --paper-sunk: #1b1b23;
+  --ink: #f2f2f6;
+  --ink-soft: #a6a6b4;
+  --rule: #2c2c38;
+  /* The workspace colour, lifted. The original was chosen to sit behind black
+     window frames rather than to carry text on a dark page, and at its own
+     value it is too close to this one. */
+  --accent: #8f8fc4;
+  --accent-ink: #12121a;
+  /* What a main navigation entry lies on whilst the pointer is over it, which
+     is the surface a shade above the page. */
   --nav-hover: #2d2d3a;
-  --nav-hover-ink: light-dark(#ffffff, var(--ink));
+  --nav-hover-ink: var(--ink);
   /* Secondary text on the workspace colour, which is one value for all of it.
      It measures 6.09 against that background, and white itself measures
      7.11, so the two read as two weights of the same voice. */
   --on-workspace-soft: color-mix(in oklab, var(--next-white) 90%, var(--next-desktop));
   --accent-wash: color-mix(in oklab, var(--accent) 10%, var(--paper));
-  --accent-hover: color-mix(in oklab, var(--accent) 82%, light-dark(black, white));
+  --accent-hover: color-mix(in oklab, var(--accent) 82%, white);
 
   /* One measure for the bar, the content and the foot, so the page reads as
      one column rather than three. 1120 is what the original screenshot this
@@ -106,7 +102,7 @@
      sits past the curve entirely and is square, which is what the clamp
      says. */
   --card-radius: 24px;
-  --card-padding: var(--space-4);
+  --card-padding: var(--space-3);
   --card-text-inset: calc(var(--card-radius) / 2);
   --card-inner-radius: max(calc(var(--card-radius) - var(--card-padding)), 0px);
 
@@ -144,28 +140,22 @@
   --duration: 180ms;
   --ease: cubic-bezier(0.2, 0, 0, 1);
 
-  /* A shadow is not a colour, so `light-dark()` cannot sit in the shorthand.
-     Its colours are tokens instead, and the shorthands read them. After dark a
-     shadow has to be deeper to be seen at all. */
-  --shadow-near: light-dark(rgb(22 22 28 / 6%), rgb(0 0 0 / 40%));
-  --shadow-far: light-dark(rgb(22 22 28 / 6%), rgb(0 0 0 / 30%));
-  --shadow-float-near: light-dark(rgb(22 22 28 / 10%), rgb(0 0 0 / 50%));
-  --shadow-float-far: light-dark(rgb(22 22 28 / 18%), rgb(0 0 0 / 45%));
+  /* Deep, because a shadow on a dark surface is only read where it is nearly
+     black. The colours are tokens of their own so the two shorthands below
+     state the geometry once each. */
+  --shadow-near: rgb(0 0 0 / 40%);
+  --shadow-far: rgb(0 0 0 / 30%);
+  --shadow-float-near: rgb(0 0 0 / 50%);
+  --shadow-float-far: rgb(0 0 0 / 45%);
   --shadow-card: 0 1px 2px var(--shadow-near), 0 8px 24px var(--shadow-far);
   --shadow-float: 0 2px 4px var(--shadow-float-near), 0 18px 48px var(--shadow-float-far);
+  /* A window casts further than a card does, and the one on this page is large
+     enough that the card's shadow disappears under it. */
+  --shadow-window: 0 3px 8px rgb(0 0 0 / 45%), 0 28px 80px rgb(0 0 0 / 55%);
 
-  /* Both schemes are built, so the page follows the system until somebody
-     says otherwise. The two rules below are that somebody: the switch writes
-     the attribute, and `only` takes the system out of the decision. */
-  color-scheme: light dark;
-}
-
-:root[data-scheme="light"] {
-  color-scheme: only light;
-}
-
-:root[data-scheme="dark"] {
-  color-scheme: only dark;
+  /* One scheme, and the browser is told so: form controls and scrollbars take
+     their dark variants without anything else being asked of them. */
+  color-scheme: dark;
 }
 
 /* --- the page ------------------------------------------------------------ */
@@ -315,6 +305,9 @@ kbd {
 /* An entry is a shape rather than an underlined word: the line under it reads
    as prose, and these are places to go. The shape appears under the pointer
    and takes the letters with it. */
+/* No transition: the shape appears the moment the pointer is over it. A fade
+   on a target the pointer is already sitting on reads as the page lagging
+   rather than as a state changing. */
 .bar__links a {
   display: flex;
   align-items: center;
@@ -323,8 +316,6 @@ kbd {
   padding-bottom: calc(var(--label-lift) * 2);
   border-radius: var(--control-radius);
   text-decoration: none;
-  transition: background-color var(--duration) var(--ease),
-    color var(--duration) var(--ease);
 }
 
 .bar__links a:hover {
@@ -332,75 +323,11 @@ kbd {
   color: var(--nav-hover-ink);
 }
 
-/* --- the scheme switch --------------------------------------------------- */
-
-/* A glyph alone, so it carries no fill of its own until the pointer arrives,
-   and then it takes the same shape the entries beside it take. */
-.scheme {
-  display: grid;
-  place-items: center;
-  width: calc(var(--step) * 4.5);
-  height: calc(var(--step) * 4.5);
-  margin-inline-start: 2px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--control-radius);
-  background: transparent;
-  color: inherit;
-  font-size: var(--text-lg);
-  cursor: pointer;
-  transition: background-color var(--duration) var(--ease),
-    color var(--duration) var(--ease);
-}
-
-.scheme:hover {
-  background: var(--nav-hover);
-  color: var(--nav-hover-ink);
-}
-
-/* The three glyphs share one cell and show which of the three states is in
-   force: the screen whilst the page follows the system, and the sun or the
-   moon once somebody has chosen. The one that is showing turns in, the others
-   turn out, so the change reads as a movement rather than as a redraw.
-
-   One rule names all three showing cases, because each of them is a different
-   glyph under a different condition and none of the three can be true twice. */
-.scheme .icon {
-  grid-area: 1 / 1;
-  opacity: 0;
-  transform: rotate(-90deg) scale(0.5);
-  transition: opacity var(--duration) var(--ease),
-    transform var(--duration) var(--ease);
-}
-
-:root:not([data-scheme]) .scheme__system,
-:root[data-scheme="light"] .scheme__sun,
-:root[data-scheme="dark"] .scheme__moon {
-  opacity: 1;
-  transform: none;
-}
-
-/* Read by a screen reader and by nothing else. */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 /* Below the measure the entries crowd the wordmark, and the page's own
-   sections are a scroll away in any case. The switch stays. */
+   sections are a scroll away in any case. */
 @media (max-width: 640px) {
   .bar__links {
     display: none;
-  }
-
-  .scheme {
-    margin-inline-start: auto;
   }
 }
 
@@ -767,30 +694,107 @@ kbd {
 
 /* --- the screenshots ----------------------------------------------------- */
 
-/* The picture carries the same workspace colour this section is painted in, so
-   it needs no frame: the windows in it lie on the page the way they lie on the
-   screen. That is also why it is not a card. */
+/* The picture sits in a browser window, because that is where somebody
+   actually meets this interface. The window is as wide as the picture plus its
+   own edge, which is wider than the column, so it stands outside the measure
+   and centres itself. */
 .shot {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--space-2);
   margin: 0;
+  width: fit-content;
+  max-width: calc(100% - var(--space-6));
+  margin-inline: auto;
 }
 
-/* Shown at its own size wherever the column can hold it, because this is a
-   bitmap interface drawn one pixel per pixel and any scaling turns its
-   single-pixel edges into grey. The picture is exactly as wide as the column
-   inside the measure, so anything from a laptop upwards gets it untouched. */
+/* Safari on macOS after dark, with the three lights at the left of the bar and
+   the address centred in it. Nothing else from that toolbar: the sidebar
+   button, the profile, the arrows and the corner buttons all say something
+   about somebody's browser rather than about this page.
+
+   The two greys and the light are read off a screenshot of the real thing at
+   1504 points wide: the bar is #272727, the field is #373737 and therefore
+   lighter than the bar, and a light is 13.5 points across. The bar there is 52
+   points, which is 3.5% of that window; this window is 1074 wide, so the bar
+   is scaled with it rather than kept at a size that would loom over it. */
+.browser {
+  --bar-height: 40px;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  /* No border: the real window has none. Its own contents run to the edge and
+     the shadow is what separates it from what is behind. */
+  box-shadow: var(--shadow-window);
+}
+
+.browser__bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--bar-height);
+  padding-inline: 14px;
+  background: #272727;
+}
+
+.browser__lights {
+  display: flex;
+  gap: 8px;
+}
+
+.browser__lights span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.browser__lights span:nth-child(1) {
+  background: #ff5f57;
+}
+
+.browser__lights span:nth-child(2) {
+  background: #febc2e;
+}
+
+.browser__lights span:nth-child(3) {
+  background: #28c840;
+}
+
+/* Two fifths of the window, which is what the real one takes, and lighter than
+   the bar it sits in. */
+.browser__address {
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 430px;
+  max-width: 40vw;
+  height: calc(var(--bar-height) - 14px);
+  padding-bottom: calc(var(--label-lift) * 2);
+  border-radius: 7px;
+  background: #373737;
+  color: rgb(255 255 255 / 62%);
+  font-size: var(--text-xs);
+}
+
+/* The picture is 2144 wide and is shown at 1072. That is what a display with
+   two device pixels per CSS pixel needs: at its own size it would be doubled
+   on screen, and an interface drawn one pixel per pixel is the worst thing to
+   double, because its single-pixel edges come out as two soft ones. A display
+   with one device pixel halves it cleanly instead. */
 .shot img {
   display: block;
-  width: auto;
+  width: 1072px;
   max-width: 100%;
   height: auto;
 }
 
 .shot__caption {
   font-size: var(--text-sm);
-  color: var(--on-workspace-soft);
+  color: var(--ink-soft);
 }
 
 /* --- the foot ------------------------------------------------------------ */
@@ -802,12 +806,31 @@ kbd {
   color: var(--ink-soft);
 }
 
+/* One axis, like the opening of the page, and three steps down it: the links
+   first, then who made this, then whose marks are named on it. Each line is
+   quieter than the one above, so the order of importance is the order they
+   stand in. */
 .foot__row {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
+  text-align: center;
+}
+
+.foot__copyright {
+  color: var(--ink-soft);
+}
+
+/* Further down than the gap between the two lines above it, because it belongs
+   to somebody else and should read as a footnote rather than as a third line
+   of this footer. */
+.foot__trademarks {
+  margin-top: var(--space-2);
+  max-width: 62ch;
+  font-size: var(--text-xs);
+  color: color-mix(in oklab, var(--ink-soft) 70%, var(--paper));
+  text-wrap: balance;
 }
 
 .foot__links {
@@ -815,6 +838,22 @@ kbd {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
+}
+
+/* Bare until the pointer arrives, like the entries in the bar. A row of short
+   links carrying an underline each reads as a ruled line rather than as places
+   to go. This holds for every link down here, including the one in the
+   copyright line. */
+/* The same ink the entries in the bar carry, rather than the softer colour the
+   prose around them is set in: a link is a link wherever it stands. */
+.foot a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.foot a:hover {
+  text-decoration: underline;
+  text-decoration-color: currentcolor;
 }
 
 .foot__links a {
