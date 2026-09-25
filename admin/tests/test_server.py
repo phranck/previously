@@ -550,6 +550,87 @@ def test_a_saved_configuration_of_the_same_values_is_named_as_the_system_one(ser
     assert json.loads(body)["configuration"]["catalogue"] == "nextstation-turbo-color"
 
 
+# -- what the editor asks on every change ---------------------------------
+
+
+def settled(service, **draft):
+    """Asks what a configuration would be, the way the editor does."""
+    query = urllib.parse.urlencode({key: value for key, value in draft.items()})
+    _, _, body = fetch(service + "/api/machine/settled?" + query)
+    return json.loads(body)
+
+
+def test_asking_what_a_configuration_would_be_needs_no_token(service):
+    """It changes nothing. What it says is what Previous would make of a
+    machine, which costs no more to know than which one is running."""
+    answer = settled(service, kind=2, turbo=1, colour=1, mhz=40, memory=128)
+
+    assert answer["configuration"]["kind"] == 2
+    assert answer["configuration"]["nitro"] is True
+    assert answer["configuration"]["banks"] == [32, 32, 32, 32]
+
+
+def test_what_comes_back_is_what_saving_takes(service):
+    """So the editor posts back what it was handed rather than assembling a
+    configuration of its own."""
+    answer = settled(service, kind=2, turbo=1, colour=1, memory=32)
+
+    with tell(service, "/api/machine/save",
+              {"name": "Meine Kiste", "configuration": answer["configuration"]}) as sent:
+        assert json.loads(sent.read())["reason"] == "saved.kept"
+
+    _, _, body = fetch(service + "/api/files")
+    kept = machines_in(json.loads(body))["Meine Kiste"]
+    assert kept["memory_mb"] == 32
+    assert kept["colour"] is True
+
+
+def test_it_says_what_else_could_be_chosen(service):
+    """The editor draws its cells from this and holds no rule of its own."""
+    offers = settled(service, kind=1, turbo=1, memory=64)["offers"]
+
+    assert offers["kinds"] == [0, 1, 2]
+    assert offers["turbo"] is True
+    assert offers["colour"] is False
+    assert offers["dimension"] is True
+    assert offers["clocks"] == [33, 40]
+    assert offers["memory"] == [8, 16, 32, 64, 128]
+
+
+def test_what_it_refuses_comes_back_refused(service):
+    """A cube in colour is a cube, so the interface cannot show colour on one
+    even for the moment between the click and the answer."""
+    answer = settled(service, kind=1, colour=1, dimension=1, memory=16)
+
+    assert answer["configuration"]["colour"] is False
+    assert answer["configuration"]["dimension"] is True
+    assert answer["offers"]["colour"] is False
+
+
+def test_it_says_the_machine_in_the_same_words_as_everything_else(service):
+    """Described by the same function as /api/status and /api/files, so the
+    window reads the processor and the chips in the interface's own sentences."""
+    machine = settled(service, kind=2, turbo=1, colour=1, memory=128)["machine"]
+
+    assert machine["model"] == "NeXTstation"
+    assert machine["enclosure"] == "station"
+    assert machine["cpu"] == "68040"
+    assert machine["mhz"] == 33
+    assert machine["memory_mb"] == 128
+    assert machine["rtc"] == "MCCS1850"
+    assert machine["nbic"] is False
+
+
+def test_an_empty_question_is_answered_with_a_machine(service):
+    """Every value is optional, because a draft is what an editor is showing and
+    a window that has just opened is showing whatever it was given."""
+    answer = settled(service)
+
+    assert answer["configuration"]["kind"] == 1
+    assert sum(answer["configuration"]["banks"]) == 8
+    assert answer["offers"]["memory"] == [8, 16, 32, 64]
+
+
 # -- a picture of the emulated screen -------------------------------------
 
 
