@@ -26,6 +26,8 @@ NX_STRINGS.sv = {
   "menu.edit": "Redigera konfigurationen…",
   "menu.keep": "Lägg på hyllan",
   "menu.unkeep": "Ta bort från hyllan",
+  "menu.rename": "Byt namn…",
+  "menu.remove": "Ta bort",
 
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Info",
@@ -148,6 +150,12 @@ NX_STRINGS.sv = {
 
   "ask.not-yet.missing": "{name} finns inte än.",
   "ask.not-yet.plan": "Den ska göra maskinen inställbar så som Previous tillåter, och inte som en textfil. Det diskuteras just nu.",
+  "ask.rename.title": "Byt namn på {name}",
+  "ask.rename.question": "Vad ska den här konfigurationen heta?",
+  "ask.remove.title": "Ta bort {name}?",
+  "ask.remove.loss": "Konfigurationen försvinner ur listan och kommer inte tillbaka. En maskin som kör den fortsätter att köra, eftersom filen som emulatorn läser är dess egen.",
+  "button.rename": "Byt namn",
+  "button.remove": "Ta bort",
 
   "ask.board.reboot": "Starta om Raspberry Pi?",
   "ask.board.poweroff": "Stänga av Raspberry Pi?",
@@ -207,4 +215,15 @@ NX_STRINGS.sv = {
   "told.rollback.emulator-will-not-end": "{machine} {why}, den tidigare konfigurationen står åter i filen, men emulatorn ville inte avslutas. Det behöver ses över via SSH.",
   "told.rollback.back-as-before": "{machine} {why}. Den tidigare konfigurationen står åter i filen och maskinen är igång som förut.",
   "told.rollback.nothing-runs": "{machine} {why}, och ingenting är igång med den tidigare konfigurationen heller. Det behöver ses över via SSH.",
+  "told.saved.kept": "{name} är sparad.",
+  "told.saved.renamed": "{was} heter nu {name}.",
+  "told.saved.removed": "{name} är borttagen.",
+  "told.saved.name-needed": "En konfiguration behöver ett namn.",
+  "told.saved.name-taken": "{name} är redan taget. Varje konfiguration bär ett eget namn, de elva inräknade.",
+  "told.saved.name-too-long": "Ett namn får vara {most} tecken, så att hela namnet går att läsa under ikonen.",
+  "told.saved.name-has-a-separator": "Ett namn får inte innehålla snedstreck, eftersom det skiljer en mapp från nästa.",
+  "told.saved.name-has-a-control-character": "Ett namn består av tecken som går att läsa.",
+  "told.saved.no-such": "Det finns ingen sparad konfiguration som heter {asked}.",
+  "told.saved.not-readable": "De sparade konfigurationerna kunde inte läsas, ingenting ändrades: {detail}",
+  "told.saved.could-not-write": "Konfigurationen kunde inte skrivas: {detail}",
 };

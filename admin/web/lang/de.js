@@ -26,6 +26,8 @@ NX_STRINGS.de = {
   "menu.edit": "Konfiguration bearbeiten…",
   "menu.keep": "Auf die Ablage legen",
   "menu.unkeep": "Von der Ablage nehmen",
+  "menu.rename": "Umbenennen…",
+  "menu.remove": "Entfernen",
 
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Info",
@@ -148,6 +150,12 @@ NX_STRINGS.de = {
 
   "ask.not-yet.missing": "{name} gibt es noch nicht.",
   "ask.not-yet.plan": "Sie soll die Maschine so einstellbar machen, wie Previous es erlaubt, und nicht als Textdatei. Das wird gerade besprochen.",
+  "ask.rename.title": "{name} umbenennen",
+  "ask.rename.question": "Wie soll diese Konfiguration heissen?",
+  "ask.remove.title": "{name} entfernen?",
+  "ask.remove.loss": "Die Konfiguration verschwindet aus der Liste und kommt nicht zurück. Eine Maschine, die damit läuft, läuft weiter, denn die Datei, die der Emulator liest, ist ihre eigene.",
+  "button.rename": "Umbenennen",
+  "button.remove": "Entfernen",
 
   "ask.board.reboot": "Den Raspberry Pi neu starten?",
   "ask.board.poweroff": "Den Raspberry Pi ausschalten?",
@@ -207,4 +215,15 @@ NX_STRINGS.de = {
   "told.rollback.emulator-will-not-end": "{machine} {why}, die vorherige Konfiguration steht wieder in der Datei, aber der Emulator liess sich nicht beenden. Das ist über SSH nachzusehen.",
   "told.rollback.back-as-before": "{machine} {why}. Die vorherige Konfiguration steht wieder in der Datei und die Maschine läuft wie zuvor.",
   "told.rollback.nothing-runs": "{machine} {why}, und auch mit der vorherigen Konfiguration läuft nichts. Das ist über SSH nachzusehen.",
+  "told.saved.kept": "{name} ist gespeichert.",
+  "told.saved.renamed": "{was} heisst jetzt {name}.",
+  "told.saved.removed": "{name} ist entfernt.",
+  "told.saved.name-needed": "Eine Konfiguration braucht einen Namen.",
+  "told.saved.name-taken": "{name} ist schon vergeben. Jede Konfiguration trägt einen eigenen Namen, die elf mitgerechnet.",
+  "told.saved.name-too-long": "Ein Name darf {most} Zeichen lang sein, damit er unter dem Symbol ganz zu lesen ist.",
+  "told.saved.name-has-a-separator": "Ein Name darf keinen Schrägstrich enthalten, denn der trennt einen Ordner vom nächsten.",
+  "told.saved.name-has-a-control-character": "Ein Name besteht aus Zeichen, die man lesen kann.",
+  "told.saved.no-such": "Es gibt keine gespeicherte Konfiguration namens {asked}.",
+  "told.saved.not-readable": "Die gespeicherten Konfigurationen liessen sich nicht lesen, es wurde nichts geändert: {detail}",
+  "told.saved.could-not-write": "Die Konfiguration liess sich nicht schreiben: {detail}",
 };
