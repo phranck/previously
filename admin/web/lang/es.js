@@ -36,6 +36,19 @@ NX_STRINGS.es = {
   "preferences.localization": "Preferencias de adaptación",
   "preferences.monitor": "Preferencias del monitor",
   "size.title": "Tamaño de la interfaz",
+  "editor.machine": "Tipo de máquina",
+  "editor.boards": "Tarjetas",
+  "editor.clock": "Reloj del procesador",
+  "editor.turbo": "Turbo",
+  "editor.colour": "Color",
+  "editor.dimension": "NeXTdimension",
+  "editor.mhz": "{mhz} MHz",
+  "editor.megabytes": "{mb} MB",
+  "editor.into-a-new-one": "Una de las máquinas que trae este proyecto, y que no se puede cambiar. Guardar hace de ella una configuración tuya, con un nombre que le des.",
+  "editor.over-this-one": "{name} es una configuración tuya, así que guardar la sobrescribe.",
+  "ask.name.title": "Guardar la configuración",
+  "button.save": "Guardar",
+  "button.save-as": "Guardar como…",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Editor de configuración",
@@ -149,7 +162,7 @@ NX_STRINGS.es = {
   "ask.change.rollback": "Si no arranca, la configuración anterior se vuelve a escribir por sí sola.",
 
   "ask.not-yet.missing": "{name} todavía no existe.",
-  "ask.not-yet.plan": "Debe permitir ajustar la máquina como Previous lo consiente, y no como un archivo de texto. Se está hablando de ello.",
+  "ask.not-yet.plan": "Está prevista. El icono está aquí porque el lugar en el que está se construyó primero.",
   "ask.rename.title": "Renombrar {name}",
   "ask.rename.question": "¿Cómo debe llamarse esta configuración?",
   "ask.remove.title": "¿Quitar {name}?",

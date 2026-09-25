@@ -1,8 +1,8 @@
 /* What this application draws that the kit does not.
 
-   The kit knows about windows, shelves and panels. What is here names
-   something only Previously has: its Preferences, with the one module of the
-   fourteen that has anything to set on this machine. */
+   The kit knows about windows, shelves and panels. What is here names something
+   only Previously has: its Preferences, with the two modules of the fourteen
+   that have anything to set on this machine, and its Config Editor. */
 
 /* --- the preferences window ---------------------------------------------- */
 
@@ -242,4 +242,23 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 .choice .choice-name {
   font-size: var(--status-size);
   line-height: var(--status-line);
+}
+
+/* --- the config editor ---------------------------------------------------- */
+
+/* The groups that change the machine, stacked under its picture. The step
+   between them is what the original leaves between two framed boxes, which is
+   the same one the File Viewer's bands stand apart by. */
+.editor-groups {
+  display: grid;
+  gap: var(--band-gap);
+  margin-top: var(--portrait-gap);
+}
+
+/* Its cells hold a word rather than a letter or a picture, and a machine type
+   is a long one, so they wrap onto a second row rather than running out of the
+   window. Every option is read whole: one that had to be shortened would be a
+   choice nobody can make. */
+.editor-groups .choices {
+  flex-wrap: wrap;
 }

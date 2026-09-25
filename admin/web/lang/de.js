@@ -36,6 +36,19 @@ NX_STRINGS.de = {
   "preferences.localization": "Lokalisierungs-Präferenzen",
   "preferences.monitor": "Monitor-Präferenzen",
   "size.title": "Grösse der Oberfläche",
+  "editor.machine": "Maschinentyp",
+  "editor.boards": "Karten",
+  "editor.clock": "Prozessortakt",
+  "editor.turbo": "Turbo",
+  "editor.colour": "Farbe",
+  "editor.dimension": "NeXTdimension",
+  "editor.mhz": "{mhz} MHz",
+  "editor.megabytes": "{mb} MB",
+  "editor.into-a-new-one": "Eine der Maschinen, die dieses Projekt mitbringt, und die sich nicht ändern lässt. Sichern macht daraus eine eigene Konfiguration, unter einem Namen, den du ihr gibst.",
+  "editor.over-this-one": "{name} ist eine eigene Konfiguration, Sichern schreibt sie also über.",
+  "ask.name.title": "Konfiguration sichern",
+  "button.save": "Sichern",
+  "button.save-as": "Sichern unter…",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Konfigurationseditor",
@@ -149,7 +162,7 @@ NX_STRINGS.de = {
   "ask.change.rollback": "Kommt sie damit nicht hoch, wird die vorherige Konfiguration von selbst zurückgeschrieben.",
 
   "ask.not-yet.missing": "{name} gibt es noch nicht.",
-  "ask.not-yet.plan": "Sie soll die Maschine so einstellbar machen, wie Previous es erlaubt, und nicht als Textdatei. Das wird gerade besprochen.",
+  "ask.not-yet.plan": "Sie ist geplant. Das Symbol steht hier, weil der Ort zuerst gebaut wurde, an dem es steht.",
   "ask.rename.title": "{name} umbenennen",
   "ask.rename.question": "Wie soll diese Konfiguration heissen?",
   "ask.remove.title": "{name} entfernen?",

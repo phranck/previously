@@ -36,6 +36,19 @@ NX_STRINGS.it = {
   "preferences.localization": "Preferenze di localizzazione",
   "preferences.monitor": "Preferenze monitor",
   "size.title": "Dimensione dell'interfaccia",
+  "editor.machine": "Tipo di macchina",
+  "editor.boards": "Schede",
+  "editor.clock": "Clock del processore",
+  "editor.turbo": "Turbo",
+  "editor.colour": "Colore",
+  "editor.dimension": "NeXTdimension",
+  "editor.mhz": "{mhz} MHz",
+  "editor.megabytes": "{mb} MB",
+  "editor.into-a-new-one": "Una delle macchine che questo progetto porta con sé, e che non si può cambiare. Salvare ne fa una configurazione tua, con un nome che le dai tu.",
+  "editor.over-this-one": "{name} è una configurazione tua, quindi salvare la sovrascrive.",
+  "ask.name.title": "Salva la configurazione",
+  "button.save": "Salva",
+  "button.save-as": "Salva come…",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Editor di configurazione",
@@ -149,7 +162,7 @@ NX_STRINGS.it = {
   "ask.change.rollback": "Se non si avvia, la configurazione precedente viene riscritta da sé.",
 
   "ask.not-yet.missing": "{name} non esiste ancora.",
-  "ask.not-yet.plan": "Deve rendere la macchina impostabile come Previous consente, e non come file di testo. Se ne sta discutendo.",
+  "ask.not-yet.plan": "È prevista. L'icona è qui perché il posto in cui sta è stato costruito prima.",
   "ask.rename.title": "Rinomina {name}",
   "ask.rename.question": "Come deve chiamarsi questa configurazione?",
   "ask.remove.title": "Rimuovere {name}?",

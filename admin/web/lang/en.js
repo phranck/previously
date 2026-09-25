@@ -44,6 +44,19 @@ NX_STRINGS.en = {
   "preferences.localization": "Localization Preferences",
   "preferences.monitor": "Monitor Preferences",
   "size.title": "Interface Size",
+  "editor.machine": "Machine type",
+  "editor.boards": "Boards",
+  "editor.clock": "Processor clock",
+  "editor.turbo": "Turbo",
+  "editor.colour": "Colour",
+  "editor.dimension": "NeXTdimension",
+  "editor.mhz": "{mhz} MHz",
+  "editor.megabytes": "{mb} MB",
+  "editor.into-a-new-one": "One of the machines this project ships, which cannot be changed. Saving makes a configuration of your own, under a name you give it.",
+  "editor.over-this-one": "{name} is a configuration of your own, so saving writes over it.",
+  "ask.name.title": "Save configuration",
+  "button.save": "Save",
+  "button.save-as": "Save as…",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Config Editor",
@@ -157,7 +170,7 @@ NX_STRINGS.en = {
   "ask.change.rollback": "If it does not come up, the previous configuration is written back by itself.",
 
   "ask.not-yet.missing": "{name} does not exist yet.",
-  "ask.not-yet.plan": "It is to make the machine settable the way Previous allows, rather than as a text file. That is being discussed.",
+  "ask.not-yet.plan": "It is planned. The icon is here because the place it sits in was built first.",
   "ask.rename.title": "Rename {name}",
   "ask.rename.question": "What should this configuration be called?",
   "ask.remove.title": "Remove {name}?",

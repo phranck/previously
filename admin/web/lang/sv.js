@@ -36,6 +36,19 @@ NX_STRINGS.sv = {
   "preferences.localization": "Lokala inställningar",
   "preferences.monitor": "Bildskärmsinställningar",
   "size.title": "Gränssnittets storlek",
+  "editor.machine": "Maskintyp",
+  "editor.boards": "Kort",
+  "editor.clock": "Processorklocka",
+  "editor.turbo": "Turbo",
+  "editor.colour": "Färg",
+  "editor.dimension": "NeXTdimension",
+  "editor.mhz": "{mhz} MHz",
+  "editor.megabytes": "{mb} MB",
+  "editor.into-a-new-one": "En av maskinerna som det här projektet levererar, och den går inte att ändra. Att spara gör den till en egen konfiguration, under ett namn du ger den.",
+  "editor.over-this-one": "{name} är en egen konfiguration, så att spara skriver över den.",
+  "ask.name.title": "Spara konfigurationen",
+  "button.save": "Spara",
+  "button.save-as": "Spara som…",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Konfigurationsredigerare",
@@ -149,7 +162,7 @@ NX_STRINGS.sv = {
   "ask.change.rollback": "Om den inte startar skrivs den tidigare konfigurationen tillbaka av sig själv.",
 
   "ask.not-yet.missing": "{name} finns inte än.",
-  "ask.not-yet.plan": "Den ska göra maskinen inställbar så som Previous tillåter, och inte som en textfil. Det diskuteras just nu.",
+  "ask.not-yet.plan": "Den är planerad. Ikonen står här eftersom platsen den står på byggdes först.",
   "ask.rename.title": "Byt namn på {name}",
   "ask.rename.question": "Vad ska den här konfigurationen heta?",
   "ask.remove.title": "Ta bort {name}?",
