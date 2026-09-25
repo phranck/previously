@@ -67,7 +67,7 @@ def as_machine(name, values):
     return machines.settled(machines.Machine(
         identifier=name,
         name=name,
-        kind=_whole(values.get("kind"), machines.NEXTCUBE),
+        kind=machines.whole(values.get("kind"), machines.NEXTCUBE),
         turbo=bool(values.get("turbo")),
         nitro=bool(values.get("nitro")),
         colour=bool(values.get("colour")),
@@ -323,11 +323,3 @@ def _write(path, kept, said):
         beside.unlink(missing_ok=True)
         return False, told("saved.could-not-write", detail=str(error))
     return True, said
-
-
-def _whole(value, fallback):
-    """@returns The value as an int, or the fallback where it is not one."""
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return fallback

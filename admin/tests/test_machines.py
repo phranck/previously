@@ -308,3 +308,163 @@ def test_a_turbo_board_decides_the_sizes_before_colour_does():
     sizes rather than the colour ones."""
     assert machines.bank_sizes(machines.NEXTSTATION, turbo=True, colour=True)[0] == \
         machines.TURBO_BANK_SIZES
+
+
+# -- how much memory, as a total ------------------------------------------
+
+
+def test_every_shipped_machine_holds_a_total_that_can_be_chosen():
+    """The editor offers memory as a total, so opening one of the eleven has to
+    land on one of those rather than on nothing. All eleven do, and their banks
+    are exactly the layout that total is made of."""
+    for machine in machines.CATALOGUE:
+        total = sum(machine.banks)
+        offered = machines.memory_totals(
+            machine.kind, machine.turbo, machine.colour)
+
+        assert total in offered, (machine.identifier, total, offered)
+        assert machines.banks_for(
+            total, machine.kind, machine.turbo, machine.colour) == machine.banks, \
+            machine.identifier
+
+
+def test_which_totals_each_machine_is_offered():
+    """From Previous's own dialogue, which takes the larger two away where the
+    board cannot hold them."""
+    assert machines.memory_totals(machines.NEXTCUBE, turbo=True, colour=False) == \
+        (8, 16, 32, 64, 128)
+    # A monochrome cube has four banks of 16 and stops at 64.
+    assert machines.memory_totals(machines.NEXTCUBE, turbo=False, colour=False) == \
+        (8, 16, 32, 64)
+    # A colour board fills all four banks at 32, and a plain station reaches
+    # only two banks at all. Both stop there.
+    assert machines.memory_totals(machines.NEXTSTATION, turbo=False, colour=True) == \
+        (8, 16, 32)
+    assert machines.memory_totals(machines.NEXTSTATION, turbo=False, colour=False) == \
+        (8, 16, 32)
+
+
+def test_a_total_is_made_of_the_modules_that_machine_takes():
+    """The same total is laid out differently: 16 MB is one module on a plain
+    machine and two on anything with a turbo or a colour board."""
+    plain = machines.banks_for(16, machines.NEXTCUBE, turbo=False, colour=False)
+    turbo = machines.banks_for(16, machines.NEXTCUBE, turbo=True, colour=False)
+
+    assert plain == (16, 0, 0, 0)
+    assert turbo == (8, 8, 0, 0)
+    assert sum(plain) == sum(turbo) == 16
+
+
+def test_a_total_the_machine_cannot_hold_becomes_the_largest_it_can():
+    """Somebody moving from a turbo machine to a plain station has asked for
+    128 MB of a board that holds 32, and the machine they can have is a better
+    answer than a refusal."""
+    banks = machines.banks_for(128, machines.NEXTSTATION, turbo=False, colour=False)
+
+    assert banks == (16, 16, 0, 0)
+    assert sum(banks) == 32
+
+
+def test_a_total_below_the_smallest_becomes_the_smallest():
+    assert sum(machines.banks_for(1, machines.NEXTCUBE, turbo=True, colour=False)) == 8
+    assert sum(machines.banks_for(
+        "not a number", machines.NEXTCUBE, turbo=True, colour=False)) == 8
+
+
+# -- a machine as an editor holds one ------------------------------------
+
+
+def test_a_draft_is_the_six_controls_and_nothing_else():
+    """What an editor draws is six choices, and everything that follows from
+    them follows here rather than in the browser."""
+    machine = machines.drafted(kind=machines.NEXTSTATION, turbo=True, colour=True,
+                               mhz=40, memory=128, name="Meine Kiste")
+
+    assert machine.name == "Meine Kiste"
+    assert machine.turbo is True
+    assert machine.colour is True
+    assert machine.nitro is True
+    assert machine.banks == (32, 32, 32, 32)
+    assert machines.settings_for(machine)["System"]["nCpuFreq"] == "40"
+
+
+def test_a_draft_arrives_as_text_and_is_read_as_numbers():
+    """It comes off a query string, so every value in it is a string."""
+    machine = machines.drafted(kind="2", turbo=True, colour=True,
+                               mhz="40", memory="32")
+
+    assert machine.kind == machines.NEXTSTATION
+    assert machine.nitro is True
+    assert sum(machine.banks) == 32
+
+
+def test_a_draft_that_asks_for_what_previous_refuses_comes_back_without_it():
+    cube = machines.drafted(kind=machines.NEXTCUBE, colour=True, memory=16)
+    station = machines.drafted(kind=machines.NEXTSTATION, dimension=True, memory=16)
+    computer = machines.drafted(kind=machines.NEXT_COMPUTER, turbo=True, memory=16)
+
+    assert cube.colour is False
+    assert station.dimension is False
+    assert computer.turbo is False
+
+
+def test_the_faster_clock_needs_the_board_it_belongs_to():
+    """A Nitro is a faster turbo board. Previous has no idea of it and reads the
+    clock as it finds it, so 40 without a turbo is not a machine."""
+    without = machines.drafted(kind=machines.NEXTCUBE, turbo=False, mhz=40, memory=16)
+
+    assert without.nitro is False
+    assert machines.settings_for(without)["System"]["nCpuFreq"] == "25"
+
+
+def test_the_memory_follows_the_machine_the_draft_turned_out_to_be():
+    """The flags are settled first, because they decide which totals there are
+    and what each one is made of. A cube asked for in colour is a cube."""
+    cube = machines.drafted(kind=machines.NEXTCUBE, colour=True, memory=64)
+
+    assert cube.colour is False
+    # The monochrome layout for 64, rather than the colour board's, which has no
+    # 64 at all.
+    assert cube.banks == (16, 16, 16, 16)
+
+
+# -- what an editor may offer --------------------------------------------
+
+
+def test_the_1988_machine_offers_no_turbo_board():
+    assert machines.offers(machines.find("next-computer"))["turbo"] is False
+    assert machines.offers(machines.find("nextcube"))["turbo"] is True
+
+
+def test_only_a_station_offers_colour_and_only_a_cube_a_dimension():
+    station = machines.offers(machines.find("nextstation"))
+    cube = machines.offers(machines.find("nextcube"))
+
+    assert station["colour"] is True
+    assert station["dimension"] is False
+    assert cube["colour"] is False
+    assert cube["dimension"] is True
+
+
+def test_a_clock_is_offered_only_where_there_is_a_turbo_board():
+    assert machines.offers(machines.find("nextcube"))["clocks"] == []
+    assert machines.offers(machines.find("nextcube-turbo"))["clocks"] == [33, 40]
+
+
+def test_every_machine_type_is_offered_always():
+    """Choosing another one is how anything else changes, so it is the one
+    control that never goes away."""
+    for machine in machines.CATALOGUE:
+        assert machines.offers(machine)["kinds"] == [0, 1, 2], machine.identifier
+
+
+def test_what_is_offered_is_what_the_machine_in_hand_holds():
+    """An editor marks the chosen cell from the configuration and draws the cells
+    from this, so a machine whose own value is not among them would show a row
+    with nothing chosen in it."""
+    for machine in machines.CATALOGUE:
+        offered = machines.offers(machine)
+        assert machine.kind in offered["kinds"], machine.identifier
+        assert sum(machine.banks) in offered["memory"], machine.identifier
+        if machine.nitro:
+            assert 40 in offered["clocks"], machine.identifier
