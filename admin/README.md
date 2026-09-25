@@ -78,6 +78,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 |---|---|
 | `GET /api/health` | Its version, and whether it can read `previous.cfg` |
 | `GET /api/status` | What the machine is set to, and whether the kiosk runs |
+| `GET /api/machine/settled` | What a configuration would be, and what else could be chosen with it |
 | `GET /api/token` | Whether the token this request carried is the right one |
 | `POST /api/kiosk/start` | Lets the emulated machine come back |
 | `POST /api/kiosk/stop` | Shuts it down properly and keeps it down |
@@ -146,13 +147,29 @@ The eleven in `machines.py` are System configurations and cannot be changed. Wha
 
 **A name has to be a name.** It cannot be empty, it cannot be longer than 48 characters, which is what can be read under an icon, and it cannot hold a slash, because that is what parts one folder from the next in the path the viewer shows. No two configurations may share one, compared without case and across both sets: a User configuration called after one of the eleven would show two things with the same name in the same window.
 
-**Saving does not activate.** Keeping a configuration and running one are two different acts, and only the second shuts the guest down and writes `previous.cfg`. So the editor of #50 cannot leave a machine that will not boot, and a saved configuration is run exactly as one of the eleven is, by double clicking it or through its context menu.
+**Saving does not activate.** Keeping a configuration and running one are two different acts, and only the second shuts the guest down and writes `previous.cfg`. So the Config Editor cannot leave a machine that will not boot, and a saved configuration is run exactly as one of the eleven is, by double clicking it or through its context menu.
 
 **Previous's own rules are kept when a configuration is written and again when it is read.** The emulator never refuses a configuration it cannot run: it corrects one, partly in its own dialogue when the machine type changes and partly at every start, whatever wrote the file. `machines.settled` is that correction, so colour on a cube, a NeXTdimension in a station, three megabytes in a bank and a fifth bank all come back as the machine that would actually run. A file somebody edited by hand gets the same treatment as one this tool wrote.
 
 Which sizes a memory bank takes comes from the same place: 0, 2, 8 and 32 with a turbo board, 0, 2 and 8 with colour, and 0, 1, 4 and 16 otherwise, rounded up to the next of those. A NeXTstation without a turbo board and without colour reaches two banks rather than four, because on that board the other two are not physically there.
 
 **Renaming and removing belong to User alone.** The context menu offers them for a saved configuration and does not carry them at all for one of the eleven. Removing one takes it out of the list and leaves `previous.cfg` alone, so a machine running that configuration goes on running it.
+
+## The Config Editor
+
+Previous's own System dialogue, in this interface's idiom. That dialogue puts what can be chosen on its left and what follows from it on its right, and this window stacks the two: the machine's picture and four readings above the groups that change them.
+
+**Six controls, and every one of them is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock and how much memory. Everything else in the sixteen keys follows from those, so offering it would be offering a machine that does not exist.
+
+**The window holds no rule at all.** On every change it asks `GET /api/machine/settled` what that configuration is and what may be chosen beside it, and draws the answer. So there is one statement of what Previous allows, in `machines.py`, and the interface cannot show a machine the emulator would correct underneath it: a cube in colour comes back as a cube, and a total of 128 MB asked of a plain station comes back as the 32 it holds. What it saves is the configuration the service handed back rather than one assembled in the browser.
+
+A group with nothing to offer is not drawn. The clock appears with a turbo board and not without one, which is what Previous does with its own 40 MHz option, and the boards group holds only the boards that machine takes.
+
+**The clock is where Nitro lives.** Previous has no such thing and reads `nCpuFreq` as it finds it, so what the catalogue calls a Nitro is 40 MHz on a turbo board, and that is what the editor offers.
+
+**Saving does not activate.** Opened on one of the eleven, which cannot be changed, it asks for a name and keeps a configuration of your own. Opened on one of your own, it writes that one back under the name it has. Either way `previous.cfg` is untouched, so the editor cannot leave a machine that will not boot. Starting one is the same double click as always.
+
+It opens three ways: from the context menu on a machine, which is the one that decides what is being edited; from its tile in the dock; and from `Config Editor.app` in the Apps folder. The last two open it on the configuration that is set now, because that is the machine in front of you.
 
 ## Switching the machine on and off
 
@@ -195,7 +212,7 @@ Two of those paths are worth telling apart. `state_directory` is `/var/lib/previ
 
 **An application here is its window.** The Apps folder holds three, and one is running when the window it opens is open, so closing that window is quitting it. NeXTSTEP kept an application alive without windows; this tool has nothing for such an application to be, and a light saying it was running would mean nothing.
 
-What follows is what the dock does: the Workspace tile is Previously itself and never carries the three marks, the Config Editor carries them because it is not built, and Preferences and the Terminal put their tiles on the floor of the screen whilst they are open, because they are not in the dock.
+What follows is what the dock does: the Workspace tile is Previously itself and never carries the three marks, the Config Editor carries them whilst its window is closed and loses them whilst it is open, and everything else puts its tile on the floor of the screen whilst it is open, because those are not in the dock.
 
 ## The six languages
 
@@ -240,9 +257,9 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
 
 **The sentence around the names is read in whichever language is chosen**, so the line under the shelf says `Apps: 3 Einträge` and `System: 11 Einträge, nur lesbar`.
 
-**An application in that folder opens its window**, and one whose window is not built yet says so. Preferences, Grab, Preview and the Terminal are built, and the Config Editor is #50.
+**An application in that folder opens its window**, and one whose window is not built yet says so. All five are built, and a test holds each one's `opens` to a window the markup actually has.
 
-**The User folder is not there until it holds something.** An empty folder promises a place to put things. The service can keep a configuration there, and what puts one there from the browser is the Config Editor of #50.
+**The User folder is not there until it holds something.** An empty folder promises a place to put things, and the Config Editor is what puts one there.
 
 **System cannot be written.** Whatever else happens, the eleven are a set to go back to, and going back is one double click.
 
@@ -252,7 +269,7 @@ A thing with a `value` can be lifted and carried, and a window with `drop` takes
 
 `web/nextstep.css` and `web/nextstep.js` are generated. The kit is one source per part in `../design/kit/`, each holding its element and its styles beside each other, and `../design/build.py` puts them together into those two files and into the draft. Edit a part there and run `make kit`; `tests/test_kit.py` fails when either file has been edited by hand instead.
 
-`web/previously.css` is this application's own and is not generated. What goes in it is what only Previously has, which today is its Preferences window.
+`web/previously.css` is this application's own and is not generated. What goes in it is what only Previously has, which is its Preferences window and its Config Editor.
 
 `../design/extract.py` says where the icons came from, and `../design/bootpicture.py` where the two machines came from.
 
