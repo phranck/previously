@@ -154,6 +154,10 @@
   <nx-menu-item name="info" data-t="menu.machine-info"></nx-menu-item>
   <nx-menu-item name="activate" data-t="menu.activate"></nx-menu-item>
   <nx-menu-item name="edit" icon="defaultAppIcon" data-t="menu.edit"></nx-menu-item>
+  <!-- Only a configuration somebody saved carries these two. The eleven are the
+       set to go back to, so for them the entries are not in the menu at all. -->
+  <nx-menu-item name="rename" data-t="menu.rename"></nx-menu-item>
+  <nx-menu-item name="remove" data-t="menu.remove"></nx-menu-item>
   <!-- Last, and the only one a folder on the shelf shows. The rule that takes
        the shadow off the foot of a menu asks for the last child, so the entry
        that can stand alone has to be it. The page writes its wording, which is

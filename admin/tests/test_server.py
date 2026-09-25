@@ -15,7 +15,7 @@ import urllib.request
 import pytest
 
 from conftest import settings_for
-from previously import server
+from previously import machines, saved, server
 from previously.token import HEADER, Token
 
 
@@ -366,6 +366,188 @@ def test_a_machine_that_does_not_exist_is_refused(service):
         urllib.request.urlopen(request, timeout=5)
     assert raised.value.code == 409
     assert json.loads(raised.value.read())["reason"] == "machine.no-such"
+
+
+# -- the configurations somebody saved ------------------------------------
+
+
+def a_station():
+    """The settings the editor will post, as a plain colour Turbo station."""
+    return {"kind": 2, "turbo": True, "colour": True, "banks": [32, 32, 32, 32]}
+
+
+def tell(service, route, body, with_token=True):
+    """Sends one of the three requests about saved configurations."""
+    request = urllib.request.Request(
+        service + route, data=json.dumps(body).encode("utf-8"), method="POST")
+    request.add_header("Content-Type", "application/json")
+    if with_token:
+        request.add_header(HEADER, server.Handler.token.value)
+    return urllib.request.urlopen(request, timeout=5)
+
+
+def where_they_are_kept():
+    """@returns pathlib.Path of the file the service keeps them in."""
+    return server.Handler.settings.state_directory / saved.FILE
+
+
+def test_saving_a_configuration_needs_the_token(service):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/machine/save",
+             {"name": "Meine Kiste", "configuration": a_station()},
+             with_token=False)
+
+    assert refused.value.code == 403
+    assert not where_they_are_kept().exists(), "refused and saved it anyway"
+
+
+def test_a_saved_configuration_turns_up_in_the_user_folder(service):
+    """The folder appears with its first configuration, and what is in it is
+    described exactly as the eleven are."""
+    with tell(service, "/api/machine/save",
+              {"name": "Meine Kiste", "configuration": a_station()}) as answer:
+        assert answer.status == 200
+        assert json.loads(answer.read())["reason"] == "saved.kept"
+
+    _, _, body = fetch(service + "/api/files")
+    folders = next(entry for entry in json.loads(body)["entries"]
+                   if entry["name"] == "Machines")
+    user = next(entry for entry in folders["entries"] if entry["name"] == "User")
+    kept, = user["entries"]
+
+    assert [entry["name"] for entry in folders["entries"]] == ["System", "User"]
+    assert kept["name"] == "Meine Kiste"
+    assert kept["id"] == "Meine Kiste"
+    assert kept["path"] == "/Machines/User/Meine Kiste"
+    assert kept["set"] == "user"
+    assert kept["enclosure"] == "station"
+    assert kept["memory_mb"] == 128
+
+
+def test_every_machine_says_which_set_it_is_in(service):
+    """So the browser knows what may be done to it without reading its path."""
+    tell(service, "/api/machine/save",
+         {"name": "Meine Kiste", "configuration": a_station()})
+
+    _, _, body = fetch(service + "/api/files")
+    sets = {identifier: machine["set"]
+            for identifier, machine in machines_in(json.loads(body)).items()}
+
+    assert sets["nextcube-turbo"] == "system"
+    assert sets["Meine Kiste"] == "user"
+
+
+def test_a_name_that_is_taken_is_refused_by_the_service(service):
+    """The browser checks nothing: what decides is the list being written."""
+    tell(service, "/api/machine/save",
+         {"name": "Meine Kiste", "configuration": a_station()})
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/machine/save",
+             {"name": "Meine Kiste", "configuration": a_station()})
+
+    assert refused.value.code == 409
+    assert json.loads(refused.value.read())["reason"] == "saved.name-taken"
+
+
+def test_a_configuration_can_be_renamed(service):
+    tell(service, "/api/machine/save",
+         {"name": "Meine Kiste", "configuration": a_station()})
+
+    with tell(service, "/api/machine/rename",
+              {"machine": "Meine Kiste", "name": "Die andere"}) as answer:
+        said = json.loads(answer.read())
+
+    assert said["reason"] == "saved.renamed"
+    assert said["was"] == "Meine Kiste"
+    _, _, body = fetch(service + "/api/files")
+    assert "Die andere" in machines_in(json.loads(body))
+
+
+def test_a_configuration_can_be_removed(service):
+    tell(service, "/api/machine/save",
+         {"name": "Meine Kiste", "configuration": a_station()})
+
+    with tell(service, "/api/machine/remove",
+              {"machine": "Meine Kiste"}) as answer:
+        assert json.loads(answer.read())["reason"] == "saved.removed"
+
+    _, _, body = fetch(service + "/api/files")
+    folders = next(entry for entry in json.loads(body)["entries"]
+                   if entry["name"] == "Machines")
+    # And the folder goes with the last thing in it, rather than standing empty.
+    assert [entry["name"] for entry in folders["entries"]] == ["System"]
+
+
+@pytest.mark.parametrize("route,body", [
+    ("/api/machine/rename", {"machine": "nextcube-turbo", "name": "Meine Kiste"}),
+    ("/api/machine/remove", {"machine": "nextcube-turbo"}),
+])
+def test_one_of_the_eleven_can_be_neither_renamed_nor_removed(service, route, body):
+    """They are the set to go back to, whatever else happens."""
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, route, body)
+
+    assert refused.value.code == 409
+    assert json.loads(refused.value.read())["reason"] == "saved.no-such"
+
+
+def test_a_request_about_a_configuration_that_is_not_readable_is_refused(service):
+    for route in ["/api/machine/save", "/api/machine/rename", "/api/machine/remove"]:
+        request = urllib.request.Request(
+            service + route, data=b"this is not json", method="POST")
+        request.add_header(HEADER, server.Handler.token.value)
+
+        with pytest.raises(urllib.error.HTTPError) as refused:
+            urllib.request.urlopen(request, timeout=5)
+
+        assert refused.value.code == 400, route
+
+
+def in_force(name, configuration):
+    """Writes previous.cfg as that configuration, so the file holds it exactly.
+
+    @param name - What it is saved as.
+    @param configuration - Its settings, as the editor posts them.
+    @returns machines.Machine, the one that was saved and written.
+    """
+    where = server.Handler.settings.state_directory
+    finished, said = saved.save(where, name, configuration)
+    assert finished is True, said
+
+    kept = saved.find(where, name)
+    lines = []
+    for section, keys in machines.settings_for(kept).items():
+        lines.append("[%s]" % section)
+        lines += ["%s = %s" % pair for pair in keys.items()]
+    server.Handler.settings.previous_config.write_text("\n".join(lines) + "\n")
+    return kept
+
+
+def test_the_status_names_a_saved_configuration_that_is_in_force(service):
+    """Matched against both sets, so a machine somebody put together is marked in
+    the viewer rather than reported as none of them.
+
+    Two banks filled rather than four, because that is a machine none of the
+    eleven is: a configuration holding the same values as one of them is that
+    one, which the test below is about.
+    """
+    in_force("Meine Kiste", {"kind": 2, "turbo": True, "colour": True,
+                             "banks": [32, 32, 0, 0]})
+
+    _, _, body = fetch(service + "/api/status")
+
+    assert json.loads(body)["configuration"]["catalogue"] == "Meine Kiste"
+
+
+def test_a_saved_configuration_of_the_same_values_is_named_as_the_system_one(service):
+    """The eleven are asked first, because theirs are the names everybody knows
+    and two entries in the viewer would otherwise both claim to be running."""
+    in_force("Meine Kiste", a_station())
+
+    _, _, body = fetch(service + "/api/status")
+
+    assert json.loads(body)["configuration"]["catalogue"] == "nextstation-turbo-color"
 
 
 # -- a picture of the emulated screen -------------------------------------
