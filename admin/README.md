@@ -140,7 +140,9 @@ So: shut the guest down properly, copy the file beside itself as `previous.cfg.b
 
 The eleven in `machines.py` are System configurations and cannot be changed. Whatever else happens there is a known set to go back to, and going back is one double click. Anything somebody puts together is a User configuration, kept under a name they gave it, and those two sets are the two folders in the machines window.
 
-**They live in one file**, `machines.json` in `/var/lib/previously`, beside the token and the note about the last write. That directory survives a restart and a package upgrade. One file rather than one per configuration, because a name is not a file name: a file each would need a second answer to what a configuration is called, and the two would part company the first time one was renamed. It is written beside itself and moved into place, so a write that fails halfway leaves the file as it was.
+**They live in one file in the home**, `~/.config/previously/machines.json`, one directory along from the emulator's own configuration. In the home rather than under `/var/lib`, because they are the person's: what the service keeps under `/var/lib` is its own, being the token and the digest of its last write, and `apt purge` takes that with it. It must not take away the machines somebody built, any more than it takes `previous.cfg` or the disk image. One file rather than one per configuration, because a name is not a file name: a file each would need a second answer to what a configuration is called, and the two would part company the first time one was renamed. It is written beside itself and moved into place, so a write that fails halfway leaves the file as it was.
+
+**The unit opens that one path and the package creates it.** `ProtectHome=read-only` leaves the rest of the home alone, and systemd skips a `ReadWritePaths=` entry whose path is absent, so the directory has to exist before the service starts or the first save refuses. `postinst` makes it, reading the user and the group out of the unit rather than naming them a second time. Opening `~/.config` instead, which exists already, would let a service reachable on the home network rewrite every other application's configuration in that home to save five lines, so it is not done. `tests/test_packaging.py` holds the three places that name this path against each other, because a machine where they disagree looks exactly like one where they agree until somebody saves something.
 
 **A name has to be a name.** It cannot be empty, it cannot be longer than 48 characters, which is what can be read under an icon, and it cannot hold a slash, because that is what parts one folder from the next in the path the viewer shows. No two configurations may share one, compared without case and across both sets: a User configuration called after one of the eleven would show two things with the same name in the same window.
 
@@ -183,7 +185,9 @@ Stopping writes that file, presses F10 and waits for the guest to go. Starting r
 
 ## Its own configuration
 
-`/etc/previously/config.ini`, with defaults that work unconfigured, so the package installs into a running state rather than into a file to edit. `packaging/config.ini` is that file with every default written out.
+`/etc/previously/config.ini`, with defaults that work unconfigured, so the package installs into a running state rather than into a file to edit. `packaging/config.ini` is that file with every default written out, and a test holds it to that: a key missing from it is a setting nobody knows about.
+
+Two of those paths are worth telling apart. `state_directory` is `/var/lib/previously` and holds what the service owns, which is the token and the digest of its last write, and a purge removes it. `machines_file` is `~/.config/previously/machines.json` and holds what the person owns, and a purge leaves it exactly where it is.
 
 ## The interface
 

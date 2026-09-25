@@ -4,11 +4,17 @@ The eleven in `machines.py` are System configurations and cannot be changed, so
 there is always a known set to go back to. Anything put together in the Config
 Editor is a User configuration and is kept here under a name its owner gave it.
 
-They live in one file in the service's own state directory, beside the token and
-the note about the last write, because that directory survives a restart and a
-package upgrade. One file rather than one per configuration: a name is not a
-file name, so a file each would need a second answer to what a configuration is
-called, and the two would drift the first time one was renamed.
+They live in one file in the home of the user the service runs as, which
+`settings.py` defaults to `~/.config/previously/machines.json`. In the home
+rather than under `/var/lib`, because they are the person's: what this service
+keeps under `/var/lib` is its own, being the token and the note about its last
+write, and a purge of the package takes that with it. It must not take away the
+machines somebody built. Beside the emulator's own configuration is also where a
+person looks for them, since that is what they are about.
+
+One file rather than one per configuration: a name is not a file name, so a file
+each would need a second answer to what a configuration is called, and the two
+would drift the first time one was renamed.
 
 Nothing here writes `previous.cfg`. Saving a configuration and running one are
 two different acts, and the second is `change.py`, which is the one that has to
@@ -20,9 +26,6 @@ import os
 
 from . import machines
 from .answers import told
-
-#: Where they are kept, under the state directory.
-FILE = "machines.json"
 
 #: What the file says about itself. Nothing reads it yet, and it is written so
 #: that a later format has something to tell itself apart by.
@@ -91,18 +94,17 @@ def as_values(machine):
     }
 
 
-def read(state_directory):
+def read(path):
     """Every configuration somebody saved, in the order they were saved.
 
-    @param state_directory - pathlib.Path the service keeps its own state in, or
-      None where it has none, which answers empty.
+    @param path - pathlib.Path of the file they are kept in, which
+      `settings.machines_file` decides, or None where this service has none.
     @returns tuple of machines.Machine, settled.
     @raises NotReadable - The file is there and cannot be read as this format.
     """
-    if state_directory is None:
+    if path is None:
         return ()
 
-    path = state_directory / FILE
     try:
         found = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -126,10 +128,10 @@ def read(state_directory):
     return tuple(kept)
 
 
-def find(state_directory, identifier):
+def find(path, identifier):
     """The saved configuration of that identifier.
 
-    @param state_directory - Where they are kept.
+    @param path - The file they are kept in.
     @param identifier - What a request carries, which for a saved configuration
       is its name.
     @returns machines.Machine, or None where nothing is called that. A System
@@ -137,16 +139,16 @@ def find(state_directory, identifier):
       this list.
     @raises NotReadable
     """
-    for machine in read(state_directory):
+    for machine in read(path):
         if machine.identifier == identifier:
             return machine
     return None
 
 
-def save(state_directory, name, values, replacing=None):
+def save(path, name, values, replacing=None):
     """Keeps a configuration under a name.
 
-    @param state_directory - Where they are kept.
+    @param path - The file they are kept in.
     @param name - What to call it.
     @param values - Its settings, as as_values writes them.
     @param replacing - The identifier of the configuration being edited, where
@@ -156,7 +158,7 @@ def save(state_directory, name, values, replacing=None):
     @returns (bool, dict) as every other operation of this service answers.
     """
     try:
-        kept = list(read(state_directory))
+        kept = list(read(path))
     except NotReadable as error:
         return False, told("saved.not-readable", detail=str(error))
 
@@ -175,19 +177,19 @@ def save(state_directory, name, values, replacing=None):
     else:
         kept[at] = machine
 
-    return _write(state_directory, kept, told("saved.kept", name=wanted))
+    return _write(path, kept, told("saved.kept", name=wanted))
 
 
-def rename(state_directory, identifier, name):
+def rename(path, identifier, name):
     """Gives a saved configuration another name, leaving its settings alone.
 
-    @param state_directory - Where they are kept.
+    @param path - The file they are kept in.
     @param identifier - Which one.
     @param name - What to call it now.
     @returns (bool, dict)
     """
     try:
-        kept = list(read(state_directory))
+        kept = list(read(path))
     except NotReadable as error:
         return False, told("saved.not-readable", detail=str(error))
 
@@ -202,14 +204,13 @@ def rename(state_directory, identifier, name):
 
     was = kept[at].name
     kept[at] = as_machine(wanted, as_values(kept[at]))
-    return _write(state_directory, kept,
-                  told("saved.renamed", name=wanted, was=was))
+    return _write(path, kept, told("saved.renamed", name=wanted, was=was))
 
 
-def remove(state_directory, identifier):
+def remove(path, identifier):
     """Takes a saved configuration away.
 
-    @param state_directory - Where they are kept.
+    @param path - The file they are kept in.
     @param identifier - Which one.
     @returns (bool, dict)
 
@@ -218,7 +219,7 @@ def remove(state_directory, identifier):
     emulator reads is its own and this is only the list of what can be chosen.
     """
     try:
-        kept = list(read(state_directory))
+        kept = list(read(path))
     except NotReadable as error:
         return False, told("saved.not-readable", detail=str(error))
 
@@ -227,7 +228,7 @@ def remove(state_directory, identifier):
         return False, told("saved.no-such", asked=identifier)
 
     name = kept.pop(at).name
-    return _write(state_directory, kept, told("saved.removed", name=name))
+    return _write(path, kept, told("saved.removed", name=name))
 
 
 def _place_of(kept, identifier):
@@ -286,19 +287,24 @@ def _taken(kept, at):
     return names
 
 
-def _write(state_directory, kept, said):
+def _write(path, kept, said):
     """Writes the whole list, or says why it could not.
 
-    @param state_directory - Where they are kept.
+    @param path - The file they are kept in.
     @param kept - Every configuration, in order.
     @param said - What to answer with where it worked.
     @returns (bool, dict)
 
     Written beside itself and moved into place, so a write that fails part way
     leaves the file as it was rather than holding half a list. os.replace is
-    atomic within one filesystem, and this one never leaves the state directory.
+    atomic within one filesystem, and both names are in the same directory.
+
+    The directory is made where it is not there, which is what a first save on a
+    machine that has none does. The unit has to be letting this service write
+    there at all: `ProtectHome=read-only` with one `ReadWritePaths=` for this
+    path, and the package creates the directory so that entry has something to
+    open. Without it the write refuses here and says so.
     """
-    path = state_directory / FILE
     beside = path.with_suffix(path.suffix + ".new")
     body = json.dumps(
         {
@@ -310,7 +316,7 @@ def _write(state_directory, kept, said):
         ensure_ascii=False, indent=2) + "\n"
 
     try:
-        state_directory.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         beside.write_text(body, encoding="utf-8")
         os.replace(beside, path)
     except OSError as error:

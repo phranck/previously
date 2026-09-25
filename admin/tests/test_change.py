@@ -289,7 +289,7 @@ def test_a_guest_that_will_not_shut_down_leaves_the_file_alone(settings, machine
 def test_a_saved_configuration_can_be_activated(settings, machine):
     """The eleven are looked up first and this list second, so a saved
     configuration is reached by the same route and the same double click."""
-    finished, _ = saved.save(settings.state_directory, "Meine Kiste", {
+    finished, _ = saved.save(settings.machines_file, "Meine Kiste", {
         "kind": 2, "turbo": True, "colour": True, "banks": [32, 32, 32, 32]})
     assert finished is True
 
@@ -306,7 +306,7 @@ def test_a_saved_configuration_can_be_activated(settings, machine):
 def test_a_saved_configuration_is_settled_before_it_is_written(settings, machine):
     """Whatever is in that file, what reaches previous.cfg is a machine the
     emulator will not correct underneath it."""
-    saved.save(settings.state_directory, "Ein Kubus", {
+    saved.save(settings.machines_file, "Ein Kubus", {
         # A cube has no colour of its own, and three megabytes is not a size.
         "kind": 1, "colour": True, "banks": [3, 0, 0, 0]})
 
@@ -322,7 +322,7 @@ def test_a_file_of_saved_configurations_in_the_way_changes_nothing(settings, mac
     """It cannot be told whether the name asked for is in there, so nothing is
     switched off and nothing is written."""
     before = settings.previous_config.read_text()
-    (settings.state_directory / saved.FILE).write_text("{not json at all")
+    (settings.machines_file).write_text("{not json at all")
 
     finished, told = run("Meine Kiste", settings, machine)
 

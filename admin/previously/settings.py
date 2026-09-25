@@ -27,6 +27,13 @@ DEFAULTS = {
     "address": "0.0.0.0",
     "port": "8810",
     "previous_config": "~/.config/previous/previous.cfg",
+    # Where the configurations somebody saved are kept. In the home rather than
+    # under /var/lib, because they are theirs: what this service keeps under
+    # /var/lib is its own, which is the token and the note about its last write,
+    # and a purge of the package takes that with it. It must not take away the
+    # machines somebody built. Beside the emulator's own configuration, which is
+    # what they are about.
+    "machines_file": "~/.config/previously/machines.json",
     # Where the Previously tree is a real one. Everything else the File Viewer
     # shows is described in files.py and exists nowhere, but a picture is a
     # file. In the emulator owner's home, which is the user this service runs
@@ -64,6 +71,7 @@ class Settings:
         self.address = values["address"]
         self.port = int(values["port"])
         self.previous_config = _path(values["previous_config"])
+        self.machines_file = _path(values["machines_file"])
         self.documents = _path(values["documents"])
         self.kiosk_unit = values["kiosk_unit"]
         self.state_directory = _path(values["state_directory"])

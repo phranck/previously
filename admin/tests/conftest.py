@@ -29,10 +29,11 @@ def settings_for(tmp_path, **overrides):
         "kiosk_unit": "does-not-exist.service",
         "token_file": str(tmp_path / "token"),
         "runtime_directory": str(tmp_path),
-        # Into the test's own directory, because what the service keeps here is
-        # real on the machine running the suite: the note about the last write
-        # and the configurations somebody saved both live in it.
+        # Both into the test's own directory, because what the service keeps in
+        # them is real on the machine running the suite: the note about its last
+        # write, and the configurations somebody saved.
         "state_directory": str(tmp_path),
+        "machines_file": str(tmp_path / "machines.json"),
     })
     values.update({key: str(value) for key, value in overrides.items()})
     return Settings(values)

@@ -105,11 +105,11 @@ APPLICATIONS = (
 )
 
 
-def tree(state_directory=None, documents=None):
+def tree(machines_file=None, documents=None):
     """Everything Previously holds, as one place with places in it.
 
-    @param state_directory - pathlib.Path the service keeps its own state in,
-      where a User configuration would live. None means there are none.
+    @param machines_file - pathlib.Path of the file the configurations somebody
+      saved are kept in. None means there are none.
     @param documents - pathlib.Path the real part of this tree stands in.
       None leaves Documents empty rather than leaving it out, so the place a
       picture goes is visible before the first one is taken.
@@ -131,7 +131,7 @@ def tree(state_directory=None, documents=None):
         _folder("Documents", DOCUMENTS, FOLDER_ICON, [
             _folder("Pictures", PICTURES, FOLDER_ICON, pictures(documents)),
         ]),
-        _folder("Machines", "/Machines", FOLDER_ICON, _machine_folders(state_directory)),
+        _folder("Machines", "/Machines", FOLDER_ICON, _machine_folders(machines_file)),
     ])
 
 
@@ -225,7 +225,7 @@ def picture_directory(documents):
     return pathlib.Path(documents).joinpath(*PICTURES.strip("/").split("/"))
 
 
-def _machine_folders(state_directory):
+def _machine_folders(machines_file):
     """System, and User where there is anything in it.
 
     An empty User folder would be a promise of something that is not there, so
@@ -236,16 +236,17 @@ def _machine_folders(state_directory):
                         for machine in machines.CATALOGUE],
                        writable=False)]
 
-    kept = user_machines(state_directory)
+    kept = user_machines(machines_file)
     if kept:
         folders.append(_folder("User", "/Machines/User", FOLDER_ICON, kept))
     return folders
 
 
-def user_machines(state_directory):
+def user_machines(machines_file):
     """The configurations somebody saved, as entries of the User folder.
 
-    @param state_directory - Where the service keeps what it owns.
+    @param machines_file - pathlib.Path of the file they are kept in, which
+      `settings.machines_file` decides.
     @returns list, empty where nothing has been saved.
 
     A file that cannot be read answers empty here rather than raising, because
@@ -255,7 +256,7 @@ def user_machines(state_directory):
     refuses whilst the file is in the way.
     """
     try:
-        kept = saved.read(state_directory)
+        kept = saved.read(machines_file)
     except saved.NotReadable:
         return []
     return [_machine(machine, "/Machines/User", USER) for machine in kept]
