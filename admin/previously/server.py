@@ -81,6 +81,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if route == "/api/files":
             return self._json(files.tree(self.settings.machines_file,
                                          self.settings.documents))
+        if route == "/api/machine/settled":
+            return self._settled_configuration()
         if route == "/api/token":
             return self._json({"valid": self._carries_the_token()})
         if route == "/api/terminal":
@@ -294,6 +296,48 @@ class Handler(http.server.BaseHTTPRequestHandler):
             pass
         return [(machine.identifier, machines.settings_for(machine))
                 for machine in tuple(machines.CATALOGUE) + tuple(kept)]
+
+    def _settled_configuration(self):
+        """What a configuration would be, and what else could be chosen with it.
+
+        The Config Editor asks this on every change. It holds six controls and no
+        rules at all, so what a choice turns into and what may be chosen beside
+        it are both answered here, and an interface can never offer a machine the
+        emulator would correct underneath it.
+
+        A reading rather than a change, so no token and nothing written: it says
+        what Previous would make of a configuration and touches nothing.
+
+        What comes back carries that configuration in exactly the shape
+        /api/machine/save takes, so the editor posts back what it was handed
+        rather than assembling one of its own. Beside it are the same facts about
+        a machine that /api/status and /api/files carry, described by the same
+        function, so the window says the processor, the memory and the chips in
+        the words the rest of the interface already uses.
+        """
+        asked = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+
+        def chosen(name):
+            """@returns What the query said, or None where it said nothing."""
+            return asked.get(name, [None])[0]
+
+        machine = machines.drafted(
+            kind=chosen("kind"),
+            # As "1" and "0", because a query string carries text and a flag that
+            # is absent has to read as off rather than as a word.
+            turbo=chosen("turbo") == "1",
+            colour=chosen("colour") == "1",
+            dimension=chosen("dimension") == "1",
+            mhz=chosen("mhz"),
+            memory=chosen("memory"),
+        )
+        settings = machines.settings_for(machine)
+        return self._json({
+            "configuration": saved.as_values(machine),
+            "machine": config.describe(
+                settings["System"], settings["Memory"], settings["Dimension"]),
+            "offers": machines.offers(machine),
+        })
 
     def _terminal(self):
         """Carries a login on a WebSocket, to one browser at a time.
