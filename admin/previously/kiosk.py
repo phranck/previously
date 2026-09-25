@@ -19,6 +19,7 @@ import subprocess
 import time
 
 from . import screen
+from .answers import told
 
 #: How long to wait for systemctl before giving up. A query that hangs is worse
 #: than one that fails, because the page waits with it.
@@ -94,22 +95,6 @@ def uptime_seconds(unit):
     except ValueError:
         return None
     return max(0, int(_monotonic() - started))
-
-
-def told(name, **values):
-    """One answer from this module, as a name and what fills it.
-
-    @param name - What happened, in a form that does not change with the
-      language it is read in.
-    @param values - Whatever the sentence needs: a count, a machine's name, a
-      number of seconds.
-    @returns dict with `reason` and the rest beside it.
-
-    A sentence written here could only ever be in one language, and this
-    service has no idea which language the person reading it wants. So it says
-    what happened and the browser says it in words.
-    """
-    return {"reason": name, **values}
 
 
 def hold_path(runtime_directory):
