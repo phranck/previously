@@ -31,6 +31,11 @@ const NOTHING = "—";
  *  name, suffix and all, and this is a filesystem however made up it is. */
 const APPLICATION = ".app";
 
+/** Which window the Config Editor is. The tree names the same one as what
+ *  `Config Editor.app` opens, and this is the one application here that is
+ *  started on something rather than on nothing. */
+const EDITOR = "editor";
+
 /** What the pictures are called, by what they mean rather than by their file. */
 const Art = {
   Computer: "root",
@@ -677,6 +682,10 @@ function open(path, asker) {
     return openFolder(asker);
   }
   if (entry.kind === "application") {
+    /* The editor is opened on a machine rather than on nothing, so it goes
+       through the one place that decides which. Every other application's window
+       holds whatever it holds. */
+    if (entry.opens === EDITOR) return editOnWhatIsRunning(asker);
     /* An application this tool has is a window it already holds. One it does
        not have yet says so, which is the honest thing to do with an icon that
        is there because the place it sits in is being built around it. */
@@ -1018,6 +1027,306 @@ function reportAboutTheSaved(answer) {
   refresh();
 }
 
+/* --- the Config Editor ----------------------------------------------------
+
+   Previous's own System dialogue, in this interface's idiom: what can be chosen
+   on one side and what follows from it on the other. Here the picture and its
+   readings stand over the groups that change them.
+
+   It holds no rule of its own. What a choice turns into, and what may be chosen
+   beside it, are both asked of the service on every change, so there is one
+   statement of what Previous allows and this window cannot offer a machine the
+   emulator would correct underneath it. That is also why the configuration it
+   saves is the one the service handed back rather than one assembled here. */
+
+/** What the editor is showing: the six controls, and nothing derived.
+ *
+ *  Whatever is not known is left out of the question rather than filled in here,
+ *  so a fresh window is answered with the service's own idea of a machine and
+ *  there is no second copy of that here. */
+let drafting = {};
+
+/** Which saved configuration is being written over, or null where what comes out
+ *  of this is a new one. A System machine cannot be changed, so editing one
+ *  leaves this null and saving asks for a name. */
+let replacing = null;
+
+/** The last answer about the draft, so saving posts what was shown rather than
+ *  asking again for something that may meanwhile read differently. Null whilst
+ *  an answer is still on its way, which is what stops the button saving the
+ *  machine that was in the window a moment ago. */
+let drafted = null;
+
+/** Which question about the draft is the current one. Every click asks one, and
+ *  an answer that arrives after a newer question was asked is dropped rather
+ *  than drawn over it. */
+let asking = 0;
+
+/**
+ * Opens the editor on a machine.
+ * @param {object} machine - An entry of the tree, or what /api/status says is
+ *   configured now. Both carry the same facts, because one function describes
+ *   them.
+ * @param {HTMLElement} [asker] - What was used to open it, so its icon can
+ *   travel to the floor of the screen.
+ *
+ * A configuration of somebody's own is edited in place, and one of the eleven is
+ * the starting point for a new one. That is the whole difference between the two
+ * sets, and it is decided here by which folder the machine came from.
+ */
+function editConfiguration(machine, asker) {
+  replacing = machine?.set === "user" ? machine.id : null;
+  drafting = {
+    kind: machine?.kind,
+    turbo: Boolean(machine?.turbo),
+    colour: Boolean(machine?.colour),
+    dimension: Boolean(machine?.dimension),
+    mhz: machine?.mhz,
+    memory: machine?.memory_mb,
+  };
+  /* Nothing to save until the service has said what this is, so the button
+     cannot send the machine the window held before. */
+  drafted = null;
+
+  drawTheTitle();
+  document.querySelector(`nx-window[name="${EDITOR}"]`).open(asker);
+  drawTheDraft();
+}
+
+/** Puts the name of what is being edited in the title bar.
+ *
+ *  A configuration of one's own is a document and is titled with its name, the
+ *  way the Preview window is titled with the picture's. One that has no name yet
+ *  is titled with the application's, because what is being made is new. */
+function drawTheTitle() {
+  document.querySelector(`nx-window[name="${EDITOR}"]`)
+    ?.rename(replacing ?? t("app.config-editor"));
+}
+
+/** Asks the service what the draft is, and draws the answer. */
+async function drawTheDraft() {
+  const asked = new URLSearchParams();
+  for (const [control, value] of Object.entries(drafting)) {
+    if (value === undefined || value === null) continue;
+    asked.set(control, typeof value === "boolean" ? (value ? "1" : "0") : value);
+  }
+
+  const mine = ++asking;
+  const answer = await ask("/api/machine/settled?" + asked);
+  /* A click whilst this was on its way asked a newer question, and that one's
+     answer is the one the window belongs to. */
+  if (mine !== asking) return;
+  if (!answer) {
+    show("editor-note", t("note.no-service"));
+    return;
+  }
+
+  drafted = answer;
+  /* What came back may differ from what was asked for, because Previous refuses
+     some of it. The draft follows the answer, so the next question is asked
+     about the machine that actually exists. */
+  drafting = {
+    kind: answer.configuration.kind,
+    turbo: answer.configuration.turbo,
+    colour: answer.configuration.colour,
+    dimension: answer.configuration.dimension,
+    mhz: answer.machine.mhz,
+    memory: answer.machine.memory_mb,
+  };
+
+  redrawTheEditor();
+}
+
+/** Draws the window from the last answer, without asking for it again.
+ *
+ *  Every word in it is this page's, so a change of language is redrawn from what
+ *  is already here rather than by asking the service what it just said. */
+function redrawTheEditor() {
+  if (!drafted) return;
+  drawTheMachineInTheEditor(drafted.machine);
+  drawTheChoices(drafted.offers);
+  drawWhatSavingWillDo();
+}
+
+/**
+ * Draws what the drafted machine is, in the words the rest of the interface
+ * uses for a machine.
+ * @param {object} machine - The facts, as config.describe answers them.
+ */
+function drawTheMachineInTheEditor(machine) {
+  document.getElementById("editor-icon").style.backgroundImage =
+    `var(--${machineArt(machine.enclosure)})`;
+  show("editor-caption", nameOf(machine));
+  show("editor-cpu", cpuOf(machine));
+  show("editor-ram", t("machine.memory-banks",
+                       { mb: machine.memory_mb, banks: fitted(machine.banks) }));
+  show("editor-screen", screenOf(machine));
+  show("editor-chips", chipsOf(machine));
+}
+
+/**
+ * Draws the cells of every group from what the service says may be chosen.
+ * @param {object} offers - Its answer: the machine types, which boards may be
+ *   seated, which clocks there are and which totals of memory.
+ *
+ * A group with nothing to offer is taken away rather than shown empty, which is
+ * what Previous does with its own clock options on a machine that has no turbo
+ * board.
+ */
+function drawTheChoices(offers) {
+  fillWithChoices("editor-kinds", offers.kinds.map((kind) => ({
+    label: kind.model,
+    chosen: kind.kind === drafting.kind,
+    choose: () => change({ kind: kind.kind }),
+  })));
+
+  const boards = [
+    ["turbo", t("editor.turbo")],
+    ["colour", t("editor.colour")],
+    ["dimension", t("editor.dimension")],
+  ].filter(([which]) => offers[which]).map(([which, label]) => ({
+    label,
+    chosen: drafting[which],
+    /* A board is seated or it is not, so its cell answers a second click by
+       taking it out again. */
+    choose: () => change({ [which]: !drafting[which] }),
+  }));
+  fillWithChoices("editor-boards", boards);
+  document.getElementById("editor-boards-group").hidden = !boards.length;
+
+  fillWithChoices("editor-clocks", offers.clocks.map((mhz) => ({
+    label: t("editor.mhz", { mhz }),
+    chosen: mhz === drafting.mhz,
+    choose: () => change({ mhz }),
+  })));
+  document.getElementById("editor-clock-group").hidden = !offers.clocks.length;
+
+  fillWithChoices("editor-memory", offers.memory.map((mb) => ({
+    label: t("editor.megabytes", { mb }),
+    chosen: mb === drafting.memory,
+    choose: () => change({ memory: mb }),
+  })));
+}
+
+/**
+ * Puts one group's cells in place.
+ * @param {string} id - The row they go in.
+ * @param {Array<object>} cells - `{label, chosen, choose}` for each.
+ *
+ * The same raised cell the Preferences window offers a choice with, because
+ * this interface gives anything that can be chosen one shape.
+ */
+function fillWithChoices(id, cells) {
+  document.getElementById(id).replaceChildren(...cells.map((cell) => {
+    const choice = document.createElement("div");
+    choice.className = "choice";
+    choice.textContent = cell.label;
+    choice.toggleAttribute("chosen", cell.chosen);
+    choice.addEventListener("click", cell.choose);
+    return choice;
+  }));
+}
+
+/**
+ * Changes one of the six and asks what that machine is now.
+ * @param {object} what - The one control that moved.
+ */
+function change(what) {
+  drafting = { ...drafting, ...what };
+  drawTheDraft();
+}
+
+/** Says what the button will do, and puts that on the button. */
+function drawWhatSavingWillDo() {
+  const button = document.getElementById("editor-save");
+  button.dataset.t = replacing ? "button.save" : "button.save-as";
+  writeWords(button, t(button.dataset.t));
+  show("editor-note", replacing
+    ? t("editor.over-this-one", { name: replacing })
+    : t("editor.into-a-new-one"));
+}
+
+/**
+ * Saves what the editor is showing.
+ *
+ * A name is asked for once, when the configuration is a new one. Editing one of
+ * your own writes it back under the name it already has, which is what there is
+ * to do with it.
+ */
+async function saveTheDraft() {
+  if (!drafted) return;
+
+  let name = replacing;
+  if (name === null) {
+    name = await askPanelFor({
+      title: t("ask.name.title"),
+      text: [t("ask.rename.question")],
+      icon: machineArt(drafted.machine.enclosure),
+      confirm: t("button.save"),
+    });
+    if (name === null) return;
+  }
+
+  const answer = await tell(Saved.Keep, {
+    name,
+    configuration: drafted.configuration,
+    replacing,
+  });
+  show("editor-note", answer === null ? t("note.no-service") : say(answer));
+  if (!answer?.ok) return;
+
+  /* It is a configuration of its own from now on, so saving again writes over
+     it rather than asking for another name, and the window carries its name. */
+  replacing = name;
+  drawTheTitle();
+  drawWhatSavingWillDo();
+  drawMachines();
+  refresh();
+}
+
+/** Wires the editor's button, its menu entry, and its tile. */
+function wireEditor() {
+  document.getElementById("editor-save")
+    ?.addEventListener("click", saveTheDraft);
+  document.querySelector('nx-menu-item[name="editor-save"]')
+    ?.addEventListener("click", saveTheDraft);
+
+  /* Two clicks, like every other tile. It carries no `opens`, because the window
+     is shown only once something has decided which machine it holds, and that is
+     what this and the Apps folder both go through. */
+  document.querySelector('nx-tile[name="editor"]')
+    ?.addEventListener("dblclick", (event) => editOnWhatIsRunning(event.target));
+}
+
+/**
+ * Opens the editor on the configuration that is set now.
+ * @param {HTMLElement} [asker] - What was used to open it.
+ *
+ * Which is what somebody means by starting the editor without having chosen a
+ * machine: the one in front of them. Where the file holds a configuration of
+ * their own, that one is edited in place, and where it holds one of the eleven or
+ * none of them, what comes out of editing it is new.
+ */
+function editOnWhatIsRunning(asker) {
+  const machine = lastStatus?.configuration;
+  const own = catalogue.find((entry) =>
+    entry.id === machine?.catalogue && entry.set === "user");
+  editConfiguration(own ?? machine, asker);
+}
+
+/**
+ * Fills the editor where it came back open from the last visit.
+ *
+ * A window that was open when the page was left comes back open, and nothing
+ * opened it, so nothing has decided what it holds. This runs once the first
+ * status and the first tree are in, because what it shows then is the machine
+ * that is set and whether that is one of the saved ones.
+ */
+function fillTheEditorIfItCameBackOpen() {
+  const window_ = document.querySelector(`nx-window[name="${EDITOR}"]`);
+  if (window_ && !window_.hidden) editOnWhatIsRunning();
+}
+
 /**
  * Says that an application that is not built yet is not built yet.
  * @param {string} name - What it will be called.
@@ -1108,7 +1417,7 @@ function openMachineMenu(thing, x, y) {
   }
   edit.onclick = () => {
     menu.close();
-    notYet(t("app.config-editor"));
+    editConfiguration(machine, thing);
   };
 
   menu.openAt(x, y);
@@ -1194,17 +1503,22 @@ function wireMachines() {
       || openPictureMenu(thing, event.clientX, event.clientY);
   });
 
-  /* Two clicks, like every other tile: one does nothing on purpose. */
-  document.querySelector('nx-tile[name="editor"]')
-    ?.addEventListener("dblclick", () => notYet(t("app.config-editor")));
-
-  /* Carried onto the info window, or double clicked in the viewer. The kit
-     raises the same event for both, so this is one answer to two gestures,
-     and what happens follows from what was chosen. */
+  /* Carried onto a window, or double clicked in the viewer. The kit raises the
+     same event for both, so this is one answer to two gestures, and what happens
+     follows from what was chosen. */
   /* The thing that was chosen is where an application's icon starts its
      journey to the floor of the screen, so it travels with the choice. */
-  document.addEventListener("nx-choose",
-    (event) => open(event.detail.value, event.target));
+  document.addEventListener("nx-choose", (event) => {
+    /* Carried into the Config Editor, which means edit that machine rather than
+       start it. Anything else dropped there is ignored: the editor has nothing to
+       do with a folder or a picture. */
+    if (event.target?.getAttribute?.("name") === EDITOR) {
+      const machine = catalogue.find((entry) => entry.path === event.detail.value);
+      if (machine) editConfiguration(machine);
+      return;
+    }
+    open(event.detail.value, event.target);
+  });
 
   /* A step of the path was clicked, so go back to it. */
   document.addEventListener("nx-path", (event) => goTo(event.detail.index));
@@ -2006,6 +2320,7 @@ function speak(code) {
       "nx-window[name='preferences'] .module[chosen]")?.getAttribute("value")
       ?? "localization");
     drawPlace();
+    redrawTheEditor();
     /* The menu's title is a name this page chooses rather than a string in
        the markup, so translate() does not reach it. */
     drawTheMenu();
@@ -2022,9 +2337,12 @@ wireOpening();
 wireTerminal();
 wireGrab();
 wirePreview();
+wireEditor();
 watchTheFrontWindow();
 watchTheApplications();
 drawLanguages();
-drawMachines();
-refresh();
+/* Both before the editor is filled, because what it shows is the machine that is
+   set and which of the saved configurations that is, and neither is known until
+   the tree and the status are in. */
+Promise.all([drawMachines(), refresh()]).then(fillTheEditorIfItCameBackOpen);
 setInterval(refresh, REFRESH_MS);

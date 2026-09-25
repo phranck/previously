@@ -46,12 +46,17 @@
   <nx-menu-item for="preview" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
   <nx-menu-item for="terminal" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
   <nx-menu-item for="preferences" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
+
+  <nx-menu-item for="editor" name="editor-save" data-t-key="menu.save.key" data-t="menu.save"></nx-menu-item>
+  <nx-menu-item for="editor" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
 </nx-menu>
 
 <!-- The Workspace is always running and never carries the marks. The editor
-     is in the dock and is not built, so it always does. -->
+     carries them whilst its window is closed, like any other application here. -->
 <nx-dock>
   <nx-tile icon="Workspace" title="NeXT" fixed></nx-tile>
+  <!-- No `opens`, unlike the other tiles: the editor is opened on a machine, and
+       the page decides which one before the window is shown. -->
   <nx-tile icon="defaultAppIcon" data-t-title="app.config-editor"
            name="editor" app="/Apps/Config Editor.app"></nx-tile>
 </nx-dock>
@@ -142,6 +147,56 @@
     <nx-row><label data-t="info.chips"></label><nx-field id="mi-chips">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="info.file"></label><nx-field id="mi-changed">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="info.written"></label><nx-field id="mi-written">&mdash;</nx-field></nx-row>
+  </div>
+</nx-window>
+
+<!-- Config Editor, which is Previous's own System dialogue in this interface's
+     idiom: the choices on the left of that dialogue and the overview on the
+     right of it, here stacked as the picture and its readings over the groups
+     that change them.
+
+     Every cell in those groups is drawn by the page from what the service says
+     may be chosen, so the markup holds the boxes and none of the options. A
+     machine type is always offered; a board, a clock and a size are offered
+     where the machine takes them, and a group with nothing to offer is not
+     shown at all, which is what Previous does with its own 40 MHz option. -->
+<nx-window name="editor" data-t-title="app.config-editor" fixed drop
+           x="220" y="90" w="470" closed>
+  <div class="info-body">
+    <nx-portrait>
+      <i class="art icon" id="editor-icon" style="background-image: var(--root)"></i>
+      <span class="caption" id="editor-caption">&mdash;</span>
+    </nx-portrait>
+    <!-- The same four readings the machine window shows, in the same words, so
+         a machine being put together reads exactly like one that exists. -->
+    <div class="readings">
+      <nx-row><label data-t="info.processor"></label><nx-field id="editor-cpu">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.memory"></label><nx-field id="editor-ram">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.screen"></label><nx-field id="editor-screen">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.chips"></label><nx-field id="editor-chips">&mdash;</nx-field></nx-row>
+    </div>
+  </div>
+  <div class="editor-groups">
+    <fieldset class="group">
+      <legend data-t="editor.machine"></legend>
+      <div class="choices" id="editor-kinds"></div>
+    </fieldset>
+    <fieldset class="group" id="editor-boards-group">
+      <legend data-t="editor.boards"></legend>
+      <div class="choices" id="editor-boards"></div>
+    </fieldset>
+    <fieldset class="group" id="editor-clock-group">
+      <legend data-t="editor.clock"></legend>
+      <div class="choices" id="editor-clocks"></div>
+    </fieldset>
+    <fieldset class="group">
+      <legend data-t="info.memory"></legend>
+      <div class="choices" id="editor-memory"></div>
+    </fieldset>
+  </div>
+  <p class="note" id="editor-note"></p>
+  <div class="buttons">
+    <button id="editor-save" class="default" data-t="button.save-as"></button>
   </div>
 </nx-window>
 
