@@ -26,6 +26,8 @@ NX_STRINGS.fr = {
   "menu.edit": "Modifier la configuration…",
   "menu.keep": "Poser sur l'étagère",
   "menu.unkeep": "Retirer de l'étagère",
+  "menu.rename": "Renommer…",
+  "menu.remove": "Retirer",
 
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Infos",
@@ -148,6 +150,12 @@ NX_STRINGS.fr = {
 
   "ask.not-yet.missing": "{name} n'existe pas encore.",
   "ask.not-yet.plan": "Elle doit rendre la machine réglable comme Previous le permet, et non sous forme de fichier texte. Cela est en discussion.",
+  "ask.rename.title": "Renommer {name}",
+  "ask.rename.question": "Comment cette configuration doit-elle s'appeler ?",
+  "ask.remove.title": "Retirer {name} ?",
+  "ask.remove.loss": "La configuration disparaît de la liste et ne revient pas. Une machine qui tourne avec elle continue de tourner, car le fichier que lit l'émulateur est le sien.",
+  "button.rename": "Renommer",
+  "button.remove": "Retirer",
 
   "ask.board.reboot": "Redémarrer le Raspberry Pi ?",
   "ask.board.poweroff": "Éteindre le Raspberry Pi ?",
@@ -207,4 +215,15 @@ NX_STRINGS.fr = {
   "told.rollback.emulator-will-not-end": "{machine} {why}, la configuration précédente est de retour dans le fichier, mais l'émulateur n'a pas voulu s'arrêter. Cela demande un coup d'œil en SSH.",
   "told.rollback.back-as-before": "{machine} {why}. La configuration précédente est de retour dans le fichier et la machine tourne comme avant.",
   "told.rollback.nothing-runs": "{machine} {why}, et rien ne tourne non plus avec la configuration précédente. Cela demande un coup d'œil en SSH.",
+  "told.saved.kept": "{name} est enregistrée.",
+  "told.saved.renamed": "{was} s'appelle maintenant {name}.",
+  "told.saved.removed": "{name} est retirée.",
+  "told.saved.name-needed": "Une configuration a besoin d'un nom.",
+  "told.saved.name-taken": "{name} est déjà pris. Chaque configuration porte son propre nom, les onze comprises.",
+  "told.saved.name-too-long": "Un nom peut compter {most} caractères, pour qu'il se lise entièrement sous l'icône.",
+  "told.saved.name-has-a-separator": "Un nom ne peut pas contenir de barre oblique, car elle sépare un dossier du suivant.",
+  "told.saved.name-has-a-control-character": "Un nom se compose de caractères lisibles.",
+  "told.saved.no-such": "Il n'y a pas de configuration enregistrée nommée {asked}.",
+  "told.saved.not-readable": "Les configurations enregistrées n'ont pas pu être lues, rien n'a été changé : {detail}",
+  "told.saved.could-not-write": "La configuration n'a pas pu être écrite : {detail}",
 };

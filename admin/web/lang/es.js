@@ -26,6 +26,8 @@ NX_STRINGS.es = {
   "menu.edit": "Editar la configuración…",
   "menu.keep": "Poner en la repisa",
   "menu.unkeep": "Quitar de la repisa",
+  "menu.rename": "Renombrar…",
+  "menu.remove": "Quitar",
 
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Información",
@@ -148,6 +150,12 @@ NX_STRINGS.es = {
 
   "ask.not-yet.missing": "{name} todavía no existe.",
   "ask.not-yet.plan": "Debe permitir ajustar la máquina como Previous lo consiente, y no como un archivo de texto. Se está hablando de ello.",
+  "ask.rename.title": "Renombrar {name}",
+  "ask.rename.question": "¿Cómo debe llamarse esta configuración?",
+  "ask.remove.title": "¿Quitar {name}?",
+  "ask.remove.loss": "La configuración sale de la lista y no vuelve. Una máquina que está funcionando con ella sigue funcionando, porque el archivo que lee el emulador es el suyo.",
+  "button.rename": "Renombrar",
+  "button.remove": "Quitar",
 
   "ask.board.reboot": "¿Reiniciar el Raspberry Pi?",
   "ask.board.poweroff": "¿Apagar el Raspberry Pi?",
@@ -207,4 +215,15 @@ NX_STRINGS.es = {
   "told.rollback.emulator-will-not-end": "{machine} {why}, la configuración anterior está de vuelta en el archivo, pero el emulador no quiso cerrarse. Esto hay que mirarlo por SSH.",
   "told.rollback.back-as-before": "{machine} {why}. La configuración anterior está de vuelta en el archivo y la máquina funciona como antes.",
   "told.rollback.nothing-runs": "{machine} {why}, y con la configuración anterior tampoco funciona nada. Esto hay que mirarlo por SSH.",
+  "told.saved.kept": "{name} está guardada.",
+  "told.saved.renamed": "{was} se llama ahora {name}.",
+  "told.saved.removed": "{name} se ha quitado.",
+  "told.saved.name-needed": "Una configuración necesita un nombre.",
+  "told.saved.name-taken": "{name} ya está tomado. Cada configuración lleva su propio nombre, contando las once.",
+  "told.saved.name-too-long": "Un nombre puede tener {most} caracteres, para que se lea entero bajo el icono.",
+  "told.saved.name-has-a-separator": "Un nombre no puede llevar una barra, porque esa separa una carpeta de la siguiente.",
+  "told.saved.name-has-a-control-character": "Un nombre se compone de caracteres legibles.",
+  "told.saved.no-such": "No hay ninguna configuración guardada llamada {asked}.",
+  "told.saved.not-readable": "Las configuraciones guardadas no se pudieron leer, no se cambió nada: {detail}",
+  "told.saved.could-not-write": "La configuración no se pudo escribir: {detail}",
 };

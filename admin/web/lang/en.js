@@ -34,6 +34,8 @@ NX_STRINGS.en = {
   "menu.edit": "Edit configuration…",
   "menu.keep": "Put on the shelf",
   "menu.unkeep": "Take off the shelf",
+  "menu.rename": "Rename…",
+  "menu.remove": "Remove",
 
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Info",
@@ -156,6 +158,12 @@ NX_STRINGS.en = {
 
   "ask.not-yet.missing": "{name} does not exist yet.",
   "ask.not-yet.plan": "It is to make the machine settable the way Previous allows, rather than as a text file. That is being discussed.",
+  "ask.rename.title": "Rename {name}",
+  "ask.rename.question": "What should this configuration be called?",
+  "ask.remove.title": "Remove {name}?",
+  "ask.remove.loss": "The configuration goes out of the list and does not come back. A machine running it goes on running it, because the file the emulator reads is its own.",
+  "button.rename": "Rename",
+  "button.remove": "Remove",
 
   "ask.board.reboot": "Restart the Raspberry Pi?",
   "ask.board.poweroff": "Switch the Raspberry Pi off?",
@@ -215,4 +223,15 @@ NX_STRINGS.en = {
   "told.rollback.emulator-will-not-end": "{machine} {why}, the previous configuration is back in the file, but the emulator would not end. This wants looking at over SSH.",
   "told.rollback.back-as-before": "{machine} {why}. The previous configuration is back in the file and the machine runs as it did.",
   "told.rollback.nothing-runs": "{machine} {why}, and nothing runs with the previous configuration either. This wants looking at over SSH.",
+  "told.saved.kept": "{name} is saved.",
+  "told.saved.renamed": "{was} is now called {name}.",
+  "told.saved.removed": "{name} is gone.",
+  "told.saved.name-needed": "A configuration needs a name.",
+  "told.saved.name-taken": "{name} is taken. Every configuration carries a name of its own, the eleven counted in.",
+  "told.saved.name-too-long": "A name may hold {most} characters, so that all of it can be read under the icon.",
+  "told.saved.name-has-a-separator": "A name cannot hold a slash, because that is what parts one folder from the next.",
+  "told.saved.name-has-a-control-character": "A name is made of characters that can be read.",
+  "told.saved.no-such": "There is no saved configuration called {asked}.",
+  "told.saved.not-readable": "The saved configurations could not be read, so nothing was changed: {detail}",
+  "told.saved.could-not-write": "The configuration could not be written: {detail}",
 };
