@@ -39,13 +39,19 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 |---|---|
 | `previously/settings.py` | What the service itself is configured with |
 | `previously/config.py` | Reading and writing `previous.cfg` |
-| `previously/machines.py` | Which machines exist, and what each one is in the file |
+| `previously/machines.py` | Which machines exist, what each one is in the file, and the rules Previous keeps |
+| `previously/saved.py` | The configurations somebody saved, and what a name may be |
 | `previously/files.py` | The places this tool shows, which are not places on any disk |
 | `previously/change.py` | Changing the machine without leaving it unable to start |
 | `previously/kiosk.py` | Everything this tool does to the machine, in one file |
+| `previously/screen.py` | Reading the emulated screen, and pressing its keys |
+| `previously/grab.py` | Taking a picture of that screen and keeping it |
+| `previously/terminal.py` | The shell session behind the Terminal window |
+| `previously/websocket.py` | The protocol that session travels over |
 | `previously/pi.py` | What the board underneath is doing |
 | `previously/server.py` | Which addresses exist and what answers them |
 | `previously/token.py` | The one secret, and what a request may do without it |
+| `previously/answers.py` | How the service names what happened, so the browser can say it |
 | `web/` | What the browser gets, including one catalogue of words per language |
 | `web/vendor/` | The one library this interface takes, with its licence |
 | `packaging/` | The unit and the default configuration |
@@ -78,7 +84,10 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/kiosk/restart` | Both, in that order |
 | `GET /api/pi` | Temperature, power, sound, disk, what the emulator costs, and which version of this tool is answering |
 | `GET /api/files` | Everything this tool holds, as a place with places in it |
-| `POST /api/machine` | Makes the emulated machine the one named |
+| `POST /api/machine` | Makes the emulated machine the one named, from either set |
+| `POST /api/machine/save` | Keeps a configuration under a name, without touching the running machine |
+| `POST /api/machine/rename` | Gives a saved configuration another name |
+| `POST /api/machine/remove` | Takes a saved configuration out of the list |
 | `POST /api/pi/reboot` | Shuts NeXTSTEP down, then restarts the board |
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
 | `GET /api/terminal` | Becomes a WebSocket carrying a login on this machine |
@@ -126,6 +135,22 @@ That also decides what this tool overwrites, which is the sixteen keys that make
 So: shut the guest down properly, copy the file beside itself as `previous.cfg.bak`, write, let it come back, and watch long enough to know that it did. Anything that does not come back is put straight back the way it was.
 
 **Watching means two questions, not one.** A configuration Previous cannot run makes it exit at once, and the waiting console starts it again, so a machine that is broken looks exactly like one that is running. The age of the emulator process is what tells them apart.
+
+## System and User configurations
+
+The eleven in `machines.py` are System configurations and cannot be changed. Whatever else happens there is a known set to go back to, and going back is one double click. Anything somebody puts together is a User configuration, kept under a name they gave it, and those two sets are the two folders in the machines window.
+
+**They live in one file**, `machines.json` in `/var/lib/previously`, beside the token and the note about the last write. That directory survives a restart and a package upgrade. One file rather than one per configuration, because a name is not a file name: a file each would need a second answer to what a configuration is called, and the two would part company the first time one was renamed. It is written beside itself and moved into place, so a write that fails halfway leaves the file as it was.
+
+**A name has to be a name.** It cannot be empty, it cannot be longer than 48 characters, which is what can be read under an icon, and it cannot hold a slash, because that is what parts one folder from the next in the path the viewer shows. No two configurations may share one, compared without case and across both sets: a User configuration called after one of the eleven would show two things with the same name in the same window.
+
+**Saving does not activate.** Keeping a configuration and running one are two different acts, and only the second shuts the guest down and writes `previous.cfg`. So the editor of #50 cannot leave a machine that will not boot, and a saved configuration is run exactly as one of the eleven is, by double clicking it or through its context menu.
+
+**Previous's own rules are kept when a configuration is written and again when it is read.** The emulator never refuses a configuration it cannot run: it corrects one, partly in its own dialogue when the machine type changes and partly at every start, whatever wrote the file. `machines.settled` is that correction, so colour on a cube, a NeXTdimension in a station, three megabytes in a bank and a fifth bank all come back as the machine that would actually run. A file somebody edited by hand gets the same treatment as one this tool wrote.
+
+Which sizes a memory bank takes comes from the same place: 0, 2, 8 and 32 with a turbo board, 0, 2 and 8 with colour, and 0, 1, 4 and 16 otherwise, rounded up to the next of those. A NeXTstation without a turbo board and without colour reaches two banks rather than four, because on that board the other two are not physically there.
+
+**Renaming and removing belong to User alone.** The context menu offers them for a saved configuration and does not carry them at all for one of the eleven. Removing one takes it out of the list and leaves `previous.cfg` alone, so a machine running that configuration goes on running it.
 
 ## Switching the machine on and off
 
@@ -194,8 +219,12 @@ Previously arranges what it has the way NeXTSTEP arranged things, which is a pla
 Previously          the root, drawn as a home the way NeXTSTEP drew one
   Apps
     Config Editor.app
+    Grab.app
     Preferences.app
+    Preview.app
     Terminal.app
+  Documents
+    Pictures        the one real place here, holding the screenshots
   Machines
     System          the eleven this project ships, which cannot be changed
     User            what somebody saved, and only once there is something
@@ -207,9 +236,9 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
 
 **The sentence around the names is read in whichever language is chosen**, so the line under the shelf says `Apps: 3 Einträge` and `System: 11 Einträge, nur lesbar`.
 
-**An application in that folder opens its window**, and one whose window is not built yet says so. Preferences is built, the editor is #50 and the terminal is #6.
+**An application in that folder opens its window**, and one whose window is not built yet says so. Preferences, Grab, Preview and the Terminal are built, and the Config Editor is #50.
 
-**The User folder is not there until it holds something.** An empty folder promises a place to put things, and until saving one is built there is none.
+**The User folder is not there until it holds something.** An empty folder promises a place to put things. The service can keep a configuration there, and what puts one there from the browser is the Config Editor of #50.
 
 **System cannot be written.** Whatever else happens, the eleven are a set to go back to, and going back is one double click.
 
