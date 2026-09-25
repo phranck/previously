@@ -52,7 +52,7 @@ def to_machine(identifier, settings, sleep=None):
     machine = machines.find(identifier)
     if machine is None:
         try:
-            machine = saved.find(settings.state_directory, identifier)
+            machine = saved.find(settings.machines_file, identifier)
         except saved.NotReadable as error:
             return False, told("saved.not-readable", detail=str(error))
     if machine is None:

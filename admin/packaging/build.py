@@ -103,12 +103,32 @@ def control(size):
 
 
 #: Run after the files are in place. Only what dpkg does not do itself:
-#: systemd has to be told the units exist, and the service is started so that
-#: installing it is enough to have it.
+#: systemd has to be told the units exist, the one directory the service cannot
+#: create for itself is made, and the service is started so that installing it is
+#: enough to have it.
 POSTINST = """#!/bin/sh
 set -e
 
 if [ "$1" = configure ]; then
+    # Where the configurations somebody saves are kept, in the home of whoever
+    # owns the emulator. ProtectHome leaves the rest of that home read only, and
+    # systemd skips a ReadWritePaths entry whose path is absent, so this has to
+    # exist before the service starts or the first save refuses. The user and the
+    # group are read out of the unit rather than named again here, because the
+    # unit is where they are decided.
+    #
+    # It does not fail the installation. A directory that cannot be made leaves a
+    # service that runs and refuses to save, saying why, which is a better state
+    # to hand somebody than a package dpkg has left half configured.
+    user=$(sed -n 's/^User=//p' /%(units)s/%(service)s)
+    group=$(sed -n 's/^Group=//p' /%(units)s/%(service)s)
+    if [ -n "$user" ] && [ -n "$group" ]; then
+        home=$(getent passwd "$user" | cut -d: -f6)
+        if [ -n "$home" ] && [ -d "$home" ]; then
+            install -d -o "$user" -g "$group" -m 0700 "$home/.config/%(name)s" || true
+        fi
+    fi
+
     systemctl daemon-reload
     systemctl enable --now %(service)s
     # These act for the service without it holding any privilege, so they are
@@ -129,9 +149,14 @@ fi
 """
 
 #: Run after the files have gone. Purge is where "leaves nothing behind"
-#: belongs: the state this service wrote itself, which is its token, and the
-#: configuration. Remove keeps both, which is the whole difference between the
-#: two and why somebody would choose one.
+#: belongs: the state this service wrote itself, which is its token and the
+#: digest of its last write, and its own configuration. Remove keeps both, which
+#: is the whole difference between the two and why somebody would choose one.
+#:
+#: What purge does not touch is anything in somebody's home. The configurations
+#: they saved are in `~/.config/previously`, along with the emulator's own
+#: configuration and the disk image, and removing this tool is not removing the
+#: machines they built with it.
 #:
 #: There is no user to remove. This service runs as the user who owns the
 #: emulator rather than as one of its own.
@@ -191,7 +216,7 @@ def write_control(into):
     # upgrade, which is what conffiles means.
     (debian / "conffiles").write_text("/%s/config.ini\n" % CONFIG, encoding="utf-8")
 
-    words = {"name": NAME, "service": SERVICE}
+    words = {"name": NAME, "service": SERVICE, "units": UNITS}
     for script, body in [("postinst", POSTINST), ("prerm", PRERM),
                          ("postrm", POSTRM)]:
         path = debian / script

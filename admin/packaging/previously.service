@@ -23,9 +23,10 @@ Environment=PYTHONDONTWRITEBYTECODE=1
 Restart=on-failure
 RestartSec=5
 
-# Creates /var/lib/previously owned by this user, which is the one place the
-# service writes: the token it generates on first start. Everything else it
-# touches, it only reads.
+# Creates /var/lib/previously owned by this user, which holds what the service
+# owns rather than what the person does: the token it generates on first start,
+# and the digest of the last configuration it wrote. Both go when the package is
+# purged, which is why nothing of theirs is kept here.
 StateDirectory=previously
 StateDirectoryMode=0750
 
@@ -44,22 +45,30 @@ PrivateTmp=yes
 # directory rather than the whole of /tmp.
 BindReadOnlyPaths=/tmp/.X11-unix
 
-# The two places in the home this service may write, which ProtectHome above
+# The four places in the home this service may write, which ProtectHome below
 # otherwise forbids.
 #
 # Previous keeps its configuration in the first and this tool's job is to
 # change it. The directory rather than the file, because the copy it makes
 # before every write is a second file beside the first.
 #
-# The second is where the emulator runs, so it is where a screen grab lands.
+# The second holds the configurations somebody saved, which are theirs rather
+# than this service's and therefore live in their home: a purge takes the state
+# directory above with it and must not take their machines. The package creates
+# this directory, because ProtectHome leaves the rest of the home read-only and
+# an entry here whose path is absent is one systemd skips, which would leave the
+# first save refusing.
+#
+# The third is where the emulator runs, so it is where a screen grab lands.
 # This service asks for one, reads it and removes it again, and without the
 # write it could ask and read but never tidy up. Where the emulator was started
 # somewhere else, it photographs the window instead and leaves nothing behind.
 #
-# The third is the real part of the Previously tree, which today is the folder
+# The fourth is the real part of the Previously tree, which today is the folder
 # the File Viewer shows as Documents/Pictures. Grab writes a screenshot there
 # and Preview reads it back, and it is the only part of that tree on the card.
 ReadWritePaths=-/home/next/.config/previous
+ReadWritePaths=-/home/next/.config/previously
 ReadWritePaths=-/home/next/.cache/previously
 ReadWritePaths=-/home/next/Previously
 ProtectSystem=strict

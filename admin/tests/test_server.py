@@ -388,7 +388,7 @@ def tell(service, route, body, with_token=True):
 
 def where_they_are_kept():
     """@returns pathlib.Path of the file the service keeps them in."""
-    return server.Handler.settings.state_directory / saved.FILE
+    return server.Handler.settings.machines_file
 
 
 def test_saving_a_configuration_needs_the_token(service):
@@ -511,7 +511,7 @@ def in_force(name, configuration):
     @param configuration - Its settings, as the editor posts them.
     @returns machines.Machine, the one that was saved and written.
     """
-    where = server.Handler.settings.state_directory
+    where = server.Handler.settings.machines_file
     finished, said = saved.save(where, name, configuration)
     assert finished is True, said
 

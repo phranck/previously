@@ -79,7 +79,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # and nothing else.
             return self._json({"version": VERSION, **pi.readings()})
         if route == "/api/files":
-            return self._json(files.tree(self.settings.state_directory,
+            return self._json(files.tree(self.settings.machines_file,
                                          self.settings.documents))
         if route == "/api/token":
             return self._json({"valid": self._carries_the_token()})
@@ -166,7 +166,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json({"error": "unreadable request"}, status=400)
 
         finished, told = saved.save(
-            self.settings.state_directory,
+            self.settings.machines_file,
             body.get("name"),
             body.get("configuration") or {},
             replacing=body.get("replacing"))
@@ -184,7 +184,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json({"error": "unreadable request"}, status=400)
 
         finished, told = saved.rename(
-            self.settings.state_directory, body.get("machine"), body.get("name"))
+            self.settings.machines_file, body.get("machine"), body.get("name"))
         return self._json({"ok": finished, **told}, status=200 if finished else 409)
 
     def _remove_configuration(self):
@@ -198,7 +198,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json({"error": "unreadable request"}, status=400)
 
         finished, told = saved.remove(
-            self.settings.state_directory, body.get("machine"))
+            self.settings.machines_file, body.get("machine"))
         return self._json({"ok": finished, **told}, status=200 if finished else 409)
 
     def log_error(self, format, *args):
@@ -289,7 +289,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """
         kept = ()
         try:
-            kept = saved.read(self.settings.state_directory)
+            kept = saved.read(self.settings.machines_file)
         except saved.NotReadable:
             pass
         return [(machine.identifier, machines.settings_for(machine))
