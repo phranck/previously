@@ -149,6 +149,24 @@ def settings_for(machine):
     }
 
 
+def whole(value, fallback):
+    """One number, however it arrived.
+
+    @param value - What was given, which from a browser is text and from a file
+      somebody edited may be anything at all.
+    @param fallback - What to answer where it is not a number.
+    @returns int
+
+    Here rather than in each module that needs it, because `saved.py` asks the
+    same question of a file that this asks of a query string, and two answers to
+    it would part company the first time one of them learned something.
+    """
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
 def bank_sizes(kind, turbo, colour):
     """Which sizes each of the four memory banks accepts.
 
@@ -176,6 +194,146 @@ def bank_sizes(kind, turbo, colour):
     if kind == NEXTSTATION and not turbo and not colour:
         reachable = STATION_PLAIN_BANKS
     return tuple(sizes if bank < reachable else (0,) for bank in range(BANKS))
+
+
+#: What a total of memory is made of, bank by bank, in megabytes. From
+#: `defmemsize` in Previous's src/gui-sdl/dlgAdvanced.c, which is the table its
+#: own dialogue fills the four banks from when somebody picks a size there.
+#:
+#: Two families, because the same total is laid out differently: a plain
+#: monochrome machine takes 16 MB modules and anything with a turbo board or a
+#: colour board takes 8 and 32 MB ones.
+PLAIN_MEMORY = {
+    8: (4, 4, 0, 0),
+    16: (16, 0, 0, 0),
+    32: (16, 16, 0, 0),
+    64: (16, 16, 16, 16),
+}
+WIDE_MEMORY = {
+    8: (8, 0, 0, 0),
+    16: (8, 8, 0, 0),
+    32: (8, 8, 8, 8),
+    64: (32, 32, 0, 0),
+    128: (32, 32, 32, 32),
+}
+
+#: Which of those totals each kind of machine is offered, from the same
+#: dialogue, which takes the larger two away where the board cannot hold them:
+#: 128 MB wants a turbo board, and 64 MB wants either that or the four banks a
+#: monochrome cube has.
+TURBO_MEMORY = (8, 16, 32, 64, 128)
+CUBE_MEMORY = (8, 16, 32, 64)
+NARROW_MEMORY = (8, 16, 32)
+
+
+def memory_totals(kind, turbo, colour):
+    """How much memory this machine can be given, in megabytes.
+
+    @param kind - NEXT_COMPUTER, NEXTCUBE or NEXTSTATION.
+    @param turbo - Whether a turbo board is seated, as settled() leaves it.
+    @param colour - Whether the colour board is, the same way.
+    @returns tuple of int, smallest first.
+
+    A total rather than four banks, because that is what Previous's own dialogue
+    offers and what a person means by how much memory a machine has. Which
+    modules make it up follows from the machine, and PLAIN_MEMORY and
+    WIDE_MEMORY are that.
+    """
+    if turbo:
+        return TURBO_MEMORY
+    if colour or kind == NEXTSTATION:
+        # A colour board takes 8 MB modules and fills all four banks at 32, and
+        # a plain station reaches only two banks at all. Both stop at 32.
+        return NARROW_MEMORY
+    return CUBE_MEMORY
+
+
+def banks_for(total, kind, turbo, colour):
+    """The four banks a total of memory is made up of.
+
+    @param total - How much memory, in megabytes.
+    @param kind - The machine type.
+    @param turbo - Whether a turbo board is seated, as settled() leaves it.
+    @param colour - Whether the colour board is, the same way.
+    @returns tuple of four ints.
+
+    A total the machine is not offered is answered with the largest it is
+    offered that is no bigger, and with the smallest where even that is too
+    small. Somebody moving from a turbo machine to a plain one has asked for
+    128 MB of a board that holds 64, and the honest answer to that is the
+    machine they can have rather than a refusal.
+    """
+    offered = memory_totals(kind, turbo, colour)
+    layouts = WIDE_MEMORY if (turbo or colour) else PLAIN_MEMORY
+    wanted = whole(total, offered[0])
+    fits = [size for size in offered if size <= wanted] or [offered[0]]
+    return layouts[fits[-1]]
+
+
+def drafted(kind, turbo=False, colour=False, dimension=False,
+            mhz=None, memory=None, identifier="", name=""):
+    """A machine from what an editor is showing, held to Previous's rules.
+
+    @param kind - The machine type, as a number or a string of one.
+    @param turbo - Whether a turbo board is asked for.
+    @param colour - Whether the colour board is.
+    @param dimension - Whether a NeXTdimension is.
+    @param mhz - The clock asked for. Only a turbo machine has a choice, and
+      there it is the 33 of a Turbo against the 40 somebody types for a Nitro.
+    @param memory - How much memory, as a total in megabytes.
+    @param identifier - What it is called to the API, where it has a name.
+    @param name - What it is called to a person.
+    @returns Machine, settled.
+
+    The six values this takes are the six controls an editor draws, one each,
+    and nothing about them is a rule: which of them may be chosen at all is
+    offers(), and what they turn into is here and in settled(). So an interface
+    holds no copy of anything Previous decides.
+
+    Nitro is not one of the six. Previous has no such thing and reads nCpuFreq
+    as it finds it, so a clock of 40 is what the catalogue calls a Nitro and
+    that is the direction the translation runs in.
+    """
+    machine = settled(Machine(
+        identifier=identifier,
+        name=name,
+        kind=whole(kind, NEXTCUBE),
+        turbo=bool(turbo),
+        nitro=str(mhz) == NITRO_MHZ,
+        colour=bool(colour),
+        dimension=bool(dimension),
+        banks=(0, 0, 0, 0),
+    ))
+    # After the flags, because they decide which totals there are and what each
+    # one is made of.
+    return machine._replace(
+        banks=banks_for(memory, machine.kind, machine.turbo, machine.colour))
+
+
+def offers(machine):
+    """What may be chosen for a machine like this one.
+
+    @param machine - A Machine, settled.
+    @returns dict, one entry per control an editor draws: the machine types,
+      whether the turbo board, the colour board and a NeXTdimension may be
+      seated at all, which clocks there are, and which totals of memory.
+
+    Answered by the service rather than worked out in the browser, so there is
+    one statement of what Previous allows and an interface cannot offer a
+    machine the emulator would correct underneath it.
+
+    The clocks are numbers here and strings in the file, because a browser
+    compares them against what somebody chose and the file holds text.
+    """
+    return {
+        "kinds": [NEXT_COMPUTER, NEXTCUBE, NEXTSTATION],
+        "turbo": machine.kind != NEXT_COMPUTER,
+        "colour": machine.kind == NEXTSTATION,
+        "dimension": machine.kind != NEXTSTATION,
+        "clocks": [int(TURBO_MHZ), int(NITRO_MHZ)] if machine.turbo else [],
+        "memory": list(memory_totals(
+            machine.kind, machine.turbo, machine.colour)),
+    }
 
 
 def settled(machine):
