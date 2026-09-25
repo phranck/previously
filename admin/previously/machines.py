@@ -48,6 +48,23 @@ NEXT_COMPUTER = 0
 NEXTCUBE = 1
 NEXTSTATION = 2
 
+#: Which sizes one memory bank accepts, in megabytes, by what the machine is.
+#: From Configuration_CheckMemory in Previous's src/configuration.c, which asks
+#: in this order: a turbo board decides first, then colour, then what is left.
+#: Anything in between is rounded up to the next of these and anything above
+#: the largest is capped at it.
+TURBO_BANK_SIZES = (0, 2, 8, 32)
+COLOUR_BANK_SIZES = (0, 2, 8)
+PLAIN_BANK_SIZES = (0, 1, 4, 16)
+
+#: How many banks the machine holds, and how many of them a NeXTstation without
+#: a turbo board and without colour can reach. On that board the other two are
+#: not physically there, and Previous empties them at every start rather than
+#: when the machine is chosen, so a file that fills them is corrected under
+#: whoever wrote it.
+BANKS = 4
+STATION_PLAIN_BANKS = 2
+
 Machine = collections.namedtuple(
     "Machine", "identifier name kind turbo nitro colour dimension banks")
 
@@ -132,6 +149,79 @@ def settings_for(machine):
     }
 
 
+def bank_sizes(kind, turbo, colour):
+    """Which sizes each of the four memory banks accepts.
+
+    @param kind - NEXT_COMPUTER, NEXTCUBE or NEXTSTATION.
+    @param turbo - Whether a turbo board is seated, as settled() leaves it.
+    @param colour - Whether the colour board is, the same way.
+    @returns tuple of four tuples of megabytes, one per bank in the order they
+      sit in. A bank the machine cannot reach offers nothing but zero, which is
+      a choice of one rather than an absence, so whatever draws this has four
+      banks to draw either way.
+
+    Taking the two flags rather than a Machine, because they have to be the
+    settled ones: a cube with colour asked for is a cube without it, and
+    reading a bank rule off a choice the emulator refuses would offer sizes no
+    machine has.
+    """
+    if turbo:
+        sizes = TURBO_BANK_SIZES
+    elif colour:
+        sizes = COLOUR_BANK_SIZES
+    else:
+        sizes = PLAIN_BANK_SIZES
+
+    reachable = BANKS
+    if kind == NEXTSTATION and not turbo and not colour:
+        reachable = STATION_PLAIN_BANKS
+    return tuple(sizes if bank < reachable else (0,) for bank in range(BANKS))
+
+
+def settled(machine):
+    """The machine Previous would run, given what somebody put together.
+
+    @param machine - A Machine, which may hold a choice the emulator does not
+      allow: colour on a cube, a board in a station, memory in a bank that is
+      not there.
+    @returns Machine, identical in everything Previous accepts and corrected in
+      everything it does not.
+
+    Previous never refuses a configuration. It corrects one, in two places, and
+    both are in its src/configuration.c. Its own dialogue runs
+    Configuration_SetSystemDefaults whenever the machine type changes there, and
+    Configuration_Apply runs the four check functions at every start, whatever
+    wrote the file. So a configuration that has not been through this is one the
+    emulator will quietly change underneath whoever saved it, and the interface
+    would then be showing a machine that is not the one running.
+
+    This is why it is applied when a saved configuration is read as well as when
+    it is written: a file somebody edited by hand gets the same treatment as one
+    this tool wrote.
+    """
+    turbo = machine.turbo and machine.kind != NEXT_COMPUTER
+    colour = machine.colour and machine.kind == NEXTSTATION
+    # A bank that was left out is an empty one, and a fifth is not a bank. Both
+    # are what a hand-written file can hold.
+    wanted = tuple(machine.banks) + (0,) * BANKS
+    sizes = bank_sizes(machine.kind, turbo, colour)
+
+    return machine._replace(
+        turbo=turbo,
+        # A Nitro is a faster turbo board rather than a machine of its own, so
+        # without that board there is nothing for it to be faster than. This one
+        # rule is ours: Previous has no idea of Nitro and reads nCpuFreq as it
+        # finds it.
+        nitro=machine.nitro and turbo,
+        colour=colour,
+        # The board speaks on the NeXTbus and a NeXTstation has none, so
+        # Configuration_CheckDimensionSettings switches every board off for that
+        # machine type. Both cubes have the bus and therefore the slot.
+        dimension=machine.dimension and machine.kind != NEXTSTATION,
+        banks=tuple(_bank(wanted[bank], sizes[bank]) for bank in range(BANKS)),
+    )
+
+
 def _system_for(machine):
     """The System section, which is where a machine is really decided.
 
@@ -173,6 +263,30 @@ def _clock(machine):
     if machine.nitro:
         return NITRO_MHZ
     return TURBO_MHZ if machine.turbo else PLAIN_MHZ
+
+
+def _bank(size, sizes):
+    """One memory bank, held to a size the machine accepts.
+
+    @param size - What was asked for, in megabytes.
+    @param sizes - What that bank offers, as bank_sizes answers.
+    @returns int
+
+    Rounded up to the next size offered and capped at the largest, which is what
+    Configuration_CheckMemory does: three megabytes on a turbo board is a bank of
+    eight, and sixty-four is a bank of thirty-two. Anything that is not a number
+    at all, which a hand-edited file can hold, is an empty bank.
+    """
+    try:
+        wanted = int(size)
+    except (TypeError, ValueError):
+        return 0
+    if wanted <= 0:
+        return 0
+    for offered in sizes:
+        if wanted <= offered:
+            return offered
+    return sizes[-1]
 
 
 def _flag(value):

@@ -151,3 +151,160 @@ def test_every_value_written_is_a_string():
     for machine in machines.CATALOGUE:
         for keys in machines.settings_for(machine).values():
             assert all(isinstance(value, str) for value in keys.values())
+
+
+# -- a machine somebody put together -------------------------------------
+
+
+def drafted(**wanted):
+    """A machine as the Config Editor hands one over, before any rule is kept.
+
+    @param wanted - Whatever this test is about. Everything else is a plain
+      NeXTcube with no memory, so a test says only what it means.
+    @returns machines.Machine
+    """
+    fields = {
+        "identifier": "user:Drafted",
+        "name": "Drafted",
+        "kind": machines.NEXTCUBE,
+        "turbo": False,
+        "nitro": False,
+        "colour": False,
+        "dimension": False,
+        "banks": (16, 16, 16, 16),
+    }
+    fields.update(wanted)
+    return machines.Machine(**fields)
+
+
+def test_the_eleven_are_already_what_previous_would_make_of_them():
+    """The one test that would have caught #66. A shipped machine holding a
+    choice the emulator corrects at every start is a machine whose name in the
+    interface is not the machine that runs."""
+    for machine in machines.CATALOGUE:
+        assert machines.settled(machine) == machine, machine.identifier
+
+
+def test_settling_a_settled_machine_changes_nothing():
+    """It is applied when a configuration is written and again when it is read,
+    so the second pass has to leave the first alone."""
+    once = machines.settled(drafted(kind=machines.NEXTSTATION, colour=True,
+                                    dimension=True, banks=(3, 0, 9, 40)))
+    assert machines.settled(once) == once
+
+
+def test_a_cube_cannot_have_colour():
+    """Previous forces bColor off for both cube types, so a cube saved with it
+    would come back without it and the interface would have said colour."""
+    for kind in [machines.NEXT_COMPUTER, machines.NEXTCUBE]:
+        assert machines.settled(drafted(kind=kind, colour=True)).colour is False
+
+
+def test_only_a_station_keeps_colour():
+    assert machines.settled(
+        drafted(kind=machines.NEXTSTATION, colour=True)).colour is True
+
+
+def test_the_1988_machine_cannot_have_a_turbo_board():
+    """NeXT built none, and Previous forces the flag off for that type."""
+    computer = machines.settled(drafted(kind=machines.NEXT_COMPUTER, turbo=True))
+    assert computer.turbo is False
+
+
+def test_a_station_cannot_hold_a_dimension():
+    """The board speaks on the NeXTbus and a station has none, so Previous
+    switches it off at every start whatever the file says."""
+    station = machines.settled(drafted(kind=machines.NEXTSTATION, dimension=True))
+    assert station.dimension is False
+
+
+def test_both_cubes_take_a_dimension():
+    """Previous refuses the board for the station alone, so the 1988 machine has
+    the slot as much as the 040 cube does."""
+    for kind in [machines.NEXT_COMPUTER, machines.NEXTCUBE]:
+        assert machines.settled(drafted(kind=kind, dimension=True)).dimension is True
+
+
+def test_nitro_without_a_turbo_board_is_not_nitro():
+    """A Nitro is a faster turbo board rather than a machine of its own."""
+    assert machines.settled(drafted(nitro=True, turbo=False)).nitro is False
+    assert machines.settled(drafted(nitro=True, turbo=True)).nitro is True
+
+
+def test_a_bank_is_rounded_up_to_a_size_the_machine_has():
+    """Previous rounds every bank up to the next size it accepts and caps it at
+    the largest, so a number in between is a bank of the size above it."""
+    turbo = machines.settled(drafted(turbo=True, banks=(1, 3, 9, 64)))
+    assert turbo.banks == (2, 8, 32, 32)
+
+    plain = machines.settled(drafted(banks=(1, 2, 5, 64)))
+    assert plain.banks == (1, 4, 16, 16)
+
+    colour = machines.settled(
+        drafted(kind=machines.NEXTSTATION, colour=True, banks=(1, 3, 9, 64)))
+    assert colour.banks == (2, 8, 8, 8)
+
+
+def test_an_empty_bank_stays_empty():
+    """A socket with nothing in it is not rounded up to the smallest module."""
+    assert machines.settled(drafted(banks=(16, 0, 0, 0))).banks == (16, 0, 0, 0)
+
+
+def test_a_plain_station_reaches_two_banks_only():
+    """On that board the other two are not physically there, and Previous
+    empties them at every start rather than when the machine is chosen."""
+    station = machines.settled(
+        drafted(kind=machines.NEXTSTATION, banks=(16, 16, 16, 16)))
+    assert station.banks == (16, 16, 0, 0)
+
+
+def test_colour_and_turbo_give_a_station_all_four_banks():
+    """The restriction is on the plain monochrome board alone."""
+    colour = machines.settled(
+        drafted(kind=machines.NEXTSTATION, colour=True, banks=(8, 8, 8, 8)))
+    turbo = machines.settled(
+        drafted(kind=machines.NEXTSTATION, turbo=True, banks=(32, 32, 32, 32)))
+
+    assert colour.banks == (8, 8, 8, 8)
+    assert turbo.banks == (32, 32, 32, 32)
+
+
+def test_a_bank_that_is_not_a_number_is_an_empty_one():
+    """A configuration file can be edited by hand, and what comes back from one
+    is whatever somebody typed."""
+    assert machines.settled(drafted(banks=("", None, "sixteen", 16))).banks == \
+        (0, 0, 0, 16)
+
+
+def test_a_configuration_with_the_wrong_number_of_banks_gets_four():
+    """A machine holds four, so a shorter list is banks nobody filled and a
+    longer one is a bank that is not there."""
+    assert machines.settled(drafted(banks=(16,))).banks == (16, 0, 0, 0)
+    assert machines.settled(drafted(banks=(16, 16, 16, 16, 16))).banks == \
+        (16, 16, 16, 16)
+
+
+def test_an_unreachable_bank_offers_nothing_but_zero():
+    """So whatever draws this has four banks to draw either way, and the two a
+    plain station cannot reach are a choice of one rather than an absence."""
+    offered = machines.bank_sizes(machines.NEXTSTATION, turbo=False, colour=False)
+
+    assert offered[0] == machines.PLAIN_BANK_SIZES
+    assert offered[2] == (0,)
+    assert len(offered) == machines.BANKS
+
+
+def test_what_each_kind_of_machine_offers_a_bank():
+    assert machines.bank_sizes(machines.NEXTCUBE, turbo=True, colour=False)[0] == \
+        machines.TURBO_BANK_SIZES
+    assert machines.bank_sizes(machines.NEXTSTATION, turbo=False, colour=True)[0] == \
+        machines.COLOUR_BANK_SIZES
+    assert machines.bank_sizes(machines.NEXTCUBE, turbo=False, colour=False)[0] == \
+        machines.PLAIN_BANK_SIZES
+
+
+def test_a_turbo_board_decides_the_sizes_before_colour_does():
+    """Previous asks in that order, so a colour turbo station takes the turbo
+    sizes rather than the colour ones."""
+    assert machines.bank_sizes(machines.NEXTSTATION, turbo=True, colour=True)[0] == \
+        machines.TURBO_BANK_SIZES
