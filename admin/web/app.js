@@ -94,6 +94,19 @@ const Board = {
   PowerOff: "/api/pi/poweroff",
 };
 
+/** What can be asked about the configurations somebody saved. Not one of these
+ *  touches the running machine: keeping a configuration and running one are two
+ *  different acts, and the second is /api/machine.
+ *
+ *  Keep is the Config Editor's, which is the one window that puts a
+ *  configuration together. The other two are in the context menu on a saved
+ *  machine. */
+const Saved = {
+  Keep: "/api/machine/save",
+  Rename: "/api/machine/rename",
+  Remove: "/api/machine/remove",
+};
+
 /** How long a shutdown may take before the page stops waiting for the answer.
  *  Longer than the service's own patience with the guest, so the reason it
  *  gives always arrives rather than being cut off by the browser. */
@@ -550,9 +563,6 @@ async function drawMachines() {
   at = at.map((step) => find(root, step.path)).filter(Boolean);
   if (!at.length) at = [root];
   drawPlace();
-
-  document.getElementById("file-viewer")
-    .addEventListener("click", () => show("machine-note", ""));
 }
 
 /**
@@ -954,6 +964,61 @@ async function changeTo(identifier) {
 }
 
 /**
+ * Gives a saved configuration another name.
+ * @param {object} machine - Its entry in the tree.
+ *
+ * Only a configuration somebody saved has a name to change. The eleven are the
+ * set to go back to, and the menu does not offer this for them at all.
+ */
+async function renameConfiguration(machine) {
+  const typed = await askPanelFor({
+    title: t("ask.rename.title", { name: machine.name }),
+    text: [t("ask.rename.question")],
+    icon: machineArt(machine.enclosure),
+    confirm: t("button.rename"),
+  });
+  if (typed === null) return;
+
+  reportAboutTheSaved(
+    await tell(Saved.Rename, { machine: machine.id, name: typed }));
+}
+
+/**
+ * Takes a saved configuration out of the list, after asking.
+ * @param {object} machine - Its entry in the tree.
+ *
+ * Asked first, because there is no wastebasket here to fish one out of again.
+ * What this does not touch is the running machine: previous.cfg is the
+ * emulator's own file, so a machine running this configuration goes on running
+ * it.
+ */
+async function removeConfiguration(machine) {
+  const sure = await askPanel({
+    title: t("ask.remove.title", { name: machine.name }),
+    text: [t("ask.remove.loss")],
+    icon: machineArt(machine.enclosure),
+    confirm: t("button.remove"),
+  });
+  if (!sure) return;
+
+  reportAboutTheSaved(await tell(Saved.Remove, { machine: machine.id }));
+}
+
+/**
+ * Says what came of a change to the saved configurations, and draws them again.
+ * @param {object|null} answer - What the service said, or null on no contact.
+ *
+ * The line under the viewer, because that is the window this happened in. The
+ * status is asked for again as well: the machine in force may be the one that
+ * has just been renamed, and the info window names it.
+ */
+function reportAboutTheSaved(answer) {
+  show("machine-note", answer === null ? t("note.no-service") : say(answer));
+  drawMachines();
+  refresh();
+}
+
+/**
  * Says that an application that is not built yet is not built yet.
  * @param {string} name - What it will be called.
  */
@@ -991,11 +1056,17 @@ function openMachineMenu(thing, x, y) {
   const info = menu.querySelector('nx-menu-item[name="info"]');
   const activate = menu.querySelector('nx-menu-item[name="activate"]');
   const edit = menu.querySelector('nx-menu-item[name="edit"]');
+  const rename = menu.querySelector('nx-menu-item[name="rename"]');
+  const remove = menu.querySelector('nx-menu-item[name="remove"]');
   const shelf = menu.querySelector('nx-menu-item[name="shelf"]');
 
-  /* Three of the four are about a machine, so a folder on the shelf shows the
-     one entry that applies to it. */
+  /* Three of the entries are about a machine, so a folder on the shelf shows
+     only the one that applies to it. */
   for (const entry of [info, activate, edit]) entry.hidden = !machine;
+  /* And two are about a configuration somebody saved. The eleven cannot be
+     renamed or removed, so for those the entries are not in the menu at all
+     rather than in it and refusing. */
+  for (const entry of [rename, remove]) entry.hidden = machine?.set !== "user";
 
   info.onclick = () => {
     menu.close();
@@ -1023,6 +1094,16 @@ function openMachineMenu(thing, x, y) {
       if (activate.hasAttribute("disabled")) return;
       menu.close();
       changeTo(machine.id);
+    };
+
+    rename.onclick = () => {
+      menu.close();
+      renameConfiguration(machine);
+    };
+
+    remove.onclick = () => {
+      menu.close();
+      removeConfiguration(machine);
     };
   }
   edit.onclick = () => {
@@ -1095,6 +1176,12 @@ function wireOpening() {
 /** Wires the two gestures that choose a machine. The third, the context
  *  menu, wires itself where it is opened. */
 function wireMachines() {
+  /* The note under the viewer has been read by the time somebody reaches into
+     the window again. Wired here rather than in drawMachines, which runs again
+     after every change and would leave a second listener behind each time. */
+  document.getElementById("file-viewer")
+    .addEventListener("click", () => show("machine-note", ""));
+
   /* A right click anywhere on a machine, rather than on the shelf, so the menu
      is always about something. */
   document.getElementById("file-viewer").addEventListener("contextmenu", (event) => {

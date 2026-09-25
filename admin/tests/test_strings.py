@@ -1,6 +1,6 @@
-"""The five catalogues, held against each other and against the code.
+"""The six catalogues, held against each other and against the code.
 
-Five files answering the same question drift, and the way they drift is
+Six files answering the same question drift, and the way they drift is
 invisible: a missing entry falls back to English, so the interface goes on
 working and one line of it is in the wrong language. Nothing on the screen says
 so. These tests are what says so.
@@ -110,7 +110,7 @@ def test_every_answer_the_service_can_give_has_a_sentence(english):
     """The service sends a name for what happened. A name nothing can say is a
     name that reaches the screen as it is."""
     service = ""
-    for name in ["kiosk.py", "change.py", "server.py"]:
+    for name in ["kiosk.py", "change.py", "saved.py", "server.py"]:
         service += (WEB_ROOT.parent / "previously" / name).read_text(encoding="utf-8")
 
     for reason in sorted(set(TOLD.findall(service))):

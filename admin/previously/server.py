@@ -15,7 +15,7 @@ import pathlib
 import threading
 import urllib.parse
 
-from . import change, config, files, grab, kiosk, machines, pi, terminal, websocket
+from . import change, config, files, grab, kiosk, machines, pi, saved, terminal, websocket
 from .token import HEADER
 
 VERSION = "0.1.3"
@@ -104,6 +104,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if route == "/api/machine":
             return self._change_machine()
+        if route == "/api/machine/save":
+            return self._save_configuration()
+        if route == "/api/machine/rename":
+            return self._rename_configuration()
+        if route == "/api/machine/remove":
+            return self._remove_configuration()
         if route == "/api/picture/delete":
             return self._delete_picture()
 
@@ -141,6 +147,59 @@ class Handler(http.server.BaseHTTPRequestHandler):
             {"ok": finished, **told, **self._status()},
             status=200 if finished else 409,
         )
+
+    def _save_configuration(self):
+        """Keeps what the editor put together, under the name it was given.
+
+        Nothing about the running machine changes. Saving a configuration and
+        running one are two different acts, and the second is the route above,
+        which shuts the guest down first.
+
+        `replacing` is what the editor was opened on, where that was a saved
+        configuration: then this one takes its place, under the same name or a
+        new one. Opened on one of the eleven it carries nothing, because those
+        cannot be changed and what comes out of editing one is a configuration
+        of somebody's own.
+        """
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        finished, told = saved.save(
+            self.settings.state_directory,
+            body.get("name"),
+            body.get("configuration") or {},
+            replacing=body.get("replacing"))
+        return self._json({"ok": finished, **told}, status=200 if finished else 409)
+
+    def _rename_configuration(self):
+        """Gives a saved configuration another name, leaving its settings alone.
+
+        Only a saved one. The eleven are the set to go back to, so a request
+        naming one of those is answered with there being no such configuration
+        to rename, which is true of the list this reads.
+        """
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        finished, told = saved.rename(
+            self.settings.state_directory, body.get("machine"), body.get("name"))
+        return self._json({"ok": finished, **told}, status=200 if finished else 409)
+
+    def _remove_configuration(self):
+        """Takes a saved configuration out of the list.
+
+        The file the emulator reads is untouched, so a machine running that
+        configuration goes on running it. What goes is the entry in the viewer.
+        """
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        finished, told = saved.remove(
+            self.settings.state_directory, body.get("machine"))
+        return self._json({"ok": finished, **told}, status=200 if finished else 409)
 
     def log_error(self, format, *args):
         """Always written, whatever the request turned out to be.
@@ -196,14 +255,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         }
         try:
             answer["configuration"] = config.read(self.settings.previous_config)
-            # Which of the eleven this is exactly, or None where it is none of
-            # them. Asked against the whole catalogue rather than against the
-            # name the file gives itself, because Previous has no idea of Nitro
-            # and a Nitro machine therefore calls itself by another's name.
+            # Which configuration this is exactly, or None where it is none of
+            # them. Asked against the whole set rather than against the name the
+            # file gives itself, because Previous has no idea of Nitro and a
+            # Nitro machine therefore calls itself by another's name.
             answer["configuration"]["catalogue"] = config.matching(
-                self.settings.previous_config,
-                [(machine.identifier, machines.settings_for(machine))
-                 for machine in machines.CATALOGUE])
+                self.settings.previous_config, self._choices())
         except config.NotReadable as error:
             answer["configuration"] = None
             answer["error"] = str(error)
@@ -213,6 +270,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.settings.previous_config, kiosk.emulator_uptime_seconds(),
             state_directory=self.settings.state_directory)
         return answer
+
+    def _choices(self):
+        """Every configuration that can be named, the eleven first.
+
+        @returns list of (identifier, settings) pairs, as config.matching takes
+          them.
+
+        The eleven come first, so a saved configuration holding the same values
+        as one of them is reported as that one. They are the set whose names
+        everybody knows, and a name is what the interface marks the machine in
+        force by.
+
+        A file of saved configurations that cannot be read leaves only the eleven
+        here. This is a reading, and a reading has nothing to do about it: the
+        moment somebody tries to change something, `saved.py` refuses and says
+        why.
+        """
+        kept = ()
+        try:
+            kept = saved.read(self.settings.state_directory)
+        except saved.NotReadable:
+            pass
+        return [(machine.identifier, machines.settings_for(machine))
+                for machine in tuple(machines.CATALOGUE) + tuple(kept)]
 
     def _terminal(self):
         """Carries a login on a WebSocket, to one browser at a time.
