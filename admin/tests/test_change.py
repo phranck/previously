@@ -8,7 +8,7 @@ import textwrap
 
 import pytest
 
-from previously import change, config, kiosk, screen
+from previously import change, config, kiosk, saved, screen
 
 REAL_SHAPE = textwrap.dedent("""\
     [Log]
@@ -281,3 +281,52 @@ def test_a_guest_that_will_not_shut_down_leaves_the_file_alone(settings, machine
     assert finished is False
     assert told["reason"] == "guest.still-shutting-down"
     assert settings.previous_config.read_text() == before
+
+
+# -- a configuration somebody saved --------------------------------------
+
+
+def test_a_saved_configuration_can_be_activated(settings, machine):
+    """The eleven are looked up first and this list second, so a saved
+    configuration is reached by the same route and the same double click."""
+    finished, _ = saved.save(settings.state_directory, "Meine Kiste", {
+        "kind": 2, "turbo": True, "colour": True, "banks": [32, 32, 32, 32]})
+    assert finished is True
+
+    finished, told = run("Meine Kiste", settings, machine)
+
+    assert finished is True, told
+    assert told["machine"] == "Meine Kiste"
+    written = config.read(settings.previous_config)
+    assert written["model"] == "NeXTstation"
+    assert written["colour"] is True
+    assert written["memory_mb"] == 128
+
+
+def test_a_saved_configuration_is_settled_before_it_is_written(settings, machine):
+    """Whatever is in that file, what reaches previous.cfg is a machine the
+    emulator will not correct underneath it."""
+    saved.save(settings.state_directory, "Ein Kubus", {
+        # A cube has no colour of its own, and three megabytes is not a size.
+        "kind": 1, "colour": True, "banks": [3, 0, 0, 0]})
+
+    finished, _ = run("Ein Kubus", settings, machine)
+
+    assert finished is True
+    written = config.read(settings.previous_config)
+    assert written["colour"] is False
+    assert written["banks"] == [4, 0, 0, 0]
+
+
+def test_a_file_of_saved_configurations_in_the_way_changes_nothing(settings, machine):
+    """It cannot be told whether the name asked for is in there, so nothing is
+    switched off and nothing is written."""
+    before = settings.previous_config.read_text()
+    (settings.state_directory / saved.FILE).write_text("{not json at all")
+
+    finished, told = run("Meine Kiste", settings, machine)
+
+    assert finished is False
+    assert told["reason"] == "saved.not-readable"
+    assert settings.previous_config.read_text() == before
+    assert machine.powered_off == 0

@@ -42,7 +42,7 @@ wherever it is spoken rather than where its bundle is shown.
 import datetime
 import pathlib
 
-from . import config, machines
+from . import config, machines, saved
 
 #: What the root is called and what it wears. NeXTSTEP drew a person's own
 #: directory as a house, and this is the one place everything here lives in.
@@ -55,6 +55,12 @@ HOME_ICON = "home"
 #: so what is on the screen says where the file is.
 DOCUMENTS = "/Documents"
 PICTURES = "/Documents/Pictures"
+
+#: Which set a machine belongs to. The eleven this project ships cannot be
+#: changed, and everything somebody saved can, so every machine says which it is
+#: and the browser does not have to read that out of a path.
+SYSTEM = "system"
+USER = "user"
 
 #: A folder, and the four applications, by the pictures they carry. Three wear
 #: what NeXTSTEP drew for them, Grab included: NeXT shipped an application for
@@ -226,43 +232,56 @@ def _machine_folders(state_directory):
     it appears with its first configuration and not before.
     """
     folders = [_folder("System", "/Machines/System", FOLDER_ICON,
-                       [_machine(machine, "/Machines/System") for machine in machines.CATALOGUE],
+                       [_machine(machine, "/Machines/System", SYSTEM)
+                        for machine in machines.CATALOGUE],
                        writable=False)]
 
-    saved = user_machines(state_directory)
-    if saved:
-        folders.append(_folder("User", "/Machines/User", FOLDER_ICON, saved))
+    kept = user_machines(state_directory)
+    if kept:
+        folders.append(_folder("User", "/Machines/User", FOLDER_ICON, kept))
     return folders
 
 
 def user_machines(state_directory):
-    """The configurations somebody saved.
+    """The configurations somebody saved, as entries of the User folder.
 
     @param state_directory - Where the service keeps what it owns.
-    @returns list, empty until saving one is built.
+    @returns list, empty where nothing has been saved.
 
-    Saving is not built yet, so this is empty and the User folder is therefore
-    not there. What it will hold, and in what form, is decided in #71.
+    A file that cannot be read answers empty here rather than raising, because
+    this is one folder of a tree that also holds the applications, the pictures
+    and the eleven, and none of those should go missing over it. Saying so is
+    left to the moment somebody tries to change something, which `saved.py`
+    refuses whilst the file is in the way.
     """
-    return []
+    try:
+        kept = saved.read(state_directory)
+    except saved.NotReadable:
+        return []
+    return [_machine(machine, "/Machines/User", USER) for machine in kept]
 
 
-def _machine(machine, in_folder):
+def _machine(machine, in_folder, in_set):
     """One machine as an entry of the place it sits in.
 
     @param machine - A machines.Machine.
     @param in_folder - The path of the folder holding it.
+    @param in_set - SYSTEM or USER, which decides what may be done to it.
     @returns dict, the machine described as config.read describes the running
-      one, with where it is and what it is called added.
+      one, with where it is, what it is called and which set it is in added.
     """
     settings = machines.settings_for(machine)
     entry = config.describe(settings["System"], settings["Memory"], settings["Dimension"])
     entry["id"] = machine.identifier
     # The catalogue's own name, which carries the Nitro that the file cannot:
-    # to Previous that is a clock and nothing else.
+    # to Previous that is a clock and nothing else. A saved configuration's name
+    # is its own, and it is its identifier as well.
     entry["name"] = machine.name
     entry["path"] = "%s/%s" % (in_folder, machine.identifier)
     entry["kind"] = "machine"
+    # Which set, so the browser knows whether this one can be renamed, removed
+    # and written over without having to read its path.
+    entry["set"] = in_set
     return entry
 
 
