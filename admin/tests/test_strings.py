@@ -147,8 +147,6 @@ def test_every_setting_the_editor_offers_has_a_sentence(english):
         wanted.add(f"editor.dsp.note.{dsp}")
     for kilobytes in machines.DSP_MEMORIES:
         wanted.add(f"editor.dsp-memory.note.{kilobytes}")
-    for position in range(len(machines.PLAIN_MEMORY_NS)):
-        wanted.add(f"editor.memory-speed.note.{position}")
     for megabytes in machines.DIMENSION_MEMORY:
         wanted.add(f"editor.dimension-memory.note.{megabytes}")
     for socket in machines.ETHERNET_SOCKETS:

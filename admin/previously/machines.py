@@ -70,15 +70,17 @@ DSP_MEMORY_PLAIN = 24
 DSP_MEMORY_EXPANDED = 96
 DSP_MEMORIES = (DSP_MEMORY_PLAIN, DSP_MEMORY_EXPANDED)
 
-#: What each position of nMemorySpeed means in nanoseconds, from the Memory
-#: speed group in Previous's src/gui-sdl/dlgAdvanced.c. What the file holds is a
-#: position rather than a time, and the same position is 100 ns on a plain
-#: machine and 70 on a turbo board, which is what its own dialogue relabels.
-PLAIN_MEMORY_NS = (120, 100, 80, 60)
-TURBO_MEMORY_NS = (60, 70, 80, 100)
-
-#: Where Previous starts, and where a position it cannot read comes back to.
-DEFAULT_MEMORY_SPEED = 1
+#: What goes into nMemorySpeed, which is a position rather than a time. This is
+#: where Previous starts every machine, from its own defaults in
+#: src/configuration.c, and it never moves one: Configuration_SetSystemDefaults
+#: does not touch the key.
+#:
+#: Not offered in the editor, because nothing in the emulator reads it except
+#: the two functions that put it into System Control Register 1, which is what
+#: the machine says about itself. It changes no timing, and two of the four
+#: positions are not even distinct: src/sysReg.c maps both 100 and 120 ns to
+#: MEM_120NS on a machine without a turbo board.
+MEMORY_SPEED = 1
 
 #: How many drives of each kind Previous keeps in its file. This tool offers a
 #: machine one of each, because that is what NeXT built, and writes the rest as
@@ -178,9 +180,9 @@ BOOTABLE_BANK_MB = 4
 Machine = collections.namedtuple(
     "Machine",
     "identifier name kind turbo mhz colour dimensions banks"
-    " dsp dsp_memory memory_speed"
+    " dsp dsp_memory"
     " floppy optical ethernet socket printer",
-    defaults=(DSP_PLAIN, DSP_MEMORY_EXPANDED, DEFAULT_MEMORY_SPEED,
+    defaults=(DSP_PLAIN, DSP_MEMORY_EXPANDED,
               True, False, True, THIN_WIRE, False))
 
 #: Every machine that can be chosen, in the order they were built.
@@ -268,7 +270,7 @@ def settings_for(machine):
                 "nMemoryBankSize%d" % index: str(size)
                 for index, size in enumerate(machine.banks)
             },
-            "nMemorySpeed": str(machine.memory_speed),
+            "nMemorySpeed": str(MEMORY_SPEED),
         },
         # One drive of each kind, because that is what NeXT built, and the rest
         # written as absent rather than left at whatever the last machine had.
@@ -499,19 +501,6 @@ def default_dsp_memory(kind):
     return DSP_MEMORY_PLAIN if kind == NEXT_COMPUTER else DSP_MEMORY_EXPANDED
 
 
-def memory_speeds(turbo):
-    """How fast each position of the memory speed setting is, in nanoseconds.
-
-    @param turbo - Whether a turbo board is seated, as settled() leaves it.
-    @returns tuple of four int, in the order the positions are numbered.
-
-    A turbo board has faster memory and Previous relabels the same four
-    positions for it, so this is what a machine calls them rather than a
-    different set of choices.
-    """
-    return TURBO_MEMORY_NS if turbo else PLAIN_MEMORY_NS
-
-
 def takes_a_floppy(kind):
     """Whether this machine has a floppy drive at all.
 
@@ -628,7 +617,7 @@ def _dimension_memory(memory):
 
 def drafted(kind, turbo=False, colour=False, dimensions=NO_BOARDS,
             mhz=None, memory=None, banks=None, dsp=None, dsp_memory=None,
-            memory_speed=None, floppy=False, optical=False, ethernet=False,
+            floppy=False, optical=False, ethernet=False,
             socket=None, printer=False, identifier="", name=""):
     """A machine from what an editor is showing, held to Previous's rules.
 
@@ -645,7 +634,6 @@ def drafted(kind, turbo=False, colour=False, dimensions=NO_BOARDS,
       follows from them and `memory` is not read.
     @param dsp - Which DSP, as one of DSPS.
     @param dsp_memory - How much memory it has, in kilobytes.
-    @param memory_speed - Which of the four positions the memory runs at.
     @param floppy - Whether the machine has a floppy drive.
     @param optical - Whether it has a magneto-optical drive.
     @param ethernet - Whether it is on the network.
@@ -684,8 +672,6 @@ def drafted(kind, turbo=False, colour=False, dimensions=NO_BOARDS,
         # And a DSP nobody named is not one of the three, for the same reason.
         dsp=dsp if dsp in DSPS else "",
         dsp_memory=whole(dsp_memory, 0),
-        # Minus one is no position, which nothing can be corrected into.
-        memory_speed=whole(memory_speed, -1),
         floppy=bool(floppy),
         optical=bool(optical),
         ethernet=bool(ethernet),
@@ -762,11 +748,6 @@ def offers(machine):
         # Nothing to choose between where there is no chip to give it to, and a
         # group with nothing to offer is not drawn.
         "dsp_memory": [] if machine.dsp == DSP_NONE else list(DSP_MEMORIES),
-        # The position and what this machine calls it, together, because a cell
-        # is labelled with the one and chosen by the other.
-        "memory_speeds": [{"speed": speed, "ns": nanoseconds}
-                          for speed, nanoseconds
-                          in enumerate(memory_speeds(machine.turbo))],
         # What the machine can have fitted. Ethernet and the printer port are on
         # every one of them, so those two are always there to switch.
         "floppy": takes_a_floppy(machine.kind),
@@ -827,11 +808,6 @@ def settled(machine):
         dsp=machine.dsp if machine.dsp in DSPS else DSP_PLAIN,
         dsp_memory=(machine.dsp_memory if machine.dsp_memory in DSP_MEMORIES
                     else default_dsp_memory(machine.kind)),
-        # A position rather than a time, so it survives a change of machine and
-        # is only read differently afterwards.
-        memory_speed=(machine.memory_speed
-                      if 0 <= machine.memory_speed < len(PLAIN_MEMORY_NS)
-                      else DEFAULT_MEMORY_SPEED),
         # A drive the machine never had goes, the way a board it cannot hold
         # does. Previous enforces neither of these two and says both on the face
         # of its own dialogues.

@@ -1238,7 +1238,6 @@ async function drawTheDraft() {
     memory: answer.machine.memory_mb,
     dsp: answer.configuration.dsp,
     dsp_memory: answer.configuration.dsp_memory,
-    memory_speed: answer.configuration.memory_speed,
     /* Carried on, so a bank chosen on its own is asked about again rather than
        being laid out afresh from the total the next question would send. The
        total goes back in charge when a cell in its group is pressed, which
@@ -1368,19 +1367,6 @@ function drawTheChoices(offers) {
     !offers.dsp_memory.length;
   explain("editor-dsp-memory-note", noteFor("dsp-memory", drafting.dsp_memory));
 
-  fillWithScale("editor-memory-speeds", t("editor.unit.ns"),
-    offers.memory_speeds.map((offer) => ({
-      value: offer.speed, label: t("editor.nanoseconds", { ns: offer.ns }),
-      tick: String(offer.ns),
-    })),
-    drafting.memory_speed, (speed) => change({ memory_speed: speed }));
-  /* The position is what is chosen and the time is what this machine calls it,
-     so the sentence is keyed by the one and filled with the other. */
-  const speed = offers.memory_speeds.find(
-    (offer) => offer.speed === drafting.memory_speed);
-  explain("editor-memory-speeds-note",
-    speed ? noteFor("memory-speed", speed.speed, { ns: speed.ns }) : "",
-    t("editor.memory-speed.note.report"));
 
   /* What the machine has, which is a drive or a port being there rather than
      anything in it. The same cells as the boards group: one press puts it in and

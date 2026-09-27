@@ -155,15 +155,15 @@ Which sizes a memory bank takes comes from the same place: 0, 2, 8 and 32 with a
 
 **Bank 0 is the one the machine boots from.** Previous says so on the face of its own memory dialogue, and does not enforce it: the check that would is compiled out. This tool does, so that bank is offered no empty socket and no module below 4 MB, and asking it to be empty leaves the smallest it can boot from. A gap behind it is left alone, because Previous corrects one only on a NeXTdimension board, where its own comment says an empty first bank with memory behind it panics the kernel, and it says nothing of the kind about the machine's own memory.
 
-How fast that memory is comes from there too, and it is the one setting the file holds as a position rather than as a value. The same position is 100 ns on a plain machine and 70 on a turbo board, which is what Previous relabels and what the editor shows, so choosing one and then seating a board leaves the choice where it was and reads it differently.
-
 **Renaming and removing belong to User alone.** The context menu offers them for a saved configuration and does not carry them at all for one of the eleven. Removing one takes it out of the list and leaves `previous.cfg` alone, so a machine running that configuration goes on running it.
 
 ## The Config Editor
 
 Previous's own System dialogue, in this interface's idiom. That dialogue puts what can be chosen on its left and what follows from it on its right, and this window stacks the two: the machine's picture and four readings above the groups that change them.
 
-**Every control is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock, how much memory and how fast it is, the four banks it sits in, the DSP with its own memory, and what the machine has fitted. Everything else in the forty-one keys follows from those, so offering it would be offering a machine that does not exist.
+**Every control is something Previous can actually be told, and something it acts on.** The machine type, the boards that can be seated, the processor clock, how much memory, the four banks it sits in, the DSP with its own memory, and what the machine has fitted. Everything else in the forty-one keys follows from those, so offering it would be offering a machine that does not exist.
+
+**The memory speed is written and not offered.** It goes into System Control Register 1 and nowhere else, so it changes what the machine says about itself and nothing about how fast it runs, and two of its four positions are not even distinct on a machine without a turbo board. Previous never moves it either, since `Configuration_SetSystemDefaults` does not touch the key, so this tool writes what Previous starts every machine from.
 
 **The NeXTdimension is three boards.** A cube holds one in each of slots 2, 4 and 6, and each has memory of its own: 4, 16, 32 or 64 MB, which is what its four banks of 4 and 16 MB come to. A slot is a cell that puts a board in and takes it out again, and a board that is in gets a group of its own for its memory. The console follows the first board there is, and a machine with no board draws it itself. A NeXTstation holds none of them, because the board speaks on the NeXTbus and that machine has none.
 
@@ -179,7 +179,7 @@ They are drawn as what they are: four named sockets stacked the way the modules 
 
 **One subject at a time.** Thirteen groups in one column is taller than the desk, so a row of cells across the top chooses between Machine, Processor, Memory, Graphics and Fitted, and the groups below it take turns. That is the shape Preferences gives its modules, with words in the cells rather than pictures, because there is no drawing of a processor or of memory to put in one. Which subject is showing survives a change to the machine, so choosing a board does not send anybody back to the first.
 
-**A group whose values have an order is a knob in a trough rather than a row of cells.** The processor clock, the memory, the memory speed and a NeXTdimension board's memory are all read as more or less of one thing, and a row of cells says they have none. `nx-slider` is that knob: the scroller's own trough and knob laid on their side, moving between the steps it is given and never between them, with the value beside it in the same sunken field the info panels state a fact in. Everything that is one of several rather than more of one thing keeps its cells.
+**A group whose values have an order is a knob in a trough rather than a row of cells.** The processor clock, the memory and a NeXTdimension board's memory are all read as more or less of one thing, and a row of cells says they have none. `nx-slider` is that knob: the scroller's own trough and knob laid on their side, moving between the steps it is given and never between them, with the value beside it in the same sunken field the info panels state a fact in. Everything that is one of several rather than more of one thing keeps its cells.
 
 A group with nothing to offer is not drawn, and a group's cells change with the machine. The boards group holds only the boards that machine takes, and the clock group holds the fastest one only where the turbo board that carries it is seated, which is what Previous does with its own 40 MHz option.
 

@@ -77,7 +77,6 @@ def as_machine(name, values):
         # `settled` then answers both with what that machine has.
         dsp=values.get("dsp", ""),
         dsp_memory=machines.whole(values.get("dsp_memory"), 0),
-        memory_speed=machines.whole(values.get("memory_speed"), -1),
         # An entry written before these could be chosen names none of them,
         # and comes back as a machine with the network and nothing else,
         # which is what every one of them was saved as.
@@ -138,7 +137,6 @@ def as_values(machine):
         "banks": list(machine.banks),
         "dsp": machine.dsp,
         "dsp_memory": machine.dsp_memory,
-        "memory_speed": machine.memory_speed,
         "floppy": machine.floppy,
         "optical": machine.optical,
         "ethernet": machine.ethernet,
