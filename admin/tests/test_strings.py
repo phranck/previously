@@ -33,6 +33,11 @@ LOOKUP = re.compile(r'\bt\(\s*"([^"]+)"')
 #: How the service names what happened, one per answer it can give.
 TOLD = re.compile(r'told\(\s*"([^"]+)"')
 
+#: Which sentence the editor shows under the machine type group, by the number
+#: Previous gives each type. The page keeps that table by hand, so it is read
+#: here rather than derived.
+KIND_NOTES = re.compile(r'^  (\d+): "(editor\.machine\.note\.[\w-]+)",$', re.M)
+
 
 def catalogue(language):
     """@returns dict of every entry in one language."""
@@ -116,6 +121,47 @@ def test_every_answer_the_service_can_give_has_a_sentence(english):
     for reason in sorted(set(TOLD.findall(service))):
         key = f"told.{reason}"
         assert key in english or any(other.startswith(key + ".") for other in english), key
+
+
+def test_every_setting_the_editor_offers_has_a_sentence(english):
+    """The note under a group is the sentence for what is chosen there, keyed
+    by the value, so a value the service can offer and the catalogue cannot
+    speak about shows its key on the screen. The values come from the service's
+    own tables, so a clock or a size added there arrives with its sentence or
+    fails here."""
+    from previously import machines
+
+    offered = machines.offers(machines.find("nextcube"))
+    page = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+    kinds = {int(kind): key for kind, key in KIND_NOTES.findall(page)}
+
+    assert set(kinds) == {entry["kind"] for entry in offered["kinds"]}
+
+    wanted = set(kinds.values())
+    for mhz in machines.CLOCKS + (machines.NITRO_MHZ,):
+        wanted.add(f"editor.clock.note.{mhz}")
+    totals = set(machines.TURBO_MEMORY) | set(machines.CUBE_MEMORY) | set(machines.NARROW_MEMORY)
+    for total in totals:
+        wanted.add(f"editor.memory.note.{total}")
+    for dsp in machines.DSPS:
+        wanted.add(f"editor.dsp.note.{dsp}")
+    for kilobytes in machines.DSP_MEMORIES:
+        wanted.add(f"editor.dsp-memory.note.{kilobytes}")
+    for position in range(len(machines.PLAIN_MEMORY_NS)):
+        wanted.add(f"editor.memory-speed.note.{position}")
+    for megabytes in machines.DIMENSION_MEMORY:
+        wanted.add(f"editor.dimension-memory.note.{megabytes}")
+    for socket in machines.ETHERNET_SOCKETS:
+        wanted.add(f"editor.socket.note.{socket}")
+    # A switch is anything the service answers with yes or no: the two boards,
+    # the two drives, the network and the printer port.
+    switches = [name for name, value in offered.items() if isinstance(value, bool)]
+    assert len(switches) == 6, switches
+    for switch in switches:
+        wanted.add(f"editor.{switch}.note.in")
+        wanted.add(f"editor.{switch}.note.out")
+
+    assert sorted(wanted - set(english)) == []
 
 
 def test_every_application_can_be_named_in_words(english):

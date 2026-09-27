@@ -223,6 +223,21 @@ function show(id, text) {
 }
 
 /**
+ * Says what the chosen setting of a group does, under its cells.
+ * @param {string} id - The note under that group.
+ * @param {...string} sentences - One per setting the group holds. A group of
+ *   one choice sends one, a group of switches sends one per switch, and a
+ *   sentence that does not apply arrives as nothing and is left out.
+ *
+ * Written by the page rather than carried by the markup, because which
+ * sentence applies follows from what is chosen. A note with nothing to say
+ * hides itself, which the kit's stylesheet does for an empty one.
+ */
+function explain(id, ...sentences) {
+  show(id, sentences.filter(Boolean).join(" "));
+}
+
+/**
  * What a machine is called, from the facts the service sent.
  * @param {object} machine - A configuration or a catalogue entry.
  * @returns {string} The model's own name with what is fitted to it.
@@ -1069,6 +1084,23 @@ const SOCKET_WORDS = {
   "twisted-pair": "editor.twisted-pair",
 };
 
+/** What the sentence about each machine type is called, by the number Previous
+ *  gives the type. Written out rather than built from the number, because a
+ *  sentence keyed by a name can be found in the catalogue and one keyed by 1
+ *  cannot. The strings test holds these numbers to the types the service
+ *  offers. */
+const KIND_NOTES = {
+  0: "editor.machine.note.next-computer",
+  1: "editor.machine.note.nextcube",
+  2: "editor.machine.note.nextstation",
+};
+
+/** The least the first memory bank may hold for the machine to boot, in
+ *  megabytes. Previous says so on its own memory dialogue and does not raise a
+ *  smaller bank itself, so the note under the banks is the one place somebody
+ *  is told before the machine fails to come up. */
+const BOOTABLE_BANK_MB = 4;
+
 /** How much memory a NeXTdimension board gets when it is first put in, which is
  *  what the emulator's own file holds for one. Changed from there in its own
  *  group, so this decides only where somebody starts. */
@@ -1251,12 +1283,18 @@ function drawTheMachineInTheEditor(machine) {
 }
 
 /**
- * Draws the cells of every group from what the service says may be chosen.
+ * Draws the cells of every group from what the service says may be chosen, and
+ * under each group the sentence about what is chosen there.
  * @param {object} offers - Its answer: the machine types, which boards may be
  *   seated, which clocks there are and which totals of memory.
  *
  * A group with nothing to offer is taken away rather than shown empty, which is
  * what Previous does with its own board options on a machine that takes none.
+ *
+ * The sentences are keyed by what is chosen, so a group of one choice shows the
+ * one for its value and a group of switches shows one per switch for the state
+ * it is in. What holds for every value of a group, such as the machine type
+ * setting three other groups afresh, is one sentence appended to all of them.
  */
 function drawTheChoices(offers) {
   drawTheSubjects();
@@ -1266,25 +1304,32 @@ function drawTheChoices(offers) {
     chosen: kind.kind === drafting.kind,
     choose: () => changeTheMachine({ kind: kind.kind }),
   })));
+  explain("editor-kinds-note",
+    KIND_NOTES[drafting.kind] ? t(KIND_NOTES[drafting.kind]) : "",
+    t("editor.machine.note.resets"));
 
   const boards = [
     ["turbo", t("editor.turbo")],
     ["colour", t("editor.colour")],
-  ].filter(([which]) => offers[which]).map(([which, label]) => ({
+  ].filter(([which]) => offers[which]);
+  fillWithChoices("editor-boards", boards.map(([which, label]) => ({
     label,
     chosen: drafting[which],
     /* A board is seated or it is not, so its cell answers a second click by
        taking it out again. */
     choose: () => changeTheMachine({ [which]: !drafting[which] }),
-  }));
-  fillWithChoices("editor-boards", boards);
+  })));
   document.getElementById("editor-boards-group").hidden = !boards.length;
+  explain("editor-boards-note",
+    ...boards.map(([which]) => switchNote(which)),
+    t("editor.boards.note.resets"));
 
   fillWithChoices("editor-clocks", offers.clocks.map((mhz) => ({
     label: t("editor.mhz", { mhz }),
     chosen: mhz === drafting.mhz,
     choose: () => change({ mhz }),
   })));
+  explain("editor-clocks-note", noteFor("clock", drafting.mhz));
 
   fillWithChoices("editor-memory", offers.memory.map((mb) => ({
     label: t("editor.megabytes", { mb }),
@@ -1292,6 +1337,13 @@ function drawTheChoices(offers) {
     /* A total lays the banks out again, so whatever they were is let go. */
     choose: () => change({ memory: mb, banks: undefined }),
   })));
+  /* Banks set one at a time can add up to a total no cell offers, and then the
+     sentence says so rather than describing a cell nobody chose. */
+  explain("editor-memory-note",
+    offers.memory.includes(drafting.memory)
+      ? noteFor("memory", drafting.memory)
+      : t("editor.memory.note.by-hand", { mb: drafting.memory }),
+    t("editor.memory.note.lays-out"));
 
   fillWithChoices("editor-banks", offers.banks.map((sizes, bank) => {
     const size = drafting.banks[bank];
@@ -1305,6 +1357,7 @@ function drawTheChoices(offers) {
       },
     };
   }));
+  explain("editor-banks-note", ...bankNotes(offers.banks));
 
   fillWithChoices("editor-dsps", offers.dsps.map((dsp) => ({
     /* A chip this page has no word for is shown as the service named it, so a
@@ -1313,6 +1366,7 @@ function drawTheChoices(offers) {
     chosen: dsp === drafting.dsp,
     choose: () => change({ dsp }),
   })));
+  explain("editor-dsps-note", noteFor("dsp", drafting.dsp));
 
   fillWithChoices("editor-dsp-memory", offers.dsp_memory.map((kb) => ({
     label: t("editor.kilobytes", { kb }),
@@ -1321,24 +1375,34 @@ function drawTheChoices(offers) {
   })));
   document.getElementById("editor-dsp-memory-group").hidden =
     !offers.dsp_memory.length;
+  explain("editor-dsp-memory-note", noteFor("dsp-memory", drafting.dsp_memory));
 
   fillWithChoices("editor-memory-speeds", offers.memory_speeds.map((offer) => ({
     label: t("editor.nanoseconds", { ns: offer.ns }),
     chosen: offer.speed === drafting.memory_speed,
     choose: () => change({ memory_speed: offer.speed }),
   })));
+  /* The position is what is chosen and the time is what this machine calls it,
+     so the sentence is keyed by the one and filled with the other. */
+  const speed = offers.memory_speeds.find(
+    (offer) => offer.speed === drafting.memory_speed);
+  explain("editor-memory-speeds-note",
+    speed ? noteFor("memory-speed", speed.speed, { ns: speed.ns }) : "",
+    t("editor.memory-speed.note.report"));
 
   /* What the machine has, which is a drive or a port being there rather than
      anything in it. The same cells as the boards group: one press puts it in and
      the next takes it out. */
-  fillWithFittings("editor-drives", offers, [
+  const drives = fillWithFittings("editor-drives", offers, [
     ["floppy", t("editor.floppy")],
     ["optical", t("editor.optical")],
   ]);
-  fillWithFittings("editor-ports", offers, [
+  explain("editor-drives-note", ...drives.map(switchNote));
+  const ports = fillWithFittings("editor-ports", offers, [
     ["ethernet", t("editor.ethernet")],
     ["printer", t("editor.printer")],
   ]);
+  explain("editor-ports-note", ...ports.map(switchNote));
 
   fillWithChoices("editor-sockets", offers.sockets.map((socket) => ({
     label: SOCKET_WORDS[socket] ? t(SOCKET_WORDS[socket]) : socket,
@@ -1346,8 +1410,75 @@ function drawTheChoices(offers) {
     choose: () => change({ socket }),
   })));
   document.getElementById("editor-socket-group").hidden = !offers.sockets.length;
+  explain("editor-sockets-note", noteFor("socket", drafting.socket));
 
   drawTheDimensionBoards(offers);
+}
+
+/**
+ * The sentence about one value of a group.
+ * @param {string} group - The group's name in the catalogue, such as `clock`.
+ * @param {string|number} value - What is chosen there, which is the last part
+ *   of the key.
+ * @param {object} [values] - What fills the sentence's places.
+ * @returns {string}
+ *
+ * Built from the value rather than written out per value, so a clock or a size
+ * the service starts to offer arrives with its sentence or fails the strings
+ * test, which derives every key this can build from the service.
+ */
+function noteFor(group, value, values) {
+  return t(`editor.${group}.note.${value}`, values);
+}
+
+/**
+ * The sentence about a switch, for the state it is in.
+ * @param {string} which - The switch, such as `turbo` or `floppy`, which is
+ *   both the control's name in the draft and its name in the catalogue.
+ * @returns {string}
+ */
+function switchNote(which) {
+  return noteFor(which, drafting[which] ? "in" : "out");
+}
+
+/**
+ * What the four memory banks have to say about themselves.
+ * @param {Array<Array<number>>} banks - What each bank accepts, as the service
+ *   offers them, with an empty bank as the first size of each.
+ * @returns {string[]} The sentences that apply, and nothing for those that do
+ *   not.
+ *
+ * Which modules the machine takes is read off the first bank, because every
+ * bank that is there takes the same ones. A bank that is not there offers an
+ * empty one and nothing else, which is how the reachable banks are counted here
+ * without the page holding the rule that decides them.
+ */
+function bankNotes(banks) {
+  const modules = banks[0].filter((size) => size > 0);
+  const reachable = banks.filter((sizes) => sizes.length > 1).length;
+  const first = drafting.banks[0];
+  return [
+    t("editor.banks.note.press"),
+    t("editor.banks.note.modules", { sizes: listed(modules) }),
+    reachable < banks.length
+      ? t("editor.banks.note.reach", { count: reachable }) : "",
+    first === 0 ? t("editor.banks.note.boot-empty") : "",
+    first > 0 && first < BOOTABLE_BANK_MB
+      ? t("editor.banks.note.boot-small", { mb: first }) : "",
+  ];
+}
+
+/**
+ * Several values in one phrase, joined the way the language being read joins
+ * them.
+ * @param {Array<number|string>} values
+ * @returns {string} "1, 4 or 16" in English and "1, 4 oder 16" in German. The
+ *   browser knows each language's word before the last one, so no catalogue
+ *   has to say it.
+ */
+function listed(values) {
+  return new Intl.ListFormat(currentLocale(), { type: "disjunction" })
+    .format(values.map(String));
 }
 
 /**
@@ -1410,10 +1541,25 @@ function drawTheDimensionBoards(offers) {
   document.getElementById("editor-dimension-group").hidden =
     !offers.dimension_slots.length;
 
+  /* The console follows the first board there is, so the sentence names that
+     board's slot, and says how many boards there are because each gets a
+     group of its own below. */
+  const seated = offers.dimension_slots
+    .filter((slot, board) => drafting.dimensions[board] > 0);
+  explain("editor-dimensions-note", seated.length
+    ? t("editor.dimension.note.some",
+        { count: seated.length, slot: seated[0] }, seated.length)
+    : t("editor.dimension.note.none"));
+
+  /* The board's index is taken before the empty slots are dropped, because
+     after that the second board that is in would be counted as the second
+     slot, and a cube with boards in slots 2 and 6 would draw and change the
+     memory of slot 4. */
   const memories = document.getElementById("editor-dimension-memory");
   memories.replaceChildren(...offers.dimension_slots
-    .filter((slot, board) => drafting.dimensions[board] > 0)
-    .map((slot, board) => drawOneBoardsMemory(slot, board, offers)));
+    .map((slot, board) => [slot, board])
+    .filter(([, board]) => drafting.dimensions[board] > 0)
+    .map(([slot, board]) => drawOneBoardsMemory(slot, board, offers)));
 }
 
 /**
@@ -1444,12 +1590,11 @@ function drawOneBoardsMemory(slot, board, offers) {
   }));
   group.append(cells);
 
-  /* The same line the groups in the markup carry, put here because this group
-     is built rather than written. */
+  /* The same sentence under the cells the groups in the markup carry, put here
+     because this group is built rather than written. */
   const note = document.createElement("p");
   note.className = "note";
-  note.dataset.t = "editor.dimension-memory.note";
-  writeWords(note, t(note.dataset.t));
+  note.textContent = noteFor("dimension-memory", drafting.dimensions[board]);
   group.append(note);
 
   return group;
@@ -1474,19 +1619,21 @@ function dimensionsWith(board, memory) {
  * @param {object} offers - The service's answer, which says which of them this
  *   machine can have at all.
  * @param {Array<Array>} fittings - `[name, label]` for each.
+ * @returns {string[]} The names of the ones this machine was offered, so the
+ *   caller can say what each is doing in the state it is in.
  *
  * One press puts it in and the next takes it out, which is the boards group's
  * cell. A machine that cannot have one is not offered it rather than being
  * offered it and refused.
  */
 function fillWithFittings(id, offers, fittings) {
-  fillWithChoices(id, fittings
-    .filter(([which]) => offers[which])
-    .map(([which, label]) => ({
-      label,
-      chosen: drafting[which],
-      choose: () => change({ [which]: !drafting[which] }),
-    })));
+  const offered = fittings.filter(([which]) => offers[which]);
+  fillWithChoices(id, offered.map(([which, label]) => ({
+    label,
+    chosen: drafting[which],
+    choose: () => change({ [which]: !drafting[which] }),
+  })));
+  return offered.map(([which]) => which);
 }
 
 /**

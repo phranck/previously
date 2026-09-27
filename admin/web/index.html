@@ -160,7 +160,10 @@
      machine type, a clock and a size are always offered; a board is offered
      where the machine takes one, and a group with nothing to offer is not shown
      at all. Which cells a group holds changes with the machine, which is what
-     Previous does with its own 40 MHz option. -->
+     Previous does with its own 40 MHz option.
+
+     The note under each group is the page's as well: it says what the chosen
+     setting does, so it carries an id to write into rather than a key. -->
 <nx-window name="editor" data-t-title="app.config-editor" fixed drop
            x="220" y="90" w="470" closed>
   <div class="info-body">
@@ -189,47 +192,47 @@
     <fieldset class="group" subject="machine">
       <legend data-t="editor.machine"></legend>
       <div class="choices" id="editor-kinds"></div>
-      <p class="note" data-t="editor.machine.note"></p>
+      <p class="note" id="editor-kinds-note"></p>
     </fieldset>
     <fieldset class="group" subject="machine" id="editor-boards-group">
       <legend data-t="editor.boards"></legend>
       <div class="choices" id="editor-boards"></div>
-      <p class="note" data-t="editor.boards.note"></p>
+      <p class="note" id="editor-boards-note"></p>
     </fieldset>
     <fieldset class="group" subject="processor">
       <legend data-t="editor.clock"></legend>
       <div class="choices" id="editor-clocks"></div>
-      <p class="note" data-t="editor.clock.note"></p>
+      <p class="note" id="editor-clocks-note"></p>
     </fieldset>
     <fieldset class="group" subject="processor">
       <legend data-t="editor.dsp"></legend>
       <div class="choices" id="editor-dsps"></div>
-      <p class="note" data-t="editor.dsp.note"></p>
+      <p class="note" id="editor-dsps-note"></p>
     </fieldset>
     <fieldset class="group" subject="processor" id="editor-dsp-memory-group">
       <legend data-t="editor.dsp-memory"></legend>
       <div class="choices" id="editor-dsp-memory"></div>
-      <p class="note" data-t="editor.dsp-memory.note"></p>
+      <p class="note" id="editor-dsp-memory-note"></p>
     </fieldset>
     <fieldset class="group" subject="memory">
       <legend data-t="info.memory"></legend>
       <div class="choices" id="editor-memory"></div>
-      <p class="note" data-t="editor.memory.note"></p>
+      <p class="note" id="editor-memory-note"></p>
     </fieldset>
     <fieldset class="group" subject="memory">
       <legend data-t="editor.banks"></legend>
       <div class="choices" id="editor-banks"></div>
-      <p class="note" data-t="editor.banks.note"></p>
+      <p class="note" id="editor-banks-note"></p>
     </fieldset>
     <fieldset class="group" subject="memory">
       <legend data-t="editor.memory-speed"></legend>
       <div class="choices" id="editor-memory-speeds"></div>
-      <p class="note" data-t="editor.memory-speed.note"></p>
+      <p class="note" id="editor-memory-speeds-note"></p>
     </fieldset>
     <fieldset class="group" subject="graphics" id="editor-dimension-group">
       <legend data-t="editor.dimension"></legend>
       <div class="choices" id="editor-dimensions"></div>
-      <p class="note" data-t="editor.dimension.note"></p>
+      <p class="note" id="editor-dimensions-note"></p>
     </fieldset>
     <!-- One group per board that is in, built by the page, because how many
          there are is what the slots above decide. -->
@@ -237,17 +240,17 @@
     <fieldset class="group" subject="fitted">
       <legend data-t="editor.drives"></legend>
       <div class="choices" id="editor-drives"></div>
-      <p class="note" data-t="editor.drives.note"></p>
+      <p class="note" id="editor-drives-note"></p>
     </fieldset>
     <fieldset class="group" subject="fitted">
       <legend data-t="editor.ports"></legend>
       <div class="choices" id="editor-ports"></div>
-      <p class="note" data-t="editor.ports.note"></p>
+      <p class="note" id="editor-ports-note"></p>
     </fieldset>
     <fieldset class="group" subject="fitted" id="editor-socket-group">
       <legend data-t="editor.socket"></legend>
       <div class="choices" id="editor-sockets"></div>
-      <p class="note" data-t="editor.socket.note"></p>
+      <p class="note" id="editor-sockets-note"></p>
     </fieldset>
   </div>
   <p class="note" id="editor-note"></p>
