@@ -16,7 +16,7 @@ from previously.server import WEB_ROOT
 #: How the page reaches an element. getElementById is the plain way, and the rest
 #: are this page's own helpers, which take an id and write into it.
 BY_ID = re.compile(
-    r'(?:getElementById|show|fillWithChoices|drawPicture)\(\s*"([^"]+)"')
+    r'(?:getElementById|show|explain|fillWithChoices|drawPicture)\(\s*"([^"]+)"')
 
 #: What the markup calls its elements.
 IN_MARKUP = re.compile(r'\bid="([^"]+)"')

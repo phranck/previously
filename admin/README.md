@@ -177,6 +177,8 @@ The board's ROM is not here. A path to a file on the Pi is not the machine.
 
 A group with nothing to offer is not drawn, and a group's cells change with the machine. The boards group holds only the boards that machine takes, and the clock group holds the fastest one only where the turbo board that carries it is seated, which is what Previous does with its own 40 MHz option.
 
+**Under each group, a line says what the chosen setting does and what it changes elsewhere in the window.** The page writes it from the choice: a group of one choice shows the sentence for its value, a group of switches shows one sentence per switch for the state it is in, and the memory banks say which modules this machine takes and whether the first bank is large enough to boot from. `tests/test_strings.py` derives every value the service can offer from `machines.py` and fails when the English catalogue has no sentence for one of them.
+
 **The clock is chosen rather than worked out.** Previous offers 16, 20, 25 and 33 MHz for every machine and 40 only with a turbo board, and so does this. Changing the machine type or a board sets the clock afresh, to 33 with that board and 25 without, which is what `Configuration_SetSystemDefaults` writes at both of those moments.
 
 **The clock is also where Nitro lives.** Previous has no such thing and reads `nCpuFreq` as it finds it, so what the catalogue calls a Nitro is a turbo board running at 40.
