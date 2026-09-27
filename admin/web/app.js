@@ -1443,6 +1443,15 @@ function drawOneBoardsMemory(slot, board, offers) {
     return cell;
   }));
   group.append(cells);
+
+  /* The same line the groups in the markup carry, put here because this group
+     is built rather than written. */
+  const note = document.createElement("p");
+  note.className = "note";
+  note.dataset.t = "editor.dimension-memory.note";
+  writeWords(note, t(note.dataset.t));
+  group.append(note);
+
   return group;
 }
 
