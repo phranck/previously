@@ -161,7 +161,9 @@ How fast that memory is comes from there too, and it is the one setting the file
 
 Previous's own System dialogue, in this interface's idiom. That dialogue puts what can be chosen on its left and what follows from it on its right, and this window stacks the two: the machine's picture and four readings above the groups that change them.
 
-**Every control is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock, how much memory and how fast it is, and the DSP with its own memory. Everything else in the eighteen keys follows from those, so offering it would be offering a machine that does not exist.
+**Every control is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock, how much memory and how fast it is, the four banks it sits in, and the DSP with its own memory. Everything else in the eighteen keys follows from those, so offering it would be offering a machine that does not exist.
+
+**Memory is a total or four banks, and the banks are the real thing.** A total lays them out the way Previous lays them out, which is the quick way to a machine somebody wants. Pressing a bank fits the next size that bank takes and comes back to an empty one after the largest, so a machine no total adds up to can be built by hand. A bank the machine cannot reach offers an empty one and nothing else.
 
 **The window holds no rule at all.** On every change it asks `GET /api/machine/settled` what that configuration is and what may be chosen beside it, and draws the answer. So there is one statement of what Previous allows, in `machines.py`, and the interface cannot show a machine the emulator would correct underneath it: a cube in colour comes back as a cube, and a total of 128 MB asked of a plain station comes back as the 32 it holds. What it saves is the configuration the service handed back rather than one assembled in the browser.
 

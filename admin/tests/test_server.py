@@ -610,6 +610,16 @@ def test_a_machine_with_no_dsp_is_offered_no_memory_for_one(service):
     assert answer["offers"]["dsp_memory"] == []
 
 
+def test_a_bank_can_be_chosen_on_its_own_over_the_wire(service):
+    """The four arrive in one field, and what comes back is a machine no total
+    on offer adds up to."""
+    answer = settled(service, kind=1, banks="16,4,0,0")
+
+    assert answer["configuration"]["banks"] == [16, 4, 0, 0]
+    assert answer["machine"]["memory_mb"] == 20
+    assert answer["offers"]["banks"] == [[0, 1, 4, 16]] * 4
+
+
 def test_what_it_refuses_comes_back_refused(service):
     """A cube in colour is a cube, so the interface cannot show colour on one
     even for the moment between the click and the answer."""

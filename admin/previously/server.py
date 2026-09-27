@@ -330,6 +330,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             dimension=chosen("dimension") == "1",
             mhz=chosen("mhz"),
             memory=chosen("memory"),
+            banks=chosen("banks"),
             dsp=chosen("dsp"),
             dsp_memory=chosen("dsp_memory"),
             memory_speed=chosen("memory_speed"),

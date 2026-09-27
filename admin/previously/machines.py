@@ -381,7 +381,7 @@ def memory_speeds(turbo):
 
 
 def drafted(kind, turbo=False, colour=False, dimension=False,
-            mhz=None, memory=None, dsp=None, dsp_memory=None,
+            mhz=None, memory=None, banks=None, dsp=None, dsp_memory=None,
             memory_speed=None, identifier="", name=""):
     """A machine from what an editor is showing, held to Previous's rules.
 
@@ -391,6 +391,9 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
     @param dimension - Whether a NeXTdimension is.
     @param mhz - The clock asked for, in megahertz.
     @param memory - How much memory, as a total in megabytes.
+    @param banks - The four banks, where they were chosen one at a time, as a
+      sequence or as a string of comma separated numbers. Given these, the total
+      follows from them and `memory` is not read.
     @param dsp - Which DSP, as one of DSPS.
     @param dsp_memory - How much memory it has, in kilobytes.
     @param memory_speed - Which of the four positions the memory runs at.
@@ -398,10 +401,10 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
     @param name - What it is called to a person.
     @returns Machine, settled.
 
-    The eight values this takes are the controls an editor draws, one each, and
-    nothing about them is a rule: which of them may be chosen at all is
-    offers(), and what they turn into is here and in settled(). So an interface
-    holds no copy of anything Previous decides.
+    These are the controls an editor draws, one each, and nothing about them is
+    a rule: which of them may be chosen at all is offers(), and what they turn
+    into is here and in settled(). So an interface holds no copy of anything
+    Previous decides.
 
     The clock and the two about the DSP arrive as nothing at all whenever an
     editor has just changed the machine type or a board, because Previous writes
@@ -412,6 +415,7 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
     it finds it, so a clock of 40 is what the catalogue calls a Nitro and that is
     the direction the translation runs in.
     """
+    wanted = _banks_asked_for(banks)
     machine = settled(Machine(
         identifier=identifier,
         name=name,
@@ -422,17 +426,36 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
         mhz=whole(mhz, 0),
         colour=bool(colour),
         dimension=bool(dimension),
-        banks=(0, 0, 0, 0),
+        banks=wanted or (0, 0, 0, 0),
         # And a DSP nobody named is not one of the three, for the same reason.
         dsp=dsp if dsp in DSPS else "",
         dsp_memory=whole(dsp_memory, 0),
         # Minus one is no position, which nothing can be corrected into.
         memory_speed=whole(memory_speed, -1),
     ))
-    # After the flags, because they decide which totals there are and what each
-    # one is made of.
+    if wanted is not None:
+        return machine
+    # The total, where no bank was named on its own. After the flags, because
+    # they decide which totals there are and what each one is made of.
     return machine._replace(
         banks=banks_for(memory, machine.kind, machine.turbo, machine.colour))
+
+
+def _banks_asked_for(banks):
+    """The four banks an editor named one at a time.
+
+    @param banks - A sequence of sizes, or a string of comma separated numbers,
+      which is how one arrives on a query string. Nothing at all where the
+      editor chose a total instead.
+    @returns tuple of int, or None where no bank was named. Anything that is not
+      a number is an empty bank, which `settled` then holds to a size the
+      machine takes.
+    """
+    if banks is None or banks == "":
+        return None
+    if isinstance(banks, str):
+        banks = banks.split(",")
+    return tuple(whole(size, 0) for size in banks)
 
 
 def offers(machine):
@@ -464,6 +487,11 @@ def offers(machine):
         "clocks": list(clocks_for(machine.turbo)),
         "memory": list(memory_totals(
             machine.kind, machine.turbo, machine.colour)),
+        # What each of the four banks takes on its own, for somebody who wants a
+        # machine no total adds up to. A bank that is not there offers nothing
+        # but an empty one, so there are always four to draw.
+        "banks": [list(sizes) for sizes in bank_sizes(
+            machine.kind, machine.turbo, machine.colour)],
         "dsps": list(DSPS),
         # Nothing to choose between where there is no chip to give it to, and a
         # group with nothing to offer is not drawn.

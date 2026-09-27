@@ -52,6 +52,8 @@ NX_STRINGS.sv = {
   "editor.kilobytes": "{kb} kB",
   "editor.memory-speed": "Minneshastighet",
   "editor.nanoseconds": "{ns} ns",
+  "editor.banks": "Minnesbankar",
+  "editor.bank-empty": "Tom",
   "editor.into-a-new-one": "En av maskinerna som det här projektet levererar, och den går inte att ändra. Att spara gör den till en egen konfiguration, under ett namn du ger den.",
   "editor.over-this-one": "{name} är en egen konfiguration, så att spara skriver över den.",
   "ask.name.title": "Spara konfigurationen",

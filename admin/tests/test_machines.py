@@ -564,6 +564,57 @@ def test_every_machine_starts_where_previous_starts():
         assert machine.memory_speed == 1, machine.identifier
 
 
+def test_a_bank_can_be_chosen_on_its_own():
+    """Which is the whole point of it: a machine no total adds up to."""
+    machine = machines.drafted(kind=machines.NEXTCUBE, turbo=False,
+                               banks=(16, 4, 0, 0))
+
+    assert machine.banks == (16, 4, 0, 0)
+    assert sum(machine.banks) == 20
+
+
+def test_banks_arrive_as_text_and_are_read_as_numbers():
+    """They come off a query string, one field holding all four."""
+    machine = machines.drafted(kind=machines.NEXTCUBE, banks="16,16,0,0")
+
+    assert machine.banks == (16, 16, 0, 0)
+
+
+def test_a_bank_chosen_on_its_own_is_still_held_to_what_the_machine_takes():
+    """Three megabytes is not a module a plain machine has, and a station
+    without a turbo board or colour cannot reach the last two banks at all."""
+    assert machines.drafted(kind=machines.NEXTCUBE, banks=(3, 0, 0, 0)
+                            ).banks == (4, 0, 0, 0)
+    assert machines.drafted(kind=machines.NEXTSTATION, banks=(16, 16, 16, 16)
+                            ).banks == (16, 16, 0, 0)
+
+
+def test_naming_the_banks_wins_over_the_total():
+    """An editor sends one or the other, and the banks are the finer of the two,
+    so a total sent beside them would undo what was just chosen."""
+    machine = machines.drafted(kind=machines.NEXTCUBE, banks=(4, 0, 0, 0),
+                               memory=64)
+
+    assert machine.banks == (4, 0, 0, 0)
+
+
+def test_no_bank_named_leaves_the_total_in_charge():
+    assert machines.drafted(kind=machines.NEXTCUBE, memory=64
+                            ).banks == (16, 16, 16, 16)
+    assert machines.drafted(kind=machines.NEXTCUBE, memory=64, banks=""
+                            ).banks == (16, 16, 16, 16)
+
+
+def test_what_each_bank_takes_is_offered():
+    """Four of them always, because a bank the machine cannot reach offers an
+    empty one rather than nothing, and an editor has four cells either way."""
+    cube = machines.offers(machines.find("nextcube"))["banks"]
+    station = machines.offers(machines.find("nextstation"))["banks"]
+
+    assert cube == [[0, 1, 4, 16]] * 4
+    assert station == [[0, 1, 4, 16], [0, 1, 4, 16], [0], [0]]
+
+
 def test_every_machine_type_is_offered_always():
     """Choosing another one is how anything else changes, so it is the one
     control that never goes away. Each carries the name it is drawn with, which

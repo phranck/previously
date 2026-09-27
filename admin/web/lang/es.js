@@ -52,6 +52,8 @@ NX_STRINGS.es = {
   "editor.kilobytes": "{kb} kB",
   "editor.memory-speed": "Velocidad de la memoria",
   "editor.nanoseconds": "{ns} ns",
+  "editor.banks": "Bancos de memoria",
+  "editor.bank-empty": "Vacío",
   "editor.into-a-new-one": "Una de las máquinas que trae este proyecto, y que no se puede cambiar. Guardar hace de ella una configuración tuya, con un nombre que le des.",
   "editor.over-this-one": "{name} es una configuración tuya, así que guardar la sobrescribe.",
   "ask.name.title": "Guardar la configuración",
