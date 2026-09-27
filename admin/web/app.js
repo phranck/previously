@@ -1323,19 +1323,18 @@ function drawTheChoices(offers) {
     ...boards.map(([which]) => switchNote(which)),
     t("editor.boards.note.resets"));
 
-  fillWithChoices("editor-clocks", offers.clocks.map((mhz) => ({
-    label: t("editor.mhz", { mhz }),
-    chosen: mhz === drafting.mhz,
-    choose: () => change({ mhz }),
-  })));
+  fillWithScale("editor-clocks",
+    offers.clocks.map((mhz) => ({ value: mhz, label: t("editor.mhz", { mhz }) })),
+    drafting.mhz, (mhz) => change({ mhz }));
   explain("editor-clocks-note", noteFor("clock", drafting.mhz));
 
-  fillWithChoices("editor-memory", offers.memory.map((mb) => ({
-    label: t("editor.megabytes", { mb }),
-    chosen: mb === drafting.memory,
+  fillWithScale("editor-memory",
+    offers.memory.map((mb) => ({ value: mb, label: t("editor.megabytes", { mb }) })),
+    /* The banks below may add up to a total the scale does not carry, and then
+       the knob stands at the start rather than pretending to a step. */
+    drafting.memory,
     /* A total lays the banks out again, so whatever they were is let go. */
-    choose: () => change({ memory: mb, banks: undefined }),
-  })));
+    (mb) => change({ memory: mb, banks: undefined }));
   /* Banks set one at a time can add up to a total no cell offers, and then the
      sentence says so rather than describing a cell nobody chose. */
   explain("editor-memory-note",
@@ -1365,11 +1364,11 @@ function drawTheChoices(offers) {
     !offers.dsp_memory.length;
   explain("editor-dsp-memory-note", noteFor("dsp-memory", drafting.dsp_memory));
 
-  fillWithChoices("editor-memory-speeds", offers.memory_speeds.map((offer) => ({
-    label: t("editor.nanoseconds", { ns: offer.ns }),
-    chosen: offer.speed === drafting.memory_speed,
-    choose: () => change({ memory_speed: offer.speed }),
-  })));
+  fillWithScale("editor-memory-speeds",
+    offers.memory_speeds.map((offer) => ({
+      value: offer.speed, label: t("editor.nanoseconds", { ns: offer.ns }),
+    })),
+    drafting.memory_speed, (speed) => change({ memory_speed: speed }));
   /* The position is what is chosen and the time is what this machine calls it,
      so the sentence is keyed by the one and filled with the other. */
   const speed = offers.memory_speeds.find(
@@ -1566,18 +1565,17 @@ function drawOneBoardsMemory(slot, board, offers) {
   heading.textContent = t("editor.dimension-memory", { slot });
   group.append(heading);
 
-  const cells = document.createElement("div");
-  cells.className = "choices";
-  cells.append(...offers.dimension_memory.map((mb) => {
-    const cell = document.createElement("div");
-    cell.className = "choice";
-    cell.textContent = t("editor.megabytes", { mb });
-    cell.toggleAttribute("chosen", mb === drafting.dimensions[board]);
-    cell.addEventListener("click",
-      () => change({ dimensions: dimensionsWith(board, mb) }));
-    return cell;
+  /* A scale like the machine's own memory, so it is a knob in a trough. Built
+     rather than written, so it is wired here rather than through
+     fillWithScale, which reaches for a slider the markup already holds. */
+  const slider = document.createElement("nx-slider");
+  group.append(slider);
+  slider.options = offers.dimension_memory.map((mb) => ({
+    value: mb, label: t("editor.megabytes", { mb }),
   }));
-  group.append(cells);
+  slider.value = drafting.dimensions[board];
+  slider.addEventListener("nx-slide",
+    (event) => change({ dimensions: dimensionsWith(board, event.detail.value) }));
 
   /* The same sentence under the cells the groups in the markup carry, put here
      because this group is built rather than written. */
@@ -1600,6 +1598,37 @@ function dimensionsWith(board, memory) {
   const boards = [...drafting.dimensions];
   boards[board] = memory;
   return boards;
+}
+
+/**
+ * Puts a scale in place, as a knob in a trough.
+ * @param {string} id - The slider's own id.
+ * @param {Array<object>} steps - `{value, label}` in the order they sit on the
+ *   scale, smallest first.
+ * @param {*} value - Which of them the machine is on. One that is not a step
+ *   leaves the knob at the start, which is what a total made by hand out of the
+ *   banks does.
+ * @param {Function} choose - Given the value landed on.
+ *
+ * For a group whose values have an order, where a row of cells would say they
+ * have none. The groups that are not a scale keep their cells: a machine type,
+ * a board, a DSP, a socket, a drive and a port are all one of several rather
+ * than more or less of one thing.
+ *
+ * The listener is put on once and reads the action off the element, because the
+ * action closes over what the machine is now and this runs again on every
+ * change.
+ */
+function fillWithScale(id, steps, value, choose) {
+  const slider = document.getElementById(id);
+  slider.onSlide = choose;
+  if (!slider.listening) {
+    slider.listening = true;
+    slider.addEventListener("nx-slide",
+      (event) => slider.onSlide(event.detail.value));
+  }
+  slider.options = steps;
+  slider.value = value;
 }
 
 /**

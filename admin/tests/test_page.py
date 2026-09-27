@@ -16,8 +16,8 @@ from previously.server import WEB_ROOT
 #: How the page reaches an element. getElementById is the plain way, and the rest
 #: are this page's own helpers, which take an id and write into it.
 BY_ID = re.compile(
-    r'(?:getElementById|show|explain|fillWithChoices|fillWithBanks|drawPicture)'
-    r'\(\s*"([^"]+)"')
+    r'(?:getElementById|show|explain|fillWithChoices|fillWithBanks'
+    r'|fillWithScale|drawPicture)\(\s*"([^"]+)"')
 
 #: What the markup calls its elements.
 IN_MARKUP = re.compile(r'\bid="([^"]+)"')
@@ -125,3 +125,17 @@ def test_every_group_in_the_editor_belongs_to_a_subject(markup):
 
     assert len(groups) > 8
     assert [group for group in groups if "subject=" not in group] == []
+
+
+def test_every_scale_in_the_editor_is_a_slider(page, markup):
+    """A group whose values have an order is a knob in a trough. Drawn as a row
+    of cells it would say they have none, and more memory being to the right is
+    the whole of what somebody reads off it."""
+    for scale in ["editor-clocks", "editor-memory", "editor-memory-speeds"]:
+        assert '<nx-slider id="%s">' % scale in markup, scale
+        assert '"%s"' % scale not in page.replace(
+            'fillWithScale("%s"' % scale, ""), scale
+
+    # The memory of a NeXTdimension board is the fourth, and its group is built
+    # by the page because how many there are is what the slots decide.
+    assert 'createElement("nx-slider")' in page
