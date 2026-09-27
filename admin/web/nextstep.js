@@ -1708,10 +1708,23 @@ class NxSlider extends HTMLElement {
     this.knob.className = "knob";
     this.trough.append(this.knob);
 
-    this.reading = document.createElement("nx-field");
-    this.reading.className = "reading";
+    /* The ticks stand over the trough, each above the place its step puts the
+       knob, so the scale is read before the hand reaches it rather than from
+       under the hand that is on it. */
+    this.ticks = document.createElement("div");
+    this.ticks.className = "ticks";
 
-    this.append(this.trough, this.reading);
+    const scale = document.createElement("div");
+    scale.className = "scale";
+    scale.append(this.ticks, this.trough);
+
+    /* The unit, once, to the left of the scale. The ticks carry figures alone
+       and the one in force is the black one, so the unit is the only thing left
+       to say and saying it beside every tick would crowd them out. */
+    this.unit = document.createElement("span");
+    this.unit.className = "unit";
+
+    this.append(this.unit, scale);
     this.steps = [];
 
     this.tabIndex = 0;
@@ -1721,19 +1734,47 @@ class NxSlider extends HTMLElement {
 
   /**
    * The steps this slider offers.
-   * @param {Array<object>} steps - `{value, label}` for each, in the order they
-   *   sit on the scale.
+   * @param {Array<object>} steps - `{value, label, tick}` for each, in the order
+   *   they sit on the scale. `tick` is what stands under that step, which is the
+   *   figure alone: the field beside the slider carries the unit, and five of
+   *   those along one trough would not fit.
    *
    * Set every time the answer changes, because which steps exist depends on the
    * machine: a clock gains one with a turbo board, and memory loses two without
    * it.
    */
+  /** @param {string} unit - What the figures on this scale are counted in,
+   *  such as MHz or MB. Stated once, to the left of the scale. */
+  set says(unit) {
+    this.unit.textContent = unit;
+  }
+
   set options(steps) {
     this.steps = steps;
     this.toggleAttribute("fixed", steps.length < 2);
     this.setAttribute("aria-valuemin", "0");
     this.setAttribute("aria-valuemax", String(Math.max(steps.length - 1, 0)));
+    this.drawTheTicks();
     this.draw();
+  }
+
+  /** Puts one tick under each step, where that step puts the knob.
+   *
+   *  A scale of one step draws none, because there is nothing to choose
+   *  between and a lone tick would read as a mark somebody could aim at. */
+  drawTheTicks() {
+    const last = Math.max(this.steps.length - 1, 1);
+    this.ticks.replaceChildren(...(this.steps.length < 2 ? [] :
+      this.steps.map((step, at) => {
+        const tick = document.createElement("span");
+        tick.className = "tick";
+        tick.textContent = step.tick ?? "";
+        /* Under the middle of the knob when it stands on this step, which is
+           half a knob in plus that step's share of the room it travels. */
+        tick.style.left =
+          `calc(var(--knob-width) / 2 + (100% - var(--knob-width)) * ${at / last})`;
+        return tick;
+      })));
   }
 
   /** @returns {*} The value of the step the knob is on. */
@@ -1760,9 +1801,14 @@ class NxSlider extends HTMLElement {
        width. */
     this.knob.style.transform =
       `translateX(calc((100cqw - var(--knob-width)) * ${at / last}))`;
-    this.reading.textContent = this.steps[at]?.label ?? "";
     this.setAttribute("aria-valuenow", String(at));
     this.setAttribute("aria-valuetext", this.steps[at]?.label ?? "");
+
+    /* Which tick is in force, so the scale says where the knob stands as well
+       as the knob does. */
+    for (const [index, tick] of [...this.ticks.children].entries()) {
+      tick.toggleAttribute("chosen", index === at);
+    }
   }
 
   /** Listens for the pointer on the trough and for the arrow keys. */

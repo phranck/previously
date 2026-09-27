@@ -11,16 +11,23 @@
    where along the scale it sits and never what that means. */
 nx-slider {
   display: grid;
-  grid-template-columns: 1fr max-content;
-  align-items: center;
+  grid-template-columns: max-content 1fr;
+  /* Lined up on the trough rather than on the whole scale, so the unit sits
+     beside the knob and not beside the ticks above it. */
+  align-items: end;
   gap: 8px;
+}
+
+/* The trough with its ticks under it. The width is stated here so both take it
+   from one place and a tick stands under the knob rather than beside it. */
+nx-slider .scale {
+  --knob-width: 22px;
 }
 
 /* The trough. Its chequer of #555555 and #aaaaaa reads as a grey halfway
    between them, which is how a machine with four greys drew a fifth, and it is
    what the scroller's own trough is filled with. */
 nx-slider .trough {
-  --knob-width: 22px;
   position: relative;
   /* So the knob's own travel can be stated as a share of the trough. Without
      it `cqw` would measure whatever container stands further out, and the knob
@@ -69,6 +76,44 @@ nx-slider .knob::after {
   border-right-color: var(--white);
 }
 
+/* The ticks, one over each step, saying what the scale is made of before
+   anybody touches it. Over rather than under, so the hand on the knob is not
+   covering the figures it is aiming for. Each carries its step's figure alone,
+   because the field beside the slider carries the unit. */
+nx-slider .ticks {
+  position: relative;
+  height: var(--status-line);
+  margin-bottom: 2px;
+}
+
+nx-slider .tick {
+  position: absolute;
+  top: 0;
+  /* Placed by its middle, so the figure stands under the knob rather than
+     starting there. */
+  transform: translateX(-50%);
+  font-size: var(--status-size);
+  line-height: var(--status-line);
+  color: var(--dark);
+  white-space: nowrap;
+}
+
+/* The step in force. Black against the grey of the others, which is the one
+   difference this interface has between a thing that is set and a thing that
+   could be. */
+nx-slider .tick[chosen] { color: var(--black); }
+
+/* The mark itself, a single line down towards the trough. */
+nx-slider .tick::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 1px;
+  height: 3px;
+  background: var(--dark);
+}
+
 /* A scale offering one step is a reading rather than a choice, so its knob
    fills the trough and stays where it is. */
 nx-slider[fixed] .trough { cursor: auto; }
@@ -79,12 +124,14 @@ nx-slider[fixed] .knob::after { display: none; }
 nx-slider:focus { outline: none; }
 nx-slider:focus-visible .trough { border-color: var(--black); }
 
-/* The reading. The same sunken field the info panels state a fact in, wide
-   enough for the longest value on the scale so the knob's trough does not
-   change length as it moves. */
-nx-slider .reading {
-  min-width: var(--reading-width, 5em);
-  text-align: center;
+/* The unit, said once. The ticks carry figures alone, so this is what makes
+   them megahertz rather than megabytes. Set in the smaller type the interface
+   uses for what it says about itself, and on a line as tall as the trough so
+   the two sit level. */
+nx-slider .unit {
+  font-size: var(--status-size);
+  line-height: var(--scroller);
+  color: var(--dark);
 }
 
 @media (prefers-reduced-motion: reduce) {

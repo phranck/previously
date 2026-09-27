@@ -1323,13 +1323,17 @@ function drawTheChoices(offers) {
     ...boards.map(([which]) => switchNote(which)),
     t("editor.boards.note.resets"));
 
-  fillWithScale("editor-clocks",
-    offers.clocks.map((mhz) => ({ value: mhz, label: t("editor.mhz", { mhz }) })),
+  fillWithScale("editor-clocks", t("editor.unit.mhz"),
+    offers.clocks.map((mhz) => ({
+      value: mhz, label: t("editor.mhz", { mhz }), tick: String(mhz),
+    })),
     drafting.mhz, (mhz) => change({ mhz }));
   explain("editor-clocks-note", noteFor("clock", drafting.mhz));
 
-  fillWithScale("editor-memory",
-    offers.memory.map((mb) => ({ value: mb, label: t("editor.megabytes", { mb }) })),
+  fillWithScale("editor-memory", t("editor.unit.mb"),
+    offers.memory.map((mb) => ({
+      value: mb, label: t("editor.megabytes", { mb }), tick: String(mb),
+    })),
     /* The banks below may add up to a total the scale does not carry, and then
        the knob stands at the start rather than pretending to a step. */
     drafting.memory,
@@ -1364,9 +1368,10 @@ function drawTheChoices(offers) {
     !offers.dsp_memory.length;
   explain("editor-dsp-memory-note", noteFor("dsp-memory", drafting.dsp_memory));
 
-  fillWithScale("editor-memory-speeds",
+  fillWithScale("editor-memory-speeds", t("editor.unit.ns"),
     offers.memory_speeds.map((offer) => ({
       value: offer.speed, label: t("editor.nanoseconds", { ns: offer.ns }),
+      tick: String(offer.ns),
     })),
     drafting.memory_speed, (speed) => change({ memory_speed: speed }));
   /* The position is what is chosen and the time is what this machine calls it,
@@ -1571,8 +1576,9 @@ function drawOneBoardsMemory(slot, board, offers) {
   const slider = document.createElement("nx-slider");
   group.append(slider);
   slider.options = offers.dimension_memory.map((mb) => ({
-    value: mb, label: t("editor.megabytes", { mb }),
+    value: mb, label: t("editor.megabytes", { mb }), tick: String(mb),
   }));
+  slider.says = t("editor.unit.mb");
   slider.value = drafting.dimensions[board];
   slider.addEventListener("nx-slide",
     (event) => change({ dimensions: dimensionsWith(board, event.detail.value) }));
@@ -1603,6 +1609,8 @@ function dimensionsWith(board, memory) {
 /**
  * Puts a scale in place, as a knob in a trough.
  * @param {string} id - The slider's own id.
+ * @param {string} unit - What the figures are counted in, said once beside
+ *   the scale rather than on every tick.
  * @param {Array<object>} steps - `{value, label}` in the order they sit on the
  *   scale, smallest first.
  * @param {*} value - Which of them the machine is on. One that is not a step
@@ -1619,8 +1627,9 @@ function dimensionsWith(board, memory) {
  * action closes over what the machine is now and this runs again on every
  * change.
  */
-function fillWithScale(id, steps, value, choose) {
+function fillWithScale(id, unit, steps, value, choose) {
   const slider = document.getElementById(id);
+  slider.says = unit;
   slider.onSlide = choose;
   if (!slider.listening) {
     slider.listening = true;
