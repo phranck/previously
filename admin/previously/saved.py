@@ -73,6 +73,10 @@ def as_machine(name, values):
         colour=bool(values.get("colour")),
         dimension=bool(values.get("dimension")),
         banks=tuple(values.get("banks") or ()),
+        # An entry written before the DSP could be chosen names neither, and
+        # `settled` then answers both with what that machine has.
+        dsp=values.get("dsp", ""),
+        dsp_memory=machines.whole(values.get("dsp_memory"), 0),
     ))
 
 
@@ -107,6 +111,8 @@ def as_values(machine):
         "colour": machine.colour,
         "dimension": machine.dimension,
         "banks": list(machine.banks),
+        "dsp": machine.dsp,
+        "dsp_memory": machine.dsp_memory,
     }
 
 

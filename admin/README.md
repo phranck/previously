@@ -159,7 +159,7 @@ Which sizes a memory bank takes comes from the same place: 0, 2, 8 and 32 with a
 
 Previous's own System dialogue, in this interface's idiom. That dialogue puts what can be chosen on its left and what follows from it on its right, and this window stacks the two: the machine's picture and four readings above the groups that change them.
 
-**Six controls, and every one of them is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock and how much memory. Everything else in the sixteen keys follows from those, so offering it would be offering a machine that does not exist.
+**Every control is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock, how much memory, and the DSP with its own memory. Everything else in the seventeen keys follows from those, so offering it would be offering a machine that does not exist.
 
 **The window holds no rule at all.** On every change it asks `GET /api/machine/settled` what that configuration is and what may be chosen beside it, and draws the answer. So there is one statement of what Previous allows, in `machines.py`, and the interface cannot show a machine the emulator would correct underneath it: a cube in colour comes back as a cube, and a total of 128 MB asked of a plain station comes back as the 32 it holds. What it saves is the configuration the service handed back rather than one assembled in the browser.
 
@@ -168,6 +168,8 @@ A group with nothing to offer is not drawn, and a group's cells change with the 
 **The clock is chosen rather than worked out.** Previous offers 16, 20, 25 and 33 MHz for every machine and 40 only with a turbo board, and so does this. Changing the machine type or a board sets the clock afresh, to 33 with that board and 25 without, which is what `Configuration_SetSystemDefaults` writes at both of those moments.
 
 **The clock is also where Nitro lives.** Previous has no such thing and reads `nCpuFreq` as it finds it, so what the catalogue calls a Nitro is a turbo board running at 40.
+
+**The DSP is three choices rather than a chip that is simply there.** It can be absent, or a 56001, or a 56001 started with its bootstrap ROM, which is the more faithful of the two and loads no file. Its own memory is 24 or 96 kB, and that group is not drawn where there is no chip to give memory to. The 1988 machine is the one whose DSP has no expansion, and every machine gets its own back whenever the machine type or a board changes, exactly as the clock does.
 
 **Saving does not activate.** Opened on one of the eleven, which cannot be changed, it asks for a name and keeps a configuration of your own. Opened on one of your own, it writes that one back under the name it has. Either way `previous.cfg` is untouched, so the editor cannot leave a machine that will not boot. Starting one is the same double click as always.
 
