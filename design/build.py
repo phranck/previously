@@ -51,6 +51,8 @@ KIT_PARTS = (
     ("viewer", (("nx-viewer", "NxViewer"),),
      "the File Viewer, as four bands in one window"),
     ("panel", (), "nx-portrait, nx-row and nx-field, for an info panel"),
+    ("slider", (("nx-slider", "NxSlider"),),
+     "a knob in a trough, moving between the steps it is given"),
     ("terminal", (), "a text view, black on white"),
 )
 

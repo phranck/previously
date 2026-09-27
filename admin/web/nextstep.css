@@ -1135,6 +1135,101 @@ nx-window:not([fixed]) .buttons:last-child { padding-bottom: var(--pane-pad); }
    band that has to reach the resize bar. */
 .note:empty { display: none; }
 
+/* --- nx-slider ----------------------------------------------------------- */
+
+/* A knob in a trough, which is what NeXTSTEP gave anything read along a scale.
+   It is the scroller's own pair of parts laid on its side: the same chequered
+   trough, the same raised knob with a dimple in it, and the same greys, so this
+   needs nothing that is not already in the kit.
+
+   It moves between the values it is given rather than sliding freely, because
+   every scale in this interface is a set of steps and nothing between them
+   exists. The reading beside it says which step, since a knob on a trough says
+   where along the scale it sits and never what that means. */
+nx-slider {
+  display: grid;
+  grid-template-columns: 1fr max-content;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The trough. Its chequer of #555555 and #aaaaaa reads as a grey halfway
+   between them, which is how a machine with four greys drew a fifth, and it is
+   what the scroller's own trough is filled with. */
+nx-slider .trough {
+  --knob-width: 22px;
+  position: relative;
+  /* So the knob's own travel can be stated as a share of the trough. Without
+     it `cqw` would measure whatever container stands further out, and the knob
+     would run off the end. */
+  container-type: inline-size;
+  height: var(--scroller);
+  border: 1px solid;
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
+  background: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 2px 2px;
+  cursor: default;
+}
+
+nx-slider .knob {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--knob-width);
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--raised-sides);
+  box-shadow: var(--raised-inside);
+  /* Moved with a transform, so travelling between two steps costs the
+     compositor and nothing else. */
+  transition: transform var(--slide-time, 120ms) ease-out;
+}
+
+/* Whilst it is being dragged it follows the pointer, and a transition there
+   would have it trailing behind the hand holding it. */
+nx-slider[dragging] .knob { transition: none; }
+
+/* The dimple, which is what you take hold of. The scroller's knob carries the
+   same one. */
+nx-slider .knob::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  border: 1px solid var(--dark);
+  border-bottom-color: var(--white);
+  border-right-color: var(--white);
+}
+
+/* A scale offering one step is a reading rather than a choice, so its knob
+   fills the trough and stays where it is. */
+nx-slider[fixed] .trough { cursor: auto; }
+nx-slider[fixed] .knob::after { display: none; }
+
+/* Focus is drawn on the trough rather than on the knob, because the trough is
+   what the whole control is. */
+nx-slider:focus { outline: none; }
+nx-slider:focus-visible .trough { border-color: var(--black); }
+
+/* The reading. The same sunken field the info panels state a fact in, wide
+   enough for the longest value on the scale so the knob's trough does not
+   change length as it moves. */
+nx-slider .reading {
+  min-width: var(--reading-width, 5em);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Shortened rather than switched off: a step that arrives instantly reads as
+     the control redrawing itself rather than as the knob having moved. */
+  nx-slider .knob { --slide-time: 40ms; }
+}
+
 /* --- the terminal ------------------------------------------------------- */
 
 /* NeXT's Terminal was black on white in a bitmap face called Ohlfs, so this
