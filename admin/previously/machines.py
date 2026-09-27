@@ -80,6 +80,18 @@ TURBO_MEMORY_NS = (60, 70, 80, 100)
 #: Where Previous starts, and where a position it cannot read comes back to.
 DEFAULT_MEMORY_SPEED = 1
 
+#: How many drives of each kind Previous keeps in its file. This tool offers a
+#: machine one of each, because that is what NeXT built, and writes the rest as
+#: absent so a configuration says plainly what the machine has.
+FLOPPY_DRIVES = 4
+OPTICAL_DRIVES = 2
+
+#: Which of the two ethernet sockets NeXT built is in use. Thin wire is the
+#: coaxial one every machine has, and twisted pair arrived with the 68040s.
+THIN_WIRE = "thin-wire"
+TWISTED_PAIR = "twisted-pair"
+ETHERNET_SOCKETS = (THIN_WIRE, TWISTED_PAIR)
+
 #: Which slot a NeXTdimension board answers from. Zero means no board.
 DIMENSION_SLOT = "2"
 NO_BOARD = "0"
@@ -107,13 +119,20 @@ PLAIN_BANK_SIZES = (0, 1, 4, 16)
 BANKS = 4
 STATION_PLAIN_BANKS = 2
 
-#: The last three carry what Previous starts every machine from, so the
-#: catalogue below names them only where one of the eleven differs.
+#: The ones with a default carry what Previous starts every machine from, or
+#: what NeXT fitted as standard, so the catalogue below names them only where
+#: one of the eleven differs.
+#:
+#: `floppy`, `optical` and `printer` say whether the machine has that drive or
+#: that port at all, rather than what is in it. A disk image is the
+#: installation's business and none of this tool's.
 Machine = collections.namedtuple(
     "Machine",
     "identifier name kind turbo mhz colour dimension banks"
-    " dsp dsp_memory memory_speed",
-    defaults=(DSP_PLAIN, DSP_MEMORY_EXPANDED, DEFAULT_MEMORY_SPEED))
+    " dsp dsp_memory memory_speed"
+    " floppy optical ethernet socket printer",
+    defaults=(DSP_PLAIN, DSP_MEMORY_EXPANDED, DEFAULT_MEMORY_SPEED,
+              True, False, True, THIN_WIRE, False))
 
 #: Every machine that can be chosen, in the order they were built.
 #:
@@ -130,7 +149,10 @@ Machine = collections.namedtuple(
 CATALOGUE = (
     Machine("next-computer", "NeXT Computer", NEXT_COMPUTER,
             turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=False,
-            banks=(16, 16, 16, 16), dsp_memory=DSP_MEMORY_PLAIN),
+            banks=(16, 16, 16, 16), dsp_memory=DSP_MEMORY_PLAIN,
+            # The 1988 machine is the one NeXT sold with the optical drive and
+            # no floppy at all.
+            floppy=False, optical=True),
     Machine("nextcube", "NeXTcube", NEXTCUBE,
             turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=False,
             banks=(16, 16, 16, 16)),
@@ -186,7 +208,8 @@ def settings_for(machine):
 
     Only the keys that differ between machines appear. Everything else in
     previous.cfg belongs to the installation rather than to the machine and is
-    none of this function's business.
+    none of this function's business. A disk image is the clearest case of that:
+    whether a drive is there is the machine, and what is in it is not.
     """
     return {
         "System": _system_for(machine),
@@ -203,6 +226,29 @@ def settings_for(machine):
             },
             "nMemorySpeed": str(machine.memory_speed),
         },
+        # One drive of each kind, because that is what NeXT built, and the rest
+        # written as absent rather than left at whatever the last machine had.
+        "Floppy": _drives(machine.floppy, FLOPPY_DRIVES),
+        "MagnetoOptical": _drives(machine.optical, OPTICAL_DRIVES),
+        "Ethernet": {
+            "bEthernetConnected": _flag(machine.ethernet),
+            "bTwistedPair": _flag(
+                machine.ethernet and machine.socket == TWISTED_PAIR),
+        },
+        "Printer": {"bPrinterConnected": _flag(machine.printer)},
+    }
+
+
+def _drives(fitted, most):
+    """Which drives of one kind the machine has.
+
+    @param fitted - Whether it has one at all.
+    @param most - How many of them Previous keeps in its file.
+    @returns dict of key to the word Previous writes for a boolean.
+    """
+    return {
+        "bDriveConnected%d" % drive: _flag(fitted and drive == 0)
+        for drive in range(most)
     }
 
 
@@ -380,9 +426,52 @@ def memory_speeds(turbo):
     return TURBO_MEMORY_NS if turbo else PLAIN_MEMORY_NS
 
 
+def takes_a_floppy(kind):
+    """Whether this machine has a floppy drive at all.
+
+    @param kind - NEXT_COMPUTER, NEXTCUBE or NEXTSTATION.
+    @returns bool
+
+    NeXT's 1988 machine shipped with the optical drive and no floppy, which is
+    what Previous's own Floppy dialogue says on its face. The emulator does not
+    enforce it: with a drive connected there, `floppy_controller_present` in its
+    src/floppy.c answers that the controller is there. So this is our rule, and
+    it is here because the editor builds machines that were built.
+    """
+    return kind != NEXT_COMPUTER
+
+
+def takes_an_optical_drive(kind, turbo):
+    """Whether this machine has a magneto-optical drive at all.
+
+    @param kind - NEXT_COMPUTER, NEXTCUBE or NEXTSTATION.
+    @param turbo - Whether a turbo board is seated, as settled() leaves it.
+    @returns bool
+
+    The cubes had it and the turbo boards dropped it, which is what Previous's
+    own Optical dialogue says on its face. Not enforced there either, for the
+    same reason as the floppy above.
+    """
+    return kind != NEXTSTATION and not turbo
+
+
+def takes_twisted_pair(kind):
+    """Whether this machine has the twisted pair ethernet socket.
+
+    @param kind - NEXT_COMPUTER, NEXTCUBE or NEXTSTATION.
+    @returns bool
+
+    The 1988 machine has the coaxial socket alone, and this one Previous does
+    enforce: `Configuration_CheckEthernetSettings` switches twisted pair off for
+    that machine type at every start.
+    """
+    return kind != NEXT_COMPUTER
+
+
 def drafted(kind, turbo=False, colour=False, dimension=False,
             mhz=None, memory=None, banks=None, dsp=None, dsp_memory=None,
-            memory_speed=None, identifier="", name=""):
+            memory_speed=None, floppy=False, optical=False, ethernet=False,
+            socket=None, printer=False, identifier="", name=""):
     """A machine from what an editor is showing, held to Previous's rules.
 
     @param kind - The machine type, as a number or a string of one.
@@ -397,6 +486,11 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
     @param dsp - Which DSP, as one of DSPS.
     @param dsp_memory - How much memory it has, in kilobytes.
     @param memory_speed - Which of the four positions the memory runs at.
+    @param floppy - Whether the machine has a floppy drive.
+    @param optical - Whether it has a magneto-optical drive.
+    @param ethernet - Whether it is on the network.
+    @param socket - Which ethernet socket, as one of ETHERNET_SOCKETS.
+    @param printer - Whether the printer port is in use.
     @param identifier - What it is called to the API, where it has a name.
     @param name - What it is called to a person.
     @returns Machine, settled.
@@ -432,6 +526,11 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
         dsp_memory=whole(dsp_memory, 0),
         # Minus one is no position, which nothing can be corrected into.
         memory_speed=whole(memory_speed, -1),
+        floppy=bool(floppy),
+        optical=bool(optical),
+        ethernet=bool(ethernet),
+        socket=socket if socket in ETHERNET_SOCKETS else THIN_WIRE,
+        printer=bool(printer),
     ))
     if wanted is not None:
         return machine
@@ -501,6 +600,18 @@ def offers(machine):
         "memory_speeds": [{"speed": speed, "ns": nanoseconds}
                           for speed, nanoseconds
                           in enumerate(memory_speeds(machine.turbo))],
+        # What the machine can have fitted. Ethernet and the printer port are on
+        # every one of them, so those two are always there to switch.
+        "floppy": takes_a_floppy(machine.kind),
+        "optical": takes_an_optical_drive(machine.kind, machine.turbo),
+        "ethernet": True,
+        "printer": True,
+        # Nothing to choose between where the machine is off the network, and a
+        # group with nothing to offer is not drawn.
+        "sockets": [socket for socket in ETHERNET_SOCKETS
+                    if machine.ethernet
+                    and (socket != TWISTED_PAIR
+                         or takes_twisted_pair(machine.kind))],
     }
 
 
@@ -553,6 +664,18 @@ def settled(machine):
         memory_speed=(machine.memory_speed
                       if 0 <= machine.memory_speed < len(PLAIN_MEMORY_NS)
                       else DEFAULT_MEMORY_SPEED),
+        # A drive the machine never had goes, the way a board it cannot hold
+        # does. Previous enforces neither of these two and says both on the face
+        # of its own dialogues.
+        floppy=machine.floppy and takes_a_floppy(machine.kind),
+        optical=machine.optical and takes_an_optical_drive(machine.kind, turbo),
+        # And the socket the 1988 machine has none of, which
+        # Configuration_CheckEthernetSettings does switch off at every start.
+        socket=(machine.socket
+                if machine.socket in ETHERNET_SOCKETS
+                and (machine.socket != TWISTED_PAIR
+                     or takes_twisted_pair(machine.kind))
+                else THIN_WIRE),
     )
 
 

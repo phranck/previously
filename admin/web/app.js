@@ -1063,6 +1063,12 @@ const DSP_WORDS = {
   "with-rom": "editor.dsp.with-rom",
 };
 
+/** What each ethernet socket is called, written out for the same reason. */
+const SOCKET_WORDS = {
+  "thin-wire": "editor.thin-wire",
+  "twisted-pair": "editor.twisted-pair",
+};
+
 /** Which saved configuration is being written over, or null where what comes out
  *  of this is a new one. A System machine cannot be changed, so editing one
  *  leaves this null and saving asks for a name. */
@@ -1166,6 +1172,11 @@ async function drawTheDraft() {
        total goes back in charge when a cell in its group is pressed, which
        sends no banks at all. */
     banks: answer.configuration.banks,
+    floppy: answer.configuration.floppy,
+    optical: answer.configuration.optical,
+    ethernet: answer.configuration.ethernet,
+    socket: answer.configuration.socket,
+    printer: answer.configuration.printer,
   };
 
   redrawTheEditor();
@@ -1274,6 +1285,27 @@ function drawTheChoices(offers) {
     chosen: offer.speed === drafting.memory_speed,
     choose: () => change({ memory_speed: offer.speed }),
   })));
+
+  /* What the machine has, which is a drive being there rather than anything in
+     it. The same cells as the boards group: one press puts it in and the next
+     takes it out. */
+  fillWithChoices("editor-fitted", [
+    ["floppy", t("editor.floppy")],
+    ["optical", t("editor.optical")],
+    ["ethernet", t("editor.ethernet")],
+    ["printer", t("editor.printer")],
+  ].filter(([which]) => offers[which]).map(([which, label]) => ({
+    label,
+    chosen: drafting[which],
+    choose: () => change({ [which]: !drafting[which] }),
+  })));
+
+  fillWithChoices("editor-sockets", offers.sockets.map((socket) => ({
+    label: SOCKET_WORDS[socket] ? t(SOCKET_WORDS[socket]) : socket,
+    chosen: socket === drafting.socket,
+    choose: () => change({ socket }),
+  })));
+  document.getElementById("editor-socket-group").hidden = !offers.sockets.length;
 }
 
 /**

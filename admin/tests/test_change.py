@@ -41,6 +41,23 @@ REAL_SHAPE = textwrap.dedent("""\
     nMemoryBankSize00 = 16
     nMemoryBankSize01 = 16
 
+    [MagnetoOptical]
+    bDriveConnected0 = FALSE
+    bDriveConnected1 = FALSE
+
+    [Floppy]
+    bDriveConnected0 = TRUE
+    bDriveConnected1 = FALSE
+    bDriveConnected2 = FALSE
+    bDriveConnected3 = FALSE
+
+    [Ethernet]
+    bEthernetConnected = TRUE
+    bTwistedPair = FALSE
+
+    [Printer]
+    bPrinterConnected = FALSE
+
     [HardDisk]
     szImageName0 = /home/next/nextstep/NS33.dd
     bDiskInserted0 = TRUE

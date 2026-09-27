@@ -620,6 +620,25 @@ def test_a_bank_can_be_chosen_on_its_own_over_the_wire(service):
     assert answer["offers"]["banks"] == [[0, 1, 4, 16]] * 4
 
 
+def test_what_the_machine_has_fitted_crosses_the_wire(service):
+    """A drive being there is the machine. What is in it is the installation's
+    business and is not asked about here."""
+    answer = settled(service, kind=1, memory=16, floppy=1, ethernet=1,
+                     socket="twisted-pair")
+
+    assert answer["configuration"]["floppy"] is True
+    assert answer["configuration"]["optical"] is False
+    assert answer["configuration"]["socket"] == "twisted-pair"
+    assert answer["offers"]["sockets"] == ["thin-wire", "twisted-pair"]
+
+    computer = settled(service, kind=0, memory=16, floppy=1, ethernet=1,
+                       socket="twisted-pair")
+
+    assert computer["configuration"]["floppy"] is False
+    assert computer["configuration"]["socket"] == "thin-wire"
+    assert computer["offers"]["floppy"] is False
+
+
 def test_what_it_refuses_comes_back_refused(service):
     """A cube in colour is a cube, so the interface cannot show colour on one
     even for the moment between the click and the answer."""

@@ -78,6 +78,14 @@ def as_machine(name, values):
         dsp=values.get("dsp", ""),
         dsp_memory=machines.whole(values.get("dsp_memory"), 0),
         memory_speed=machines.whole(values.get("memory_speed"), -1),
+        # An entry written before these could be chosen names none of them,
+        # and comes back as a machine with the network and nothing else,
+        # which is what every one of them was saved as.
+        floppy=bool(values.get("floppy", True)),
+        optical=bool(values.get("optical", False)),
+        ethernet=bool(values.get("ethernet", True)),
+        socket=values.get("socket", machines.THIN_WIRE),
+        printer=bool(values.get("printer", False)),
     ))
 
 
@@ -115,6 +123,11 @@ def as_values(machine):
         "dsp": machine.dsp,
         "dsp_memory": machine.dsp_memory,
         "memory_speed": machine.memory_speed,
+        "floppy": machine.floppy,
+        "optical": machine.optical,
+        "ethernet": machine.ethernet,
+        "socket": machine.socket,
+        "printer": machine.printer,
     }
 
 

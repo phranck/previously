@@ -334,6 +334,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             dsp=chosen("dsp"),
             dsp_memory=chosen("dsp_memory"),
             memory_speed=chosen("memory_speed"),
+            floppy=chosen("floppy") == "1",
+            optical=chosen("optical") == "1",
+            ethernet=chosen("ethernet") == "1",
+            socket=chosen("socket"),
+            printer=chosen("printer") == "1",
         )
         settings = machines.settings_for(machine)
         return self._json({
