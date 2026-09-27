@@ -297,14 +297,16 @@ def test_a_bank_is_rounded_up_to_a_size_the_machine_has():
     """Previous rounds every bank up to the next size it accepts and caps it at
     the largest, so a number in between is a bank of the size above it."""
     turbo = machines.settled(drafted(turbo=True, banks=(1, 3, 9, 64)))
-    assert turbo.banks == (2, 8, 32, 32)
+    # The first bank takes nothing below 4, so one megabyte asked for there is
+    # the 8 MB module rather than the 2 MB one.
+    assert turbo.banks == (8, 8, 32, 32)
 
     plain = machines.settled(drafted(banks=(1, 2, 5, 64)))
-    assert plain.banks == (1, 4, 16, 16)
+    assert plain.banks == (4, 4, 16, 16)
 
     colour = machines.settled(
         drafted(kind=machines.NEXTSTATION, colour=True, banks=(1, 3, 9, 64)))
-    assert colour.banks == (2, 8, 8, 8)
+    assert colour.banks == (8, 8, 8, 8)
 
 
 def test_an_empty_bank_stays_empty():
@@ -334,8 +336,10 @@ def test_colour_and_turbo_give_a_station_all_four_banks():
 def test_a_bank_that_is_not_a_number_is_an_empty_one():
     """A configuration file can be edited by hand, and what comes back from one
     is whatever somebody typed."""
+    # And the first bank cannot be empty, so nothing readable there is the
+    # smallest module the machine boots from.
     assert machines.settled(drafted(banks=("", None, "sixteen", 16))).banks == \
-        (0, 0, 0, 16)
+        (4, 0, 0, 16)
 
 
 def test_a_configuration_with_the_wrong_number_of_banks_gets_four():
@@ -351,24 +355,24 @@ def test_an_unreachable_bank_offers_nothing_but_zero():
     plain station cannot reach are a choice of one rather than an absence."""
     offered = machines.bank_sizes(machines.NEXTSTATION, turbo=False, colour=False)
 
-    assert offered[0] == machines.PLAIN_BANK_SIZES
+    assert offered[1] == machines.PLAIN_BANK_SIZES
     assert offered[2] == (0,)
     assert len(offered) == machines.BANKS
 
 
 def test_what_each_kind_of_machine_offers_a_bank():
-    assert machines.bank_sizes(machines.NEXTCUBE, turbo=True, colour=False)[0] == \
+    assert machines.bank_sizes(machines.NEXTCUBE, turbo=True, colour=False)[1] == \
         machines.TURBO_BANK_SIZES
-    assert machines.bank_sizes(machines.NEXTSTATION, turbo=False, colour=True)[0] == \
+    assert machines.bank_sizes(machines.NEXTSTATION, turbo=False, colour=True)[1] == \
         machines.COLOUR_BANK_SIZES
-    assert machines.bank_sizes(machines.NEXTCUBE, turbo=False, colour=False)[0] == \
+    assert machines.bank_sizes(machines.NEXTCUBE, turbo=False, colour=False)[1] == \
         machines.PLAIN_BANK_SIZES
 
 
 def test_a_turbo_board_decides_the_sizes_before_colour_does():
     """Previous asks in that order, so a colour turbo station takes the turbo
     sizes rather than the colour ones."""
-    assert machines.bank_sizes(machines.NEXTSTATION, turbo=True, colour=True)[0] == \
+    assert machines.bank_sizes(machines.NEXTSTATION, turbo=True, colour=True)[1] == \
         machines.TURBO_BANK_SIZES
 
 
@@ -653,8 +657,9 @@ def test_what_each_bank_takes_is_offered():
     cube = machines.offers(machines.find("nextcube"))["banks"]
     station = machines.offers(machines.find("nextstation"))["banks"]
 
-    assert cube == [[0, 1, 4, 16]] * 4
-    assert station == [[0, 1, 4, 16], [0, 1, 4, 16], [0], [0]]
+    # The first takes nothing the machine cannot boot from, and no empty socket.
+    assert cube == [[4, 16], [0, 1, 4, 16], [0, 1, 4, 16], [0, 1, 4, 16]]
+    assert station == [[4, 16], [0, 1, 4, 16], [0], [0]]
 
 
 def test_the_1988_machine_has_the_optical_drive_and_no_floppy():
@@ -763,3 +768,29 @@ def test_what_is_offered_is_what_the_machine_in_hand_holds():
         assert machine.kind in kinds, machine.identifier
         assert sum(machine.banks) in offered["memory"], machine.identifier
         assert machine.mhz in offered["clocks"], machine.identifier
+
+
+def test_the_first_bank_is_the_one_the_machine_boots_from():
+    """Previous says so on the face of its own memory dialogue and does not
+    enforce it, because the check that would is compiled out. The editor does,
+    since a machine that cannot boot is not one worth building."""
+    for turbo, colour, wanted in [(True, False, (8, 32)),
+                                  (False, True, (8,)),
+                                  (False, False, (4, 16))]:
+        offered = machines.bank_sizes(machines.NEXTSTATION, turbo, colour)
+        assert offered[machines.FIRST_BANK] == wanted, (turbo, colour)
+        assert 0 not in offered[machines.FIRST_BANK], (turbo, colour)
+
+
+def test_emptying_the_first_bank_leaves_the_least_it_can_boot_from():
+    assert machines.settled(drafted(banks=(0, 16, 0, 0))).banks == (4, 16, 0, 0)
+    assert machines.settled(
+        drafted(turbo=True, banks=(0, 32, 0, 0))).banks == (8, 32, 0, 0)
+
+
+def test_a_gap_behind_the_first_bank_is_left_alone():
+    """Previous corrects one only on a NeXTdimension board, where its own comment
+    says an empty first bank with memory behind it panics the kernel. It says
+    nothing of the kind about the machine's own memory, so neither does this."""
+    assert machines.settled(
+        drafted(banks=(16, 0, 16, 0))).banks == (16, 0, 16, 0)

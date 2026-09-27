@@ -241,11 +241,26 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    the way round whatever is in it. */
 .banks {
   --socket-air: 4px;
+  /* Stacked, the way the modules stand on the board, so the row reads as the
+     inside of a machine rather than as four buttons. One column, which is what
+     a grid with no columns named is. */
   display: grid;
-  /* Four equal columns, because the banks are equal and their order on the
-     board is the order they are read in. */
-  grid-template-columns: repeat(4, 1fr);
   gap: var(--band-gap);
+}
+
+/* Each bank is named, so the sentence under the group can say which one it
+   means. The names are a column of their own, all as wide as the widest, so
+   the sockets begin on one line. */
+.bank-row {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.bank-name {
+  font-size: var(--status-size);
+  line-height: var(--status-line);
 }
 
 .bank {
@@ -280,6 +295,19 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   border: 1px solid;
   border-color: var(--raised-sides);
   box-shadow: var(--raised-inside);
+}
+
+/* An empty socket says so rather than standing blank, because a blank one reads
+   as a bank that is not there. It carries no edge, since there is no module to
+   raise, and its word is set in the smaller type the interface uses for what it
+   says about itself rather than for what can be chosen. */
+.module[empty] {
+  border-color: transparent;
+  box-shadow: none;
+  background: none;
+  color: var(--dark);
+  font-size: var(--status-size);
+  line-height: var(--status-line);
 }
 
 /* The letter each one shows, at the size that button sets, so somebody can

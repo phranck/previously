@@ -1099,7 +1099,6 @@ const KIND_NOTES = {
  *  megabytes. Previous says so on its own memory dialogue and does not raise a
  *  smaller bank itself, so the note under the banks is the one place somebody
  *  is told before the machine fails to come up. */
-const BOOTABLE_BANK_MB = 4;
 
 /** How much memory a NeXTdimension board gets when it is first put in, which is
  *  what the emulator's own file holds for one. Changed from there in its own
@@ -1443,17 +1442,18 @@ function switchNote(which) {
  * without the page holding the rule that decides them.
  */
 function bankNotes(banks) {
-  const modules = banks[0].filter((size) => size > 0);
-  const reachable = banks.filter((sizes) => sizes.length > 1).length;
-  const first = drafting.banks[0];
+  /* Read off a bank that is not the first, since that one is offered neither an
+     empty socket nor the smallest module and would name a shorter list than the
+     machine actually takes. */
+  const ordinary = banks.find((sizes, bank) => bank > 0 && !isAbsent(sizes));
+  const modules = (ordinary ?? banks[0]).filter((size) => size > 0);
+  const reachable = banks.filter((sizes) => !isAbsent(sizes)).length;
   return [
     t("editor.banks.note.press"),
+    t("editor.banks.note.first", { sizes: listed(banks[0]) }),
     t("editor.banks.note.modules", { sizes: listed(modules) }),
     reachable < banks.length
       ? t("editor.banks.note.reach", { count: reachable }) : "",
-    first === 0 ? t("editor.banks.note.boot-empty") : "",
-    first > 0 && first < BOOTABLE_BANK_MB
-      ? t("editor.banks.note.boot-small", { mb: first }) : "",
   ];
 }
 
@@ -1642,26 +1642,51 @@ function fillWithFittings(id, offers, fittings) {
 function fillWithBanks(id, offered) {
   document.getElementById(id).replaceChildren(...offered.map((sizes, bank) => {
     const size = drafting.banks[bank];
-    const reachable = sizes.length > 1;
+
+    const row = document.createElement("div");
+    row.className = "bank-row";
+
+    const name = document.createElement("span");
+    name.className = "bank-name";
+    name.textContent = t("editor.bank", { bank });
+    row.append(name);
 
     const socket = document.createElement("div");
     socket.className = "bank";
-    socket.toggleAttribute("absent", !reachable);
-    if (reachable) {
+    socket.toggleAttribute("absent", isAbsent(sizes));
+    /* A bank offered one size and no empty one cannot move, which is the first
+       bank of a colour station: it takes an 8 MB module and nothing else. */
+    if (sizes.length > 1) {
       socket.addEventListener("click", () => change({
         banks: bankMovedOn(bank, sizes),
         memory: undefined,
       }));
     }
 
-    if (size) {
-      const module_ = document.createElement("div");
-      module_.className = "module";
-      module_.textContent = t("editor.megabytes", { mb: size });
-      socket.append(module_);
-    }
-    return socket;
+    const module_ = document.createElement("div");
+    module_.className = "module";
+    module_.toggleAttribute("empty", !size);
+    module_.textContent = size
+      ? t("editor.megabytes", { mb: size })
+      : t("editor.bank-empty");
+    socket.append(module_);
+
+    row.append(socket);
+    return row;
   }));
+}
+
+/**
+ * Whether a bank is one this machine does not have.
+ * @param {Array<number>} sizes - What it accepts, from the service.
+ * @returns {boolean}
+ *
+ * The service answers such a bank with an empty one and nothing else, which is
+ * a choice of one rather than an absence, so there are four banks to draw
+ * either way.
+ */
+function isAbsent(sizes) {
+  return sizes.length === 1 && sizes[0] === 0;
 }
 
 /**

@@ -618,7 +618,9 @@ def test_a_bank_can_be_chosen_on_its_own_over_the_wire(service):
 
     assert answer["configuration"]["banks"] == [16, 4, 0, 0]
     assert answer["machine"]["memory_mb"] == 20
-    assert answer["offers"]["banks"] == [[0, 1, 4, 16]] * 4
+    # The first bank takes neither an empty socket nor the 1 MB module, because
+    # the machine boots from it.
+    assert answer["offers"]["banks"] == [[4, 16]] + [[0, 1, 4, 16]] * 3
 
 
 def test_what_the_machine_has_fitted_crosses_the_wire(service):
