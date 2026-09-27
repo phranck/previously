@@ -364,3 +364,15 @@ def test_the_1988_machine_is_reported_as_itself(tmp_path):
         """)))
     assert answer["model"] == "NeXT Computer"
     assert answer["kind"] == 0
+
+
+def test_the_processor_is_the_one_the_level_stands_for():
+    """Previous stores a level, and its own overview reads 3 as the 68030 and 4
+    as the 68040. The 1988 machine is written as level 3, so reading that as a
+    68040 shows the wrong processor for the one machine it matters on."""
+    assert config.CPU_NAMES[3] == "68030"
+    assert config.CPU_NAMES[4] == "68040"
+
+    described = config.describe({"nCpuLevel": "3"}, {}, {})
+
+    assert described["cpu"] == "68030"

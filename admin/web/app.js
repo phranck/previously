@@ -1104,14 +1104,13 @@ let asking = 0;
  */
 function editConfiguration(machine, asker) {
   replacing = machine?.set === "user" ? machine.id : null;
-  drafting = {
-    kind: machine?.kind,
-    turbo: Boolean(machine?.turbo),
-    colour: Boolean(machine?.colour),
-    dimensions: machine?.dimensions ?? [0, 0, 0],
-    mhz: machine?.mhz,
-    memory: machine?.memory_mb,
-  };
+  /* The configuration a tree entry carries beside the words a person reads,
+     which is the same shape saving takes. The description alone would not do:
+     it leaves out everything two machines do not differ by in words, and its
+     `kind` says what sort of entry this is rather than what machine it is. */
+  drafting = machine?.configuration
+    ? { ...machine.configuration }
+    : whatTheDescriptionSays(machine);
   /* Nothing to save until the service has said what this is, so the button
      cannot send the machine the window held before. */
   drafted = null;
@@ -1119,6 +1118,26 @@ function editConfiguration(machine, asker) {
   drawTheTitle();
   document.querySelector(`nx-window[name="${EDITOR}"]`).open(asker);
   drawTheDraft();
+}
+
+/**
+ * As much of a machine as a description holds.
+ * @param {object} machine - What /api/status says is configured now, which is a
+ *   description rather than a configuration.
+ * @returns {object} A draft of what can be read off it.
+ *
+ * For the machine that is running whilst being none of the ones this tool
+ * knows. What a description does not carry is left out rather than guessed, so
+ * the service answers those with what that machine has.
+ */
+function whatTheDescriptionSays(machine) {
+  return {
+    kind: machine?.kind,
+    turbo: Boolean(machine?.turbo),
+    colour: Boolean(machine?.colour),
+    mhz: machine?.mhz,
+    memory: machine?.memory_mb,
+  };
 }
 
 /** Puts the name of what is being edited in the title bar.

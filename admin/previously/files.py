@@ -269,7 +269,8 @@ def _machine(machine, in_folder, in_set):
     @param in_folder - The path of the folder holding it.
     @param in_set - SYSTEM or USER, which decides what may be done to it.
     @returns dict, the machine described as config.read describes the running
-      one, with where it is, what it is called and which set it is in added.
+      one, with where it is, what it is called, which set it is in and the
+      configuration itself added.
     """
     settings = machines.settings_for(machine)
     entry = config.describe(settings["System"], settings["Memory"], settings["Dimension"])
@@ -279,10 +280,18 @@ def _machine(machine, in_folder, in_set):
     # is its own, and it is its identifier as well.
     entry["name"] = machine.name
     entry["path"] = "%s/%s" % (in_folder, machine.identifier)
+    # What sort of entry this is, which is what `kind` means everywhere in the
+    # tree. It writes over the machine type that describe() put there, so the
+    # configuration below is where the editor reads a machine from.
     entry["kind"] = "machine"
     # Which set, so the browser knows whether this one can be renamed, removed
     # and written over without having to read its path.
     entry["set"] = in_set
+    # Every setting it has, in the shape /api/machine/save takes. The
+    # description above is what a person reads and leaves out anything two
+    # machines do not differ by in words, so an editor opening on it alone would
+    # start from a machine that is not this one.
+    entry["configuration"] = saved.as_values(machine)
     return entry
 
 

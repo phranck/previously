@@ -35,13 +35,16 @@ ENCLOSURES = {
 }
 
 #: The processor each level stands for. Previous stores a level rather than a
-#: name, and sets it itself from the machine type.
+#: name, and sets it itself from the machine type. The levels are its own, from
+#: print_system_overview in src/gui-sdl/dlgSystem.c: the 1988 machine is a
+#: 68030 at level 3 and everything after it a 68040 at level 4.
 CPU_NAMES = {
-    0: "68030",
-    1: "68040",
-    2: "68040",
-    3: "68040",
+    0: "68000",
+    1: "68010",
+    2: "68020",
+    3: "68030",
     4: "68040",
+    5: "68060",
 }
 
 

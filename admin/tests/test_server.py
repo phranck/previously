@@ -892,3 +892,35 @@ def test_a_file_that_is_not_a_picture_is_not_deleted(service, tmp_path):
 
     assert refused.value.code == 404
     assert (where / "notes.txt").is_file()
+
+
+def test_a_machine_in_the_tree_carries_its_configuration(service):
+    """The editor opens on that rather than on the description beside it. A
+    description leaves out everything two machines do not differ by in words,
+    and its `kind` says what sort of entry it is rather than what machine."""
+    _, _, body = fetch(service + "/api/files")
+    found = machines_in(json.loads(body))
+
+    station = found["nextstation"]["configuration"]
+    computer = found["next-computer"]["configuration"]
+
+    # The one the description cannot carry, because `kind` is taken.
+    assert station["kind"] == 2
+    assert computer["kind"] == 0
+    # And the settings a description says nothing about at all.
+    assert computer["floppy"] is False
+    assert computer["optical"] is True
+    assert computer["dsp"] == "plain"
+    assert computer["dsp_memory"] == 24
+    assert computer["socket"] == "thin-wire"
+    assert found["nextcube-dimension"]["configuration"]["dimensions"] == [32, 0, 0]
+
+
+def test_the_1988_machine_is_a_68030_everywhere(service):
+    """It is written as processor level 3, which is what Previous calls a
+    68030."""
+    _, _, body = fetch(service + "/api/files")
+    found = machines_in(json.loads(body))
+
+    assert found["next-computer"]["cpu"] == "68030"
+    assert found["nextcube"]["cpu"] == "68040"
