@@ -11,9 +11,12 @@ was looking at. Nothing else here can catch that.
 import importlib.util
 import pathlib
 import re
+import shutil
+import subprocess
 
 import pytest
 
+from previously import server
 from previously.settings import DEFAULTS
 
 #: Where the packaging lives, beside the service rather than inside it.
@@ -100,3 +103,91 @@ def test_purging_the_package_leaves_the_home_alone(build):
         if line.strip().startswith("rm -rf"):
             assert "/home" not in line, line
             assert "~" not in line, line
+
+
+# -- which build a package is --------------------------------------------
+
+
+def test_the_release_is_read_off_the_service(build):
+    """One place holds it, and the package is numbered from there rather than
+    from a second copy that would drift."""
+    assert build.release() == server.RELEASE
+
+
+def test_a_tagged_release_is_itself(build):
+    """Nothing added, because there is nothing to tell apart: this is the
+    release."""
+    assert build.version_from("1.0.0", "v1.0.0-0-g2f250d5") == "1.0.0"
+
+
+def test_a_build_after_the_release_stands_above_it(build):
+    """The count rises with every commit, so dpkg can order two builds, and
+    the commit says which tree each of them was."""
+    assert build.version_from("1.0.0", "v1.0.0-42-g2f250d5") == "1.0.0+42.g2f250d5"
+
+
+def test_a_build_on_the_way_to_a_release_stands_below_it(build):
+    """The source already says 1.0.0 whilst the newest tag is still the release
+    before it, so this is a build towards 1.0.0 rather than after it."""
+    assert build.version_from("1.0.0", "v0.1.3-42-g2f250d5") == "1.0.0~42.g2f250d5"
+
+
+def test_an_uncommitted_change_is_named(build):
+    """A package that claims a commit it was not built from is worse than one
+    that says nobody can look it up."""
+    assert build.version_from("1.0.0", "v1.0.0-0-g2f250d5.modified") \
+        == "1.0.0+0.g2f250d5.modified"
+    assert build.version_from("1.0.0", "v1.0.0-7-g2f250d5.modified") \
+        == "1.0.0+7.g2f250d5.modified"
+
+
+@pytest.mark.parametrize("description", ["", "not what git says", "v1.0.0"])
+def test_a_tree_git_cannot_describe_is_the_bare_release(build, description):
+    """A checkout with no git, no tags, or an answer this does not know is a
+    build nobody can trace, and saying so by carrying no commit is honest."""
+    assert build.version_from("1.0.0", description) == "1.0.0"
+
+
+def test_the_versions_are_ordered_the_way_they_are_meant_to_be(build):
+    """The whole reason for the count and for which separator is used. Checked
+    with dpkg itself where it is here, because the ordering is its rule rather
+    than ours."""
+    dpkg = shutil.which("dpkg")
+    if dpkg is None:
+        pytest.skip("dpkg is not on this machine")
+
+    towards = build.version_from("1.0.0", "v0.1.3-42-g2f250d5")
+    release = build.version_from("1.0.0", "v1.0.0-0-g2f250d5")
+    after = build.version_from("1.0.0", "v1.0.0-7-g2f250d5")
+    later = build.version_from("1.0.0", "v1.0.0-12-g9ab3f01")
+
+    for older, newer in [(towards, release), (release, after), (after, later)]:
+        finished = subprocess.run(
+            [dpkg, "--compare-versions", older, "lt", newer], check=False)
+        assert finished.returncode == 0, "%s should sort below %s" % (older, newer)
+
+
+def test_the_package_carries_the_version_it_was_built_as(build, tmp_path):
+    """Otherwise the window that shows the version still cannot tell two builds
+    apart, which is the whole point of having one."""
+    build.lay_out(tmp_path / "tree")
+
+    kept = (tmp_path / "tree" / build.LIB / build.NAME / build.VERSION_FILE)
+
+    assert kept.read_text(encoding="utf-8").strip() == build.package_version()
+
+
+def test_the_service_reports_what_the_package_says(tmp_path, monkeypatch):
+    """The file is read beside the modules rather than passed in, because the
+    service is started by systemd and has nothing to pass it."""
+    monkeypatch.setattr(server, "__file__", str(tmp_path / "server.py"))
+    (tmp_path / "version.txt").write_text("1.0.0+42.g2f250d5\n", encoding="utf-8")
+
+    assert server._packaged_as() == "1.0.0+42.g2f250d5"
+
+
+def test_a_checkout_reports_the_release(tmp_path, monkeypatch):
+    """Which is what it is: a tree nobody packaged."""
+    monkeypatch.setattr(server, "__file__", str(tmp_path / "server.py"))
+
+    assert server._packaged_as() == ""

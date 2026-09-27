@@ -33,6 +33,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The whole history and every tag, because the package is numbered
+          # from what `git describe` says and the default checkout takes one
+          # commit and no tags at all.
+          fetch-depth: 0
 
       - name: Check the service before packaging it
         working-directory: admin

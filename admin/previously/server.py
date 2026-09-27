@@ -19,7 +19,29 @@ import urllib.parse
 from . import change, config, files, grab, kiosk, machines, pi, saved, terminal, websocket
 from .password import COOKIE, SESSION_SECONDS, SMALLEST, Attempts, Sessions, acceptable
 
-VERSION = "0.1.3"
+#: The release this tool belongs to. The one place it is written down, and
+#: what packaging/build.py reads to number a package.
+RELEASE = "1.0.0"
+
+
+def _packaged_as():
+    """@returns str - The version this copy was packaged as, or "".
+
+    `packaging/build.py` writes the whole version into `version.txt` beside
+    this file, because a package built between two releases is that release
+    plus the commit it came from, and a machine has to be able to say which
+    build it is running. A checkout has no such file and is the bare release,
+    which is what it is.
+    """
+    try:
+        return (pathlib.Path(__file__).resolve().parent / "version.txt") \
+            .read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+#: What this copy calls itself, which is what every answer reports.
+VERSION = _packaged_as() or RELEASE
 
 #: The most a POST may carry. Everything sent here is a short object naming
 #: one thing, so anything past this is not this interface talking.
