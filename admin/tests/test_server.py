@@ -589,7 +589,11 @@ def test_it_says_what_else_could_be_chosen(service):
     """The editor draws its cells from this and holds no rule of its own."""
     offers = settled(service, kind=1, turbo=1, memory=64)["offers"]
 
-    assert offers["kinds"] == [0, 1, 2]
+    assert offers["kinds"] == [
+        {"kind": 0, "model": "NeXT Computer"},
+        {"kind": 1, "model": "NeXTcube"},
+        {"kind": 2, "model": "NeXTstation"},
+    ]
     assert offers["turbo"] is True
     assert offers["colour"] is False
     assert offers["dimension"] is True

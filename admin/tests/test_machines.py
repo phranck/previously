@@ -453,9 +453,14 @@ def test_a_clock_is_offered_only_where_there_is_a_turbo_board():
 
 def test_every_machine_type_is_offered_always():
     """Choosing another one is how anything else changes, so it is the one
-    control that never goes away."""
+    control that never goes away. Each carries the name it is drawn with, which
+    the browser has no other way of knowing."""
     for machine in machines.CATALOGUE:
-        assert machines.offers(machine)["kinds"] == [0, 1, 2], machine.identifier
+        assert machines.offers(machine)["kinds"] == [
+            {"kind": 0, "model": "NeXT Computer"},
+            {"kind": 1, "model": "NeXTcube"},
+            {"kind": 2, "model": "NeXTstation"},
+        ], machine.identifier
 
 
 def test_what_is_offered_is_what_the_machine_in_hand_holds():
@@ -464,7 +469,8 @@ def test_what_is_offered_is_what_the_machine_in_hand_holds():
     with nothing chosen in it."""
     for machine in machines.CATALOGUE:
         offered = machines.offers(machine)
-        assert machine.kind in offered["kinds"], machine.identifier
+        kinds = [offer["kind"] for offer in offered["kinds"]]
+        assert machine.kind in kinds, machine.identifier
         assert sum(machine.banks) in offered["memory"], machine.identifier
         if machine.nitro:
             assert 40 in offered["clocks"], machine.identifier
