@@ -327,7 +327,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # is absent has to read as off rather than as a word.
             turbo=chosen("turbo") == "1",
             colour=chosen("colour") == "1",
-            dimension=chosen("dimension") == "1",
+            dimensions=chosen("dimensions"),
             mhz=chosen("mhz"),
             memory=chosen("memory"),
             banks=chosen("banks"),

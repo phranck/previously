@@ -40,6 +40,18 @@ REAL_SHAPE = textwrap.dedent("""\
     bEnabled0 = TRUE
     nMemoryBankSize00 = 16
     nMemoryBankSize01 = 16
+    nMemoryBankSize02 = 0
+    nMemoryBankSize03 = 0
+    bEnabled1 = FALSE
+    nMemoryBankSize10 = 0
+    nMemoryBankSize11 = 0
+    nMemoryBankSize12 = 0
+    nMemoryBankSize13 = 0
+    bEnabled2 = FALSE
+    nMemoryBankSize20 = 0
+    nMemoryBankSize21 = 0
+    nMemoryBankSize22 = 0
+    nMemoryBankSize23 = 0
 
     [MagnetoOptical]
     bDriveConnected0 = FALSE

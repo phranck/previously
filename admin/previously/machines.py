@@ -92,9 +92,37 @@ THIN_WIRE = "thin-wire"
 TWISTED_PAIR = "twisted-pair"
 ETHERNET_SOCKETS = (THIN_WIRE, TWISTED_PAIR)
 
-#: Which slot a NeXTdimension board answers from. Zero means no board.
-DIMENSION_SLOT = "2"
-NO_BOARD = "0"
+#: How many NeXTdimension boards a cube holds. Previous keeps three, and
+#: ND_SLOT(n) in its src/dimension/dimension.hpp puts board n in slot n*2+2, so
+#: they answer from slots 2, 4 and 6.
+DIMENSION_BOARDS = 3
+
+#: How much memory one of those boards can have, in megabytes. Its four banks
+#: take 4 or 16 MB or nothing, so these are what a board evenly filled comes to.
+#:
+#: Zero means no board rather than a board with nothing in it, because there is
+#: no such thing: Configuration_CheckDimensionMemory puts 4 MB in the first bank
+#: of every board that is switched on.
+DIMENSION_MEMORY = (4, 16, 32, 64)
+
+#: What each of those totals is made of, bank by bank.
+DIMENSION_BANKS = {
+    0: (0, 0, 0, 0),
+    4: (4, 0, 0, 0),
+    16: (16, 0, 0, 0),
+    32: (16, 16, 0, 0),
+    64: (16, 16, 16, 16),
+}
+
+#: Where the console is drawn. Zero is the machine's own screen, and any other
+#: value is the slot of the board that draws it. Previous masks this with 6, so
+#: only 0, 2, 4 and 6 mean anything.
+CONSOLE_ON_THE_MACHINE = 0
+
+#: A machine with no board in any slot, and one with a single 32 MB board in the
+#: first, which is what the emulator's own file holds for a NeXTdimension.
+NO_BOARDS = (0,) * DIMENSION_BOARDS
+ONE_BOARD = (32,) + (0,) * (DIMENSION_BOARDS - 1)
 
 #: The 1988 machine, the cube and the station, as Previous numbers them in
 #: nMachineType. Everything below is decided by which of the three it is.
@@ -126,9 +154,14 @@ STATION_PLAIN_BANKS = 2
 #: `floppy`, `optical` and `printer` say whether the machine has that drive or
 #: that port at all, rather than what is in it. A disk image is the
 #: installation's business and none of this tool's.
+#:
+#: `dimensions` is how much memory each of the three NeXTdimension boards has,
+#: in slot order, and zero is a slot with no board in it. One value rather than a
+#: board and a size apart, because a board Previous would give memory to is a
+#: board with memory.
 Machine = collections.namedtuple(
     "Machine",
-    "identifier name kind turbo mhz colour dimension banks"
+    "identifier name kind turbo mhz colour dimensions banks"
     " dsp dsp_memory memory_speed"
     " floppy optical ethernet socket printer",
     defaults=(DSP_PLAIN, DSP_MEMORY_EXPANDED, DEFAULT_MEMORY_SPEED,
@@ -148,40 +181,40 @@ Machine = collections.namedtuple(
 #: differ in their DSP at all.
 CATALOGUE = (
     Machine("next-computer", "NeXT Computer", NEXT_COMPUTER,
-            turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=False,
+            turbo=False, mhz=PLAIN_MHZ, colour=False, dimensions=NO_BOARDS,
             banks=(16, 16, 16, 16), dsp_memory=DSP_MEMORY_PLAIN,
             # The 1988 machine is the one NeXT sold with the optical drive and
             # no floppy at all.
             floppy=False, optical=True),
     Machine("nextcube", "NeXTcube", NEXTCUBE,
-            turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=False,
+            turbo=False, mhz=PLAIN_MHZ, colour=False, dimensions=NO_BOARDS,
             banks=(16, 16, 16, 16)),
     Machine("nextcube-dimension", "NeXTcube mit NeXTdimension", NEXTCUBE,
-            turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=True,
+            turbo=False, mhz=PLAIN_MHZ, colour=False, dimensions=ONE_BOARD,
             banks=(16, 16, 16, 16)),
     Machine("nextcube-turbo", "NeXTcube Turbo", NEXTCUBE,
-            turbo=True, mhz=TURBO_MHZ, colour=False, dimension=False,
+            turbo=True, mhz=TURBO_MHZ, colour=False, dimensions=NO_BOARDS,
             banks=(32, 32, 32, 32)),
     Machine("nextcube-turbo-dimension", "NeXTcube Turbo mit NeXTdimension", NEXTCUBE,
-            turbo=True, mhz=TURBO_MHZ, colour=False, dimension=True,
+            turbo=True, mhz=TURBO_MHZ, colour=False, dimensions=ONE_BOARD,
             banks=(32, 32, 32, 32)),
     Machine("nextcube-turbo-nitro", "NeXTcube Turbo Nitro", NEXTCUBE,
-            turbo=True, mhz=NITRO_MHZ, colour=False, dimension=False,
+            turbo=True, mhz=NITRO_MHZ, colour=False, dimensions=NO_BOARDS,
             banks=(32, 32, 32, 32)),
     Machine("nextstation", "NeXTstation", NEXTSTATION,
-            turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=False,
+            turbo=False, mhz=PLAIN_MHZ, colour=False, dimensions=NO_BOARDS,
             banks=(16, 16, 0, 0)),
     Machine("nextstation-color", "NeXTstation Color", NEXTSTATION,
-            turbo=False, mhz=PLAIN_MHZ, colour=True, dimension=False,
+            turbo=False, mhz=PLAIN_MHZ, colour=True, dimensions=NO_BOARDS,
             banks=(8, 8, 8, 8)),
     Machine("nextstation-turbo", "NeXTstation Turbo", NEXTSTATION,
-            turbo=True, mhz=TURBO_MHZ, colour=False, dimension=False,
+            turbo=True, mhz=TURBO_MHZ, colour=False, dimensions=NO_BOARDS,
             banks=(32, 32, 32, 32)),
     Machine("nextstation-turbo-color", "NeXTstation Turbo Color", NEXTSTATION,
-            turbo=True, mhz=TURBO_MHZ, colour=True, dimension=False,
+            turbo=True, mhz=TURBO_MHZ, colour=True, dimensions=NO_BOARDS,
             banks=(32, 32, 32, 32)),
     Machine("nextstation-turbo-color-nitro", "NeXTstation Turbo Color Nitro", NEXTSTATION,
-            turbo=True, mhz=NITRO_MHZ, colour=True, dimension=False,
+            turbo=True, mhz=NITRO_MHZ, colour=True, dimensions=NO_BOARDS,
             banks=(32, 32, 32, 32)),
 )
 
@@ -213,12 +246,7 @@ def settings_for(machine):
     """
     return {
         "System": _system_for(machine),
-        "Dimension": {
-            "bEnabled0": _flag(machine.dimension),
-            # The board answers from slot 2, and a machine without one says
-            # zero rather than leaving the key at whatever it was.
-            "nConsoleSlot": DIMENSION_SLOT if machine.dimension else NO_BOARD,
-        },
+        "Dimension": _dimension_for(machine),
         "Memory": {
             **{
                 "nMemoryBankSize%d" % index: str(size)
@@ -237,6 +265,27 @@ def settings_for(machine):
         },
         "Printer": {"bPrinterConnected": _flag(machine.printer)},
     }
+
+
+def _dimension_for(machine):
+    """The Dimension section, which is three boards rather than one.
+
+    @param machine - A Machine.
+    @returns dict of key to value, all strings.
+
+    Every slot is written, so a board taken out says so rather than being left
+    at whatever the last machine had. `bI860Thread` is not written at all:
+    Configuration_CheckDimensionSettings sets it from how many processors the
+    host has, so it belongs to the machine the emulator runs on rather than to
+    the one it emulates.
+    """
+    written = {}
+    for board, memory in enumerate(machine.dimensions):
+        written["bEnabled%d" % board] = _flag(bool(memory))
+        for bank, size in enumerate(DIMENSION_BANKS[memory]):
+            written["nMemoryBankSize%d%d" % (board, bank)] = str(size)
+    written["nConsoleSlot"] = str(console_slot(machine.dimensions))
+    return written
 
 
 def _drives(fitted, most):
@@ -468,7 +517,79 @@ def takes_twisted_pair(kind):
     return kind != NEXT_COMPUTER
 
 
-def drafted(kind, turbo=False, colour=False, dimension=False,
+def dimension_slot(board):
+    """Which slot a NeXTdimension board answers from.
+
+    @param board - Which of the three, from 0.
+    @returns int, so 2, 4 or 6. From ND_SLOT in Previous's
+      src/dimension/dimension.hpp.
+    """
+    return board * 2 + 2
+
+
+def takes_a_dimension(kind):
+    """Whether this machine can hold a NeXTdimension at all.
+
+    @param kind - NEXT_COMPUTER, NEXTCUBE or NEXTSTATION.
+    @returns bool
+
+    The board speaks on the NeXTbus and a NeXTstation has none, so
+    Configuration_CheckDimensionSettings switches every board off for that
+    machine type at every start.
+    """
+    return kind != NEXTSTATION
+
+
+def console_slot(dimensions):
+    """Which slot draws the console.
+
+    @param dimensions - How much memory each board has, in slot order.
+    @returns int, the slot of the first board there is, or
+      CONSOLE_ON_THE_MACHINE where there is none.
+
+    The first rather than a choice of its own. Previous keeps that choice, and a
+    machine with two graphics boards where the second draws the console is a
+    thing to put in front of somebody only once the first is worth having.
+    """
+    for board, memory in enumerate(dimensions):
+        if memory:
+            return dimension_slot(board)
+    return CONSOLE_ON_THE_MACHINE
+
+
+def _dimensions_settled(dimensions, kind):
+    """The three boards a machine of this type would actually have.
+
+    @param dimensions - How much memory each was asked to have, in slot order.
+      A shorter list is read as empty slots after it, and a longer one is cut,
+      which is what a hand-written file can hold.
+    @param kind - The machine type.
+    @returns tuple of DIMENSION_BOARDS ints.
+
+    A size the board does not take becomes the largest it does that is no
+    bigger, which is how Configuration_CheckDimensionMemory rounds a bank, and
+    anything below the smallest is no board at all.
+    """
+    if not takes_a_dimension(kind):
+        return NO_BOARDS
+
+    wanted = tuple(dimensions) + NO_BOARDS
+    return tuple(_dimension_memory(wanted[board])
+                 for board in range(DIMENSION_BOARDS))
+
+
+def _dimension_memory(memory):
+    """One board's memory, held to a size it can have.
+
+    @param memory - What was asked for, in megabytes.
+    @returns int, and zero for no board at all.
+    """
+    wanted = whole(memory, 0)
+    fits = [size for size in DIMENSION_MEMORY if size <= wanted]
+    return fits[-1] if fits else 0
+
+
+def drafted(kind, turbo=False, colour=False, dimensions=NO_BOARDS,
             mhz=None, memory=None, banks=None, dsp=None, dsp_memory=None,
             memory_speed=None, floppy=False, optical=False, ethernet=False,
             socket=None, printer=False, identifier="", name=""):
@@ -477,7 +598,9 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
     @param kind - The machine type, as a number or a string of one.
     @param turbo - Whether a turbo board is asked for.
     @param colour - Whether the colour board is.
-    @param dimension - Whether a NeXTdimension is.
+    @param dimensions - How much memory each NeXTdimension board has, in
+      slot order, as a sequence or as a string of comma separated numbers.
+      A slot with no board in it is zero.
     @param mhz - The clock asked for, in megahertz.
     @param memory - How much memory, as a total in megabytes.
     @param banks - The four banks, where they were chosen one at a time, as a
@@ -509,7 +632,7 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
     it finds it, so a clock of 40 is what the catalogue calls a Nitro and that is
     the direction the translation runs in.
     """
-    wanted = _banks_asked_for(banks)
+    wanted = _sizes_asked_for(banks)
     machine = settled(Machine(
         identifier=identifier,
         name=name,
@@ -519,7 +642,7 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
         # one the machine can be offered, so settled() replaces it.
         mhz=whole(mhz, 0),
         colour=bool(colour),
-        dimension=bool(dimension),
+        dimensions=_sizes_asked_for(dimensions) or NO_BOARDS,
         banks=wanted or (0, 0, 0, 0),
         # And a DSP nobody named is not one of the three, for the same reason.
         dsp=dsp if dsp in DSPS else "",
@@ -540,21 +663,23 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
         banks=banks_for(memory, machine.kind, machine.turbo, machine.colour))
 
 
-def _banks_asked_for(banks):
-    """The four banks an editor named one at a time.
+def _sizes_asked_for(sizes):
+    """A run of sizes an editor named one at a time.
 
-    @param banks - A sequence of sizes, or a string of comma separated numbers,
-      which is how one arrives on a query string. Nothing at all where the
-      editor chose a total instead.
-    @returns tuple of int, or None where no bank was named. Anything that is not
-      a number is an empty bank, which `settled` then holds to a size the
-      machine takes.
+    @param sizes - A sequence of numbers, or a string of comma separated ones,
+      which is how they arrive on a query string. Nothing at all where the
+      editor said nothing about them.
+    @returns tuple of int, or None where nothing was named. Anything that is not
+      a number is zero, which `settled` then holds to a size the machine takes.
+
+    The four memory banks and the three NeXTdimension boards both arrive this
+    way, because both are a row of sizes in one field.
     """
-    if banks is None or banks == "":
+    if sizes is None or sizes == "":
         return None
-    if isinstance(banks, str):
-        banks = banks.split(",")
-    return tuple(whole(size, 0) for size in banks)
+    if isinstance(sizes, str):
+        sizes = sizes.split(",")
+    return tuple(whole(size, 0) for size in sizes)
 
 
 def offers(machine):
@@ -582,7 +707,12 @@ def offers(machine):
                   for kind in (NEXT_COMPUTER, NEXTCUBE, NEXTSTATION)],
         "turbo": machine.kind != NEXT_COMPUTER,
         "colour": machine.kind == NEXTSTATION,
-        "dimension": machine.kind != NEXTSTATION,
+        # Which slots can hold a NeXTdimension, and how much memory one of them
+        # takes. Three slots on a cube and none on a station.
+        "dimension_slots": ([dimension_slot(board)
+                             for board in range(DIMENSION_BOARDS)]
+                            if takes_a_dimension(machine.kind) else []),
+        "dimension_memory": list(DIMENSION_MEMORY),
         "clocks": list(clocks_for(machine.turbo)),
         "memory": list(memory_totals(
             machine.kind, machine.turbo, machine.colour)),
@@ -651,10 +781,11 @@ def settled(machine):
         # what that machine actually has.
         mhz=machine.mhz if machine.mhz in clocks_for(turbo) else default_clock(turbo),
         colour=colour,
-        # The board speaks on the NeXTbus and a NeXTstation has none, so
-        # Configuration_CheckDimensionSettings switches every board off for that
-        # machine type. Both cubes have the bus and therefore the slot.
-        dimension=machine.dimension and machine.kind != NEXTSTATION,
+        # Every board goes on a machine with no NeXTbus, and a size the board
+        # does not take becomes the nearest it does, which is what
+        # Configuration_CheckDimensionSettings and Configuration_CheckDimensionMemory
+        # do at every start.
+        dimensions=_dimensions_settled(machine.dimensions, machine.kind),
         banks=tuple(_bank(wanted[bank], sizes[bank]) for bank in range(BANKS)),
         dsp=machine.dsp if machine.dsp in DSPS else DSP_PLAIN,
         dsp_memory=(machine.dsp_memory if machine.dsp_memory in DSP_MEMORIES
