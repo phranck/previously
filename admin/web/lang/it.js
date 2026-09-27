@@ -50,6 +50,8 @@ NX_STRINGS.it = {
   "editor.dsp.with-rom": "56001 con ROM",
   "editor.dsp-memory": "Memoria del DSP",
   "editor.kilobytes": "{kb} kB",
+  "editor.memory-speed": "Velocità della memoria",
+  "editor.nanoseconds": "{ns} ns",
   "editor.into-a-new-one": "Una delle macchine che questo progetto porta con sé, e che non si può cambiare. Salvare ne fa una configurazione tua, con un nome che le dai tu.",
   "editor.over-this-one": "{name} è una configurazione tua, quindi salvare la sovrascrive.",
   "ask.name.title": "Salva la configurazione",

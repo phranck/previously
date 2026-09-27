@@ -153,13 +153,15 @@ The eleven in `machines.py` are System configurations and cannot be changed. Wha
 
 Which sizes a memory bank takes comes from the same place: 0, 2, 8 and 32 with a turbo board, 0, 2 and 8 with colour, and 0, 1, 4 and 16 otherwise, rounded up to the next of those. A NeXTstation without a turbo board and without colour reaches two banks rather than four, because on that board the other two are not physically there.
 
+How fast that memory is comes from there too, and it is the one setting the file holds as a position rather than as a value. The same position is 100 ns on a plain machine and 70 on a turbo board, which is what Previous relabels and what the editor shows, so choosing one and then seating a board leaves the choice where it was and reads it differently.
+
 **Renaming and removing belong to User alone.** The context menu offers them for a saved configuration and does not carry them at all for one of the eleven. Removing one takes it out of the list and leaves `previous.cfg` alone, so a machine running that configuration goes on running it.
 
 ## The Config Editor
 
 Previous's own System dialogue, in this interface's idiom. That dialogue puts what can be chosen on its left and what follows from it on its right, and this window stacks the two: the machine's picture and four readings above the groups that change them.
 
-**Every control is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock, how much memory, and the DSP with its own memory. Everything else in the seventeen keys follows from those, so offering it would be offering a machine that does not exist.
+**Every control is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock, how much memory and how fast it is, and the DSP with its own memory. Everything else in the eighteen keys follows from those, so offering it would be offering a machine that does not exist.
 
 **The window holds no rule at all.** On every change it asks `GET /api/machine/settled` what that configuration is and what may be chosen beside it, and draws the answer. So there is one statement of what Previous allows, in `machines.py`, and the interface cannot show a machine the emulator would correct underneath it: a cube in colour comes back as a cube, and a total of 128 MB asked of a plain station comes back as the 32 it holds. What it saves is the configuration the service handed back rather than one assembled in the browser.
 

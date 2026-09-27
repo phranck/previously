@@ -50,6 +50,8 @@ NX_STRINGS.sv = {
   "editor.dsp.with-rom": "56001 med ROM",
   "editor.dsp-memory": "DSP-minne",
   "editor.kilobytes": "{kb} kB",
+  "editor.memory-speed": "Minneshastighet",
+  "editor.nanoseconds": "{ns} ns",
   "editor.into-a-new-one": "En av maskinerna som det här projektet levererar, och den går inte att ändra. Att spara gör den till en egen konfiguration, under ett namn du ger den.",
   "editor.over-this-one": "{name} är en egen konfiguration, så att spara skriver över den.",
   "ask.name.title": "Spara konfigurationen",

@@ -50,6 +50,8 @@ NX_STRINGS.fr = {
   "editor.dsp.with-rom": "56001 avec ROM",
   "editor.dsp-memory": "Mémoire du DSP",
   "editor.kilobytes": "{kb} ko",
+  "editor.memory-speed": "Vitesse de la mémoire",
+  "editor.nanoseconds": "{ns} ns",
   "editor.into-a-new-one": "Une des machines que ce projet fournit, et qui ne peut pas être changée. Enregistrer en fait une configuration à vous, sous un nom que vous lui donnez.",
   "editor.over-this-one": "{name} est une configuration à vous, enregistrer l'écrase donc.",
   "ask.name.title": "Enregistrer la configuration",
