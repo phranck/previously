@@ -149,7 +149,7 @@ fi
 """
 
 #: Run after the files have gone. Purge is where "leaves nothing behind"
-#: belongs: the state this service wrote itself, which is its token and the
+#: belongs: the state this service wrote itself, which is its password and the
 #: digest of its last write, and its own configuration. Remove keeps both, which
 #: is the whole difference between the two and why somebody would choose one.
 #:

@@ -29,7 +29,7 @@ DEFAULTS = {
     "previous_config": "~/.config/previous/previous.cfg",
     # Where the configurations somebody saved are kept. In the home rather than
     # under /var/lib, because they are theirs: what this service keeps under
-    # /var/lib is its own, which is the token and the note about its last write,
+    # /var/lib is its own, which is the password and the note about its last write,
     # and a purge of the package takes that with it. It must not take away the
     # machines somebody built. Beside the emulator's own configuration, which is
     # what they are about.
@@ -42,11 +42,13 @@ DEFAULTS = {
     "kiosk_unit": "getty@tty1.service",
     "state_directory": STATE_DIRECTORY,
     "runtime_directory": RUNTIME_DIRECTORY,
-    # The secret a request carries before it may change anything. State the
-    # service maintains itself, so /var/lib rather than /etc, which holds what
-    # an administrator writes. It has to survive a reboot, so it is not in the
-    # runtime directory beside the hold file.
-    "token_file": STATE_DIRECTORY + "/token",
+    # A hash of the password somebody chose in the interface, which is what a
+    # request proves before it may change anything. State the service maintains
+    # itself, so /var/lib rather than /etc, which holds what an administrator
+    # writes. It has to survive a reboot, so it is not in the runtime directory
+    # beside the hold file. Removing it leaves the machine unclaimed, and the
+    # next browser to arrive sets a new password.
+    "password_file": STATE_DIRECTORY + "/password",
 }
 
 
@@ -76,7 +78,7 @@ class Settings:
         self.kiosk_unit = values["kiosk_unit"]
         self.state_directory = _path(values["state_directory"])
         self.runtime_directory = _path(values["runtime_directory"])
-        self.token_file = _path(values["token_file"])
+        self.password_file = _path(values["password_file"])
 
     @classmethod
     def load(cls, path=CONFIG_FILE):

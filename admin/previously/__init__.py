@@ -14,7 +14,8 @@ One module per job:
     terminal.py   the shell session behind the Terminal window
     websocket.py  the protocol that session travels over
     pi.py         what the board underneath is doing
-    token.py      the one secret, and what a request may do without it
+    password.py   the one secret, who is signed in, and what a request may do
+                  without it
     server.py     which addresses exist and what answers them
     answers.py    how the service names what happened, so the browser can say it
 """

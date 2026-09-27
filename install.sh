@@ -759,8 +759,7 @@ main() {
     # ran it. The name rather than the address, because a Pi answers to
     # <hostname>.local on the network it is on and its address may not last.
     info "The admin tool is at http://$(hostname).local:8810"
-    skip "Its token, which the browser asks for once:"
-    skip "  sudo cat /var/lib/previously/token"
+    skip "Open it and choose a password. Nothing to read here, and nothing to copy."
     skip ""
   fi
   skip "Log in at the Pi's own keyboard to check it before rebooting."

@@ -34,9 +34,9 @@ PONG = 0xA
 #: and the service refuses to hold it in memory.
 LARGEST_MESSAGE = 1 << 20
 
-#: What the browser and this service agree to speak, and where the token
-#: rides. A browser cannot put a header on a WebSocket, and the token may not
-#: be in a URL, so it travels as the second protocol offered.
+#: What the browser and this service agree to speak. Nothing of ours rides
+#: with it: what is on the other end of this socket is the machine's own SSH
+#: server, which asks whoever is connecting who they are.
 PROTOCOL = "previously"
 
 

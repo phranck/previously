@@ -16,7 +16,7 @@ import pytest
 
 from conftest import settings_for
 from previously import server, terminal, websocket
-from previously.token import Token
+from previously.password import Attempts, Password, Sessions
 
 #: What a browser puts in Sec-WebSocket-Key, which is sixteen random bytes.
 KEY = base64.b64encode(b"0123456789abcdef").decode("ascii")
@@ -24,13 +24,20 @@ KEY = base64.b64encode(b"0123456789abcdef").decode("ascii")
 
 @pytest.fixture
 def service(tmp_path, readable_config):
-    """A running service, and the token it will accept."""
+    """A running service, and a session it would accept anywhere else.
+
+    Carried into the tests so they can offer it here and watch it make no
+    difference: this route is the one place in the service where what decides
+    is sshd rather than anything of ours.
+    """
     server.Handler.settings = settings_for(tmp_path)
-    server.Handler.token = Token.load(tmp_path / "token")
+    server.Handler.password = Password(tmp_path / "password")
+    server.Handler.sessions = Sessions()
+    server.Handler.attempts = Attempts()
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
-    yield httpd.server_address, server.Handler.token.value
+    yield httpd.server_address, server.Handler.sessions.open()
     httpd.shutdown()
     httpd.server_close()
 
@@ -75,9 +82,9 @@ def rest_of_the_headers(connection):
 
 
 def test_a_request_that_is_not_an_upgrade_is_not_a_terminal(service):
-    address, token = service
+    address, session = service
 
-    status, connection = ask(address, [websocket.PROTOCOL, token], upgrade=False)
+    status, connection = ask(address, [websocket.PROTOCOL, session], upgrade=False)
     connection.close()
 
     assert "400" in status
@@ -85,25 +92,25 @@ def test_a_request_that_is_not_an_upgrade_is_not_a_terminal(service):
 
 def test_a_request_offering_another_protocol_is_refused(service):
     """The first protocol says what this is; anything else is not a browser
-    of ours and does not get as far as the token."""
-    address, token = service
+    of ours and does not get as far as the session."""
+    address, session = service
 
-    status, connection = ask(address, ["chat", token])
+    status, connection = ask(address, ["chat", session])
     connection.close()
 
     assert "400" in status
 
 
 def test_a_request_without_a_key_is_refused(service):
-    address, token = service
+    address, session = service
 
-    status, connection = ask(address, [websocket.PROTOCOL, token], key=None)
+    status, connection = ask(address, [websocket.PROTOCOL, session], key=None)
     connection.close()
 
     assert "400" in status
 
 
-def test_the_handshake_needs_no_token(service):
+def test_the_handshake_needs_no_password(service):
     """What is behind this socket is the machine's own SSH server, so whoever
     connects proves who they are to that rather than to this service."""
     address, _ = service
@@ -121,7 +128,7 @@ def test_the_handshake_needs_no_token(service):
 
 def test_a_browser_that_says_nothing_is_given_up_on(service, monkeypatch):
     """Otherwise connecting and saying nothing holds the one session there is,
-    which needs no token and no shell to do."""
+    which needs no password and no shell to do."""
     monkeypatch.setattr(terminal, "FIRST_WORD_SECONDS", 1)
     address, _ = service
 

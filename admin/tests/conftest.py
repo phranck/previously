@@ -27,7 +27,7 @@ def settings_for(tmp_path, **overrides):
         "previous_config": str(tmp_path / "previous.cfg"),
         "documents": str(tmp_path / "Previously"),
         "kiosk_unit": "does-not-exist.service",
-        "token_file": str(tmp_path / "token"),
+        "password_file": str(tmp_path / "password"),
         "runtime_directory": str(tmp_path),
         # Both into the test's own directory, because what the service keeps in
         # them is real on the machine running the suite: the note about its last

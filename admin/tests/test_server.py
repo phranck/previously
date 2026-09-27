@@ -16,14 +16,25 @@ import pytest
 
 from conftest import settings_for
 from previously import machines, saved, server
-from previously.token import HEADER, Token
+from previously.password import COOKIE, Attempts, Password, Sessions
+
+#: What the machine in these tests has been given. Long enough to be a password
+#: the service accepts, and nothing else about it matters.
+PASSWORD = "a good password"
 
 
 @pytest.fixture
 def service(tmp_path, readable_config):
-    """A running service on a port the system picks, torn down afterwards."""
+    """A running service on a port the system picks, torn down afterwards.
+
+    Claimed already, because that is the state nearly every route is about. The
+    few tests that are about claiming one make their own.
+    """
     server.Handler.settings = settings_for(tmp_path)
-    server.Handler.token = Token.load(tmp_path / "token")
+    server.Handler.password = Password(tmp_path / "password")
+    server.Handler.password.set(PASSWORD)
+    server.Handler.sessions = Sessions()
+    server.Handler.attempts = Attempts()
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -131,62 +142,292 @@ def test_an_empty_path_means_the_index(tmp_path):
 # -- what a request may do -----------------------------------------------
 
 
-def post(url, token=None):
-    """Sends a POST, with the token where one is given."""
+def sign(request):
+    """Gives a request the cookie a signed in browser carries.
+
+    A session opened directly rather than through the route that hands one out,
+    because what these tests are about is what a signed in browser may do. The
+    route itself is tested below.
+    """
+    request.add_header("Cookie", "%s=%s" % (COOKIE, server.Handler.sessions.open()))
+    return request
+
+
+def post(url, session=None, origin=None):
+    """Sends a POST, with the session where one is given.
+
+    @param url - Where to send it.
+    @param session - What to put in the cookie, or None to send none.
+    @param origin - What to claim as the origin, for the check that a POST
+      came from this service's own page.
+    """
     request = urllib.request.Request(url, data=b"{}", method="POST")
-    if token is not None:
-        request.add_header(HEADER, token)
+    if session is not None:
+        request.add_header("Cookie", "%s=%s" % (COOKIE, session))
+    if origin is not None:
+        request.add_header("Origin", origin)
     with urllib.request.urlopen(request, timeout=5) as answer:
         return answer.status, answer.read()
 
 
-def test_reading_needs_no_token(service):
+def sign_in(service, password=PASSWORD, origin=None):
+    """Gives the password the way the panel does.
+
+    @returns tuple of (the status, the session the answer set, or None).
+    """
+    request = urllib.request.Request(
+        service + "/api/session",
+        data=json.dumps({"password": password}).encode("utf-8"), method="POST")
+    request.add_header("Content-Type", "application/json")
+    if origin is not None:
+        request.add_header("Origin", origin)
+    with urllib.request.urlopen(request, timeout=5) as answer:
+        return answer.status, session_in(answer.headers)
+
+
+def session_in(headers):
+    """@returns The session the answer handed out, or None where it set none."""
+    cookie = headers.get("Set-Cookie")
+    if not cookie or cookie.startswith("%s=;" % COOKIE):
+        return None
+    return cookie.split(";")[0].split("=", 1)[1] or None
+
+
+def test_reading_needs_no_password(service):
     """Knowing which machine is configured costs nothing, so it is open."""
     for route in ["/api/health", "/api/status"]:
         status, _, _ = fetch(service + route)
         assert status == 200
 
 
-def test_changing_anything_without_the_token_is_refused(service):
+def test_changing_anything_without_a_session_is_refused(service):
     with pytest.raises(urllib.error.HTTPError) as raised:
         post(service + "/api/anything")
     assert raised.value.code == 403
 
 
-def test_a_wrong_token_is_refused(service):
+def test_a_session_that_was_never_opened_is_refused(service):
     with pytest.raises(urllib.error.HTTPError) as raised:
-        post(service + "/api/anything", token="not the token")
+        post(service + "/api/anything", session="not a session")
     assert raised.value.code == 403
 
 
-def test_the_right_token_gets_past_the_check(service):
+def test_a_session_that_was_opened_gets_past_the_check(service):
     """Past the check and into a route that does not exist yet, which is a 404
     rather than a 403. The difference is the whole point of the test."""
     with pytest.raises(urllib.error.HTTPError) as raised:
-        post(service + "/api/anything", token=server.Handler.token.value)
+        post(service + "/api/anything", session=server.Handler.sessions.open())
     assert raised.value.code == 404
 
 
-def test_a_service_without_a_token_refuses_every_change(service):
-    kept = server.Handler.token
-    server.Handler.token = None
+def test_a_service_that_holds_no_sessions_refuses_every_change(service):
+    kept = server.Handler.sessions
+    server.Handler.sessions = None
     try:
         with pytest.raises(urllib.error.HTTPError) as raised:
-            post(service + "/api/anything", token="anything at all")
+            post(service + "/api/anything", session="anything at all")
         assert raised.value.code == 403
     finally:
-        server.Handler.token = kept
+        server.Handler.sessions = kept
 
 
-def test_the_token_route_says_whether_one_is_right(service):
-    status, _, body = fetch(service + "/api/token")
-    assert status == 200
-    assert json.loads(body)["valid"] is False
+# -- the password, and the session it hands out --------------------------
 
-    request = urllib.request.Request(service + "/api/token")
-    request.add_header(HEADER, server.Handler.token.value)
+
+def test_the_session_route_says_what_this_machine_is(service):
+    """The panel asks this before it puts a question, because which question
+    to put is the whole difference between claiming and signing in."""
+    _, _, body = fetch(service + "/api/session")
+    said = json.loads(body)
+
+    assert said["claimed"] is True
+    assert said["signed_in"] is False
+    # The rule that decides what may be set travels with the answer, so the
+    # panel says the one that will actually be applied.
+    assert said["smallest"] > 0
+
+
+def test_the_session_route_says_when_a_browser_is_signed_in(service):
+    request = urllib.request.Request(service + "/api/session")
+    sign(request)
+
     with urllib.request.urlopen(request, timeout=5) as answer:
-        assert json.loads(answer.read())["valid"] is True
+        assert json.loads(answer.read())["signed_in"] is True
+
+
+def test_the_right_password_opens_a_session(service):
+    status, session = sign_in(service)
+
+    assert status == 200
+    assert session is not None
+    assert server.Handler.sessions.holds(session) is True
+
+
+def test_the_session_cookie_is_closed_to_scripts(service):
+    """The whole reason this is a cookie rather than a value in localStorage:
+    nothing on the page can read it, so nothing on the page can leak it."""
+    request = urllib.request.Request(
+        service + "/api/session",
+        data=json.dumps({"password": PASSWORD}).encode("utf-8"), method="POST")
+    request.add_header("Content-Type", "application/json")
+
+    with urllib.request.urlopen(request, timeout=5) as answer:
+        cookie = answer.headers["Set-Cookie"]
+
+    assert "HttpOnly" in cookie
+    assert "SameSite=Strict" in cookie
+    assert "Path=/" in cookie
+    # No Secure, because this service speaks plain HTTP by decision and a
+    # cookie marked Secure would never be sent at all.
+    assert "Secure" not in cookie
+
+
+def test_a_wrong_password_opens_nothing(service):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        sign_in(service, password="not the password")
+
+    assert refused.value.code == 403
+    assert session_in(refused.value.headers) is None
+
+
+def test_a_machine_with_no_password_refuses_the_same_way(tmp_path, service):
+    """Answered identically whether the password was wrong or there is none,
+    because the difference is worth nothing to whoever asked and tells anybody
+    else which machines are still unclaimed."""
+    server.Handler.password = Password(tmp_path / "nothing-here")
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        sign_in(service, password="anything at all")
+
+    assert refused.value.code == 403
+
+
+def test_a_source_that_keeps_guessing_is_stopped(service):
+    """A hash makes one guess expensive. This is what makes a list of them
+    pointless."""
+    server.Handler.attempts = Attempts(allowed=2, window=300)
+
+    for _ in range(2):
+        with pytest.raises(urllib.error.HTTPError):
+            sign_in(service, password="not the password")
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        sign_in(service, password="not the password")
+    assert refused.value.code == 429
+
+    # And the right password is refused too, or a machine that is being
+    # guessed at would still hand out a session to whoever guessed right.
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        sign_in(service)
+    assert refused.value.code == 429
+
+
+def test_the_right_password_forgets_what_came_before_it(service):
+    server.Handler.attempts = Attempts(allowed=3, window=300)
+    with pytest.raises(urllib.error.HTTPError):
+        sign_in(service, password="not the password")
+
+    status, _ = sign_in(service)
+
+    assert status == 200
+    assert server.Handler.attempts.too_many("127.0.0.1") is False
+
+
+def test_signing_out_ends_that_session(service):
+    _, session = sign_in(service)
+
+    status, _ = post(service + "/api/session/end", session=session)
+
+    assert status == 200
+    assert server.Handler.sessions.holds(session) is False
+
+
+def claim(service, password, session=None):
+    """Sets a password, the way the panel does."""
+    request = urllib.request.Request(
+        service + "/api/password",
+        data=json.dumps({"password": password}).encode("utf-8"), method="POST")
+    request.add_header("Content-Type", "application/json")
+    if session is not None:
+        request.add_header("Cookie", "%s=%s" % (COOKIE, session))
+    with urllib.request.urlopen(request, timeout=5) as answer:
+        return answer.status, session_in(answer.headers)
+
+
+def test_an_unclaimed_machine_takes_a_password_from_anybody(tmp_path, service):
+    """Which is the point of the whole change: a fresh installation is opened
+    without fetching anything from the Pi."""
+    server.Handler.password = Password(tmp_path / "fresh")
+
+    status, session = claim(service, "a brand new password")
+
+    assert status == 200
+    assert server.Handler.sessions.holds(session) is True
+    assert server.Handler.password.matches("a brand new password") is True
+
+
+def test_a_claimed_machine_takes_one_only_from_a_signed_in_browser(service):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        claim(service, "somebody else's idea")
+
+    assert refused.value.code == 403
+    assert server.Handler.password.matches(PASSWORD) is True
+
+
+def test_a_signed_in_browser_can_choose_a_new_password(service):
+    _, session = sign_in(service)
+
+    status, _ = claim(service, "the second password", session=session)
+
+    assert status == 200
+    assert server.Handler.password.matches("the second password") is True
+    assert server.Handler.password.matches(PASSWORD) is False
+
+
+def test_a_new_password_signs_every_other_browser_out(service):
+    """So a password somebody should not have can be taken back."""
+    _, mine = sign_in(service)
+    theirs = server.Handler.sessions.open()
+
+    _, fresh = claim(service, "the second password", session=mine)
+
+    assert server.Handler.sessions.holds(theirs) is False
+    assert server.Handler.sessions.holds(fresh) is True
+
+
+@pytest.mark.parametrize("value", ["", "short", None])
+def test_a_password_that_is_not_one_is_refused(tmp_path, service, value):
+    server.Handler.password = Password(tmp_path / "fresh")
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        claim(service, value)
+
+    assert refused.value.code == 400
+    assert server.Handler.password.claimed is False
+
+
+# -- where a request says it came from ------------------------------------
+
+
+def test_a_post_from_another_page_is_refused(service):
+    """A cookie rides along with every request to this host, including one
+    another site caused, so the session alone would let that site act here."""
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        post(service + "/api/kiosk/stop",
+             session=server.Handler.sessions.open(),
+             origin="http://somewhere.else")
+
+    assert refused.value.code == 403
+
+
+def test_a_post_from_this_page_is_not(service):
+    """The same request, saying where it really came from. It reaches a route
+    that does not exist, which is the check having let it through."""
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        post(service + "/api/anything",
+             session=server.Handler.sessions.open(), origin=service)
+
+    assert raised.value.code == 404
 
 
 # -- what gets into the journal ------------------------------------------
@@ -339,7 +580,7 @@ def test_the_applications_are_there_and_say_what_they_open(service):
         "editor", "grab", "preferences", "preview", "terminal"]
 
 
-def test_changing_the_machine_needs_the_token(service):
+def test_changing_the_machine_needs_a_session(service):
     request = urllib.request.Request(
         service + "/api/machine", data=b'{"machine": "nextcube"}', method="POST")
     with pytest.raises(urllib.error.HTTPError) as raised:
@@ -350,7 +591,7 @@ def test_changing_the_machine_needs_the_token(service):
 def test_a_request_that_is_not_readable_is_refused_before_anything_happens(service):
     request = urllib.request.Request(
         service + "/api/machine", data=b"this is not json", method="POST")
-    request.add_header(HEADER, server.Handler.token.value)
+    sign(request)
 
     with pytest.raises(urllib.error.HTTPError) as raised:
         urllib.request.urlopen(request, timeout=5)
@@ -360,7 +601,7 @@ def test_a_request_that_is_not_readable_is_refused_before_anything_happens(servi
 def test_a_machine_that_does_not_exist_is_refused(service):
     request = urllib.request.Request(
         service + "/api/machine", data=b'{"machine": "amiga-2000"}', method="POST")
-    request.add_header(HEADER, server.Handler.token.value)
+    sign(request)
 
     with pytest.raises(urllib.error.HTTPError) as raised:
         urllib.request.urlopen(request, timeout=5)
@@ -376,13 +617,13 @@ def a_station():
     return {"kind": 2, "turbo": True, "colour": True, "banks": [32, 32, 32, 32]}
 
 
-def tell(service, route, body, with_token=True):
+def tell(service, route, body, signed_in=True):
     """Sends one of the three requests about saved configurations."""
     request = urllib.request.Request(
         service + route, data=json.dumps(body).encode("utf-8"), method="POST")
     request.add_header("Content-Type", "application/json")
-    if with_token:
-        request.add_header(HEADER, server.Handler.token.value)
+    if signed_in:
+        sign(request)
     return urllib.request.urlopen(request, timeout=5)
 
 
@@ -391,11 +632,11 @@ def where_they_are_kept():
     return server.Handler.settings.machines_file
 
 
-def test_saving_a_configuration_needs_the_token(service):
+def test_saving_a_configuration_needs_a_session(service):
     with pytest.raises(urllib.error.HTTPError) as refused:
         tell(service, "/api/machine/save",
              {"name": "Meine Kiste", "configuration": a_station()},
-             with_token=False)
+             signed_in=False)
 
     assert refused.value.code == 403
     assert not where_they_are_kept().exists(), "refused and saved it anyway"
@@ -496,7 +737,7 @@ def test_a_request_about_a_configuration_that_is_not_readable_is_refused(service
     for route in ["/api/machine/save", "/api/machine/rename", "/api/machine/remove"]:
         request = urllib.request.Request(
             service + route, data=b"this is not json", method="POST")
-        request.add_header(HEADER, server.Handler.token.value)
+        sign(request)
 
         with pytest.raises(urllib.error.HTTPError) as refused:
             urllib.request.urlopen(request, timeout=5)
@@ -560,7 +801,7 @@ def settled(service, **draft):
     return json.loads(body)
 
 
-def test_asking_what_a_configuration_would_be_needs_no_token(service):
+def test_asking_what_a_configuration_would_be_needs_no_password(service):
     """It changes nothing. What it says is what Previous would make of a
     machine, which costs no more to know than which one is running."""
     answer = settled(service, kind=2, turbo=1, colour=1, mhz=40, memory=128)
@@ -679,7 +920,7 @@ def test_an_empty_question_is_answered_with_a_machine(service):
 # -- a picture of the emulated screen -------------------------------------
 
 
-def test_a_picture_of_the_screen_needs_the_token(service, monkeypatch):
+def test_a_picture_of_the_screen_needs_a_session(service, monkeypatch):
     """The one reading that does. Everything else this service tells is about
     the machine; a picture is about whoever is sitting at it."""
     monkeypatch.setattr(server.grab, "take",
@@ -694,7 +935,7 @@ def test_a_picture_of_the_screen_needs_the_token(service, monkeypatch):
 def test_the_picture_arrives_as_a_png(service, monkeypatch):
     monkeypatch.setattr(server.grab, "take", lambda: b"\x89PNG\r\n\x1a\npixels")
     request = urllib.request.Request(service + "/api/screen")
-    request.add_header(HEADER, server.Handler.token.value)
+    sign(request)
 
     with urllib.request.urlopen(request, timeout=5) as answer:
         body = answer.read()
@@ -710,7 +951,7 @@ def test_a_screen_that_cannot_be_read_says_so(service, monkeypatch):
     broken one and nobody can tell from a black screen."""
     monkeypatch.setattr(server.grab, "take", lambda: None)
     request = urllib.request.Request(service + "/api/screen")
-    request.add_header(HEADER, server.Handler.token.value)
+    sign(request)
 
     with pytest.raises(urllib.error.HTTPError) as failed:
         urllib.request.urlopen(request, timeout=5)
@@ -723,7 +964,7 @@ def test_the_picture_is_kept_as_well_as_sent(service, tmp_path, monkeypatch):
     shows as Documents/Pictures, where the emulated machine reaches it too."""
     monkeypatch.setattr(server.grab, "take", lambda: b"\x89PNG\r\n\x1a\npixels")
     request = urllib.request.Request(service + "/api/screen")
-    request.add_header(HEADER, server.Handler.token.value)
+    sign(request)
 
     with urllib.request.urlopen(request, timeout=5) as answer:
         filed = answer.headers["X-Previously-Kept"]
@@ -736,7 +977,7 @@ def test_the_picture_is_kept_as_well_as_sent(service, tmp_path, monkeypatch):
 def test_a_kept_picture_is_in_the_tree(service, tmp_path, monkeypatch):
     monkeypatch.setattr(server.grab, "take", lambda: b"\x89PNG\r\n\x1a\npixels")
     request = urllib.request.Request(service + "/api/screen")
-    request.add_header(HEADER, server.Handler.token.value)
+    sign(request)
     with urllib.request.urlopen(request, timeout=5) as answer:
         filed = answer.headers["X-Previously-Kept"]
 
@@ -774,10 +1015,10 @@ def kept_picture(tmp_path, name="Screen 2026-09-16 08.00.00.png",
 
 
 def ask_for(service, name):
-    """Asks for one picture by name, with the token."""
+    """Asks for one picture by name, as a signed in browser."""
     request = urllib.request.Request(
         service + "/api/picture?name=" + urllib.parse.quote(name))
-    request.add_header(HEADER, server.Handler.token.value)
+    sign(request)
     return urllib.request.urlopen(request, timeout=5)
 
 
@@ -790,7 +1031,7 @@ def test_a_kept_picture_is_served(service, tmp_path):
         assert answer.read() == b"\x89PNG\r\n\x1a\nkept"
 
 
-def test_a_picture_needs_the_token(service, tmp_path):
+def test_a_picture_needs_a_session(service, tmp_path):
     """Same reason as the route that takes one: it shows whoever was sitting
     at that machine."""
     name = kept_picture(tmp_path)
@@ -803,7 +1044,7 @@ def test_a_picture_needs_the_token(service, tmp_path):
 
 @pytest.mark.parametrize("asked", [
     "../../../etc/passwd",
-    "..%2f..%2ftoken",
+    "..%2f..%2fpassword",
     "/etc/passwd",
     "",
     "nothing-of-that-name.png",
@@ -833,14 +1074,14 @@ def test_a_file_that_is_not_a_picture_is_not_served(service, tmp_path):
 # -- taking a picture away ------------------------------------------------
 
 
-def ask_to_delete(service, name, with_token=True):
+def ask_to_delete(service, name, signed_in=True):
     """Asks for one picture to go, the way the page does."""
     request = urllib.request.Request(
         service + "/api/picture/delete",
         data=json.dumps({"name": name}).encode("utf-8"), method="POST")
     request.add_header("Content-Type", "application/json")
-    if with_token:
-        request.add_header(HEADER, server.Handler.token.value)
+    if signed_in:
+        sign(request)
     return urllib.request.urlopen(request, timeout=5)
 
 
@@ -854,12 +1095,12 @@ def test_a_picture_can_be_deleted(service, tmp_path):
     assert list(where.iterdir()) == []
 
 
-def test_deleting_needs_the_token(service, tmp_path):
+def test_deleting_needs_a_session(service, tmp_path):
     name = kept_picture(tmp_path)
     where = tmp_path / "Previously" / "Documents" / "Pictures"
 
     with pytest.raises(urllib.error.HTTPError) as refused:
-        ask_to_delete(service, name, with_token=False)
+        ask_to_delete(service, name, signed_in=False)
 
     assert refused.value.code == 403
     assert (where / name).is_file(), "refused and deleted it anyway"

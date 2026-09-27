@@ -3,20 +3,13 @@
  * The kit in nextstep.js knows about windows and shelves and nothing about
  * emulators. Everything that knows what a NeXTcube is lives here.
  *
- * Reading needs no token. The three buttons that switch the emulated machine
- * on and off do, and the service refuses them without one.
+ * Reading needs no password. The three buttons that switch the emulated
+ * machine on and off do, and the service refuses them without one.
  */
 
 /** How often the status is fetched. A machine whose job is to sit there does
  *  not repay a faster poll than this. */
 const REFRESH_MS = 5000;
-
-/** Where the token is kept, so it is typed once rather than every visit. */
-const TOKEN_KEY = "previously:token";
-
-/** The header the service reads it from. Not a query parameter: a URL ends up
- *  in logs, in history and in whatever somebody pastes into a chat window. */
-const TOKEN_HEADER = "X-Previously-Token";
 
 /** What the service names a screenshot it filed, so the viewer can be redrawn
  *  without asking for the whole tree to find out whether it should be. */
@@ -81,8 +74,9 @@ function say(told) {
 }
 
 /** Where a shell session comes from. Not a POST like everything that changes
- *  the machine, because what comes back is a connection rather than an
- *  answer, but guarded by the same token. */
+ *  the machine, because what comes back is a connection rather than an answer,
+ *  and what guards it is this machine's own SSH server rather than anything
+ *  here. */
 const TERMINAL = "/api/terminal";
 
 /** What the buttons ask the service to do, by the route that does it. */
@@ -126,7 +120,7 @@ const OPERATION_TIMEOUT_MS = 150000;
  */
 async function ask(route) {
   try {
-    const answer = await fetch(route, { cache: "no-store", headers: headers() });
+    const answer = await fetch(route, { cache: "no-store" });
     return answer.ok ? await answer.json() : null;
   } catch {
     return null;
@@ -134,25 +128,27 @@ async function ask(route) {
 }
 
 /**
- * The headers every request carries.
- * @returns {object} The token where one is known, nothing otherwise.
+ * Sends something to the service and reads its answer.
+ * @param {string} route - The path.
+ * @param {object} [body] - What to send, where the route takes something.
+ * @returns {Promise<Response|null>} The answer, or null when the service
+ *   cannot be reached.
+ *
+ * The session rides along in a cookie the browser sets and this page never
+ * sees, so nothing here carries a secret and nothing here can leak one.
  */
-function headers() {
-  const token = localStorage.getItem(TOKEN_KEY);
-  return token ? { [TOKEN_HEADER]: token } : {};
-}
-
-/**
- * Keeps a token and reports whether the service accepts it.
- * @param {string} token - What the user read out of /var/lib/previously/token.
- * @returns {Promise<boolean>} A wrong one is thrown away rather than kept, so
- *   the next request fails for a reason somebody can act on.
- */
-async function useToken(token) {
-  localStorage.setItem(TOKEN_KEY, token.trim());
-  const answer = await ask("/api/token");
-  if (!answer?.valid) localStorage.removeItem(TOKEN_KEY);
-  return Boolean(answer?.valid);
+async function send(route, body) {
+  try {
+    return await fetch(route, {
+      method: "POST",
+      cache: "no-store",
+      headers: body ? { "Content-Type": "application/json" } : {},
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(OPERATION_TIMEOUT_MS),
+    });
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -187,29 +183,83 @@ function askPanelFor(question) {
 }
 
 /**
- * Asks for the token until one is accepted or the panel is dismissed.
- * @param {string} [why] - A first line saying what prompted the question.
- * @returns {Promise<boolean>} Whether the service now accepts what we hold.
+ * Puts whichever question about the password this machine is due.
+ * @param {string} [why] - A first line saying what prompted it.
+ * @returns {Promise<boolean>} Whether this browser may now change something.
+ *
+ * Three states and one entry point, because whoever reaches this wants to get
+ * past it rather than to know which of the three they are in. A machine nobody
+ * has claimed asks for a password to set, one that is claimed asks for the
+ * password it has, and a browser that is already signed in is offered a new
+ * one, which is how a password is changed without going near the Pi.
  */
-async function askForToken(why) {
+async function askForPassword(why) {
+  const state = await ask("/api/session");
+  if (state === null) return false;
+  if (!state.claimed) return chooseThePassword(why, "ask.password.unclaimed", state);
+  if (state.signed_in) return chooseThePassword(why, "ask.password.change", state);
+  return signIn(why);
+}
+
+/**
+ * Asks for the password this machine has, until it is given or the panel is
+ * dismissed.
+ * @param {string} [why] - A first line saying what prompted it.
+ * @returns {Promise<boolean>} Whether the service accepted it.
+ */
+async function signIn(why) {
   let complaint = why;
 
   for (;;) {
     const typed = await askPanelFor({
-      title: t("ask.token.title"),
-      text: [
-        complaint,
-        t("ask.token.where"),
-        /* A command is typed rather than read, so it stays as it is. */
-        "sudo cat /var/lib/previously/token",
-      ].filter(Boolean),
+      title: t("ask.password.title"),
+      text: [complaint, t("ask.password.sign-in")].filter(Boolean),
       icon: Art.Computer,
       confirm: t("button.use"),
+      secret: true,
     });
-
     if (typed === null) return false;
-    if (await useToken(typed)) return true;
-    complaint = t("ask.token.wrong");
+
+    const answer = await send("/api/session", { password: typed });
+    if (answer === null) return false;
+    if (answer.ok) return true;
+    /* A service that has been asked too often says so, because the next
+       attempt will fail however right it is. */
+    complaint = t(answer.status === 429 ? "ask.password.too-often" : "ask.password.wrong");
+  }
+}
+
+/**
+ * Asks for a password to set, until one is accepted or the panel is dismissed.
+ * @param {string} [why] - A first line saying what prompted it.
+ * @param {string} what - Which sentence explains the question, by its key.
+ * @param {object} state - What /api/session answered, which says how short a
+ *   password may be. Read from the service rather than stated here, so the
+ *   rule lives where it is enforced.
+ * @returns {Promise<boolean>} Whether one was set.
+ */
+async function chooseThePassword(why, what, state) {
+  let complaint = why;
+
+  for (;;) {
+    const typed = await askPanelFor({
+      title: t("ask.password.title"),
+      text: [complaint, t(what), t("ask.password.length", { least: state.smallest })]
+        .filter(Boolean),
+      icon: Art.Computer,
+      confirm: t("button.use"),
+      secret: true,
+    });
+    if (typed === null) return false;
+
+    const answer = await send("/api/password", { password: typed });
+    if (answer === null) return false;
+    if (answer.ok) return true;
+    /* Somebody else claimed this machine whilst the panel stood open, so what
+       is due now is the password they chose rather than one of ours. */
+    if (answer.status === 403) return signIn(t("ask.password.needed"));
+    complaint = t(answer.status === 400
+      ? "ask.password.too-short" : "ask.password.not-kept");
   }
 }
 
@@ -419,27 +469,19 @@ function drawStatus(status) {
  * @returns {Promise<object|null>} What it answered, or null on no contact.
  */
 async function tell(route, body) {
-  const send = async () => fetch(route, {
-    method: "POST",
-    cache: "no-store",
-    headers: body
-      ? { ...headers(), "Content-Type": "application/json" }
-      : headers(),
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(OPERATION_TIMEOUT_MS),
-  });
+  let answer = await send(route, body);
+  if (answer === null) return null;
+
+  /* Refused for want of the password. Ask for it and do what was asked, rather
+     than reporting a failure the reader would have to interpret. */
+  if (answer.status === 403) {
+    const accepted = await askForPassword(t("ask.password.needed"));
+    if (!accepted) return { ok: false, reason: "password.not-given" };
+    answer = await send(route, body);
+    if (answer === null) return null;
+  }
 
   try {
-    let answer = await send();
-
-    /* Refused for want of a token. Ask for one and do what was asked, rather
-       than reporting a failure the reader would have to interpret. */
-    if (answer.status === 403) {
-      const accepted = await askForToken(t("ask.token.needed"));
-      if (!accepted) return { ok: false, reason: "token.not-given" };
-      answer = await send();
-    }
-
     return await answer.json();
   } catch {
     return null;
@@ -542,10 +584,10 @@ function warn(what) {
   });
 }
 
-/** Wires the three buttons and the menu's own way to the token. */
+/** Wires the three buttons and the menu's own way to the password. */
 function wireButtons() {
-  document.querySelector('nx-menu-item[name="token"]')
-    ?.addEventListener("click", () => askForToken());
+  document.querySelector('nx-menu-item[name="password"]')
+    ?.addEventListener("click", () => askForPassword());
 
   document.getElementById("kiosk-start").addEventListener("click",
     () => operate(Kiosk.Start, t("busy.starting")));
@@ -2582,10 +2624,10 @@ function wireTerminal() {
 /**
  * Takes a picture of the emulated screen and puts it in the window.
  *
- * Fetched as a blob rather than pointed at, because the route takes the token
- * and an img src carries no headers. The last one is released when the next
- * arrives, so a window left open all day holds one picture rather than all of
- * them.
+ * Fetched as a blob rather than pointed at, so that a refusal can be answered
+ * by asking for the password rather than by drawing a broken picture. The last
+ * one is released when the next arrives, so a window left open all day holds
+ * one picture rather than all of them.
  */
 async function takeAPicture() {
   const view = document.getElementById("shot");
@@ -2594,8 +2636,8 @@ async function takeAPicture() {
 
   button.disabled = true;
   try {
-    const answer = await fetch("/api/screen", { cache: "no-store", headers: headers() });
-    if (answer.status === 403) return askForToken(t("ask.token.needed"));
+    const answer = await fetch("/api/screen", { cache: "no-store" });
+    if (answer.status === 403) return askForPassword(t("ask.password.needed"));
     if (!answer.ok) return showTheScreen(null);
     const filed = answer.headers.get(KEPT_HEADER);
     showTheScreen(await answer.blob(), filed);
@@ -2653,8 +2695,8 @@ const shownPictures = {};
  * @param {string} id - Which view is showing it.
  *
  * The picture is already here, so this is a link to what is in memory rather
- * than a second request: nothing is fetched, the service is not asked again,
- * and the token does not have to reach a place it cannot go.
+ * than a second request: nothing is fetched and the service is not asked
+ * again.
  */
 function saveThePicture(id) {
   const showing = shownPictures[id];
@@ -2746,9 +2788,9 @@ function watchTheFrontWindow() {
  * Shows one kept picture in Preview.
  * @param {object} entry - What the tree says about it.
  *
- * Fetched rather than pointed at, because the route takes the token and an
- * img src carries no headers. The window is titled with the picture's name,
- * the way a document window is.
+ * Fetched rather than pointed at, for the same reason Grab fetches its own: a
+ * refusal is answered by asking for the password. The window is titled with the
+ * picture's name, the way a document window is.
  */
 async function showInPreview(entry) {
   const window_ = document.querySelector('nx-window[name="preview"]');
@@ -2763,8 +2805,8 @@ async function showInPreview(entry) {
   try {
     const answer = await fetch(
       "/api/picture?name=" + encodeURIComponent(entry.name),
-      { cache: "no-store", headers: headers() });
-    if (answer.status === 403) return askForToken(t("ask.token.needed"));
+      { cache: "no-store" });
+    if (answer.status === 403) return askForPassword(t("ask.password.needed"));
     if (!answer.ok) return void (note.textContent = t("preview.empty"));
     drawPicture("preview-picture", await answer.blob(), entry.name);
   } catch {

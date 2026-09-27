@@ -50,7 +50,7 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/websocket.py` | The protocol that session travels over |
 | `previously/pi.py` | What the board underneath is doing |
 | `previously/server.py` | Which addresses exist and what answers them |
-| `previously/token.py` | The one secret, and what a request may do without it |
+| `previously/password.py` | The one secret, who is signed in, and what a request may do without it |
 | `previously/answers.py` | How the service names what happened, so the browser can say it |
 | `web/` | What the browser gets, including one catalogue of words per language |
 | `web/vendor/` | The one library this interface takes, with its licence |
@@ -64,11 +64,15 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 
 **Reading is open.** Anything on the same network can see which machine is configured, how much memory it has, which disk it boots and whether it is running. That is deliberate: knowing the Pi is set up as a NeXTcube costs nothing.
 
-**Changing anything needs a token.** Writing a configuration, stopping the emulator, opening a shell: all of it is refused without one. Sitting at the machine and pressing F12 needs physical access to it. Being on the network does not, and that difference is what the token answers.
+**Changing anything needs the password.** Writing a configuration, stopping the emulator, taking a picture of the screen: all of it is refused without it. Sitting at the machine and pressing F12 needs physical access to it. Being on the network does not, and that difference is what the password answers.
 
-The token is made on first start and lives in `/var/lib/previously/token`, readable by the service alone. Read it once with `sudo cat /var/lib/previously/token` and type it into the panel the interface raises the first time something is refused. The browser keeps it from then on, and the menu has its own way back to it. It is never in this repository, never in a URL and never in a log line.
+**The password is chosen in the interface, not fetched from the Pi.** A machine nobody has claimed asks the first browser that reaches it to choose one, and there is nothing to read over SSH and nothing to copy. What the service keeps is an scrypt hash in `/var/lib/previously/password`, readable by the service alone, and the password itself is never in this repository, never in a URL and never in a log line. A browser that has given it holds a session in a cookie that no script on the page can read, so nothing the page loads can take the secret with it.
 
-**It speaks plain HTTP, and there is no TLS.** The token crosses the home network in the open, so somebody already inside that network and reading traffic can take it. That is not the threat the token is for. It is there so that nothing reaches this by accident, and so that a device with no business writing a configuration cannot.
+Whoever is on the network whilst the machine is still unclaimed can claim it. That window lasts from installing the tool until somebody first opens it, the interface says plainly whilst it is open, and closing it would mean going back to a secret fetched from somewhere else.
+
+**Changing the password is the same panel.** A browser that is signed in chooses a new one, and every other browser has to give it again. Forgetting it is the one thing that still needs the Pi: `sudo rm /var/lib/previously/password` leaves the machine unclaimed, and the next browser sets a new one.
+
+**It speaks plain HTTP, and there is no TLS.** The password crosses the home network in the open, so somebody already inside that network and reading traffic can take it. That is not the threat it is for. It is there so that nothing reaches this by accident, and so that a device with no business writing a configuration cannot. It is also why this is the tool's own password rather than the Pi's login: what somebody reading the network gets is this tool, not a shell.
 
 Anybody putting this anywhere less trusted needs more in front of it than a certificate, and that layer terminates TLS itself. A security claim that is not true is worse than none, so this one is not made.
 
@@ -79,7 +83,10 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `GET /api/health` | Its version, and whether it can read `previous.cfg` |
 | `GET /api/status` | What the machine is set to, and whether the kiosk runs |
 | `GET /api/machine/settled` | What a configuration would be, and what else could be chosen with it |
-| `GET /api/token` | Whether the token this request carried is the right one |
+| `GET /api/session` | Whether this machine has a password, and whether this browser has given it |
+| `POST /api/session` | Takes the password and answers with a session |
+| `POST /api/session/end` | Ends this browser's session |
+| `POST /api/password` | Sets the password, on a machine nobody has claimed or from a browser that is signed in |
 | `POST /api/kiosk/start` | Lets the emulated machine come back |
 | `POST /api/kiosk/stop` | Shuts it down properly and keeps it down |
 | `POST /api/kiosk/restart` | Both, in that order |
@@ -93,13 +100,15 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
 | `GET /api/terminal` | Becomes a WebSocket carrying a login on this machine |
 
-Every POST is checked for the token before anything looks at what was sent. The one route that is not is the terminal, and the section below says why: what answers there is this machine's own SSH server, so whoever is connecting proves who they are to that.
+Every POST is checked for a session before anything looks at what was sent, and the three routes above about the secret itself are what a browser goes through to have one. A POST that says it comes from another page is refused whatever it carries, because a cookie rides along with every request to this host and a session alone would let another site act here.
+
+The one route with no check of ours at all is the terminal, and the section below says why: what answers there is this machine's own SSH server, so whoever is connecting proves who they are to that.
 
 ## The shell
 
 `GET /api/terminal` upgrades to a WebSocket, and what runs on the pseudo terminal behind it is `ssh` to this machine's own SSH server on the loopback. So what somebody sees is the login prompt sshd puts up, and what they get afterwards is an ordinary login shell: their own home, `sudo` if they have it, everything they would have sitting at the machine.
 
-**This is why there is no token on that route.** The door is the same one sshd already holds open on this network, and the service is only the corridor. It never learns a password, never changes user, and needs no privilege of its own to hand out a shell that can do everything the person logging in can do.
+**This is why there is no check of ours on that route.** The door is the same one sshd already holds open on this network, and the service is only the corridor. It never learns a login's password, never changes user, and needs no privilege of its own to hand out a shell that can do everything the person logging in can do.
 
 The other two ways are worse in both directions. Forking a shell here would hand one out without asking anybody who they are, and that shell would inherit this service's sandbox: no `sudo`, a read-only home, and a person left wondering why. `/bin/login` would ask, but it changes user, which `NoNewPrivileges=yes` refuses for this whole process tree, and on current Debian it no longer works when another program calls it. WeTTY solves it the same way when it is not running as root.
 
@@ -141,7 +150,7 @@ So: shut the guest down properly, copy the file beside itself as `previous.cfg.b
 
 The eleven in `machines.py` are System configurations and cannot be changed. Whatever else happens there is a known set to go back to, and going back is one double click. Anything somebody puts together is a User configuration, kept under a name they gave it, and those two sets are the two folders in the machines window.
 
-**They live in one file in the home**, `~/.config/previously/machines.json`, one directory along from the emulator's own configuration. In the home rather than under `/var/lib`, because they are the person's: what the service keeps under `/var/lib` is its own, being the token and the digest of its last write, and `apt purge` takes that with it. It must not take away the machines somebody built, any more than it takes `previous.cfg` or the disk image. One file rather than one per configuration, because a name is not a file name: a file each would need a second answer to what a configuration is called, and the two would part company the first time one was renamed. It is written beside itself and moved into place, so a write that fails halfway leaves the file as it was.
+**They live in one file in the home**, `~/.config/previously/machines.json`, one directory along from the emulator's own configuration. In the home rather than under `/var/lib`, because they are the person's: what the service keeps under `/var/lib` is its own, being the hash of the password and the digest of its last write, and `apt purge` takes that with it. It must not take away the machines somebody built, any more than it takes `previous.cfg` or the disk image. One file rather than one per configuration, because a name is not a file name: a file each would need a second answer to what a configuration is called, and the two would part company the first time one was renamed. It is written beside itself and moved into place, so a write that fails halfway leaves the file as it was.
 
 **The unit opens that one path and the package creates it.** `ProtectHome=read-only` leaves the rest of the home alone, and systemd skips a `ReadWritePaths=` entry whose path is absent, so the directory has to exist before the service starts or the first save refuses. `postinst` makes it, reading the user and the group out of the unit rather than naming them a second time. Opening `~/.config` instead, which exists already, would let a service reachable on the home network rewrite every other application's configuration in that home to save five lines, so it is not done. `tests/test_packaging.py` holds the three places that name this path against each other, because a machine where they disagree looks exactly like one where they agree until somebody saves something.
 
@@ -228,7 +237,7 @@ Stopping writes that file, presses F10 and waits for the guest to go. Starting r
 
 `/etc/previously/config.ini`, with defaults that work unconfigured, so the package installs into a running state rather than into a file to edit. `packaging/config.ini` is that file with every default written out, and a test holds it to that: a key missing from it is a setting nobody knows about.
 
-Two of those paths are worth telling apart. `state_directory` is `/var/lib/previously` and holds what the service owns, which is the token and the digest of its last write, and a purge removes it. `machines_file` is `~/.config/previously/machines.json` and holds what the person owns, and a purge leaves it exactly where it is.
+Two of those paths are worth telling apart. `state_directory` is `/var/lib/previously` and holds what the service owns, which is the hash of the password and the digest of its last write, and a purge removes it. `machines_file` is `~/.config/previously/machines.json` and holds what the person owns, and a purge leaves it exactly where it is.
 
 ## The interface
 
