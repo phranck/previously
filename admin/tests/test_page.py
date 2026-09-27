@@ -30,6 +30,12 @@ BY_NAME = re.compile(r'nx-(?:window|menu|menu-item|tile)\[name="([^"]+)"\]')
 #: words, because a machine type is named by the emulator.
 FROM_A_KIND = re.compile(r"\bkind\.(\w+)")
 
+#: Which subject each of the editor's groups belongs to, and the subjects the
+#: page offers to choose between. The window shows one subject at a time, so the
+#: two lists have to be the same one.
+A_GROUP_S_SUBJECT = re.compile(r'\bsubject="([^"]+)"')
+THE_SUBJECTS = re.compile(r'^  (\w+): "editor\.subject\.\w+",$', re.M)
+
 
 @pytest.fixture(scope="module")
 def page():
@@ -94,3 +100,27 @@ def test_the_editor_reads_what_a_machine_type_actually_carries(page):
 
     assert wanted
     assert sorted(wanted - have) == []
+
+
+def test_every_subject_the_editor_offers_has_groups_to_show(page, markup):
+    """The window shows one subject at a time, so one that no group belongs to
+    is a cell that empties the window, and a group belonging to a subject the row
+    does not offer is a group nobody can reach."""
+    offered = set(THE_SUBJECTS.findall(page))
+    in_markup = set(A_GROUP_S_SUBJECT.findall(markup))
+
+    assert offered
+    assert offered == in_markup
+
+
+def test_every_group_in_the_editor_belongs_to_a_subject(markup):
+    """One that belongs to none is shown whatever is chosen, so it turns up
+    under every subject."""
+    editor = markup[markup.index('<div class="editor-groups">'):]
+    editor = editor[:editor.index("</div>\n  <p class=\"note\"")]
+    groups = re.findall(
+        r'<(?:fieldset|div)[^>]*class="[^"]*\b(?:group|boards-memory)\b[^"]*"[^>]*>',
+        editor)
+
+    assert len(groups) > 8
+    assert [group for group in groups if "subject=" not in group] == []
