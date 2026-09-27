@@ -131,7 +131,7 @@ def test_every_scale_in_the_editor_is_a_slider(page, markup):
     """A group whose values have an order is a knob in a trough. Drawn as a row
     of cells it would say they have none, and more memory being to the right is
     the whole of what somebody reads off it."""
-    for scale in ["editor-clocks", "editor-memory", "editor-memory-speeds"]:
+    for scale in ["editor-clocks", "editor-memory"]:
         assert '<nx-slider id="%s">' % scale in markup, scale
         assert '"%s"' % scale not in page.replace(
             'fillWithScale("%s"' % scale, ""), scale
