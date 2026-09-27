@@ -58,6 +58,8 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 
 `kiosk.py` is one module because it is the whole surface: reviewing what this tool may do to the machine means reading that one file.
 
+**What a version is.** `RELEASE` in `server.py` is the release, and it is written down in that one place. `packaging/build.py` reads it and asks git what the tree is, so a package built on the tag of that release is the plain number and every other build carries how far it stands from the last tag and which commit it is: `1.0.0+7.g2f250d5` after the release, `1.0.0~7.g2f250d5` on the way to one, and `.modified` on the end where something was uncommitted. The count is there because dpkg orders versions and a hash does not. The version it settles on is written into the package as `previously/version.txt`, which is what the service reports about itself, so what the Raspberry Pi window says and what `dpkg` says are the same string.
+
 **It needs no privileges at all.** Reading state does not, because `systemctl is-active` answers any user. Switching the emulated machine on and off does not either, because it happens through one file rather than through systemd. The next section says why.
 
 ## What anybody on the network can reach

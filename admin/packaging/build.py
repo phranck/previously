@@ -9,9 +9,12 @@ package copies Python, static files and five unit files into place. Nothing is
 compiled, nothing is patched and nothing is generated at install time, so the
 debhelper machinery would be a build system around a copy.
 
-The version is `previously.server.VERSION` and is read from there rather than
-written down again here. A package whose version disagrees with what the tool
-reports is one nobody can ask a useful question about.
+The release is `previously.server.RELEASE` and is read from there rather than
+written down again here. A package built between two releases carries that
+release and the commit it came from, because a machine has to be able to say
+which build it is running, and `version_from` below says how the two go
+together. What it settles on is written into the package as well, so the tool
+reports the version dpkg knows it by rather than a second answer of its own.
 """
 
 import argparse
@@ -57,6 +60,17 @@ LIB = "usr/lib/" + NAME
 UNITS = "lib/systemd/system"
 CONFIG = "etc/" + NAME
 
+#: What git adds to the description of a tree that has something uncommitted
+#: in it, and therefore what the version of such a build ends in. A package
+#: that claims a commit it was not built from is worse than one that says it
+#: was built from something nobody can look up.
+MODIFIED = ".modified"
+
+#: Where the version this was built as is written, inside the package, so that
+#: a running service can say which build it is. The service reads it beside
+#: its own modules and falls back to the release where there is none.
+VERSION_FILE = "version.txt"
+
 #: The unit files, and which of them is the service itself. The other four are
 #: how the board is switched off and restarted without this service holding
 #: any privilege: it leaves a file in its runtime directory and a path unit
@@ -67,17 +81,78 @@ UNIT_FILES = (SERVICE,
               NAME + "-reboot.path", NAME + "-reboot.service")
 
 
-def version():
-    """@returns str, the version the tool reports about itself.
+def release():
+    """@returns str, the release this tree belongs to.
 
     Read out of the source rather than imported, because importing it would
     mean the build needs whatever the service imports, and a build should not.
     """
     source = (ADMIN / NAME / "server.py").read_text(encoding="utf-8")
-    found = re.search(r'^VERSION = "([^"]+)"', source, re.M)
+    found = re.search(r'^RELEASE = "([^"]+)"', source, re.M)
     if not found:
-        raise SystemExit("no VERSION in server.py")
+        raise SystemExit("no RELEASE in server.py")
     return found.group(1)
+
+
+def described():
+    """@returns str, what git says this tree is, or "" where it cannot say.
+
+    A package built from a checkout with no git, or from a tree with no tags
+    in it, is the bare release. That is not an error: it is a build nobody can
+    trace back to a commit, and saying so by carrying no commit is honest.
+    """
+    try:
+        answer = subprocess.run(
+            ["git", "describe", "--tags", "--match", "v*", "--long",
+             "--dirty=" + MODIFIED],
+            cwd=str(ADMIN), capture_output=True, text=True, check=False)
+    except OSError:
+        return ""
+    return answer.stdout.strip() if answer.returncode == 0 else ""
+
+
+def version_from(release_, description):
+    """The version a package built from this tree carries.
+
+    @param release_ - What the source calls this release.
+    @param description - What `git describe --long --dirty` said, or "".
+    @returns str
+
+    A release that has been tagged and built from that tag is itself, and
+    every other build says how far it stands from a tag and which commit it
+    is. The count is there because dpkg orders versions and a hash does not:
+    without it apt cannot tell a newer build from an older one, and every
+    install has to be forced past that. The commit is there because the count
+    alone does not say which tree was built.
+
+    Which separator is a decision about what happens next. `~` sorts below the
+    release and `+` sorts above it, so a build made before the release is
+    replaced by the release when it is cut, and one made after it replaces the
+    release. Written the other way round, cutting a tag would reach a machine
+    as a downgrade.
+    """
+    found = re.match(
+        r"^v?(?P<tag>.+)-(?P<count>\d+)-g(?P<commit>[0-9a-f]+)"
+        r"(?P<modified>%s)?$" % re.escape(MODIFIED), description)
+    if not found:
+        return release_
+
+    steps = int(found.group("count"))
+    modified = found.group("modified") or ""
+    if found.group("tag") == release_ and not steps and not modified:
+        return release_
+
+    # Ahead of the tag this release is named by, or ahead of the release the
+    # tag names. The first is a build after that release and the second is a
+    # build on the way to one.
+    towards = "+" if found.group("tag") == release_ else "~"
+    return "%s%s%d.g%s%s" % (release_, towards, steps,
+                             found.group("commit"), modified)
+
+
+def package_version():
+    """@returns str, what this build is called, everywhere it is named."""
+    return version_from(release(), described())
 
 
 def control(size):
@@ -86,7 +161,7 @@ def control(size):
     """
     return "".join(line + "\n" for line in [
         "Package: " + NAME,
-        "Version: " + version(),
+        "Version: " + package_version(),
         "Architecture: " + ARCHITECTURE,
         "Maintainer: phranck <phranck@layered.work>",
         "Depends: " + ", ".join(DEPENDS),
@@ -195,6 +270,12 @@ def lay_out(into):
     shutil.copytree(ADMIN / "web", into / LIB / "web",
                     ignore=shutil.ignore_patterns("__pycache__"))
 
+    # What this build is called, beside the modules that report it. Written
+    # rather than left to the source, because the source names the release and
+    # a build between two releases is more than that.
+    (into / LIB / NAME / VERSION_FILE).write_text(
+        package_version() + "\n", encoding="utf-8")
+
     (into / UNITS).mkdir(parents=True, exist_ok=True)
     for unit in UNIT_FILES:
         shutil.copy(HERE / unit, into / UNITS / unit)
@@ -238,7 +319,8 @@ def main():
     lay_out(tree)
     write_control(tree)
 
-    package = pathlib.Path(where) / ("%s_%s_%s.deb" % (NAME, version(), ARCHITECTURE))
+    package = pathlib.Path(where) / ("%s_%s_%s.deb"
+                                     % (NAME, package_version(), ARCHITECTURE))
     subprocess.run(["dpkg-deb", "--root-owner-group", "--build",
                     str(tree), str(package)], check=True)
     print("wrote %s" % package)

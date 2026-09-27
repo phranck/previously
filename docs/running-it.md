@@ -89,7 +89,9 @@ From a checkout on the Pi, the same script builds the package out of what is bes
 
 The password in `/var/lib/previously/password` and the configuration in `/etc/previously/config.ini` both survive, because the password is state the tool wrote itself and the configuration is a conffile that an upgrade never overwrites. The service is restarted by the package, so the browser has the new tool on its next load.
 
-The version it put there is in the Raspberry Pi window, on the line marked Previously, which is also how to tell a machine that is up to date from one that was left behind.
+The version it put there is in the Raspberry Pi window, on the line marked Previously, which is also how to tell a machine that is up to date from one that was left behind. `dpkg-query -W previously` says the same thing on the Pi itself.
+
+**A version says which build it is, not only which release.** A release is a plain number such as `1.0.0`. Anything built between two releases carries how far it stands from the last tag and which commit it came from, so `1.0.0+7.g2f250d5` is seven commits past the release, and `1.0.0~7.g2f250d5` is seven commits on the way to a release that has not been tagged yet. A build from a tree with something uncommitted in it ends in `.modified`, because a package that claims a commit it was not built from is worse than one that admits nobody can look it up. Every one of those sorts the way apt expects, so an upgrade is an upgrade in either direction.
 
 **A machine installed before the port moved keeps answering on 2342.** That configuration is a conffile, so no upgrade touches it:
 
