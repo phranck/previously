@@ -1551,10 +1551,15 @@ function drawTheDimensionBoards(offers) {
         { count: seated.length, slot: seated[0] }, seated.length)
     : t("editor.dimension.note.none"));
 
+  /* The board's index is taken before the empty slots are dropped, because
+     after that the second board that is in would be counted as the second
+     slot, and a cube with boards in slots 2 and 6 would draw and change the
+     memory of slot 4. */
   const memories = document.getElementById("editor-dimension-memory");
   memories.replaceChildren(...offers.dimension_slots
-    .filter((slot, board) => drafting.dimensions[board] > 0)
-    .map((slot, board) => drawOneBoardsMemory(slot, board, offers)));
+    .map((slot, board) => [slot, board])
+    .filter(([, board]) => drafting.dimensions[board] > 0)
+    .map(([slot, board]) => drawOneBoardsMemory(slot, board, offers)));
 }
 
 /**
