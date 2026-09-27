@@ -599,6 +599,15 @@ def test_it_says_what_else_could_be_chosen(service):
     assert offers["dimension"] is True
     assert offers["clocks"] == [16, 20, 25, 33, 40]
     assert offers["memory"] == [8, 16, 32, 64, 128]
+    assert offers["dsps"] == ["none", "plain", "with-rom"]
+    assert offers["dsp_memory"] == [24, 96]
+
+
+def test_a_machine_with_no_dsp_is_offered_no_memory_for_one(service):
+    answer = settled(service, kind=1, dsp="none", memory=16)
+
+    assert answer["configuration"]["dsp"] == "none"
+    assert answer["offers"]["dsp_memory"] == []
 
 
 def test_what_it_refuses_comes_back_refused(service):

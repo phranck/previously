@@ -37,7 +37,7 @@ def test_every_machine_sets_the_same_keys():
             (section, key)
             for section, keys in settings.items() for key in keys)))
     assert len(shapes) == 1
-    assert len(next(iter(shapes))) == 16
+    assert len(next(iter(shapes))) == 17
 
 
 def test_the_1988_machine_is_a_68030():
@@ -479,6 +479,53 @@ def test_a_clock_is_offered_only_where_there_is_a_turbo_board():
     assert machines.offers(machines.find("nextcube"))["clocks"] == [16, 20, 25, 33]
     assert machines.offers(machines.find("next-computer"))["clocks"] == [16, 20, 25, 33]
     assert machines.offers(machines.find("nextcube-turbo"))["clocks"] == [16, 20, 25, 33, 40]
+
+
+def test_every_machine_is_offered_all_three_dsps():
+    """Neither of the two that are a chip loads a file, so there is nothing a
+    machine can lack that would stop it being offered."""
+    for machine in machines.CATALOGUE:
+        assert machines.offers(machine)["dsps"] == [
+            "none", "plain", "with-rom"], machine.identifier
+
+
+def test_the_dsp_memory_is_offered_only_where_there_is_a_chip():
+    assert machines.offers(drafted(dsp="none"))["dsp_memory"] == []
+    assert machines.offers(drafted(dsp="plain"))["dsp_memory"] == [24, 96]
+
+
+def test_what_previous_is_told_about_the_dsp():
+    """Its own enumeration reads none, accurate, emulated, so the number for the
+    chip with its bootstrap ROM is the middle one rather than the last."""
+    written = {}
+    for dsp in machines.DSPS:
+        written[dsp] = machines.settings_for(
+            drafted(dsp=dsp))["System"]["nDSPType"]
+
+    assert written == {"none": "0", "with-rom": "1", "plain": "2"}
+
+
+def test_the_dsp_memory_is_written_as_the_flag_previous_holds():
+    assert machines.settings_for(
+        drafted(dsp_memory=96))["System"]["bDSPMemoryExpansion"] == "TRUE"
+    assert machines.settings_for(
+        drafted(dsp_memory=24))["System"]["bDSPMemoryExpansion"] == "FALSE"
+
+
+def test_a_dsp_the_machine_cannot_have_becomes_the_one_it_has():
+    """Previous writes both afresh whenever the machine type or a board changes,
+    and never checks either at start."""
+    assert machines.settled(drafted(dsp="grosser Chip")).dsp == "plain"
+    assert machines.settled(drafted(dsp_memory=48)).dsp_memory == 96
+    assert machines.settled(
+        drafted(kind=machines.NEXT_COMPUTER, dsp_memory=48)).dsp_memory == 24
+
+
+def test_only_the_1988_machine_has_a_dsp_without_the_expansion():
+    for machine in machines.CATALOGUE:
+        wanted = 24 if machine.kind == machines.NEXT_COMPUTER else 96
+        assert machine.dsp_memory == wanted, machine.identifier
+        assert machine.dsp == "plain", machine.identifier
 
 
 def test_every_machine_type_is_offered_always():

@@ -50,6 +50,26 @@ NITRO_MHZ = 40
 PLAIN_MHZ = 25
 TURBO_MHZ = 33
 
+#: What the DSP can be. The chip is a 56001 either way and the difference is its
+#: bootstrap ROM: DSP_WITH_ROM starts the core with it and DSP_PLAIN without,
+#: which is what `dsp_core_start` in Previous's src/dsp/dsp.c takes as its
+#: second argument. Neither is a file, so all three suit any machine.
+DSP_NONE = "none"
+DSP_PLAIN = "plain"
+DSP_WITH_ROM = "with-rom"
+DSPS = (DSP_NONE, DSP_PLAIN, DSP_WITH_ROM)
+
+#: What Previous writes for each in nDSPType. Its own enumeration reads none,
+#: accurate, emulated, so the numbers are not in the order a person would put
+#: them in, and a name crosses the wire rather than a number for that reason.
+DSP_TYPES = {DSP_NONE: "0", DSP_WITH_ROM: "1", DSP_PLAIN: "2"}
+
+#: How much memory the DSP has, in kilobytes. Previous writes this as a flag,
+#: and the expansion is what makes the difference between the two.
+DSP_MEMORY_PLAIN = 24
+DSP_MEMORY_EXPANDED = 96
+DSP_MEMORIES = (DSP_MEMORY_PLAIN, DSP_MEMORY_EXPANDED)
+
 #: Which slot a NeXTdimension board answers from. Zero means no board.
 DIMENSION_SLOT = "2"
 NO_BOARD = "0"
@@ -77,8 +97,12 @@ PLAIN_BANK_SIZES = (0, 1, 4, 16)
 BANKS = 4
 STATION_PLAIN_BANKS = 2
 
+#: The last two carry what Configuration_SetSystemDefaults writes for nearly
+#: every machine, so the catalogue below names them only where one differs.
 Machine = collections.namedtuple(
-    "Machine", "identifier name kind turbo mhz colour dimension banks")
+    "Machine",
+    "identifier name kind turbo mhz colour dimension banks dsp dsp_memory",
+    defaults=(DSP_PLAIN, DSP_MEMORY_EXPANDED))
 
 #: Every machine that can be chosen, in the order they were built.
 #:
@@ -88,10 +112,14 @@ Machine = collections.namedtuple(
 #:
 #: `mhz` is the same kind of fact. The two Nitros are the machines NeXT clocked
 #: at 40, and everything else runs at what its boards give it.
+#:
+#: The 1988 machine is the one whose DSP has no expansion memory, which is what
+#: Configuration_SetSystemDefaults says about it and the only place these eleven
+#: differ in their DSP at all.
 CATALOGUE = (
     Machine("next-computer", "NeXT Computer", NEXT_COMPUTER,
             turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=False,
-            banks=(16, 16, 16, 16)),
+            banks=(16, 16, 16, 16), dsp_memory=DSP_MEMORY_PLAIN),
     Machine("nextcube", "NeXTcube", NEXTCUBE,
             turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=False,
             banks=(16, 16, 16, 16)),
@@ -312,31 +340,49 @@ def default_clock(turbo):
     return TURBO_MHZ if turbo else PLAIN_MHZ
 
 
+def default_dsp_memory(kind):
+    """How much memory the DSP has where nothing else has been chosen.
+
+    @param kind - NEXT_COMPUTER, NEXTCUBE or NEXTSTATION.
+    @returns int, in kilobytes.
+
+    The 1988 machine is the one without the expansion, and
+    Configuration_SetSystemDefaults writes that difference every time the
+    machine type changes in Previous's own dialogue.
+    """
+    return DSP_MEMORY_PLAIN if kind == NEXT_COMPUTER else DSP_MEMORY_EXPANDED
+
+
 def drafted(kind, turbo=False, colour=False, dimension=False,
-            mhz=None, memory=None, identifier="", name=""):
+            mhz=None, memory=None, dsp=None, dsp_memory=None,
+            identifier="", name=""):
     """A machine from what an editor is showing, held to Previous's rules.
 
     @param kind - The machine type, as a number or a string of one.
     @param turbo - Whether a turbo board is asked for.
     @param colour - Whether the colour board is.
     @param dimension - Whether a NeXTdimension is.
-    @param mhz - The clock asked for, in megahertz. Nothing at all is what an
-      editor sends when it has just changed the machine type or a board, and
-      then the machine runs at what those boards give it, exactly as Previous's
-      own dialogue sets the clock afresh at both of those moments.
+    @param mhz - The clock asked for, in megahertz.
     @param memory - How much memory, as a total in megabytes.
+    @param dsp - Which DSP, as one of DSPS.
+    @param dsp_memory - How much memory it has, in kilobytes.
     @param identifier - What it is called to the API, where it has a name.
     @param name - What it is called to a person.
     @returns Machine, settled.
 
-    The six values this takes are the six controls an editor draws, one each,
-    and nothing about them is a rule: which of them may be chosen at all is
+    The eight values this takes are the controls an editor draws, one each, and
+    nothing about them is a rule: which of them may be chosen at all is
     offers(), and what they turn into is here and in settled(). So an interface
     holds no copy of anything Previous decides.
 
-    Nitro is not one of the six. Previous has no such thing and reads nCpuFreq
-    as it finds it, so a clock of 40 is what the catalogue calls a Nitro and
-    that is the direction the translation runs in.
+    The clock and the two about the DSP arrive as nothing at all whenever an
+    editor has just changed the machine type or a board, because Previous writes
+    all three afresh at both of those moments. Each then comes back as what this
+    machine has rather than as what the last one did.
+
+    Nitro is not one of them. Previous has no such thing and reads nCpuFreq as
+    it finds it, so a clock of 40 is what the catalogue calls a Nitro and that is
+    the direction the translation runs in.
     """
     machine = settled(Machine(
         identifier=identifier,
@@ -349,6 +395,9 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
         colour=bool(colour),
         dimension=bool(dimension),
         banks=(0, 0, 0, 0),
+        # And a DSP nobody named is not one of the three, for the same reason.
+        dsp=dsp if dsp in DSPS else "",
+        dsp_memory=whole(dsp_memory, 0),
     ))
     # After the flags, because they decide which totals there are and what each
     # one is made of.
@@ -385,6 +434,10 @@ def offers(machine):
         "clocks": list(clocks_for(machine.turbo)),
         "memory": list(memory_totals(
             machine.kind, machine.turbo, machine.colour)),
+        "dsps": list(DSPS),
+        # Nothing to choose between where there is no chip to give it to, and a
+        # group with nothing to offer is not drawn.
+        "dsp_memory": [] if machine.dsp == DSP_NONE else list(DSP_MEMORIES),
     }
 
 
@@ -418,10 +471,10 @@ def settled(machine):
 
     return machine._replace(
         turbo=turbo,
-        # The one rule here that Previous does not enforce at start. Its own
-        # dialogue writes the clock afresh every time the machine type or the
-        # turbo board changes, and 40 is offered nowhere without that board, so
-        # a machine holding one it cannot be offered gets the one it can.
+        # The clock and the DSP are the values Previous does not check at start.
+        # Its own dialogue writes all three afresh every time the machine type or
+        # a board changes, so a machine holding one it cannot be offered gets
+        # what that machine actually has.
         mhz=machine.mhz if machine.mhz in clocks_for(turbo) else default_clock(turbo),
         colour=colour,
         # The board speaks on the NeXTbus and a NeXTstation has none, so
@@ -429,6 +482,9 @@ def settled(machine):
         # machine type. Both cubes have the bus and therefore the slot.
         dimension=machine.dimension and machine.kind != NEXTSTATION,
         banks=tuple(_bank(wanted[bank], sizes[bank]) for bank in range(BANKS)),
+        dsp=machine.dsp if machine.dsp in DSPS else DSP_PLAIN,
+        dsp_memory=(machine.dsp_memory if machine.dsp_memory in DSP_MEMORIES
+                    else default_dsp_memory(machine.kind)),
     )
 
 
@@ -462,9 +518,11 @@ def _system_for(machine):
         # The NeXTbus interface chip sits in the cubes, which have a bus, and
         # not in the station, which has none.
         "bNBIC": _flag(machine.kind != NEXTSTATION),
-        # The 1988 machine's DSP has no expansion memory and every later one
-        # has.
-        "bDSPMemoryExpansion": _flag(not is_1988),
+        "nDSPType": DSP_TYPES[machine.dsp],
+        # Written as a flag, and the expansion is what the larger of the two
+        # sizes is.
+        "bDSPMemoryExpansion": _flag(
+            machine.dsp_memory == DSP_MEMORY_EXPANDED),
     }
 
 

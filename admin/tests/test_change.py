@@ -30,6 +30,7 @@ REAL_SHAPE = textwrap.dedent("""\
     nRTC = TRUE
     nCpuLevel = 4
     nCpuFreq = 33
+    nDSPType = 2
     bDSPMemoryExpansion = TRUE
     n_FPUType = 68040
 

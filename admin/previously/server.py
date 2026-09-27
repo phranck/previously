@@ -330,6 +330,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             dimension=chosen("dimension") == "1",
             mhz=chosen("mhz"),
             memory=chosen("memory"),
+            dsp=chosen("dsp"),
+            dsp_memory=chosen("dsp_memory"),
         )
         settings = machines.settings_for(machine)
         return self._json({

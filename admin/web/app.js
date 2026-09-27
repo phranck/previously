@@ -1039,12 +1039,29 @@ function reportAboutTheSaved(answer) {
    emulator would correct underneath it. That is also why the configuration it
    saves is the one the service handed back rather than one assembled here. */
 
-/** What the editor is showing: the six controls, and nothing derived.
+/** What the editor is showing: the controls, and nothing derived.
  *
  *  Whatever is not known is left out of the question rather than filled in here,
  *  so a fresh window is answered with the service's own idea of a machine and
  *  there is no second copy of that here. */
 let drafting = {};
+
+/** Which controls the service writes afresh whenever the machine type or a
+ *  board changes, so that changing one of those sends none of them. Named here
+ *  rather than at each cell, because a control this forgets to name is one that
+ *  quietly carries a value from the machine that has been left behind. */
+const FOLLOWS_THE_MACHINE = ["mhz", "dsp", "dsp_memory"];
+
+/** What each DSP is called. The service answers the three by name, because the
+ *  numbers Previous writes are not in the order a person would read them in, and
+ *  these are this page's words for those names. Written out one by one rather
+ *  than built from the name, so that a key nothing answers is caught by the
+ *  strings test instead of appearing as an empty cell. */
+const DSP_WORDS = {
+  none: "editor.dsp.none",
+  plain: "editor.dsp.plain",
+  "with-rom": "editor.dsp.with-rom",
+};
 
 /** Which saved configuration is being written over, or null where what comes out
  *  of this is a new one. A System machine cannot be changed, so editing one
@@ -1132,6 +1149,8 @@ async function drawTheDraft() {
     dimension: answer.configuration.dimension,
     mhz: answer.machine.mhz,
     memory: answer.machine.memory_mb,
+    dsp: answer.configuration.dsp,
+    dsp_memory: answer.configuration.dsp_memory,
   };
 
   redrawTheEditor();
@@ -1171,17 +1190,12 @@ function drawTheMachineInTheEditor(machine) {
  *
  * A group with nothing to offer is taken away rather than shown empty, which is
  * what Previous does with its own board options on a machine that takes none.
- *
- * Changing the machine type or a board sends no clock, because Previous writes
- * one afresh at both of those moments and the service does the same. Sending the
- * one that was showing would keep a 40 MHz machine at 40 through a change that
- * takes its turbo board away.
  */
 function drawTheChoices(offers) {
   fillWithChoices("editor-kinds", offers.kinds.map((kind) => ({
     label: kind.model,
     chosen: kind.kind === drafting.kind,
-    choose: () => change({ kind: kind.kind, mhz: undefined }),
+    choose: () => changeTheMachine({ kind: kind.kind }),
   })));
 
   const boards = [
@@ -1193,7 +1207,7 @@ function drawTheChoices(offers) {
     chosen: drafting[which],
     /* A board is seated or it is not, so its cell answers a second click by
        taking it out again. */
-    choose: () => change({ [which]: !drafting[which], mhz: undefined }),
+    choose: () => changeTheMachine({ [which]: !drafting[which] }),
   }));
   fillWithChoices("editor-boards", boards);
   document.getElementById("editor-boards-group").hidden = !boards.length;
@@ -1209,6 +1223,22 @@ function drawTheChoices(offers) {
     chosen: mb === drafting.memory,
     choose: () => change({ memory: mb }),
   })));
+
+  fillWithChoices("editor-dsps", offers.dsps.map((dsp) => ({
+    /* A chip this page has no word for is shown as the service named it, so a
+       service that learns a fourth still draws a cell somebody can press. */
+    label: DSP_WORDS[dsp] ? t(DSP_WORDS[dsp]) : dsp,
+    chosen: dsp === drafting.dsp,
+    choose: () => change({ dsp }),
+  })));
+
+  fillWithChoices("editor-dsp-memory", offers.dsp_memory.map((kb) => ({
+    label: t("editor.kilobytes", { kb }),
+    chosen: kb === drafting.dsp_memory,
+    choose: () => change({ dsp_memory: kb }),
+  })));
+  document.getElementById("editor-dsp-memory-group").hidden =
+    !offers.dsp_memory.length;
 }
 
 /**
@@ -1231,12 +1261,28 @@ function fillWithChoices(id, cells) {
 }
 
 /**
- * Changes one of the six and asks what that machine is now.
- * @param {object} what - The one control that moved.
+ * Changes one control and asks what that machine is now.
+ * @param {object} what - The one that moved.
  */
 function change(what) {
   drafting = { ...drafting, ...what };
   drawTheDraft();
+}
+
+/**
+ * Changes what the machine itself is, and lets what follows from it follow
+ * again.
+ * @param {object} what - The machine type or the board that moved.
+ *
+ * Previous writes every one of FOLLOWS_THE_MACHINE afresh whenever one of those
+ * two changes in its own dialogue, and the service does the same. Sending the
+ * values that were showing would carry a setting from the machine just left
+ * behind, so a 40 MHz Nitro would stay at 40 through losing its turbo board.
+ */
+function changeTheMachine(what) {
+  const afresh = Object.fromEntries(
+    FOLLOWS_THE_MACHINE.map((control) => [control, undefined]));
+  change({ ...afresh, ...what });
 }
 
 /** Says what the button will do, and puts that on the button. */

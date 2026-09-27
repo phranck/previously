@@ -146,6 +146,24 @@ def test_a_clock_that_is_written_is_the_one_that_is_read(machines_file):
     assert kept.mhz == 16
 
 
+def test_a_configuration_saved_before_the_dsp_could_be_chosen_gets_its_own(
+        machines_file):
+    """An entry written then names neither, and comes back with what that
+    machine has rather than with no chip at all."""
+    machines_file.write_text(json.dumps({
+        "version": saved.VERSION,
+        "machines": [{
+            "name": "Alt", "kind": machines.NEXT_COMPUTER, "turbo": False,
+            "colour": False, "dimension": False, "banks": [16, 0, 0, 0],
+        }],
+    }), encoding="utf-8")
+
+    kept, = saved.read(machines_file)
+
+    assert kept.dsp == machines.DSP_PLAIN
+    assert kept.dsp_memory == machines.DSP_MEMORY_PLAIN
+
+
 def test_a_file_that_cannot_be_read_says_so_rather_than_answering_empty(machines_file):
     """An empty answer would read as nothing having been saved, which is the one
     thing it must not say about a file that is there."""
