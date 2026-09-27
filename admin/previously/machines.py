@@ -21,6 +21,8 @@ machine and is left exactly as it stands.
 
 import collections
 
+from . import config
+
 #: The processor. NeXT's 1988 machine is a 68030 and everything after it a
 #: 68040, and Previous refuses to run a machine whose level disagrees with its
 #: type.
@@ -322,11 +324,17 @@ def offers(machine):
     one statement of what Previous allows and an interface cannot offer a
     machine the emulator would correct underneath it.
 
+    A machine type carries its number and its name together, because a cell is
+    labelled with the one and chosen by the other. The name is the emulator's
+    own and is not translated anywhere, which is why it travels from here rather
+    than being a word the interface holds.
+
     The clocks are numbers here and strings in the file, because a browser
     compares them against what somebody chose and the file holds text.
     """
     return {
-        "kinds": [NEXT_COMPUTER, NEXTCUBE, NEXTSTATION],
+        "kinds": [{"kind": kind, "model": config.MACHINE_NAMES[kind]}
+                  for kind in (NEXT_COMPUTER, NEXTCUBE, NEXTSTATION)],
         "turbo": machine.kind != NEXT_COMPUTER,
         "colour": machine.kind == NEXTSTATION,
         "dimension": machine.kind != NEXTSTATION,

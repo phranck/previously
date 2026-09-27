@@ -25,6 +25,11 @@ IN_MARKUP = re.compile(r'\bid="([^"]+)"')
 #: markup and which answers nothing where the markup has no such thing.
 BY_NAME = re.compile(r'nx-(?:window|menu|menu-item|tile)\[name="([^"]+)"\]')
 
+#: What the editor reads off one entry of `offers.kinds`. That group is the one
+#: place a cell takes its label from the service instead of from this page's own
+#: words, because a machine type is named by the emulator.
+FROM_A_KIND = re.compile(r"\bkind\.(\w+)")
+
 
 @pytest.fixture(scope="module")
 def page():
@@ -76,3 +81,16 @@ def test_the_page_asks_for_something(page, markup):
     measuring anything at all."""
     assert len(set(BY_ID.findall(page))) > 20
     assert len(set(BY_NAME.findall(page))) > 5
+
+
+def test_the_editor_reads_what_a_machine_type_actually_carries(page):
+    """A cell in the machine type group is labelled with one field of an entry
+    and marked as chosen by another, so an entry carrying neither draws a row of
+    buttons with nothing written in them and nothing chosen."""
+    from previously import machines
+
+    wanted = set(FROM_A_KIND.findall(page))
+    have = set(machines.offers(machines.find("nextcube"))["kinds"][0])
+
+    assert wanted
+    assert sorted(wanted - have) == []
