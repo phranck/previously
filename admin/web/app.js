@@ -1050,7 +1050,7 @@ let drafting = {};
  *  board changes, so that changing one of those sends none of them. Named here
  *  rather than at each cell, because a control this forgets to name is one that
  *  quietly carries a value from the machine that has been left behind. */
-const FOLLOWS_THE_MACHINE = ["mhz", "dsp", "dsp_memory"];
+const FOLLOWS_THE_MACHINE = ["mhz", "dsp", "dsp_memory", "banks"];
 
 /** What each DSP is called. The service answers the three by name, because the
  *  numbers Previous writes are not in the order a person would read them in, and
@@ -1125,7 +1125,16 @@ async function drawTheDraft() {
   const asked = new URLSearchParams();
   for (const [control, value] of Object.entries(drafting)) {
     if (value === undefined || value === null) continue;
-    asked.set(control, typeof value === "boolean" ? (value ? "1" : "0") : value);
+    if (typeof value === "boolean") {
+      /* As "1" and "0", because a query string carries text and a flag that is
+         absent has to read as off rather than as a word. */
+      asked.set(control, value ? "1" : "0");
+    } else if (Array.isArray(value)) {
+      /* The four memory banks, in one field, in the order they sit in. */
+      asked.set(control, value.join(","));
+    } else {
+      asked.set(control, value);
+    }
   }
 
   const mine = ++asking;
@@ -1152,6 +1161,11 @@ async function drawTheDraft() {
     dsp: answer.configuration.dsp,
     dsp_memory: answer.configuration.dsp_memory,
     memory_speed: answer.configuration.memory_speed,
+    /* Carried on, so a bank chosen on its own is asked about again rather than
+       being laid out afresh from the total the next question would send. The
+       total goes back in charge when a cell in its group is pressed, which
+       sends no banks at all. */
+    banks: answer.configuration.banks,
   };
 
   redrawTheEditor();
@@ -1222,8 +1236,22 @@ function drawTheChoices(offers) {
   fillWithChoices("editor-memory", offers.memory.map((mb) => ({
     label: t("editor.megabytes", { mb }),
     chosen: mb === drafting.memory,
-    choose: () => change({ memory: mb }),
+    /* A total lays the banks out again, so whatever they were is let go. */
+    choose: () => change({ memory: mb, banks: undefined }),
   })));
+
+  fillWithChoices("editor-banks", offers.banks.map((sizes, bank) => {
+    const size = drafting.banks[bank];
+    return {
+      label: size ? t("editor.megabytes", { mb: size }) : t("editor.bank-empty"),
+      /* A seated module is lit, the way a seated board is. */
+      chosen: size > 0,
+      choose: () => {
+        if (sizes.length < 2) return;
+        change({ banks: bankMovedOn(bank, sizes), memory: undefined });
+      },
+    };
+  }));
 
   fillWithChoices("editor-dsps", offers.dsps.map((dsp) => ({
     /* A chip this page has no word for is shown as the service named it, so a
@@ -1246,6 +1274,27 @@ function drawTheChoices(offers) {
     chosen: offer.speed === drafting.memory_speed,
     choose: () => change({ memory_speed: offer.speed }),
   })));
+}
+
+/**
+ * The four memory banks with one of them moved on to the next size it takes.
+ * @param {number} bank - Which one was pressed, from 0.
+ * @param {Array<number>} sizes - What that bank accepts, smallest first, with
+ *   an empty bank as the first of them.
+ * @returns {Array<number>} All four, in megabytes, for the service to settle.
+ *
+ * A bank holds one module rather than a choice between several, so its cell
+ * fits the next size up and comes back to an empty bank after the largest. It
+ * is the same gesture as taking a board out and putting it back, which is the
+ * one this window already has for a cell that is not one of a row of choices.
+ *
+ * A bank holding a size the machine no longer takes starts again at the
+ * smallest, because indexOf answers -1 for it.
+ */
+function bankMovedOn(bank, sizes) {
+  const banks = [...drafting.banks];
+  banks[bank] = sizes[(sizes.indexOf(banks[bank]) + 1) % sizes.length];
+  return banks;
 }
 
 /**

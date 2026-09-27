@@ -60,6 +60,8 @@ NX_STRINGS.en = {
   "editor.kilobytes": "{kb} kB",
   "editor.memory-speed": "Memory speed",
   "editor.nanoseconds": "{ns} ns",
+  "editor.banks": "Memory banks",
+  "editor.bank-empty": "Empty",
   "editor.into-a-new-one": "One of the machines this project ships, which cannot be changed. Saving makes a configuration of your own, under a name you give it.",
   "editor.over-this-one": "{name} is a configuration of your own, so saving writes over it.",
   "ask.name.title": "Save configuration",
