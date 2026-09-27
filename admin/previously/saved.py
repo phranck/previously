@@ -71,7 +71,7 @@ def as_machine(name, values):
         turbo=bool(values.get("turbo")),
         mhz=_clock_of(values),
         colour=bool(values.get("colour")),
-        dimension=bool(values.get("dimension")),
+        dimensions=_dimensions_of(values),
         banks=tuple(values.get("banks") or ()),
         # An entry written before the DSP could be chosen names neither, and
         # `settled` then answers both with what that machine has.
@@ -105,6 +105,22 @@ def _clock_of(values):
     return machines.NITRO_MHZ if values.get("nitro") else 0
 
 
+def _dimensions_of(values):
+    """How much memory each NeXTdimension board has, in slot order.
+
+    @param values - One entry, as the file holds it.
+    @returns tuple of int, and zero for a slot with no board in it.
+
+    An entry written before the three slots carries `dimension` as a flag, and
+    that meant the one board the tool then offered, which was the 32 MB board in
+    the first slot. So a machine somebody saved with a NeXTdimension still has
+    one.
+    """
+    if "dimensions" in values:
+        return tuple(values.get("dimensions") or ())
+    return machines.ONE_BOARD if values.get("dimension") else machines.NO_BOARDS
+
+
 def as_values(machine):
     """One machine as the file holds it.
 
@@ -118,7 +134,7 @@ def as_values(machine):
         "turbo": machine.turbo,
         "mhz": machine.mhz,
         "colour": machine.colour,
-        "dimension": machine.dimension,
+        "dimensions": list(machine.dimensions),
         "banks": list(machine.banks),
         "dsp": machine.dsp,
         "dsp_memory": machine.dsp_memory,

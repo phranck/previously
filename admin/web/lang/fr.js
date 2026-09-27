@@ -62,6 +62,8 @@ NX_STRINGS.fr = {
   "editor.socket": "Prise Ethernet",
   "editor.thin-wire": "Thin wire",
   "editor.twisted-pair": "Paire torsadée",
+  "editor.slot": "Slot {slot}",
+  "editor.dimension-memory": "Mémoire du slot {slot}",
   "editor.into-a-new-one": "Une des machines que ce projet fournit, et qui ne peut pas être changée. Enregistrer en fait une configuration à vous, sous un nom que vous lui donnez.",
   "editor.over-this-one": "{name} est une configuration à vous, enregistrer l'écrase donc.",
   "ask.name.title": "Enregistrer la configuration",

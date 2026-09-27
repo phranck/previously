@@ -1069,6 +1069,11 @@ const SOCKET_WORDS = {
   "twisted-pair": "editor.twisted-pair",
 };
 
+/** How much memory a NeXTdimension board gets when it is first put in, which is
+ *  what the emulator's own file holds for one. Changed from there in its own
+ *  group, so this decides only where somebody starts. */
+const DIMENSION_DEFAULT_MEMORY = 32;
+
 /** Which saved configuration is being written over, or null where what comes out
  *  of this is a new one. A System machine cannot be changed, so editing one
  *  leaves this null and saving asks for a name. */
@@ -1103,7 +1108,7 @@ function editConfiguration(machine, asker) {
     kind: machine?.kind,
     turbo: Boolean(machine?.turbo),
     colour: Boolean(machine?.colour),
-    dimension: Boolean(machine?.dimension),
+    dimensions: machine?.dimensions ?? [0, 0, 0],
     mhz: machine?.mhz,
     memory: machine?.memory_mb,
   };
@@ -1161,7 +1166,7 @@ async function drawTheDraft() {
     kind: answer.configuration.kind,
     turbo: answer.configuration.turbo,
     colour: answer.configuration.colour,
-    dimension: answer.configuration.dimension,
+    dimensions: answer.configuration.dimensions,
     mhz: answer.machine.mhz,
     memory: answer.machine.memory_mb,
     dsp: answer.configuration.dsp,
@@ -1227,7 +1232,6 @@ function drawTheChoices(offers) {
   const boards = [
     ["turbo", t("editor.turbo")],
     ["colour", t("editor.colour")],
-    ["dimension", t("editor.dimension")],
   ].filter(([which]) => offers[which]).map(([which, label]) => ({
     label,
     chosen: drafting[which],
@@ -1306,6 +1310,81 @@ function drawTheChoices(offers) {
     choose: () => change({ socket }),
   })));
   document.getElementById("editor-socket-group").hidden = !offers.sockets.length;
+
+  drawTheDimensionBoards(offers);
+}
+
+/**
+ * Draws the three NeXTdimension slots and the memory of each board there is.
+ * @param {object} offers - The service's answer, which says which slots this
+ *   machine has and how much memory a board takes.
+ *
+ * A slot is a cell that puts a board in and takes it out again, and a board
+ * that is in gets a group of its own for its memory. One group per board rather
+ * than one for all of them, because Previous gives each its own and a cube with
+ * two boards of different sizes is a machine it will run.
+ */
+function drawTheDimensionBoards(offers) {
+  fillWithChoices("editor-dimensions", offers.dimension_slots.map((slot, board) => ({
+    label: t("editor.slot", { slot }),
+    chosen: drafting.dimensions[board] > 0,
+    /* Put in with the memory Previous's own file gives a board, and taken out
+       by setting that back to nothing. */
+    choose: () => change({
+      dimensions: dimensionsWith(
+        board, drafting.dimensions[board] ? 0 : DIMENSION_DEFAULT_MEMORY),
+    }),
+  })));
+  document.getElementById("editor-dimension-group").hidden =
+    !offers.dimension_slots.length;
+
+  const memories = document.getElementById("editor-dimension-memory");
+  memories.replaceChildren(...offers.dimension_slots
+    .filter((slot, board) => drafting.dimensions[board] > 0)
+    .map((slot, board) => drawOneBoardsMemory(slot, board, offers)));
+}
+
+/**
+ * One board's memory, as a group of its own.
+ * @param {number} slot - Which slot it answers from, for the heading.
+ * @param {number} board - Which of the three it is, from 0.
+ * @param {object} offers - The service's answer.
+ * @returns {HTMLElement} The group, ready to go in.
+ */
+function drawOneBoardsMemory(slot, board, offers) {
+  const group = document.createElement("fieldset");
+  group.className = "group";
+
+  const heading = document.createElement("legend");
+  heading.textContent = t("editor.dimension-memory", { slot });
+  group.append(heading);
+
+  const cells = document.createElement("div");
+  cells.className = "choices";
+  cells.append(...offers.dimension_memory.map((mb) => {
+    const cell = document.createElement("div");
+    cell.className = "choice";
+    cell.textContent = t("editor.megabytes", { mb });
+    cell.toggleAttribute("chosen", mb === drafting.dimensions[board]);
+    cell.addEventListener("click",
+      () => change({ dimensions: dimensionsWith(board, mb) }));
+    return cell;
+  }));
+  group.append(cells);
+  return group;
+}
+
+/**
+ * The three boards with one of them changed.
+ * @param {number} board - Which of them, from 0.
+ * @param {number} memory - How much memory it has now, and zero for taking it
+ *   out altogether.
+ * @returns {Array<number>} All three, for the service to settle.
+ */
+function dimensionsWith(board, memory) {
+  const boards = [...drafting.dimensions];
+  boards[board] = memory;
+  return boards;
 }
 
 /**

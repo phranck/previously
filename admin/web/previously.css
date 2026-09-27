@@ -262,3 +262,11 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 .editor-groups .choices {
   flex-wrap: wrap;
 }
+
+/* One group per NeXTdimension board that is in, so how many there are is not
+   known until the service answers. They live in a holder the page can empty and
+   fill in one go, and `contents` takes that holder out of the layout so each
+   group sits in the grid above exactly like the ones the markup holds. */
+#editor-dimension-memory {
+  display: contents;
+}

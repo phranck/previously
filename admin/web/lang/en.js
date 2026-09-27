@@ -70,6 +70,8 @@ NX_STRINGS.en = {
   "editor.socket": "Ethernet socket",
   "editor.thin-wire": "Thin wire",
   "editor.twisted-pair": "Twisted pair",
+  "editor.slot": "Slot {slot}",
+  "editor.dimension-memory": "Slot {slot} memory",
   "editor.into-a-new-one": "One of the machines this project ships, which cannot be changed. Saving makes a configuration of your own, under a name you give it.",
   "editor.over-this-one": "{name} is a configuration of your own, so saving writes over it.",
   "ask.name.title": "Save configuration",

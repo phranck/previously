@@ -596,7 +596,8 @@ def test_it_says_what_else_could_be_chosen(service):
     ]
     assert offers["turbo"] is True
     assert offers["colour"] is False
-    assert offers["dimension"] is True
+    assert offers["dimension_slots"] == [2, 4, 6]
+    assert offers["dimension_memory"] == [4, 16, 32, 64]
     assert offers["clocks"] == [16, 20, 25, 33, 40]
     assert offers["memory"] == [8, 16, 32, 64, 128]
     assert offers["dsps"] == ["none", "plain", "with-rom"]
@@ -642,10 +643,10 @@ def test_what_the_machine_has_fitted_crosses_the_wire(service):
 def test_what_it_refuses_comes_back_refused(service):
     """A cube in colour is a cube, so the interface cannot show colour on one
     even for the moment between the click and the answer."""
-    answer = settled(service, kind=1, colour=1, dimension=1, memory=16)
+    answer = settled(service, kind=1, colour=1, dimensions="32,0,0", memory=16)
 
     assert answer["configuration"]["colour"] is False
-    assert answer["configuration"]["dimension"] is True
+    assert answer["configuration"]["dimensions"] == [32, 0, 0]
     assert answer["offers"]["colour"] is False
 
 

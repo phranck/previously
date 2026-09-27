@@ -62,6 +62,8 @@ NX_STRINGS.de = {
   "editor.socket": "Ethernet-Buchse",
   "editor.thin-wire": "Thin Wire",
   "editor.twisted-pair": "Twisted Pair",
+  "editor.slot": "Slot {slot}",
+  "editor.dimension-memory": "Speicher in Slot {slot}",
   "editor.into-a-new-one": "Eine der Maschinen, die dieses Projekt mitbringt, und die sich nicht ändern lässt. Sichern macht daraus eine eigene Konfiguration, unter einem Namen, den du ihr gibst.",
   "editor.over-this-one": "{name} ist eine eigene Konfiguration, Sichern schreibt sie also über.",
   "ask.name.title": "Konfiguration sichern",

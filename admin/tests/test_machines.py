@@ -37,7 +37,7 @@ def test_every_machine_sets_the_same_keys():
             (section, key)
             for section, keys in settings.items() for key in keys)))
     assert len(shapes) == 1
-    assert len(next(iter(shapes))) == 27
+    assert len(next(iter(shapes))) == 41
 
 
 def test_the_1988_machine_is_a_68030():
@@ -100,14 +100,54 @@ def test_nitro_is_a_faster_clock_and_nothing_else():
     assert plain == nitro
 
 
-def test_a_seated_board_answers_from_slot_two_and_an_absent_one_from_none():
+def test_a_seated_board_answers_from_its_own_slot_and_an_absent_one_from_none():
     """Leaving the slot at what it was would point the machine at a board that
-    is no longer there."""
+    is no longer there. Every slot is written for the same reason."""
     with_board = machines.settings_for(machines.find("nextcube-dimension"))
     without = machines.settings_for(machines.find("nextcube"))
 
-    assert with_board["Dimension"] == {"bEnabled0": "TRUE", "nConsoleSlot": "2"}
-    assert without["Dimension"] == {"bEnabled0": "FALSE", "nConsoleSlot": "0"}
+    assert with_board["Dimension"]["bEnabled0"] == "TRUE"
+    assert with_board["Dimension"]["bEnabled1"] == "FALSE"
+    assert with_board["Dimension"]["bEnabled2"] == "FALSE"
+    assert with_board["Dimension"]["nConsoleSlot"] == "2"
+    # The 32 MB board the emulator's own file holds, as two banks of 16.
+    assert with_board["Dimension"]["nMemoryBankSize00"] == "16"
+    assert with_board["Dimension"]["nMemoryBankSize01"] == "16"
+    assert with_board["Dimension"]["nMemoryBankSize02"] == "0"
+
+    assert without["Dimension"]["bEnabled0"] == "FALSE"
+    assert without["Dimension"]["nConsoleSlot"] == "0"
+    assert without["Dimension"]["nMemoryBankSize00"] == "0"
+
+
+def test_the_console_follows_the_first_board_there_is():
+    assert machines.console_slot((0, 0, 0)) == 0
+    assert machines.console_slot((32, 0, 0)) == 2
+    assert machines.console_slot((0, 32, 0)) == 4
+    assert machines.console_slot((0, 0, 32)) == 6
+    assert machines.console_slot((32, 32, 0)) == 2
+
+
+def test_a_board_takes_a_size_it_can_have():
+    """A size between two of them is the smaller, and anything below the
+    smallest is no board at all."""
+    def settle(asked):
+        return machines.settled(drafted(dimensions=asked)).dimensions
+
+    assert settle((64, 0, 0)) == (64, 0, 0)
+    assert settle((20, 0, 0)) == (16, 0, 0)
+    assert settle((3, 0, 0)) == (0, 0, 0)
+    assert settle((999, 0, 0)) == (64, 0, 0)
+
+
+def test_three_boards_fit_in_one_cube():
+    machine = machines.drafted(kind=machines.NEXTCUBE, memory=64,
+                               dimensions="16,32,64")
+
+    assert machine.dimensions == (16, 32, 64)
+    written = machines.settings_for(machine)["Dimension"]
+    assert [written["bEnabled%d" % board] for board in range(3)] == [
+        "TRUE", "TRUE", "TRUE"]
 
 
 def test_only_the_station_carries_colour_of_its_own():
@@ -121,7 +161,7 @@ def test_only_the_station_carries_colour_of_its_own():
 def test_only_the_cube_takes_a_dimension():
     """It was a cube board. A station has no slot for it."""
     for machine in machines.CATALOGUE:
-        if machine.dimension:
+        if any(machine.dimensions):
             assert machine.kind == 1, machine.identifier
 
 
@@ -172,7 +212,7 @@ def drafted(**wanted):
         "turbo": False,
         "mhz": machines.PLAIN_MHZ,
         "colour": False,
-        "dimension": False,
+        "dimensions": machines.NO_BOARDS,
         "banks": (16, 16, 16, 16),
     }
     fields.update(wanted)
@@ -191,7 +231,7 @@ def test_settling_a_settled_machine_changes_nothing():
     """It is applied when a configuration is written and again when it is read,
     so the second pass has to leave the first alone."""
     once = machines.settled(drafted(kind=machines.NEXTSTATION, colour=True,
-                                    dimension=True, banks=(3, 0, 9, 40)))
+                                    dimensions=machines.ONE_BOARD, banks=(3, 0, 9, 40)))
     assert machines.settled(once) == once
 
 
@@ -216,15 +256,17 @@ def test_the_1988_machine_cannot_have_a_turbo_board():
 def test_a_station_cannot_hold_a_dimension():
     """The board speaks on the NeXTbus and a station has none, so Previous
     switches it off at every start whatever the file says."""
-    station = machines.settled(drafted(kind=machines.NEXTSTATION, dimension=True))
-    assert station.dimension is False
+    station = machines.settled(drafted(kind=machines.NEXTSTATION, dimensions=machines.ONE_BOARD))
+    assert station.dimensions == machines.NO_BOARDS
 
 
 def test_both_cubes_take_a_dimension():
     """Previous refuses the board for the station alone, so the 1988 machine has
     the slot as much as the 040 cube does."""
     for kind in [machines.NEXT_COMPUTER, machines.NEXTCUBE]:
-        assert machines.settled(drafted(kind=kind, dimension=True)).dimension is True
+        settled = machines.settled(
+            drafted(kind=kind, dimensions=machines.ONE_BOARD))
+        assert settled.dimensions == machines.ONE_BOARD, kind
 
 
 def test_nitro_without_a_turbo_board_is_not_nitro():
@@ -427,11 +469,11 @@ def test_a_draft_that_names_no_clock_gets_the_one_its_boards_give_it():
 
 def test_a_draft_that_asks_for_what_previous_refuses_comes_back_without_it():
     cube = machines.drafted(kind=machines.NEXTCUBE, colour=True, memory=16)
-    station = machines.drafted(kind=machines.NEXTSTATION, dimension=True, memory=16)
+    station = machines.drafted(kind=machines.NEXTSTATION, dimensions=machines.ONE_BOARD, memory=16)
     computer = machines.drafted(kind=machines.NEXT_COMPUTER, turbo=True, memory=16)
 
     assert cube.colour is False
-    assert station.dimension is False
+    assert station.dimensions == machines.NO_BOARDS
     assert computer.turbo is False
 
 
@@ -468,9 +510,9 @@ def test_only_a_station_offers_colour_and_only_a_cube_a_dimension():
     cube = machines.offers(machines.find("nextcube"))
 
     assert station["colour"] is True
-    assert station["dimension"] is False
+    assert station["dimension_slots"] == []
     assert cube["colour"] is False
-    assert cube["dimension"] is True
+    assert cube["dimension_slots"] == [2, 4, 6]
 
 
 def test_a_clock_is_offered_only_where_there_is_a_turbo_board():

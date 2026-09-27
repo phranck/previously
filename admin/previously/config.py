@@ -91,7 +91,12 @@ def describe(system, memory, dimension):
     """
     machine_type = _int(system, "nMachineType", 1)
     turbo = _bool(system, "bTurbo")
-    dimension_seated = _bool(dimension, "bEnabled0")
+    # Any slot, because a cube holds three boards and a machine with one in the
+    # second is a machine with a NeXTdimension. Counted off the keys that are
+    # there rather than against a number, so this module holds no second answer
+    # to how many slots a cube has.
+    dimension_seated = any(_bool(dimension, key) for key in dimension
+                           if key.startswith("bEnabled"))
 
     return {
         "kind": machine_type,

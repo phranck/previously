@@ -161,7 +161,11 @@ How fast that memory is comes from there too, and it is the one setting the file
 
 Previous's own System dialogue, in this interface's idiom. That dialogue puts what can be chosen on its left and what follows from it on its right, and this window stacks the two: the machine's picture and four readings above the groups that change them.
 
-**Every control is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock, how much memory and how fast it is, the four banks it sits in, the DSP with its own memory, and what the machine has fitted. Everything else in the twenty-seven keys follows from those, so offering it would be offering a machine that does not exist.
+**Every control is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock, how much memory and how fast it is, the four banks it sits in, the DSP with its own memory, and what the machine has fitted. Everything else in the forty-one keys follows from those, so offering it would be offering a machine that does not exist.
+
+**The NeXTdimension is three boards.** A cube holds one in each of slots 2, 4 and 6, and each has memory of its own: 4, 16, 32 or 64 MB, which is what its four banks of 4 and 16 MB come to. A slot is a cell that puts a board in and takes it out again, and a board that is in gets a group of its own for its memory. The console follows the first board there is, and a machine with no board draws it itself. A NeXTstation holds none of them, because the board speaks on the NeXTbus and that machine has none.
+
+The board's ROM is not here. A path to a file on the Pi is not the machine.
 
 **What is fitted is the drive, never what is in it.** Whether the machine has a floppy drive, a magneto-optical drive, a network connection and which of the two sockets it uses, and whether the printer port is in use. A disk image, a paper size and a directory to print into are the installation's business and are not here. NeXT's 1988 machine is the one with the optical drive and no floppy, a turbo board drops the optical drive, and that machine has the coaxial socket alone. Previous says the first two on the face of its own dialogues without enforcing either, and the third it does enforce at every start.
 

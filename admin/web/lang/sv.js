@@ -62,6 +62,8 @@ NX_STRINGS.sv = {
   "editor.socket": "Ethernetuttag",
   "editor.thin-wire": "Thin wire",
   "editor.twisted-pair": "Partvinnad",
+  "editor.slot": "Plats {slot}",
+  "editor.dimension-memory": "Minne i plats {slot}",
   "editor.into-a-new-one": "En av maskinerna som det här projektet levererar, och den går inte att ändra. Att spara gör den till en egen konfiguration, under ett namn du ger den.",
   "editor.over-this-one": "{name} är en egen konfiguration, så att spara skriver över den.",
   "ask.name.title": "Spara konfigurationen",
