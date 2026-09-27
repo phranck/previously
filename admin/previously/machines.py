@@ -147,6 +147,22 @@ PLAIN_BANK_SIZES = (0, 1, 4, 16)
 BANKS = 4
 STATION_PLAIN_BANKS = 2
 
+#: The bank a machine boots from, and the least it must hold to do it, in
+#: megabytes. Previous says so on the face of its own memory dialogue: "For
+#: booting Bank0 must contain at least 4 MB of memory."
+#:
+#: The emulator does not enforce it, because the check that would is compiled
+#: out: `RESTRICTIVE_MEMCHECK` is 0 in its src/configuration.c. This editor does
+#: enforce it, since a machine that cannot boot is not one worth building, so
+#: that bank is offered no size below this and no empty bank at all.
+#:
+#: Nothing is enforced about a gap further along. Previous corrects one only on
+#: a NeXTdimension board, where its own comment says an empty first bank with
+#: memory behind it panics the kernel, and it says nothing of the kind about the
+#: machine's own memory.
+FIRST_BANK = 0
+BOOTABLE_BANK_MB = 4
+
 #: The ones with a default carry what Previous starts every machine from, or
 #: what NeXT fitted as standard, so the catalogue below names them only where
 #: one of the eleven differs.
@@ -334,6 +350,11 @@ def bank_sizes(kind, turbo, colour):
     settled ones: a cube with colour asked for is a cube without it, and
     reading a bank rule off a choice the emulator refuses would offer sizes no
     machine has.
+
+    The first bank is the one that cannot be empty. Previous says so on the face
+    of its own memory dialogue, and the editor holds the machine to it rather
+    than warning about it afterwards, because a machine that cannot boot is not
+    one worth building.
     """
     if turbo:
         sizes = TURBO_BANK_SIZES
@@ -345,7 +366,23 @@ def bank_sizes(kind, turbo, colour):
     reachable = BANKS
     if kind == NEXTSTATION and not turbo and not colour:
         reachable = STATION_PLAIN_BANKS
-    return tuple(sizes if bank < reachable else (0,) for bank in range(BANKS))
+
+    return tuple(_sizes_for(sizes, bank, reachable) for bank in range(BANKS))
+
+
+def _sizes_for(sizes, bank, reachable):
+    """What one bank accepts.
+
+    @param sizes - What a bank of this machine takes, empty first.
+    @param bank - Which of the four, from 0.
+    @param reachable - How many of them the machine has.
+    @returns tuple of int
+    """
+    if bank >= reachable:
+        return (0,)
+    if bank == FIRST_BANK:
+        return tuple(size for size in sizes if size >= BOOTABLE_BANK_MB)
+    return sizes
 
 
 #: What a total of memory is made of, bank by bank, in megabytes. From
@@ -864,13 +901,17 @@ def _bank(size, sizes):
     Configuration_CheckMemory does: three megabytes on a turbo board is a bank of
     eight, and sixty-four is a bank of thirty-two. Anything that is not a number
     at all, which a hand-edited file can hold, is an empty bank.
+
+    Except where the bank is not offered an empty one, which is the first, since
+    the machine boots from it. Asked to empty that one, it holds the least it
+    can instead.
     """
     try:
         wanted = int(size)
     except (TypeError, ValueError):
-        return 0
+        wanted = 0
     if wanted <= 0:
-        return 0
+        return 0 if 0 in sizes else sizes[0]
     for offered in sizes:
         if wanted <= offered:
             return offered
