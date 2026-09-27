@@ -229,6 +229,59 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 }
 .choice[chosen] { background: var(--white); }
 
+/* --- the four memory banks ------------------------------------------------
+
+   A bank is a socket on the board rather than one choice among several, so it
+   is drawn as one: a sunken field, with a raised module in it where something
+   is seated. Those are the two edges this whole interface is built from, so it
+   needs no picture of a memory module, and `web/parts` holds none.
+
+   The air inside a socket and inside a module is one value, so a module reads
+   at the same size as a cell beside it and the socket keeps a visible edge all
+   the way round whatever is in it. */
+.banks {
+  --socket-air: 4px;
+  display: grid;
+  /* Four equal columns, because the banks are equal and their order on the
+     board is the order they are read in. */
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--band-gap);
+}
+
+.bank {
+  /* A line of type, the air a module holds it in, and the air the socket holds
+     the module in. Stated as the sum rather than as a number, so a socket
+     holding nothing stands exactly as tall as one holding a module. */
+  min-height: calc(var(--line) + var(--socket-air) * 4);
+  display: grid;
+  place-items: center;
+  padding: var(--socket-air);
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
+  cursor: default;
+}
+
+/* A bank this machine cannot reach. Previous offers those nothing but an empty
+   bank, so the place is on the board and no socket is: it keeps its height and
+   loses its edge, rather than leaving a gap where a reader would count four. */
+.bank[absent] {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.module {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--raised-sides);
+  box-shadow: var(--raised-inside);
+}
+
 /* The letter each one shows, at the size that button sets, so somebody can
    see what they are choosing rather than read about it, with the figure under
    it because a letter alone says which is larger and not by how much.

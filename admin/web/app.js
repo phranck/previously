@@ -1345,18 +1345,7 @@ function drawTheChoices(offers) {
       : t("editor.memory.note.by-hand", { mb: drafting.memory }),
     t("editor.memory.note.lays-out"));
 
-  fillWithChoices("editor-banks", offers.banks.map((sizes, bank) => {
-    const size = drafting.banks[bank];
-    return {
-      label: size ? t("editor.megabytes", { mb: size }) : t("editor.bank-empty"),
-      /* A seated module is lit, the way a seated board is. */
-      chosen: size > 0,
-      choose: () => {
-        if (sizes.length < 2) return;
-        change({ banks: bankMovedOn(bank, sizes), memory: undefined });
-      },
-    };
-  }));
+  fillWithBanks("editor-banks", offers.banks);
   explain("editor-banks-note", ...bankNotes(offers.banks));
 
   fillWithChoices("editor-dsps", offers.dsps.map((dsp) => ({
@@ -1634,6 +1623,45 @@ function fillWithFittings(id, offers, fittings) {
     choose: () => change({ [which]: !drafting[which] }),
   })));
   return offered.map(([which]) => which);
+}
+
+/**
+ * Puts the four memory banks in place, as the sockets they are.
+ * @param {string} id - The row they go in.
+ * @param {Array<Array<number>>} offered - What each bank accepts, from the
+ *   service, smallest first and with an empty bank as the first of them.
+ *
+ * A bank is a socket on the board rather than one choice among several, so it
+ * is drawn as one: a sunken field with a raised module in it where something is
+ * seated. Those two edges are what this whole interface is built from, so this
+ * needs no picture of a memory module, and there is none to use.
+ *
+ * A bank the machine cannot reach accepts nothing but an empty bank, and it is
+ * drawn flat, because a socket that is not there is not a socket to fill.
+ */
+function fillWithBanks(id, offered) {
+  document.getElementById(id).replaceChildren(...offered.map((sizes, bank) => {
+    const size = drafting.banks[bank];
+    const reachable = sizes.length > 1;
+
+    const socket = document.createElement("div");
+    socket.className = "bank";
+    socket.toggleAttribute("absent", !reachable);
+    if (reachable) {
+      socket.addEventListener("click", () => change({
+        banks: bankMovedOn(bank, sizes),
+        memory: undefined,
+      }));
+    }
+
+    if (size) {
+      const module_ = document.createElement("div");
+      module_.className = "module";
+      module_.textContent = t("editor.megabytes", { mb: size });
+      socket.append(module_);
+    }
+    return socket;
+  }));
 }
 
 /**
