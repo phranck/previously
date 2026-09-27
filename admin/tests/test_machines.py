@@ -37,7 +37,7 @@ def test_every_machine_sets_the_same_keys():
             (section, key)
             for section, keys in settings.items() for key in keys)))
     assert len(shapes) == 1
-    assert len(next(iter(shapes))) == 17
+    assert len(next(iter(shapes))) == 18
 
 
 def test_the_1988_machine_is_a_68030():
@@ -135,7 +135,8 @@ def test_the_1988_machine_has_no_turbo():
 def test_memory_is_four_banks_of_whole_megabytes():
     for machine in machines.CATALOGUE:
         memory = machines.settings_for(machine)["Memory"]
-        assert sorted(memory) == ["nMemoryBankSize%d" % i for i in range(4)]
+        assert sorted(memory) == (
+            ["nMemoryBankSize%d" % i for i in range(4)] + ["nMemorySpeed"])
         assert all(value.isdigit() for value in memory.values())
 
 
@@ -526,6 +527,41 @@ def test_only_the_1988_machine_has_a_dsp_without_the_expansion():
         wanted = 24 if machine.kind == machines.NEXT_COMPUTER else 96
         assert machine.dsp_memory == wanted, machine.identifier
         assert machine.dsp == "plain", machine.identifier
+
+
+def test_a_turbo_board_reads_the_same_memory_speeds_differently():
+    """The file holds a position rather than a time, and Previous relabels the
+    four for a turbo board, so the same machine setting means faster memory
+    there."""
+    plain = machines.offers(machines.find("nextcube"))["memory_speeds"]
+    turbo = machines.offers(machines.find("nextcube-turbo"))["memory_speeds"]
+
+    assert [offer["ns"] for offer in plain] == [120, 100, 80, 60]
+    assert [offer["ns"] for offer in turbo] == [60, 70, 80, 100]
+    assert [offer["speed"] for offer in plain] == [0, 1, 2, 3]
+
+
+def test_the_memory_speed_is_written_as_the_position_previous_holds():
+    assert machines.settings_for(
+        drafted(memory_speed=3))["Memory"]["nMemorySpeed"] == "3"
+
+
+def test_a_memory_speed_that_is_not_a_position_becomes_the_one_previous_starts_from():
+    assert machines.settled(drafted(memory_speed=9)).memory_speed == 1
+    assert machines.settled(drafted(memory_speed=-1)).memory_speed == 1
+    assert machines.settled(drafted(memory_speed=0)).memory_speed == 0
+
+
+def test_the_memory_speed_survives_a_change_of_machine():
+    """Previous leaves it alone when the machine type or a board changes, unlike
+    the clock and the DSP, so a position somebody chose is still theirs."""
+    assert machines.drafted(kind=machines.NEXTSTATION, turbo=True,
+                            memory_speed=3, memory=32).memory_speed == 3
+
+
+def test_every_machine_starts_where_previous_starts():
+    for machine in machines.CATALOGUE:
+        assert machine.memory_speed == 1, machine.identifier
 
 
 def test_every_machine_type_is_offered_always():

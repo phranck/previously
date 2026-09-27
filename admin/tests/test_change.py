@@ -20,6 +20,7 @@ REAL_SHAPE = textwrap.dedent("""\
     nMemoryBankSize1 = 32
     nMemoryBankSize2 = 32
     nMemoryBankSize3 = 32
+    nMemorySpeed = 1
 
     [System]
     nMachineType = 1

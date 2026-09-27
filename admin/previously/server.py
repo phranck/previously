@@ -332,6 +332,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             memory=chosen("memory"),
             dsp=chosen("dsp"),
             dsp_memory=chosen("dsp_memory"),
+            memory_speed=chosen("memory_speed"),
         )
         settings = machines.settings_for(machine)
         return self._json({

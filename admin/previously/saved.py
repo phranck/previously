@@ -77,6 +77,7 @@ def as_machine(name, values):
         # `settled` then answers both with what that machine has.
         dsp=values.get("dsp", ""),
         dsp_memory=machines.whole(values.get("dsp_memory"), 0),
+        memory_speed=machines.whole(values.get("memory_speed"), -1),
     ))
 
 
@@ -113,6 +114,7 @@ def as_values(machine):
         "banks": list(machine.banks),
         "dsp": machine.dsp,
         "dsp_memory": machine.dsp_memory,
+        "memory_speed": machine.memory_speed,
     }
 
 

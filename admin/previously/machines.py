@@ -70,6 +70,16 @@ DSP_MEMORY_PLAIN = 24
 DSP_MEMORY_EXPANDED = 96
 DSP_MEMORIES = (DSP_MEMORY_PLAIN, DSP_MEMORY_EXPANDED)
 
+#: What each position of nMemorySpeed means in nanoseconds, from the Memory
+#: speed group in Previous's src/gui-sdl/dlgAdvanced.c. What the file holds is a
+#: position rather than a time, and the same position is 100 ns on a plain
+#: machine and 70 on a turbo board, which is what its own dialogue relabels.
+PLAIN_MEMORY_NS = (120, 100, 80, 60)
+TURBO_MEMORY_NS = (60, 70, 80, 100)
+
+#: Where Previous starts, and where a position it cannot read comes back to.
+DEFAULT_MEMORY_SPEED = 1
+
 #: Which slot a NeXTdimension board answers from. Zero means no board.
 DIMENSION_SLOT = "2"
 NO_BOARD = "0"
@@ -97,12 +107,13 @@ PLAIN_BANK_SIZES = (0, 1, 4, 16)
 BANKS = 4
 STATION_PLAIN_BANKS = 2
 
-#: The last two carry what Configuration_SetSystemDefaults writes for nearly
-#: every machine, so the catalogue below names them only where one differs.
+#: The last three carry what Previous starts every machine from, so the
+#: catalogue below names them only where one of the eleven differs.
 Machine = collections.namedtuple(
     "Machine",
-    "identifier name kind turbo mhz colour dimension banks dsp dsp_memory",
-    defaults=(DSP_PLAIN, DSP_MEMORY_EXPANDED))
+    "identifier name kind turbo mhz colour dimension banks"
+    " dsp dsp_memory memory_speed",
+    defaults=(DSP_PLAIN, DSP_MEMORY_EXPANDED, DEFAULT_MEMORY_SPEED))
 
 #: Every machine that can be chosen, in the order they were built.
 #:
@@ -186,8 +197,11 @@ def settings_for(machine):
             "nConsoleSlot": DIMENSION_SLOT if machine.dimension else NO_BOARD,
         },
         "Memory": {
-            "nMemoryBankSize%d" % index: str(size)
-            for index, size in enumerate(machine.banks)
+            **{
+                "nMemoryBankSize%d" % index: str(size)
+                for index, size in enumerate(machine.banks)
+            },
+            "nMemorySpeed": str(machine.memory_speed),
         },
     }
 
@@ -353,9 +367,22 @@ def default_dsp_memory(kind):
     return DSP_MEMORY_PLAIN if kind == NEXT_COMPUTER else DSP_MEMORY_EXPANDED
 
 
+def memory_speeds(turbo):
+    """How fast each position of the memory speed setting is, in nanoseconds.
+
+    @param turbo - Whether a turbo board is seated, as settled() leaves it.
+    @returns tuple of four int, in the order the positions are numbered.
+
+    A turbo board has faster memory and Previous relabels the same four
+    positions for it, so this is what a machine calls them rather than a
+    different set of choices.
+    """
+    return TURBO_MEMORY_NS if turbo else PLAIN_MEMORY_NS
+
+
 def drafted(kind, turbo=False, colour=False, dimension=False,
             mhz=None, memory=None, dsp=None, dsp_memory=None,
-            identifier="", name=""):
+            memory_speed=None, identifier="", name=""):
     """A machine from what an editor is showing, held to Previous's rules.
 
     @param kind - The machine type, as a number or a string of one.
@@ -366,6 +393,7 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
     @param memory - How much memory, as a total in megabytes.
     @param dsp - Which DSP, as one of DSPS.
     @param dsp_memory - How much memory it has, in kilobytes.
+    @param memory_speed - Which of the four positions the memory runs at.
     @param identifier - What it is called to the API, where it has a name.
     @param name - What it is called to a person.
     @returns Machine, settled.
@@ -398,6 +426,8 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
         # And a DSP nobody named is not one of the three, for the same reason.
         dsp=dsp if dsp in DSPS else "",
         dsp_memory=whole(dsp_memory, 0),
+        # Minus one is no position, which nothing can be corrected into.
+        memory_speed=whole(memory_speed, -1),
     ))
     # After the flags, because they decide which totals there are and what each
     # one is made of.
@@ -438,6 +468,11 @@ def offers(machine):
         # Nothing to choose between where there is no chip to give it to, and a
         # group with nothing to offer is not drawn.
         "dsp_memory": [] if machine.dsp == DSP_NONE else list(DSP_MEMORIES),
+        # The position and what this machine calls it, together, because a cell
+        # is labelled with the one and chosen by the other.
+        "memory_speeds": [{"speed": speed, "ns": nanoseconds}
+                          for speed, nanoseconds
+                          in enumerate(memory_speeds(machine.turbo))],
     }
 
 
@@ -485,6 +520,11 @@ def settled(machine):
         dsp=machine.dsp if machine.dsp in DSPS else DSP_PLAIN,
         dsp_memory=(machine.dsp_memory if machine.dsp_memory in DSP_MEMORIES
                     else default_dsp_memory(machine.kind)),
+        # A position rather than a time, so it survives a change of machine and
+        # is only read differently afterwards.
+        memory_speed=(machine.memory_speed
+                      if 0 <= machine.memory_speed < len(PLAIN_MEMORY_NS)
+                      else DEFAULT_MEMORY_SPEED),
     )
 
 

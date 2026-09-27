@@ -1151,6 +1151,7 @@ async function drawTheDraft() {
     memory: answer.machine.memory_mb,
     dsp: answer.configuration.dsp,
     dsp_memory: answer.configuration.dsp_memory,
+    memory_speed: answer.configuration.memory_speed,
   };
 
   redrawTheEditor();
@@ -1239,6 +1240,12 @@ function drawTheChoices(offers) {
   })));
   document.getElementById("editor-dsp-memory-group").hidden =
     !offers.dsp_memory.length;
+
+  fillWithChoices("editor-memory-speeds", offers.memory_speeds.map((offer) => ({
+    label: t("editor.nanoseconds", { ns: offer.ns }),
+    chosen: offer.speed === drafting.memory_speed,
+    choose: () => change({ memory_speed: offer.speed }),
+  })));
 }
 
 /**
