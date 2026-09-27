@@ -177,54 +177,66 @@
       <nx-row><label data-t="info.chips"></label><nx-field id="editor-chips">&mdash;</nx-field></nx-row>
     </div>
   </div>
+  <!-- Which subject is showing. The same raised cell every choice in this
+       window uses, in a row above them, which is the shape Preferences gives
+       its modules. Its cells carry words rather than pictures, because there is
+       no drawing of a processor or of memory to put in one. -->
+  <div class="choices subjects" id="editor-subjects"></div>
+  <!-- Every group says which subject it belongs to, and the row above decides
+       which of them is drawn. `hidden` stays what it was, which is a group the
+       machine has nothing to offer for. -->
   <div class="editor-groups">
-    <fieldset class="group">
+    <fieldset class="group" subject="machine">
       <legend data-t="editor.machine"></legend>
       <div class="choices" id="editor-kinds"></div>
     </fieldset>
-    <fieldset class="group" id="editor-boards-group">
+    <fieldset class="group" subject="machine" id="editor-boards-group">
       <legend data-t="editor.boards"></legend>
       <div class="choices" id="editor-boards"></div>
     </fieldset>
-    <fieldset class="group">
+    <fieldset class="group" subject="processor">
       <legend data-t="editor.clock"></legend>
       <div class="choices" id="editor-clocks"></div>
     </fieldset>
-    <fieldset class="group">
-      <legend data-t="info.memory"></legend>
-      <div class="choices" id="editor-memory"></div>
-    </fieldset>
-    <fieldset class="group">
-      <legend data-t="editor.banks"></legend>
-      <div class="choices" id="editor-banks"></div>
-    </fieldset>
-    <fieldset class="group">
+    <fieldset class="group" subject="processor">
       <legend data-t="editor.dsp"></legend>
       <div class="choices" id="editor-dsps"></div>
     </fieldset>
-    <fieldset class="group" id="editor-dsp-memory-group">
+    <fieldset class="group" subject="processor" id="editor-dsp-memory-group">
       <legend data-t="editor.dsp-memory"></legend>
       <div class="choices" id="editor-dsp-memory"></div>
     </fieldset>
-    <fieldset class="group">
+    <fieldset class="group" subject="memory">
+      <legend data-t="info.memory"></legend>
+      <div class="choices" id="editor-memory"></div>
+    </fieldset>
+    <fieldset class="group" subject="memory">
+      <legend data-t="editor.banks"></legend>
+      <div class="choices" id="editor-banks"></div>
+    </fieldset>
+    <fieldset class="group" subject="memory">
       <legend data-t="editor.memory-speed"></legend>
       <div class="choices" id="editor-memory-speeds"></div>
     </fieldset>
-    <fieldset class="group">
-      <legend data-t="editor.fitted"></legend>
-      <div class="choices" id="editor-fitted"></div>
-    </fieldset>
-    <fieldset class="group" id="editor-socket-group">
-      <legend data-t="editor.socket"></legend>
-      <div class="choices" id="editor-sockets"></div>
-    </fieldset>
-    <fieldset class="group" id="editor-dimension-group">
+    <fieldset class="group" subject="graphics" id="editor-dimension-group">
       <legend data-t="editor.dimension"></legend>
       <div class="choices" id="editor-dimensions"></div>
     </fieldset>
     <!-- One group per board that is in, built by the page, because how many
          there are is what the slots above decide. -->
-    <div id="editor-dimension-memory"></div>
+    <div class="boards-memory" id="editor-dimension-memory" subject="graphics"></div>
+    <fieldset class="group" subject="fitted">
+      <legend data-t="editor.drives"></legend>
+      <div class="choices" id="editor-drives"></div>
+    </fieldset>
+    <fieldset class="group" subject="fitted">
+      <legend data-t="editor.ports"></legend>
+      <div class="choices" id="editor-ports"></div>
+    </fieldset>
+    <fieldset class="group" subject="fitted" id="editor-socket-group">
+      <legend data-t="editor.socket"></legend>
+      <div class="choices" id="editor-sockets"></div>
+    </fieldset>
   </div>
   <p class="note" id="editor-note"></p>
   <div class="buttons">

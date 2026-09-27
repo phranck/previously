@@ -173,6 +173,8 @@ The board's ROM is not here. A path to a file on the Pi is not the machine.
 
 **The window holds no rule at all.** On every change it asks `GET /api/machine/settled` what that configuration is and what may be chosen beside it, and draws the answer. So there is one statement of what Previous allows, in `machines.py`, and the interface cannot show a machine the emulator would correct underneath it: a cube in colour comes back as a cube, and a total of 128 MB asked of a plain station comes back as the 32 it holds. What it saves is the configuration the service handed back rather than one assembled in the browser.
 
+**One subject at a time.** Thirteen groups in one column is taller than the desk, so a row of cells across the top chooses between Machine, Processor, Memory, Graphics and Fitted, and the groups below it take turns. That is the shape Preferences gives its modules, with words in the cells rather than pictures, because there is no drawing of a processor or of memory to put in one. Which subject is showing survives a change to the machine, so choosing a board does not send anybody back to the first.
+
 A group with nothing to offer is not drawn, and a group's cells change with the machine. The boards group holds only the boards that machine takes, and the clock group holds the fastest one only where the turbo board that carries it is seated, which is what Previous does with its own 40 MHz option.
 
 **The clock is chosen rather than worked out.** Previous offers 16, 20, 25 and 33 MHz for every machine and 40 only with a turbo board, and so does this. Changing the machine type or a board sets the clock afresh, to 33 with that board and 25 without, which is what `Configuration_SetSystemDefaults` writes at both of those moments.

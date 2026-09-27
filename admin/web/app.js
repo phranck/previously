@@ -1074,6 +1074,23 @@ const SOCKET_WORDS = {
  *  group, so this decides only where somebody starts. */
 const DIMENSION_DEFAULT_MEMORY = 32;
 
+/** What the editor shows one of at a time, and what each is called, in the order
+ *  a machine is put together: what it is, what runs in it, what it remembers,
+ *  what it draws with, and what is plugged into it. Every group in the markup
+ *  carries one of these names, which the page test holds it to. */
+const SUBJECTS = {
+  machine: "editor.subject.machine",
+  processor: "editor.subject.processor",
+  memory: "editor.subject.memory",
+  graphics: "editor.subject.graphics",
+  fitted: "editor.subject.fitted",
+};
+
+/** Which of them is showing. Kept here rather than read back off the markup, so
+ *  a redraw after a change leaves somebody where they were rather than sending
+ *  them to the first subject. */
+let showing = Object.keys(SUBJECTS)[0];
+
 /** Which saved configuration is being written over, or null where what comes out
  *  of this is a new one. A System machine cannot be changed, so editing one
  *  leaves this null and saving asks for a name. */
@@ -1242,6 +1259,8 @@ function drawTheMachineInTheEditor(machine) {
  * what Previous does with its own board options on a machine that takes none.
  */
 function drawTheChoices(offers) {
+  drawTheSubjects();
+
   fillWithChoices("editor-kinds", offers.kinds.map((kind) => ({
     label: kind.model,
     chosen: kind.kind === drafting.kind,
@@ -1309,19 +1328,17 @@ function drawTheChoices(offers) {
     choose: () => change({ memory_speed: offer.speed }),
   })));
 
-  /* What the machine has, which is a drive being there rather than anything in
-     it. The same cells as the boards group: one press puts it in and the next
-     takes it out. */
-  fillWithChoices("editor-fitted", [
+  /* What the machine has, which is a drive or a port being there rather than
+     anything in it. The same cells as the boards group: one press puts it in and
+     the next takes it out. */
+  fillWithFittings("editor-drives", offers, [
     ["floppy", t("editor.floppy")],
     ["optical", t("editor.optical")],
+  ]);
+  fillWithFittings("editor-ports", offers, [
     ["ethernet", t("editor.ethernet")],
     ["printer", t("editor.printer")],
-  ].filter(([which]) => offers[which]).map(([which, label]) => ({
-    label,
-    chosen: drafting[which],
-    choose: () => change({ [which]: !drafting[which] }),
-  })));
+  ]);
 
   fillWithChoices("editor-sockets", offers.sockets.map((socket) => ({
     label: SOCKET_WORDS[socket] ? t(SOCKET_WORDS[socket]) : socket,
@@ -1331,6 +1348,42 @@ function drawTheChoices(offers) {
   document.getElementById("editor-socket-group").hidden = !offers.sockets.length;
 
   drawTheDimensionBoards(offers);
+}
+
+/**
+ * Draws the row of subjects and shows the one that is chosen.
+ *
+ * Eleven groups in one column is taller than the desk, so the window shows one
+ * subject at a time. The row is the same raised cell every choice in this window
+ * uses, which is what Preferences does with its modules, and the groups
+ * themselves are shown by the stylesheet from the name on the row below it.
+ */
+function drawTheSubjects() {
+  fillWithChoices("editor-subjects",
+    Object.entries(SUBJECTS).map(([subject, word]) => ({
+      label: t(word),
+      chosen: subject === showing,
+      choose: () => showSubject(subject),
+    })));
+
+  /* Marked on each group rather than read off the row by the stylesheet, so
+     that one rule hides them and nothing has to name the subjects a second
+     time. */
+  for (const group of document.querySelectorAll(".editor-groups > [subject]")) {
+    group.toggleAttribute("away", group.getAttribute("subject") !== showing);
+  }
+}
+
+/**
+ * Shows one subject and leaves the machine alone.
+ * @param {string} subject - One of SUBJECTS.
+ *
+ * Nothing is asked of the service for this: which groups are drawn is the
+ * window's own business and the machine has not changed.
+ */
+function showSubject(subject) {
+  showing = subject;
+  drawTheSubjects();
 }
 
 /**
@@ -1404,6 +1457,27 @@ function dimensionsWith(board, memory) {
   const boards = [...drafting.dimensions];
   boards[board] = memory;
   return boards;
+}
+
+/**
+ * Puts one group of things a machine either has or has not in place.
+ * @param {string} id - The row they go in.
+ * @param {object} offers - The service's answer, which says which of them this
+ *   machine can have at all.
+ * @param {Array<Array>} fittings - `[name, label]` for each.
+ *
+ * One press puts it in and the next takes it out, which is the boards group's
+ * cell. A machine that cannot have one is not offered it rather than being
+ * offered it and refused.
+ */
+function fillWithFittings(id, offers, fittings) {
+  fillWithChoices(id, fittings
+    .filter(([which]) => offers[which])
+    .map(([which, label]) => ({
+      label,
+      chosen: drafting[which],
+      choose: () => change({ [which]: !drafting[which] }),
+    })));
 }
 
 /**
