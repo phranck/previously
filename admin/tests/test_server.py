@@ -566,7 +566,7 @@ def test_asking_what_a_configuration_would_be_needs_no_token(service):
     answer = settled(service, kind=2, turbo=1, colour=1, mhz=40, memory=128)
 
     assert answer["configuration"]["kind"] == 2
-    assert answer["configuration"]["nitro"] is True
+    assert answer["configuration"]["mhz"] == 40
     assert answer["configuration"]["banks"] == [32, 32, 32, 32]
 
 
@@ -597,7 +597,7 @@ def test_it_says_what_else_could_be_chosen(service):
     assert offers["turbo"] is True
     assert offers["colour"] is False
     assert offers["dimension"] is True
-    assert offers["clocks"] == [33, 40]
+    assert offers["clocks"] == [16, 20, 25, 33, 40]
     assert offers["memory"] == [8, 16, 32, 64, 128]
 
 

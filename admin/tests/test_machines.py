@@ -80,7 +80,8 @@ def test_the_bus_chip_is_in_the_cubes_and_not_in_the_station():
 def test_the_clock_follows_the_board_rather_than_the_machine():
     for machine in machines.CATALOGUE:
         clock = machines.settings_for(machine)["System"]["nCpuFreq"]
-        if machine.nitro:
+        if machine.mhz == machines.NITRO_MHZ:
+            assert machine.turbo is True, machine.identifier
             assert clock == "40", machine.identifier
         elif machine.turbo:
             assert clock == "33", machine.identifier
@@ -168,7 +169,7 @@ def drafted(**wanted):
         "name": "Drafted",
         "kind": machines.NEXTCUBE,
         "turbo": False,
-        "nitro": False,
+        "mhz": machines.PLAIN_MHZ,
         "colour": False,
         "dimension": False,
         "banks": (16, 16, 16, 16),
@@ -226,9 +227,27 @@ def test_both_cubes_take_a_dimension():
 
 
 def test_nitro_without_a_turbo_board_is_not_nitro():
-    """A Nitro is a faster turbo board rather than a machine of its own."""
-    assert machines.settled(drafted(nitro=True, turbo=False)).nitro is False
-    assert machines.settled(drafted(nitro=True, turbo=True)).nitro is True
+    """A Nitro is a faster turbo board rather than a machine of its own, so the
+    clock it runs at is offered nowhere without that board."""
+    assert machines.settled(drafted(mhz=40, turbo=False)).mhz == 25
+    assert machines.settled(drafted(mhz=40, turbo=True)).mhz == 40
+
+
+def test_a_clock_the_machine_cannot_have_becomes_the_one_its_boards_give_it():
+    """Previous writes the clock afresh whenever the machine type or the turbo
+    board changes in its own dialogue, so a machine holding one it is not
+    offered gets the one that goes with what it is now."""
+    assert machines.settled(drafted(turbo=True, mhz=0)).mhz == 33
+    assert machines.settled(drafted(turbo=False, mhz=0)).mhz == 25
+    assert machines.settled(drafted(turbo=False, mhz=99)).mhz == 25
+
+
+def test_every_machine_keeps_a_clock_previous_offers_it():
+    """The four slow ones are offered whatever the machine is, so choosing one
+    of them survives a change of board."""
+    for clock in (16, 20, 25, 33):
+        assert machines.settled(drafted(turbo=False, mhz=clock)).mhz == clock
+        assert machines.settled(drafted(turbo=True, mhz=clock)).mhz == clock
 
 
 def test_a_bank_is_rounded_up_to_a_size_the_machine_has():
@@ -383,7 +402,7 @@ def test_a_draft_is_the_six_controls_and_nothing_else():
     assert machine.name == "Meine Kiste"
     assert machine.turbo is True
     assert machine.colour is True
-    assert machine.nitro is True
+    assert machine.mhz == 40
     assert machine.banks == (32, 32, 32, 32)
     assert machines.settings_for(machine)["System"]["nCpuFreq"] == "40"
 
@@ -394,8 +413,15 @@ def test_a_draft_arrives_as_text_and_is_read_as_numbers():
                                mhz="40", memory="32")
 
     assert machine.kind == machines.NEXTSTATION
-    assert machine.nitro is True
+    assert machine.mhz == 40
     assert sum(machine.banks) == 32
+
+
+def test_a_draft_that_names_no_clock_gets_the_one_its_boards_give_it():
+    """Which is what an editor sends the moment the machine type or a board
+    changes, because Previous sets the clock afresh at both of those."""
+    assert machines.drafted(kind=machines.NEXTCUBE, turbo=True, memory=32).mhz == 33
+    assert machines.drafted(kind=machines.NEXTCUBE, turbo=False, memory=32).mhz == 25
 
 
 def test_a_draft_that_asks_for_what_previous_refuses_comes_back_without_it():
@@ -413,7 +439,7 @@ def test_the_faster_clock_needs_the_board_it_belongs_to():
     clock as it finds it, so 40 without a turbo is not a machine."""
     without = machines.drafted(kind=machines.NEXTCUBE, turbo=False, mhz=40, memory=16)
 
-    assert without.nitro is False
+    assert without.mhz == 25
     assert machines.settings_for(without)["System"]["nCpuFreq"] == "25"
 
 
@@ -447,8 +473,12 @@ def test_only_a_station_offers_colour_and_only_a_cube_a_dimension():
 
 
 def test_a_clock_is_offered_only_where_there_is_a_turbo_board():
-    assert machines.offers(machines.find("nextcube"))["clocks"] == []
-    assert machines.offers(machines.find("nextcube-turbo"))["clocks"] == [33, 40]
+    """The four slow ones are offered whatever the machine is, and the fastest
+    only where the board that carries it is seated, which is what Previous does
+    by replacing that option with blank space."""
+    assert machines.offers(machines.find("nextcube"))["clocks"] == [16, 20, 25, 33]
+    assert machines.offers(machines.find("next-computer"))["clocks"] == [16, 20, 25, 33]
+    assert machines.offers(machines.find("nextcube-turbo"))["clocks"] == [16, 20, 25, 33, 40]
 
 
 def test_every_machine_type_is_offered_always():
@@ -472,5 +502,4 @@ def test_what_is_offered_is_what_the_machine_in_hand_holds():
         kinds = [offer["kind"] for offer in offered["kinds"]]
         assert machine.kind in kinds, machine.identifier
         assert sum(machine.banks) in offered["memory"], machine.identifier
-        if machine.nitro:
-            assert 40 in offered["clocks"], machine.identifier
+        assert machine.mhz in offered["clocks"], machine.identifier
