@@ -161,7 +161,9 @@ How fast that memory is comes from there too, and it is the one setting the file
 
 Previous's own System dialogue, in this interface's idiom. That dialogue puts what can be chosen on its left and what follows from it on its right, and this window stacks the two: the machine's picture and four readings above the groups that change them.
 
-**Every control is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock, how much memory and how fast it is, the four banks it sits in, and the DSP with its own memory. Everything else in the eighteen keys follows from those, so offering it would be offering a machine that does not exist.
+**Every control is something Previous can actually be told.** The machine type, the boards that can be seated, the processor clock, how much memory and how fast it is, the four banks it sits in, the DSP with its own memory, and what the machine has fitted. Everything else in the twenty-seven keys follows from those, so offering it would be offering a machine that does not exist.
+
+**What is fitted is the drive, never what is in it.** Whether the machine has a floppy drive, a magneto-optical drive, a network connection and which of the two sockets it uses, and whether the printer port is in use. A disk image, a paper size and a directory to print into are the installation's business and are not here. NeXT's 1988 machine is the one with the optical drive and no floppy, a turbo board drops the optical drive, and that machine has the coaxial socket alone. Previous says the first two on the face of its own dialogues without enforcing either, and the third it does enforce at every start.
 
 **Memory is a total or four banks, and the banks are the real thing.** A total lays them out the way Previous lays them out, which is the quick way to a machine somebody wants. Pressing a bank fits the next size that bank takes and comes back to an empty one after the largest, so a machine no total adds up to can be built by hand. A bank the machine cannot reach offers an empty one and nothing else.
 

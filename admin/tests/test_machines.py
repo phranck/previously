@@ -37,7 +37,7 @@ def test_every_machine_sets_the_same_keys():
             (section, key)
             for section, keys in settings.items() for key in keys)))
     assert len(shapes) == 1
-    assert len(next(iter(shapes))) == 18
+    assert len(next(iter(shapes))) == 27
 
 
 def test_the_1988_machine_is_a_68030():
@@ -613,6 +613,90 @@ def test_what_each_bank_takes_is_offered():
 
     assert cube == [[0, 1, 4, 16]] * 4
     assert station == [[0, 1, 4, 16], [0, 1, 4, 16], [0], [0]]
+
+
+def test_the_1988_machine_has_the_optical_drive_and_no_floppy():
+    """Which is what NeXT sold, and what Previous's own dialogues say on their
+    faces. The emulator enforces neither, so this is the editor's rule."""
+    computer = machines.find("next-computer")
+
+    assert computer.floppy is False
+    assert computer.optical is True
+    assert machines.offers(computer)["floppy"] is False
+    assert machines.offers(computer)["optical"] is True
+
+
+def test_a_turbo_board_drops_the_optical_drive():
+    assert machines.offers(machines.find("nextcube"))["optical"] is True
+    assert machines.offers(machines.find("nextcube-turbo"))["optical"] is False
+    assert machines.offers(machines.find("nextstation"))["optical"] is False
+
+
+def test_a_drive_the_machine_never_had_goes():
+    assert machines.settled(
+        drafted(kind=machines.NEXT_COMPUTER, floppy=True)).floppy is False
+    assert machines.settled(
+        drafted(kind=machines.NEXTSTATION, optical=True)).optical is False
+
+
+def test_the_1988_machine_has_no_twisted_pair_socket():
+    """The one rule of these that Previous does enforce, in
+    Configuration_CheckEthernetSettings at every start."""
+    assert machines.settled(drafted(kind=machines.NEXT_COMPUTER,
+                                    ethernet=True,
+                                    socket="twisted-pair")).socket == "thin-wire"
+    assert machines.offers(drafted(kind=machines.NEXT_COMPUTER,
+                                   ethernet=True))["sockets"] == ["thin-wire"]
+    assert machines.offers(drafted(kind=machines.NEXTCUBE, ethernet=True)
+                           )["sockets"] == ["thin-wire", "twisted-pair"]
+
+
+def test_a_machine_off_the_network_is_offered_no_socket():
+    assert machines.offers(drafted(ethernet=False))["sockets"] == []
+
+
+def test_one_drive_of_each_kind_is_written_and_the_rest_are_absent():
+    """Previous keeps four floppy drives and two optical ones in its file, and
+    NeXT built one of each, so the others say so rather than being left at
+    whatever the last machine had."""
+    written = machines.settings_for(drafted(floppy=True, optical=False))
+
+    assert written["Floppy"] == {"bDriveConnected0": "TRUE",
+                                 "bDriveConnected1": "FALSE",
+                                 "bDriveConnected2": "FALSE",
+                                 "bDriveConnected3": "FALSE"}
+    assert written["MagnetoOptical"] == {"bDriveConnected0": "FALSE",
+                                         "bDriveConnected1": "FALSE"}
+
+
+def test_the_socket_is_written_as_the_flag_previous_holds():
+    plain = machines.settings_for(drafted(ethernet=True, socket="thin-wire"))
+    paired = machines.settings_for(drafted(ethernet=True,
+                                           socket="twisted-pair"))
+    off = machines.settings_for(drafted(ethernet=False, socket="twisted-pair"))
+
+    assert plain["Ethernet"] == {"bEthernetConnected": "TRUE",
+                                 "bTwistedPair": "FALSE"}
+    assert paired["Ethernet"]["bTwistedPair"] == "TRUE"
+    # A machine off the network is on neither socket.
+    assert off["Ethernet"] == {"bEthernetConnected": "FALSE",
+                               "bTwistedPair": "FALSE"}
+
+
+def test_the_printer_port_is_written():
+    assert machines.settings_for(
+        drafted(printer=True))["Printer"]["bPrinterConnected"] == "TRUE"
+    assert machines.settings_for(
+        drafted(printer=False))["Printer"]["bPrinterConnected"] == "FALSE"
+
+
+def test_every_machine_is_on_the_network_and_has_no_printer():
+    """What NeXT fitted as standard, so the eleven read as the machines they
+    were rather than as ones somebody kitted out."""
+    for machine in machines.CATALOGUE:
+        assert machine.ethernet is True, machine.identifier
+        assert machine.socket == machines.THIN_WIRE, machine.identifier
+        assert machine.printer is False, machine.identifier
 
 
 def test_every_machine_type_is_offered_always():
