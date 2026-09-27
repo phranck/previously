@@ -163,9 +163,11 @@ Previous's own System dialogue, in this interface's idiom. That dialogue puts wh
 
 **The window holds no rule at all.** On every change it asks `GET /api/machine/settled` what that configuration is and what may be chosen beside it, and draws the answer. So there is one statement of what Previous allows, in `machines.py`, and the interface cannot show a machine the emulator would correct underneath it: a cube in colour comes back as a cube, and a total of 128 MB asked of a plain station comes back as the 32 it holds. What it saves is the configuration the service handed back rather than one assembled in the browser.
 
-A group with nothing to offer is not drawn. The clock appears with a turbo board and not without one, which is what Previous does with its own 40 MHz option, and the boards group holds only the boards that machine takes.
+A group with nothing to offer is not drawn, and a group's cells change with the machine. The boards group holds only the boards that machine takes, and the clock group holds the fastest one only where the turbo board that carries it is seated, which is what Previous does with its own 40 MHz option.
 
-**The clock is where Nitro lives.** Previous has no such thing and reads `nCpuFreq` as it finds it, so what the catalogue calls a Nitro is 40 MHz on a turbo board, and that is what the editor offers.
+**The clock is chosen rather than worked out.** Previous offers 16, 20, 25 and 33 MHz for every machine and 40 only with a turbo board, and so does this. Changing the machine type or a board sets the clock afresh, to 33 with that board and 25 without, which is what `Configuration_SetSystemDefaults` writes at both of those moments.
+
+**The clock is also where Nitro lives.** Previous has no such thing and reads `nCpuFreq` as it finds it, so what the catalogue calls a Nitro is a turbo board running at 40.
 
 **Saving does not activate.** Opened on one of the eleven, which cannot be changed, it asks for a name and keeps a configuration of your own. Opened on one of your own, it writes that one back under the name it has. Either way `previous.cfg` is untouched, so the editor cannot leave a machine that will not boot. Starting one is the same double click as always.
 

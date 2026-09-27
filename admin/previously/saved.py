@@ -69,11 +69,27 @@ def as_machine(name, values):
         name=name,
         kind=machines.whole(values.get("kind"), machines.NEXTCUBE),
         turbo=bool(values.get("turbo")),
-        nitro=bool(values.get("nitro")),
+        mhz=_clock_of(values),
         colour=bool(values.get("colour")),
         dimension=bool(values.get("dimension")),
         banks=tuple(values.get("banks") or ()),
     ))
+
+
+def _clock_of(values):
+    """The clock a saved configuration is set to, in megahertz.
+
+    @param values - One entry, as the file holds it.
+    @returns int, and zero where the entry says nothing, which `settled` then
+      answers with the clock the machine's boards give it.
+
+    An entry written before the clock was a value of its own carries `nitro`
+    instead, which meant a turbo board running at the fastest clock. So a
+    machine somebody saved then comes back as the machine they built.
+    """
+    if "mhz" in values:
+        return machines.whole(values.get("mhz"), 0)
+    return machines.NITRO_MHZ if values.get("nitro") else 0
 
 
 def as_values(machine):
@@ -87,7 +103,7 @@ def as_values(machine):
     return {
         "kind": machine.kind,
         "turbo": machine.turbo,
-        "nitro": machine.nitro,
+        "mhz": machine.mhz,
         "colour": machine.colour,
         "dimension": machine.dimension,
         "banks": list(machine.banks),

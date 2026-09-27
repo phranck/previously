@@ -1170,14 +1170,18 @@ function drawTheMachineInTheEditor(machine) {
  *   seated, which clocks there are and which totals of memory.
  *
  * A group with nothing to offer is taken away rather than shown empty, which is
- * what Previous does with its own clock options on a machine that has no turbo
- * board.
+ * what Previous does with its own board options on a machine that takes none.
+ *
+ * Changing the machine type or a board sends no clock, because Previous writes
+ * one afresh at both of those moments and the service does the same. Sending the
+ * one that was showing would keep a 40 MHz machine at 40 through a change that
+ * takes its turbo board away.
  */
 function drawTheChoices(offers) {
   fillWithChoices("editor-kinds", offers.kinds.map((kind) => ({
     label: kind.model,
     chosen: kind.kind === drafting.kind,
-    choose: () => change({ kind: kind.kind }),
+    choose: () => change({ kind: kind.kind, mhz: undefined }),
   })));
 
   const boards = [
@@ -1189,7 +1193,7 @@ function drawTheChoices(offers) {
     chosen: drafting[which],
     /* A board is seated or it is not, so its cell answers a second click by
        taking it out again. */
-    choose: () => change({ [which]: !drafting[which] }),
+    choose: () => change({ [which]: !drafting[which], mhz: undefined }),
   }));
   fillWithChoices("editor-boards", boards);
   document.getElementById("editor-boards-group").hidden = !boards.length;
@@ -1199,7 +1203,6 @@ function drawTheChoices(offers) {
     chosen: mhz === drafting.mhz,
     choose: () => change({ mhz }),
   })));
-  document.getElementById("editor-clock-group").hidden = !offers.clocks.length;
 
   fillWithChoices("editor-memory", offers.memory.map((mb) => ({
     label: t("editor.megabytes", { mb }),

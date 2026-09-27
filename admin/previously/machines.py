@@ -34,11 +34,21 @@ CPU_LEVEL_68040 = "4"
 FPU_68882 = "68882"
 FPU_ON_CHIP = "68040"
 
-#: The clock in megahertz. A turbo board is the faster machine, and Nitro was a
-#: faster turbo rather than a different one.
-PLAIN_MHZ = "25"
-TURBO_MHZ = "33"
-NITRO_MHZ = "40"
+#: The clocks in megahertz, from the CPU clock group in Previous's
+#: src/gui-sdl/dlgAdvanced.c. Its own dialogue offers these four whatever the
+#: machine is, and adds NITRO_MHZ only where a turbo board is seated.
+CLOCKS = (16, 20, 25, 33)
+
+#: The fifth, which is what the catalogue calls a Nitro. Previous has no idea of
+#: Nitro and reads nCpuFreq as it finds it, so this is a name of ours for the
+#: fastest clock its own dialogue will offer.
+NITRO_MHZ = 40
+
+#: What a machine runs at when nothing else has been chosen, which is what
+#: Configuration_SetSystemDefaults writes every time the machine type or the
+#: turbo board changes in Previous's own dialogue.
+PLAIN_MHZ = 25
+TURBO_MHZ = 33
 
 #: Which slot a NeXTdimension board answers from. Zero means no board.
 DIMENSION_SLOT = "2"
@@ -68,46 +78,49 @@ BANKS = 4
 STATION_PLAIN_BANKS = 2
 
 Machine = collections.namedtuple(
-    "Machine", "identifier name kind turbo nitro colour dimension banks")
+    "Machine", "identifier name kind turbo mhz colour dimension banks")
 
 #: Every machine that can be chosen, in the order they were built.
 #:
 #: `banks` is the four memory banks in megabytes. These are data rather than a
 #: rule: a turbo takes 32 MB modules and an early station was sold with two
 #: banks filled, and no arithmetic connects those facts.
+#:
+#: `mhz` is the same kind of fact. The two Nitros are the machines NeXT clocked
+#: at 40, and everything else runs at what its boards give it.
 CATALOGUE = (
     Machine("next-computer", "NeXT Computer", NEXT_COMPUTER,
-            turbo=False, nitro=False, colour=False, dimension=False,
+            turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=False,
             banks=(16, 16, 16, 16)),
     Machine("nextcube", "NeXTcube", NEXTCUBE,
-            turbo=False, nitro=False, colour=False, dimension=False,
+            turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=False,
             banks=(16, 16, 16, 16)),
     Machine("nextcube-dimension", "NeXTcube mit NeXTdimension", NEXTCUBE,
-            turbo=False, nitro=False, colour=False, dimension=True,
+            turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=True,
             banks=(16, 16, 16, 16)),
     Machine("nextcube-turbo", "NeXTcube Turbo", NEXTCUBE,
-            turbo=True, nitro=False, colour=False, dimension=False,
+            turbo=True, mhz=TURBO_MHZ, colour=False, dimension=False,
             banks=(32, 32, 32, 32)),
     Machine("nextcube-turbo-dimension", "NeXTcube Turbo mit NeXTdimension", NEXTCUBE,
-            turbo=True, nitro=False, colour=False, dimension=True,
+            turbo=True, mhz=TURBO_MHZ, colour=False, dimension=True,
             banks=(32, 32, 32, 32)),
     Machine("nextcube-turbo-nitro", "NeXTcube Turbo Nitro", NEXTCUBE,
-            turbo=True, nitro=True, colour=False, dimension=False,
+            turbo=True, mhz=NITRO_MHZ, colour=False, dimension=False,
             banks=(32, 32, 32, 32)),
     Machine("nextstation", "NeXTstation", NEXTSTATION,
-            turbo=False, nitro=False, colour=False, dimension=False,
+            turbo=False, mhz=PLAIN_MHZ, colour=False, dimension=False,
             banks=(16, 16, 0, 0)),
     Machine("nextstation-color", "NeXTstation Color", NEXTSTATION,
-            turbo=False, nitro=False, colour=True, dimension=False,
+            turbo=False, mhz=PLAIN_MHZ, colour=True, dimension=False,
             banks=(8, 8, 8, 8)),
     Machine("nextstation-turbo", "NeXTstation Turbo", NEXTSTATION,
-            turbo=True, nitro=False, colour=False, dimension=False,
+            turbo=True, mhz=TURBO_MHZ, colour=False, dimension=False,
             banks=(32, 32, 32, 32)),
     Machine("nextstation-turbo-color", "NeXTstation Turbo Color", NEXTSTATION,
-            turbo=True, nitro=False, colour=True, dimension=False,
+            turbo=True, mhz=TURBO_MHZ, colour=True, dimension=False,
             banks=(32, 32, 32, 32)),
     Machine("nextstation-turbo-color-nitro", "NeXTstation Turbo Color Nitro", NEXTSTATION,
-            turbo=True, nitro=True, colour=True, dimension=False,
+            turbo=True, mhz=NITRO_MHZ, colour=True, dimension=False,
             banks=(32, 32, 32, 32)),
 )
 
@@ -272,6 +285,33 @@ def banks_for(total, kind, turbo, colour):
     return layouts[fits[-1]]
 
 
+def clocks_for(turbo):
+    """Which clocks this machine can be run at, in megahertz.
+
+    @param turbo - Whether a turbo board is seated, as settled() leaves it.
+    @returns tuple of int, slowest first.
+
+    Previous offers the same four for every machine and adds the fastest only
+    where that board is in, which is what its own dialogue does by replacing the
+    40 MHz option with blank space.
+    """
+    return (CLOCKS + (NITRO_MHZ,)) if turbo else CLOCKS
+
+
+def default_clock(turbo):
+    """What a machine runs at when the one it held is not one it can have.
+
+    @param turbo - Whether a turbo board is seated.
+    @returns int
+
+    Previous writes this whenever the machine type or that board changes in its
+    own dialogue, and never checks the clock at start. So a clock that does not
+    belong to the machine is not corrected there, it is replaced the moment
+    somebody touches what decides it, and this is the same act.
+    """
+    return TURBO_MHZ if turbo else PLAIN_MHZ
+
+
 def drafted(kind, turbo=False, colour=False, dimension=False,
             mhz=None, memory=None, identifier="", name=""):
     """A machine from what an editor is showing, held to Previous's rules.
@@ -280,8 +320,10 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
     @param turbo - Whether a turbo board is asked for.
     @param colour - Whether the colour board is.
     @param dimension - Whether a NeXTdimension is.
-    @param mhz - The clock asked for. Only a turbo machine has a choice, and
-      there it is the 33 of a Turbo against the 40 somebody types for a Nitro.
+    @param mhz - The clock asked for, in megahertz. Nothing at all is what an
+      editor sends when it has just changed the machine type or a board, and
+      then the machine runs at what those boards give it, exactly as Previous's
+      own dialogue sets the clock afresh at both of those moments.
     @param memory - How much memory, as a total in megabytes.
     @param identifier - What it is called to the API, where it has a name.
     @param name - What it is called to a person.
@@ -301,7 +343,9 @@ def drafted(kind, turbo=False, colour=False, dimension=False,
         name=name,
         kind=whole(kind, NEXTCUBE),
         turbo=bool(turbo),
-        nitro=str(mhz) == NITRO_MHZ,
+        # Zero is no clock, which is what nothing at all arrives as. It is not
+        # one the machine can be offered, so settled() replaces it.
+        mhz=whole(mhz, 0),
         colour=bool(colour),
         dimension=bool(dimension),
         banks=(0, 0, 0, 0),
@@ -338,7 +382,7 @@ def offers(machine):
         "turbo": machine.kind != NEXT_COMPUTER,
         "colour": machine.kind == NEXTSTATION,
         "dimension": machine.kind != NEXTSTATION,
-        "clocks": [int(TURBO_MHZ), int(NITRO_MHZ)] if machine.turbo else [],
+        "clocks": list(clocks_for(machine.turbo)),
         "memory": list(memory_totals(
             machine.kind, machine.turbo, machine.colour)),
     }
@@ -374,11 +418,11 @@ def settled(machine):
 
     return machine._replace(
         turbo=turbo,
-        # A Nitro is a faster turbo board rather than a machine of its own, so
-        # without that board there is nothing for it to be faster than. This one
-        # rule is ours: Previous has no idea of Nitro and reads nCpuFreq as it
-        # finds it.
-        nitro=machine.nitro and turbo,
+        # The one rule here that Previous does not enforce at start. Its own
+        # dialogue writes the clock afresh every time the machine type or the
+        # turbo board changes, and 40 is offered nowhere without that board, so
+        # a machine holding one it cannot be offered gets the one it can.
+        mhz=machine.mhz if machine.mhz in clocks_for(turbo) else default_clock(turbo),
         colour=colour,
         # The board speaks on the NeXTbus and a NeXTstation has none, so
         # Configuration_CheckDimensionSettings switches every board off for that
@@ -426,9 +470,7 @@ def _system_for(machine):
 
 def _clock(machine):
     """@returns The clock in megahertz, as the file holds it."""
-    if machine.nitro:
-        return NITRO_MHZ
-    return TURBO_MHZ if machine.turbo else PLAIN_MHZ
+    return str(machine.mhz)
 
 
 def _bank(size, sizes):
