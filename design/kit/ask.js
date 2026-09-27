@@ -60,9 +60,11 @@ class NxAsk extends HTMLElement {
    *   named by whoever asks.
    * @param {string} question.cancel - The wording on the safe one.
    * @param {boolean} [question.field] - Show a line to type into.
+   * @param {boolean} [question.secret] - Draw that line as a password field, so
+   *   what is typed into it is not read over the typist's shoulder.
    * @returns {Promise<boolean>} True where the acting button was pressed.
    */
-  ask({ title, text, icon, confirm, cancel, field = false }) {
+  ask({ title, text, icon, confirm, cancel, field = false, secret = false }) {
     this.querySelector(".title").textContent = title;
     this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {
@@ -76,6 +78,7 @@ class NxAsk extends HTMLElement {
 
     const entry = this.querySelector(".entry");
     entry.hidden = !field;
+    entry.type = secret ? "password" : "text";
     entry.value = "";
 
     this.toggleAttribute("data-open", true);

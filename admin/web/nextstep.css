@@ -949,8 +949,9 @@ nx-ask .panel-body .icon { width: 48px; height: 48px; background-size: contain; 
 nx-ask .panel-body p { margin: 0 0 8px; }
 nx-ask .panel-body p:last-child { margin: 0; }
 
-/* The line a panel takes a token on. NeXT's text fields are white, sunken and
-   one line tall, and this is the same field the readings use, made editable. */
+/* The line a panel takes an answer on, which is a name or a password. NeXT's
+   text fields are white, sunken and one line tall, and this is the same field
+   the readings use, made editable. */
 nx-ask .entry {
   width: 100%;
   margin-top: 10px;

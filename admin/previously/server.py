@@ -4,10 +4,11 @@ Built on http.server from the standard library, which is enough for a handful
 of routes on a single-user device and costs no interpreter, no pip and no venv.
 
 Reading is open, with one exception at /api/screen. Everything that changes
-the machine arrives as a POST and is refused without the token, which token.py
-decides.
+the machine arrives as a POST and is refused without a signed in session,
+which password.py decides.
 """
 
+import http.cookies
 import http.server
 import json
 import mimetypes
@@ -16,7 +17,7 @@ import threading
 import urllib.parse
 
 from . import change, config, files, grab, kiosk, machines, pi, saved, terminal, websocket
-from .token import HEADER
+from .password import COOKIE, SESSION_SECONDS, SMALLEST, Attempts, Sessions, acceptable
 
 VERSION = "0.1.3"
 
@@ -53,7 +54,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
     """
 
     settings = None
-    token = None
+    #: The machine's own secret, the browsers that have given it, and how often
+    #: each address has got it wrong lately. On the class for the same reason
+    #: the settings are: http.server builds the handler itself.
+    password = None
+    sessions = None
+    attempts = None
 
     #: Held whilst a shell session is open, so there is one at a time. A class
     #: attribute because there is one server, and http.server makes a handler
@@ -83,8 +89,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                          self.settings.documents))
         if route == "/api/machine/settled":
             return self._settled_configuration()
-        if route == "/api/token":
-            return self._json({"valid": self._carries_the_token()})
+        if route == "/api/session":
+            # How short a password may be travels with the answer, so the panel
+            # that asks for one says the rule that will actually be applied
+            # rather than a copy of it.
+            return self._json({
+                "claimed": bool(self.password and self.password.claimed),
+                "signed_in": self._signed_in(),
+                "smallest": SMALLEST,
+            })
         if route == "/api/terminal":
             return self._terminal()
         if route == "/api/screen":
@@ -96,13 +109,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         """Routes a POST.
 
-        Everything that arrives this way changes something, so the token is
-        checked before anything looks at what was sent.
+        Everything that arrives this way changes something, so the session is
+        checked before anything looks at what was sent. The three routes about
+        the secret itself stand in front of that check, because they are how a
+        browser comes to have a session at all.
         """
-        if not self._carries_the_token():
-            return self._json({"error": "token required"}, status=403)
-
         route = urllib.parse.urlparse(self.path).path
+
+        if not self._from_this_page():
+            return self._json({"error": "another origin"}, status=403)
+
+        if route == "/api/session":
+            return self._sign_in()
+        if route == "/api/session/end":
+            return self._sign_out()
+        if route == "/api/password":
+            return self._choose_the_password()
+
+        if not self._signed_in():
+            return self._json({"error": "password required"}, status=403)
 
         if route == "/api/machine":
             return self._change_machine()
@@ -305,7 +330,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         it are both answered here, and an interface can never offer a machine the
         emulator would correct underneath it.
 
-        A reading rather than a change, so no token and nothing written: it says
+        A reading rather than a change, so no password and nothing written: it says
         what Previous would make of a configuration and touches nothing.
 
         What comes back carries that configuration in exactly the shape
@@ -350,10 +375,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _terminal(self):
         """Carries a login on a WebSocket, to one browser at a time.
 
-        No token here, and that is the point of it: what is on the other end
-        is this machine's own SSH server, so whoever is connecting says who
-        they are and proves it to sshd the way they would at any other door
-        into this machine. The token guards what this service does itself.
+        No password of ours here, and that is the point of it: what is on the
+        other end is this machine's own SSH server, so whoever is connecting
+        says who they are and proves it to sshd the way they would at any other
+        door into this machine. Our own password guards what this service does
+        itself.
         """
         if not websocket.wants_a_socket(self.headers):
             return self._json({"error": "not a websocket request"}, status=400)
@@ -404,14 +430,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _screen(self):
         """Answers with a picture of what the emulated machine is showing.
 
-        The one reading behind the token. Everything else this service tells
+        The one reading behind the password. Everything else this service tells
         is about the machine as a thing, so which processor it has and whether
         it is running, and a picture is about whoever is sitting at it: their
         files, their windows and whatever they have open. That is a different
-        question and it takes the token.
+        question and it takes the password.
         """
-        if not self._carries_the_token():
-            return self._json({"error": "token required"}, status=403)
+        if not self._signed_in():
+            return self._json({"error": "password required"}, status=403)
 
         picture = grab.take()
         if picture is None:
@@ -439,7 +465,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _delete_picture(self):
         """Takes one picture out of the folder pictures are kept in.
 
-        A POST, because it changes something, which is what makes the token
+        A POST, because it changes something, which is what makes the session
         checked before this is reached at all. What is named is read as a name
         rather than as a way to a file, so there is nothing here that reaches
         outside that one folder and nothing that deletes anything but a
@@ -473,7 +499,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _picture(self):
         """Answers with one picture out of the folder pictures are kept in.
 
-        Behind the token for the same reason the route that takes one is: a
+        Behind the password for the same reason the route that takes one is: a
         picture of the screen shows whoever was sitting at it.
 
         Asked for by name and by nothing else. The name is read as a name, so
@@ -481,8 +507,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         there is one and with nothing if there is not, and there is no way
         from here to a file outside that folder.
         """
-        if not self._carries_the_token():
-            return self._json({"error": "token required"}, status=403)
+        if not self._signed_in():
+            return self._json({"error": "password required"}, status=403)
 
         asked = urllib.parse.parse_qs(
             urllib.parse.urlparse(self.path).query).get("name", [""])[0]
@@ -506,25 +532,120 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _carries_the_token(self):
-        """Whether this request carried the token.
+    def _sign_in(self):
+        """Takes the password and hands back a session.
 
-        False where the service has none, because a service that cannot read
-        its own secret should refuse every change rather than accept them all.
+        Answered the same way whether the password was wrong or the machine has
+        none yet, because the difference is worth nothing to whoever asked and
+        tells anybody else which machines are still unclaimed.
+
+        A source that keeps getting it wrong is refused for a while, which is
+        the one attack a hash on its own does not answer: a machine on this
+        network could otherwise work through a list at network speed.
         """
-        if self.token is None:
+        source = self.client_address[0]
+        if self.attempts.too_many(source):
+            return self._json({"error": "too many attempts"}, status=429)
+
+        typed = (self._sent() or {}).get("password")
+        if self.password is None or not self.password.matches(typed):
+            self.attempts.wrong(source)
+            return self._json({"error": "refused"}, status=403)
+
+        self.attempts.forget(source)
+        return self._json({"ok": True}, cookie=self.sessions.open())
+
+    def _sign_out(self):
+        """Ends this browser's session and takes its cookie away."""
+        self.sessions.forget(self._session_offered())
+        return self._json({"ok": True}, cookie="")
+
+    def _choose_the_password(self):
+        """Sets this machine's password, and signs the browser in with it.
+
+        Open whilst the machine is unclaimed, which is how the first browser to
+        reach a fresh installation claims it without fetching anything from the
+        Pi. Once there is a password, changing it needs the one there is, which
+        a signed in session already proves.
+
+        Every other session ends here, so a password given to somebody who
+        should not have it can be taken back by choosing a new one.
+        """
+        if self.password is None:
+            return self._json({"error": "nowhere to keep it"}, status=503)
+        if self.password.claimed and not self._signed_in():
+            return self._json({"error": "password required"}, status=403)
+
+        typed = (self._sent() or {}).get("password")
+        if not acceptable(typed):
+            return self._json({"error": "not a password"}, status=400)
+
+        try:
+            self.password.set(typed)
+        except OSError:
+            return self._json({"error": "cannot be kept"}, status=503)
+
+        self.sessions.forget_them_all()
+        return self._json({"ok": True}, cookie=self.sessions.open())
+
+    def _signed_in(self):
+        """Whether this request carried a session that is still open.
+
+        False where the service has none to give, because a service that cannot
+        hold a session should refuse every change rather than accept them all.
+        """
+        if self.sessions is None:
             return False
-        return self.token.matches(self.headers.get(HEADER))
+        return self.sessions.holds(self._session_offered())
+
+    def _session_offered(self):
+        """@returns str - The session in this request's cookies, or None."""
+        jar = http.cookies.SimpleCookie(self.headers.get("Cookie", ""))
+        found = jar.get(COOKIE)
+        return found.value if found else None
+
+    def _from_this_page(self):
+        """Whether a POST came from this service's own page.
+
+        A cookie rides along with every request a browser makes to this host,
+        including one a page somewhere else caused, so the session on its own
+        would let another site act here. A browser states the origin it is
+        posting from whenever that origin is not this one, and a request that
+        states a different one is refused.
+
+        A request carrying no origin at all is something other than a browser
+        form, such as curl, and is left to the session check below.
+        """
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        return urllib.parse.urlparse(origin).netloc == self.headers.get("Host")
 
     # -- how anything is sent --------------------------------------------
 
-    def _json(self, payload, status=200):
+    def _json(self, payload, status=200, cookie=None):
+        """Answers with an object, and with a session where one was opened.
+
+        @param payload - What to send.
+        @param status - The status line.
+        @param cookie - A session to hand the browser, "" to take the one it
+          has away, or None to leave its cookies alone.
+
+        HttpOnly, so no script on the page can read the session, which is the
+        one thing a secret in localStorage could never say for itself.
+        SameSite=Strict, so the browser does not send it with a request another
+        site caused at all. Not Secure: this service speaks plain HTTP by
+        decision, and a cookie marked Secure would never be sent.
+        """
         body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         # Nothing here is worth caching: every answer is about right now.
         self.send_header("Cache-Control", "no-store")
+        if cookie is not None:
+            self.send_header("Set-Cookie", "%s=%s; Path=/; Max-Age=%d; HttpOnly; SameSite=Strict"
+                             % (COOKIE, cookie, SESSION_SECONDS if cookie else 0))
         self.end_headers()
         self.wfile.write(body)
 
@@ -563,14 +684,20 @@ def safe_path(root, route):
     return candidate
 
 
-def serve(settings, token=None):
+def serve(settings, password=None):
     """Runs the service until it is stopped.
 
     @param settings - Settings, which says where to bind and what to read.
-    @param token - Token, or None. Without one, every change is refused.
+    @param password - Password, or None. Without one, every change is refused.
+
+    The sessions and the attempt count are made here rather than handed in,
+    because both are this run's own: a restart signs everybody out and forgets
+    who was guessing.
     """
     Handler.settings = settings
-    Handler.token = token
+    Handler.password = password
+    Handler.sessions = Sessions()
+    Handler.attempts = Attempts()
     address = (settings.address, settings.port)
     with http.server.ThreadingHTTPServer(address, Handler) as httpd:
         print("previously %s on http://%s:%d"

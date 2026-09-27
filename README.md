@@ -25,7 +25,7 @@ You need a Raspberry Pi 5 with a card imaged with Raspberry Pi OS Lite, 64 bit, 
 curl -fsSL https://previous.li/install.sh | bash
 ```
 
-That is the whole of it. When it finishes it says where the admin is, which is `http://<your-pi>.local:8810`, and how to read the token it asks for once.
+That is the whole of it. When it finishes it says where the admin is, which is `http://<your-pi>.local:8810`. Open it, choose a password, and that is what it asks for whenever something changes the machine.
 
 Everything the script does, it writes down how to undo. Press Ctrl+C and it puts the machine back the way it found it.
 

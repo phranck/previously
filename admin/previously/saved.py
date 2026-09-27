@@ -7,7 +7,7 @@ Editor is a User configuration and is kept here under a name its owner gave it.
 They live in one file in the home of the user the service runs as, which
 `settings.py` defaults to `~/.config/previously/machines.json`. In the home
 rather than under `/var/lib`, because they are the person's: what this service
-keeps under `/var/lib` is its own, being the token and the note about its last
+keeps under `/var/lib` is its own, being the password and the note about its last
 write, and a purge of the package takes that with it. It must not take away the
 machines somebody built. Beside the emulator's own configuration is also where a
 person looks for them, since that is what they are about.

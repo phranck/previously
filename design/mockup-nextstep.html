@@ -934,8 +934,9 @@ nx-ask .panel-body .icon { width: 48px; height: 48px; background-size: contain; 
 nx-ask .panel-body p { margin: 0 0 8px; }
 nx-ask .panel-body p:last-child { margin: 0; }
 
-/* The line a panel takes a token on. NeXT's text fields are white, sunken and
-   one line tall, and this is the same field the readings use, made editable. */
+/* The line a panel takes an answer on, which is a name or a password. NeXT's
+   text fields are white, sunken and one line tall, and this is the same field
+   the readings use, made editable. */
 nx-ask .entry {
   width: 100%;
   margin-top: 10px;
@@ -2855,9 +2856,11 @@ class NxAsk extends HTMLElement {
    *   named by whoever asks.
    * @param {string} question.cancel - The wording on the safe one.
    * @param {boolean} [question.field] - Show a line to type into.
+   * @param {boolean} [question.secret] - Draw that line as a password field, so
+   *   what is typed into it is not read over the typist's shoulder.
    * @returns {Promise<boolean>} True where the acting button was pressed.
    */
-  ask({ title, text, icon, confirm, cancel, field = false }) {
+  ask({ title, text, icon, confirm, cancel, field = false, secret = false }) {
     this.querySelector(".title").textContent = title;
     this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {
@@ -2871,6 +2874,7 @@ class NxAsk extends HTMLElement {
 
     const entry = this.querySelector(".entry");
     entry.hidden = !field;
+    entry.type = secret ? "password" : "text";
     entry.value = "";
 
     this.toggleAttribute("data-open", true);

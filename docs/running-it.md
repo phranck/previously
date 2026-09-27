@@ -87,7 +87,7 @@ From a checkout on the Pi, the same script builds the package out of what is bes
 ./install.sh --update-admin
 ```
 
-The token in `/var/lib/previously/token` and the configuration in `/etc/previously/config.ini` both survive, because the token is state the tool wrote itself and the configuration is a conffile that an upgrade never overwrites. The service is restarted by the package, so the browser has the new tool on its next load.
+The password in `/var/lib/previously/password` and the configuration in `/etc/previously/config.ini` both survive, because the password is state the tool wrote itself and the configuration is a conffile that an upgrade never overwrites. The service is restarted by the package, so the browser has the new tool on its next load.
 
 The version it put there is in the Raspberry Pi window, on the line marked Previously, which is also how to tell a machine that is up to date from one that was left behind.
 

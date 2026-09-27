@@ -5,23 +5,23 @@
 
 import sys
 
+from .password import Password
 from .server import serve
 from .settings import Settings
-from .token import Token
 
 
 def main():
     """Loads the settings and serves until stopped."""
     settings = Settings.load()
-    token = Token.load(settings.token_file)
-    if token is None:
-        # Not fatal: the service still answers everything that only reads, and
-        # refuses everything that would change anything. Saying so here is the
-        # one chance somebody has to notice.
-        print("no token could be read or written; every change will be refused",
+    password = Password(settings.password_file)
+    if not password.claimed:
+        # Not a fault: a fresh installation has no password until somebody
+        # opens the interface and chooses one. Saying so here is the one chance
+        # anybody has to notice that the machine is still open to be claimed.
+        print("no password is set; the first browser to arrive chooses one",
               file=sys.stderr)
     try:
-        serve(settings, token)
+        serve(settings, password)
     except KeyboardInterrupt:
         return 0
     except OSError as error:
