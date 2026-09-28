@@ -44,7 +44,11 @@ jobs:
         run: |
           python3 -m pip install --quiet --break-system-packages \
             flake8 pytest pytest-timeout
-          python3 -m flake8 --max-line-length=100 previously tests
+          # What the browser gets is committed and is built with this. Without
+          # it here, the test that holds those files to their sources skips
+          # rather than fails, and a stale bundle would be packaged and shipped.
+          npm install --global --silent esbuild
+          python3 -m flake8 --max-line-length=100 previously tests build_web.py
           # Named and timed, because a test that waits here and not on a laptop
           # is waiting for something this machine does not have, and a suite
           # that stops without saying which test it stopped in says nothing at

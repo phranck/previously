@@ -13,7 +13,7 @@ import re
 
 import pytest
 
-from previously.server import WEB_ROOT
+from conftest import INTERFACE
 
 #: Where the catalogues live, English first because it is the one the others
 #: are measured against.
@@ -41,7 +41,7 @@ KIND_NOTES = re.compile(r'^  (\d+): "(editor\.machine\.note\.[\w-]+)",$', re.M)
 
 def catalogue(language):
     """@returns dict of every entry in one language."""
-    text = (WEB_ROOT / "lang" / f"{language}.js").read_text(encoding="utf-8")
+    text = (INTERFACE / "lang" / f"{language}.js").read_text(encoding="utf-8")
     found = {}
     for line in text.splitlines():
         match = ENTRY.match(line)
@@ -90,7 +90,7 @@ def test_every_sentence_has_the_same_places(language, english):
 def test_the_markup_asks_for_strings_that_exist(english):
     """The interface's own labels, which carry a key and no words at all, so a
     key that is not in the catalogue shows on the screen as itself."""
-    markup = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+    markup = (INTERFACE / "index.html").read_text(encoding="utf-8")
     wanted = set(re.findall(r'data-t(?:-title)?="([^"]+)"', markup))
 
     assert sorted(wanted - set(english)) == []
@@ -100,7 +100,7 @@ def test_the_page_asks_for_strings_that_exist(english):
     """Every string the page looks up by name. Plurals are asked for without
     their ending, which the browser chooses, so both endings count as the key
     being there."""
-    page = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+    page = (INTERFACE / "app.js").read_text(encoding="utf-8")
     plurals = {key.rsplit(".", 1)[0] for key in english if key.endswith((".one", ".other"))}
 
     missing = [
@@ -116,7 +116,7 @@ def test_every_answer_the_service_can_give_has_a_sentence(english):
     name that reaches the screen as it is."""
     service = ""
     for name in ["kiosk.py", "change.py", "saved.py", "server.py"]:
-        service += (WEB_ROOT.parent / "previously" / name).read_text(encoding="utf-8")
+        service += (INTERFACE.parent / "previously" / name).read_text(encoding="utf-8")
 
     for reason in sorted(set(TOLD.findall(service))):
         key = f"told.{reason}"
@@ -132,7 +132,7 @@ def test_every_setting_the_editor_offers_has_a_sentence(english):
     from previously import machines
 
     offered = machines.offers(machines.find("nextcube"))
-    page = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+    page = (INTERFACE / "app.js").read_text(encoding="utf-8")
     kinds = {int(kind): key for kind, key in KIND_NOTES.findall(page)}
 
     assert set(kinds) == {entry["kind"] for entry in offered["kinds"]}
@@ -225,7 +225,7 @@ def menus():
     to be distinct within each application's set rather than across all of
     them: only one set is ever showing.
     """
-    markup = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+    markup = (INTERFACE / "index.html").read_text(encoding="utf-8")
     menu = re.search(r'<nx-menu name="menu".*?</nx-menu>', markup, re.S)
     assert menu, "the main menu is not in the markup"
 

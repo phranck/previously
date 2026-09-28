@@ -69,9 +69,9 @@ python3 build.py            # or: make -C ../admin kit
 
 `build.py` carries the list of parts, in the order they go together. That one list decides the order of the stylesheet, the order of the definitions, the `customElements.define` call at the foot of the script, and the overview comment at its head. Adding a part means adding a line to it.
 
-The two files it writes, `../admin/web/nextstep.css` and `../admin/web/nextstep.js`, say at the top that they are generated. `../admin/tests/test_kit.py` fails when either has been edited by hand, which is what makes one source safe to rely on.
+The two files it writes, `../admin/interface/nextstep.css` and `../admin/interface/nextstep.js`, say at the top that they are generated. `../admin/tests/test_kit.py` fails when either has been edited by hand, which is what makes one source safe to rely on.
 
-What is not in the kit is what only one application has. The admin keeps that in `../admin/web/previously.css`, and this draft keeps its own beside the marks in the file.
+What is not in the kit is what only one application has. The admin keeps that in `../admin/interface/app.css`, and this draft keeps its own beside the marks in the file.
 
 ## What the interface is built from
 

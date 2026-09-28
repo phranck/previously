@@ -11,7 +11,7 @@ import re
 
 import pytest
 
-from previously.server import WEB_ROOT
+from conftest import INTERFACE
 
 #: How the page reaches an element. getElementById is the plain way, and the rest
 #: are this page's own helpers, which take an id and write into it.
@@ -40,12 +40,12 @@ THE_SUBJECTS = re.compile(r'^  (\w+): "editor\.subject\.\w+",$', re.M)
 
 @pytest.fixture(scope="module")
 def page():
-    return (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+    return (INTERFACE / "app.js").read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
 def markup():
-    return (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+    return (INTERFACE / "index.html").read_text(encoding="utf-8")
 
 
 def test_every_element_the_page_writes_into_is_in_the_markup(page, markup):

@@ -1,0 +1,368 @@
+/* What this application draws that the kit does not.
+
+   The kit knows about windows, shelves and panels. What is here names something
+   only Previously has: its Preferences, with the two modules of the fourteen
+   that have anything to set on this machine, and its Config Editor. */
+
+/* --- the preferences window ---------------------------------------------- */
+
+/* The module pictures are not the 48 of an icon. Preferences drew its own at
+   sizes of their own, and Localization.tiff is 52 by 49. */
+:root {
+  /* One cell of the module row, read off the running system: 66 square, on a
+     68 grid once the line parting two cells is counted. */
+  --module-cell: 66px;
+}
+
+
+/* NeXTSTEP's Preferences is a row of module cells with the chosen module's
+   panel underneath, and a scroller along the row because fourteen modules do
+   not fit across it. Two of them do fit here, and the scroller stays: it is
+   the shape of the window rather than a count, and an empty trough is what
+   the original shows wherever there is nothing to scroll. */
+nx-window[name="preferences"] .modules {
+  /* As tall as one cell and its scroller, rather than taking the room the
+     panel needs. */
+  flex: 0 0 auto;
+  height: calc(var(--module-cell) + var(--scroller) + 2px);
+}
+
+nx-window[name="preferences"] .module-row {
+  display: flex;
+}
+
+/* One cell, raised the way every button in this interface is: white on the
+   top and the left, black outside and grey inside on the other two. Read off
+   the original at the seam between two cells, which goes light, black, white
+   across: the right edge of one and the left edge of the next.
+
+   The row they sit in is sunken, which nx-scroller already draws. A raised
+   row of cells in a sunken well is the whole of the effect. */
+.module {
+  width: var(--module-cell);
+  height: var(--module-cell);
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--white) var(--black) var(--black) var(--white);
+  box-shadow: inset -1px -1px 0 var(--dark);
+  cursor: default;
+}
+
+/* The chosen one, which NeXTSTEP drew by turning the cell white rather than
+   by putting a mark in it. */
+.module[chosen] { background: var(--white); }
+
+/* Each module's own picture, at its own size: they are bitmaps and differ,
+   52 by 49 for Localization and 66 by 57 for Monitor, so nothing here scales
+   them to a common box. */
+.module .art {
+  width: var(--module-cell);
+  height: var(--module-cell);
+  background-size: auto;
+}
+.module[value="localization"] .art { background-image: var(--Localization); }
+.module[value="monitor"] .art { background-image: var(--Monitor); }
+
+/* The chosen module's own name, as Preferences itself called it. */
+.module-name {
+  margin: 0;
+  padding: var(--reading-gap) 3px;
+  font-weight: bold;
+}
+
+/* A list of choices, in NeXT's white. One is in force, and the one in force is
+   drawn the way NeXTSTEP drew a selected row, which is the colours turned
+   around rather than a mark beside it. */
+.options {
+  background: var(--white);
+  min-height: 100%;
+}
+
+.option {
+  height: var(--row);
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  cursor: default;
+}
+
+.option[chosen] {
+  background: var(--black);
+  color: var(--white);
+}
+
+/* --- the terminal window -------------------------------------------------- */
+
+/* The view is as large as the window gives it and no larger. Without this it
+   is as tall as the session it holds, which grows past the frame the moment
+   anything scrolls, and the library measures a box that is not the one on the
+   screen. */
+nx-terminal {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--white);
+}
+
+/* The viewport is what scrolls, and the scroller on the left of the window
+   draws that. The library's own bar would be a second one saying the same
+   thing, so it is taken off. WebKit ignores scrollbar-width, which is why the
+   pseudo-element is here too. */
+nx-terminal .xterm-viewport {
+  scrollbar-width: none;
+}
+nx-terminal .xterm-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+/* --- the Grab window ------------------------------------------------ */
+
+/* The picture of the emulated screen, drawn to the width of the view and never
+   smoothed: it is the machine's own 1120 by 832 and every pixel in it was put
+   there one at a time. Contained rather than covering, because a screen with a
+   corner cut off answers a different question from the one that was asked. */
+.shot {
+  min-height: 100%;
+  background-color: var(--black);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  image-rendering: pixelated;
+}
+
+
+/* --- a titled group of buttons ------------------------------------------- */
+
+/* What Preferences uses wherever it offers a choice of a few: a groove around
+   the group with its name set into the top of it, and the buttons in a row
+   that touch. Measured off the Keyboard module on the running system: the
+   groove is one row of shadow with one of light inside it, and the chosen
+   button is white where the others are grey. */
+/* The one child of the scroller, holding whichever module's panel is up. */
+.module-panel { min-height: 100%; }
+
+.panel { padding: 10px; }
+
+.group {
+  position: relative;
+  margin: 0;
+  /* A fieldset will not go below its content's width without this, which is
+     the one thing about it that is not like any other box. */
+  min-width: 0;
+  /* The groove runs through the middle of the title, so the content begins
+     that half plus the air the original leaves under it. */
+  padding: calc(var(--line) / 2 + 10px) 12px 12px;
+  border: 0;
+}
+
+/* The groove, drawn here rather than as the fieldset's own border.
+   A browser places that border itself, from the height of the legend, and
+   where its arithmetic falls on half a pixel the line comes out as a blend of
+   two greys across two rows. Measured in Chrome 152: sharp at a title height
+   of 17 and soft at 16, 18 and 20, which is a rule about the browser rather
+   than about this design. Drawn from a length this stylesheet states, it lands
+   where it is put, in every browser and at every size.
+
+   The kit's groove, read from the two values base.css states it as: two
+   rectangles lit against each other, which is a notch cut into a surface that
+   stays where it is. Not the sunken edge, which says the surface inside it
+   sits lower, and which this group's does not. */
+.group::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--line) / 2) 0 0;
+  border: 1px solid;
+  border-color: var(--groove-sides);
+  box-shadow: var(--groove-inside);
+  pointer-events: none;
+}
+
+/* The title, centred, sitting over the groove and carrying the face colour so
+   that both rows of it stop at the words. Its own padding is how far short of
+   them they stop. A fieldset cuts its border for a legend and leaves an inset
+   shadow alone, so the light row would otherwise run on behind the word.
+   Taken out of the flow as well, because a legend left in it puts the
+   fieldset's padding box underneath itself, and everything positioned against
+   that box then begins half a title too low. */
+.group legend {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin-inline: auto;
+  padding: 0 6px;
+  font-size: var(--text-size);
+  line-height: var(--line);
+  background: var(--light);
+}
+
+/* The buttons of one group, touching, in the middle of it. */
+.choices {
+  display: flex;
+  justify-content: center;
+}
+
+/* One of them. The same raised cell as a module picture, which is the one
+   shape this interface gives anything that can be chosen.
+
+   As tall as what stands in it and its padding, rather than a height written
+   down: the letter is the size that button sets, so the tallest of them is
+   what the row is built from, and a number here would be that number plus
+   whatever air was left over. They are in a flex row, so all five take the
+   height of the tallest. */
+.choice {
+  min-width: 60px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--raised-sides);
+  box-shadow: var(--raised-inside);
+  cursor: default;
+  padding: 4px 8px;
+}
+.choice[chosen] { background: var(--white); }
+
+/* --- the four memory banks ------------------------------------------------
+
+   A bank is a socket on the board rather than one choice among several, so it
+   is drawn as one: a sunken field, with a raised module in it where something
+   is seated. Those are the two edges this whole interface is built from, so it
+   needs no picture of a memory module, and `web/parts` holds none.
+
+   The air inside a socket and inside a module is one value, so a module reads
+   at the same size as a cell beside it and the socket keeps a visible edge all
+   the way round whatever is in it. */
+.banks {
+  --socket-air: 4px;
+  /* Stacked, the way the modules stand on the board, so the row reads as the
+     inside of a machine rather than as four buttons. One column, which is what
+     a grid with no columns named is. */
+  display: grid;
+  gap: var(--band-gap);
+}
+
+/* Each bank is named, so the sentence under the group can say which one it
+   means. The names are a column of their own, all as wide as the widest, so
+   the sockets begin on one line. */
+.bank-row {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.bank-name {
+  font-size: var(--status-size);
+  line-height: var(--status-line);
+}
+
+.bank {
+  /* A line of type, the air a module holds it in, and the air the socket holds
+     the module in. Stated as the sum rather than as a number, so a socket
+     holding nothing stands exactly as tall as one holding a module. */
+  min-height: calc(var(--line) + var(--socket-air) * 4);
+  display: grid;
+  place-items: center;
+  padding: var(--socket-air);
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
+  cursor: default;
+}
+
+/* A bank this machine cannot reach. Previous offers those nothing but an empty
+   bank, so the place is on the board and no socket is: it keeps its height and
+   loses its edge, rather than leaving a gap where a reader would count four. */
+.bank[absent] {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.module {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--raised-sides);
+  box-shadow: var(--raised-inside);
+}
+
+/* An empty socket says so rather than standing blank, because a blank one reads
+   as a bank that is not there. It carries no edge, since there is no module to
+   raise, and its word is set in the smaller type the interface uses for what it
+   says about itself rather than for what can be chosen. */
+.module[empty] {
+  border-color: transparent;
+  box-shadow: none;
+  background: none;
+  color: var(--dark);
+  font-size: var(--status-size);
+  line-height: var(--status-line);
+}
+
+/* The letter each one shows, at the size that button sets, so somebody can
+   see what they are choosing rather than read about it, with the figure under
+   it because a letter alone says which is larger and not by how much.
+
+   The letter takes a line exactly its own height, so each of the five is a
+   whole number of pixels: a ratio such as 1.1 gives 13.2 and 16.5 and 19.8,
+   and a box measured off one of those sits on a fraction. The figure takes a
+   line of its own for the same reason, since it is set smaller than the
+   interface and the interface's line reserves six pixels it does not use. */
+.choice .sample { line-height: 1; }
+.choice .choice-name {
+  font-size: var(--status-size);
+  line-height: var(--status-line);
+}
+
+/* --- the config editor ---------------------------------------------------- */
+
+/* The groups that change the machine, stacked under its picture. The step
+   between them is what the original leaves between two framed boxes, which is
+   the same one the File Viewer's bands stand apart by. */
+.editor-groups {
+  display: grid;
+  gap: var(--band-gap);
+  margin-top: var(--portrait-gap);
+}
+
+/* Its cells hold a word rather than a letter or a picture, and a machine type
+   is a long one, so they wrap onto a second row rather than running out of the
+   window. Every option is read whole: one that had to be shortened would be a
+   choice nobody can make. */
+.editor-groups .choices {
+  flex-wrap: wrap;
+}
+
+/* One group per NeXTdimension board that is in, so how many there are is not
+   known until the service answers. They live in a holder the page can empty and
+   fill in one go, and `contents` takes that holder out of the layout so each
+   group sits in the grid above exactly like the ones the markup holds. By class
+   rather than by its id, so the rule below can outweigh it. */
+.editor-groups > .boards-memory {
+  display: contents;
+}
+
+/* Eleven groups in one column is taller than the desk, so the window shows one
+   subject at a time and the row above them chooses which. Marked by the page on
+   each group, rather than matched here against the row, because naming the
+   subjects here as well would be a second list to keep in step. */
+.editor-groups > [subject][away] {
+  display: none;
+}
+
+/* The row that chooses, set apart from the groups the way Preferences sets its
+   modules apart from the panel they open. */
+.subjects {
+  margin-top: var(--portrait-gap);
+}
