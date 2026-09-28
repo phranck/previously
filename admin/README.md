@@ -45,6 +45,7 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/change.py` | Changing the machine without leaving it unable to start |
 | `previously/kiosk.py` | Everything this tool does to the machine, in one file |
 | `previously/systems.py` | The six systems that can be put on this machine, and where each comes from |
+| `previously/discs.py` | The media that go beside the system, and what NeXTSTEP cannot read |
 | `previously/setup.py` | What root does on this tool's behalf, and the only thing root does |
 | `previously/screen.py` | Reading the emulated screen, and pressing its keys |
 | `previously/grab.py` | Taking a picture of that screen and keeping it |
@@ -107,6 +108,8 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/disk` | Makes the machine boot the disk of the system named |
 | `POST /api/disk/backup` | Asks for a copy of one of the disks |
 | `POST /api/disk/restore` | Asks for a copy to be written back over its disk |
+| `POST /api/disc` | Puts a disc on a free slot beside the disk that boots |
+| `POST /api/disc/eject` | Takes the disc off a slot, and never off slot 0 |
 | `POST /api/pi/reboot` | Shuts NeXTSTEP down, then restarts the board |
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
 | `GET /api/setup` | Which systems there are, which are here, how much room is left, and what is being installed |
@@ -226,6 +229,22 @@ A system is a disk, and several of them fit on the card. `Disks` in the File Vie
 **Choosing which one the machine boots is the same gesture as choosing a machine**, a double click or Activate in the context menu, and it goes through the same cycle in `change.py`: the guest is shut down through the power key, three keys are written, the machine comes back, and anything that does not come back gets its old disk put straight back.
 
 **What was on the disk that was running stays on it.** Each system is one file, the guest writes into that file, and pointing the machine elsewhere freezes the first exactly as it was left. The panel says so before anything happens, because somebody who has spent an evening inside NeXTSTEP wants to read it there rather than find out afterwards.
+
+## Discs, which go beside the system
+
+A system is a disk and the machine boots it. Developer Tools, applications and whatever else somebody wants inside NeXTSTEP are media: they go on a free slot of the SCSI bus beside the disk that is running, write protected, and NeXTSTEP mounts them the way it mounted a CD on the bus. `Discs` in the File Viewer holds what is there, and a disc that is in the machine says which slot it is on.
+
+**They are files somebody puts on the Pi**, in `~/nextstep/discs`, rather than anything this tool fetches. The six systems are a known set with measured sizes and digests; these are not, and a list of addresses for NeXT media is one this tool could not stand behind. So the folder appears when somebody puts something in it and not before.
+
+**Inserting one is the same cycle as changing a disk.** Previous can put a disc on a slot that is already a CD drive without resetting the machine, and its own dialogue does exactly that: `Change_DoNeedReset` in its `src/change.c` asks for a reset only where a slot's device type changes, and a change of image alone re-initialises the SCSI emulation. What it cannot do is notice a file written from outside, because it reads `previous.cfg` when it starts and never again. So from here a disc arrives with the guest shut down properly first, exactly as a disk does.
+
+**A disc is written as `nDeviceType = 2`**, which is what `SCSI_DEVTYPE` in Previous's `src/includes/configuration.h` counts as a CD: none, hard disk, CD and floppy, from zero. It is written protected as well, which is two ways of saying one thing, since Previous makes a CD target read only from its type alone.
+
+**Slot 0 is never ejected.** That is the disk the machine is running, and changing it is choosing another disk rather than taking this one out from under the system.
+
+**An image that says ISO 9660 says so in the panel.** NeXT's own CDs carry a variation of 4.3BSD FFS, so an ISO 9660 image mounts nowhere however good it is. That is a positive test on the signature at offset 0x8001 and nothing more: an image that says nothing may still be anything, and the tool claims nothing about those.
+
+**A disc wears the generic SCSI device**, because NeXTSTEP 3.3 has no picture of a CD at all. Its Workspace carries a hard disk, a floppy, the magneto-optical cartridge, the network and a SCSI device, and a CD-ROM on the bus is the last of those. Nothing is invented for it.
 
 **A disk can be copied, and a copy can be put back.** A system is one file, so a backup of it is a copy of that file, kept in `Backups` inside the disks folder and shown there as what it is. Both directions are the helper's work, because a disk is two gigabytes and that folder is one this service may not write, so the Installer window is where the copying is watched.
 
@@ -349,6 +368,7 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
     Preferences.app
     Preview.app
     Terminal.app
+  Discs             the media somebody has put on the Pi, beside the system
   Disks             the systems that are on the card, and only once one is
     Backups         the copies that have been made of them
   Documents

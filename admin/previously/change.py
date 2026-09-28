@@ -19,7 +19,7 @@ come back is put straight back the way it was.
 
 import time
 
-from . import config, kiosk, machines, saved, screen, systems
+from . import config, discs, kiosk, machines, saved, screen, systems
 from .answers import told
 
 #: How long to wait for the emulator to appear after the hold comes off. The
@@ -89,6 +89,61 @@ def to_disk(identifier, settings, sleep=None):
 
     return _applied(settings, config.booting(disk), system.name,
                     "disk.booting", "disk.was-already-set",
+                    sleep or time.sleep)
+
+
+def to_disc(name, settings, sleep=None):
+    """Puts a disc on a free slot beside the disk the machine is booting.
+
+    @param name - Which disc, by the name of its file in the discs folder.
+    @param settings - Settings.
+    @param sleep - Injected so a test does not wait in real time.
+    @returns (bool, dict)
+
+    The same cycle as everything else that changes the configuration, and for a
+    reason worth writing down. Previous can put a disc on a slot that is
+    already a CD drive without resetting the machine, and its own dialogue does
+    exactly that. What it cannot do is notice a file written from outside: it
+    reads `previous.cfg` when it starts and never again. So from here a disc
+    arrives the way a disk does, with the guest shut down properly first.
+    """
+    disc = discs.find(settings.disks, name)
+    if disc is None:
+        return False, told("disc.no-such")
+
+    slot = config.free_slot(settings.previous_config)
+    if slot is None:
+        return False, told("disc.no-free-slot")
+
+    return _applied(settings, config.inserting(slot, disc), disc.name,
+                    "disc.inserted", "disc.was-already-in",
+                    sleep or time.sleep)
+
+
+def eject_disc(slot, settings, sleep=None):
+    """Takes the disc off a slot.
+
+    @param slot - Which of the seven, as the tree named it.
+    @param settings - Settings.
+    @param sleep - Injected so a test does not wait in real time.
+    @returns (bool, dict)
+
+    Never the boot slot. That one is the disk the machine is running, and it is
+    changed by choosing another disk rather than by being taken out from under
+    the system.
+    """
+    if not isinstance(slot, int) or not 0 <= slot < config.SLOTS:
+        return False, told("disc.no-such-slot")
+    if slot == config.BOOT_SLOT:
+        return False, told("disc.that-is-the-disk")
+
+    what = config.slots(settings.previous_config)[slot]
+    if not what["inserted"]:
+        return False, told("disc.nothing-there")
+
+    name = (what["image"] or "").rsplit("/", 1)[-1]
+    return _applied(settings, config.ejecting(slot), name,
+                    "disc.ejected", "disc.was-already-out",
                     sleep or time.sleep)
 
 

@@ -43,7 +43,7 @@ wherever it is spoken rather than where its bundle is shown.
 import datetime
 import pathlib
 
-from . import config, machines, saved, systems
+from . import config, discs, machines, saved, systems
 
 #: What the root is called and what it wears. NeXTSTEP drew a person's own
 #: directory as a house, and this is the one place everything here lives in.
@@ -67,9 +67,19 @@ DISKS = "/Disks"
 #: kept look alike.
 BACKUPS = "/Disks/Backups"
 
+#: Where the discs stand, beside the disks rather than inside them: a disc is
+#: not a system and nothing here boots one.
+DISCS_AT = "/Discs"
+
 #: What a disk wears. It is a hard disk, so it wears the one NeXTSTEP drew for
 #: a hard disk. What it arrived as is not what it is.
 DISK_ICON = "winchester"
+
+#: And what a disc wears. NeXTSTEP 3.3 has no picture of a CD: its Workspace
+#: carries a hard disk, a floppy, the magneto-optical cartridge, the network
+#: and a SCSI device, and nothing else. A CD-ROM on the bus is the last of
+#: those, so that is what it wears and nothing is invented for it.
+DISC_ICON = "scsi"
 
 #: Which set a machine belongs to. The eleven this project ships cannot be
 #: changed, and everything somebody saved can, so every machine says which it is
@@ -126,7 +136,8 @@ APPLICATIONS = (
 )
 
 
-def tree(machines_file=None, documents=None, disks=None, booting=None):
+def tree(machines_file=None, documents=None, disks=None, booting=None,
+         inserted=None):
     """Everything Previously holds, as one place with places in it.
 
     @param machines_file - pathlib.Path of the file the configurations somebody
@@ -138,6 +149,9 @@ def tree(machines_file=None, documents=None, disks=None, booting=None):
       folder out, the way User is left out until something is in it.
     @param booting - What `previous.cfg` says the machine boots, as the whole
       path, so the disk that is in force can be marked.
+    @param inserted - What `previous.cfg` has on each SCSI slot, as
+      `config.slots` answers it, so a disc that is in the machine says which
+      slot it is on.
     @returns dict, a folder with `name`, `icon`, `path` and `entries`, and a
       `label` on the applications, which is what each is called in words.
     """
@@ -154,6 +168,7 @@ def tree(machines_file=None, documents=None, disks=None, booting=None):
             for name, icon, opens, label in APPLICATIONS
         ]),
         *_disk_folder(disks, booting),
+        *_disc_folder(disks, inserted),
         _folder("Documents", DOCUMENTS, FOLDER_ICON, [
             _folder("Pictures", PICTURES, FOLDER_ICON, pictures(documents)),
         ]),
@@ -180,6 +195,58 @@ def _disk_folder(disks, booting):
     if kept:
         here.append(_folder("Backups", BACKUPS, FOLDER_ICON, kept))
     return [_folder("Disks", DISKS, FOLDER_ICON, here)] if here else []
+
+
+def _disc_folder(disks, inserted):
+    """The Discs folder, where somebody has put one there.
+
+    @param disks - pathlib.Path the disk images live in, or None.
+    @param inserted - What each SCSI slot holds, or None.
+    @returns list holding one folder, or an empty one.
+
+    Beside Disks rather than inside it, because these are not systems and
+    nothing here boots one. They are what goes in the machine next to the disk
+    that is running.
+    """
+    if disks is None:
+        return []
+    found = [_disc(path, inserted) for path in discs.here(disks)]
+    return [_folder("Discs", DISCS_AT, FOLDER_ICON, found)] if found else []
+
+
+def _disc(path, inserted):
+    """One disc as an entry of the folder it sits in.
+
+    @param path - pathlib.Path of the image.
+    @param inserted - What each SCSI slot holds, or None.
+    @returns dict
+
+    It wears the generic SCSI device, because NeXTSTEP 3.3 has no picture of a
+    CD at all: its Workspace carries a hard disk, a floppy, the magneto-optical
+    cartridge, the network and a SCSI device, and a CD-ROM on the bus is the
+    last of those. Nothing is invented for it.
+    """
+    on = None
+    for slot, what in enumerate(inserted or []):
+        if what["inserted"] and what["image"] == str(path):
+            on = slot
+            break
+
+    return {
+        "id": path.name,
+        "name": path.stem,
+        "icon": DISC_ICON,
+        "path": "%s/%s" % (DISCS_AT, path.name),
+        "kind": "disc",
+        # Which slot it is on, or nothing where it is in the folder and not in
+        # the machine. That is what says whether it can be put in or taken out.
+        "slot": on,
+        # An image that says ISO 9660 will mount nowhere in NeXTSTEP, whose own
+        # CDs carry a variation of 4.3BSD FFS. Said here so it can be said
+        # before somebody waits for it rather than afterwards.
+        "iso": discs.is_iso_9660(path),
+        "bytes": _size_of(path),
+    }
 
 
 def _backups(disks):
