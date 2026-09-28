@@ -73,6 +73,9 @@ function say(told) {
   const values = told.why ? { ...told, why: t(`why.${told.why}`) } : told;
 
   if (told.reason === "board.on-its-way") return t(`${key}.${told.action}`, values);
+  /* What the Pi was asked to do, which is five different things and therefore
+     five sentences: one for all of them would say nothing about any. */
+  if (told.reason === "setup.asked") return t(`${key}.${told.job}`, values);
   if (told.reason === "guest.still-shutting-down") return t(key, values, told.seconds);
   if (["machine.running", "disk.booting", "disc.inserted", "disc.ejected"]
       .includes(told.reason)) {
@@ -3183,11 +3186,12 @@ const Install = {
   Forget: "forget",
 };
 
-/** How often the Installer asks what is happening. Faster than the desk's own
- *  poll, because a download says something new every second and this is a
- *  window somebody sits and watches. Asked only whilst the window is open or
- *  something is running. */
-const INSTALLING_MS = 2000;
+/** How often the Installer looks. Faster than the desk's own poll, because a
+ *  download says something new every second and this is a window somebody sits
+ *  and watches. Asked only whilst the window is open or something is running,
+ *  and only every fourth time whilst neither is true. */
+const WATCHING_MS = 500;
+const EVERY_FOURTH = 4;
 
 /** The last thing /api/setup said, so the window can be drawn again in another
  *  language without asking for it. */
@@ -3196,17 +3200,47 @@ let setupState = null;
 /** Which system is chosen in the list, by identifier, or null. */
 let chosenSystem = null;
 
+/** Whether something has been asked for and the helper has not started yet.
+ *
+ *  The request is written into a file and a path unit starts the program that
+ *  reads it, so for a moment after the answer comes back the newest thing the
+ *  Pi has to say is still about the run before. Without this the window
+ *  answers a press with the last run's "Finished". */
+let waitingForTheHelper = false;
+
+/** Which run was showing when that request was left, by the moment it started,
+ *  so the one that follows it can be told apart from it. */
+let theRunBefore = null;
+
+/** When that request was left, by this browser's clock, so waiting for ever is
+ *  not one of the states this window has. */
+let askedAt = 0;
+
+/** How long the helper may take to start before the window says it has not.
+ *  A path unit fires within a second of the file appearing, so anything past
+ *  this is a machine whose helper is not there rather than one that is slow. */
+const PATIENCE_MS = 30000;
+
+/** What the window says whilst it waits: first that the Pi is being asked, and
+ *  then whatever the service answered. It stands until the helper has
+ *  something of its own to say, because a sentence that is wiped by the next
+ *  draw is a sentence nobody reads. */
+let whilstWaiting = "";
+
 /**
  * How large something is, in the words a person uses.
  * @param {number} bytes
  * @returns {string} Megabytes below a gigabyte and gigabytes above it, with the
  *   figure written the way the language being read writes one.
  */
-function sized(bytes) {
+function sized(bytes, fine) {
+  /* @param fine - Whether to keep a decimal below a gigabyte. A figure that
+     stands still says nothing about a download, so the counter keeps one and
+     the list, where the number never moves, does not. */
   if (!bytes && bytes !== 0) return NOTHING;
   const gigabytes = bytes >= 1e9;
   const figure = new Intl.NumberFormat(currentLocale(),
-    { maximumFractionDigits: gigabytes ? 1 : 0 })
+    { maximumFractionDigits: gigabytes || fine ? 1 : 0 })
     .format(bytes / (gigabytes ? 1e9 : 1e6));
   return t(gigabytes ? "size.gb" : "size.mb", { size: figure });
 }
@@ -3261,16 +3295,24 @@ function drawTheSystems(systems) {
       row.className = "system";
       row.toggleAttribute("chosen", system.identifier === chosenSystem);
 
+      /* Whether it is already here, as a mark rather than as a word: NeXT's
+         own Installer.app carried this one for exactly this question. The ones
+         that are not here keep the space, so the names line up. */
+      const mark = document.createElement("i");
+      mark.className = "system-mark";
+      mark.toggleAttribute("here", system.here);
+
       const name = document.createElement("span");
       name.textContent = system.name;
 
+      /* Always, whether it is here or not. How large a system is belongs to
+         the system, and whether it is here is a different fact with a column
+         of its own. */
       const cost = document.createElement("span");
       cost.className = "system-cost";
-      /* What it costs to fetch, or that there is nothing to fetch. The unpacked
-         size is said once under the list rather than six times in it. */
-      cost.textContent = system.here ? t("installer.here") : sized(system.size);
+      cost.textContent = sized(system.size);
 
-      row.append(name, cost);
+      row.append(mark, name, cost);
       row.addEventListener("click", () => {
         chosenSystem = system.identifier;
         drawTheInstaller(setupState);
@@ -3291,6 +3333,28 @@ function drawTheSystems(systems) {
  */
 function drawWhatIsBeingInstalled(progress) {
   const gauge = document.getElementById("installer-gauge");
+
+  /* Anything the Pi is still showing from before the request is the run
+     before this one, so the window keeps saying it was asked rather than
+     reading out that one's ending. */
+  if (waitingForTheHelper
+      && Boolean(progress) && progress.started_at !== theRunBefore) {
+    waitingForTheHelper = false;
+  }
+  if (waitingForTheHelper) {
+    /* A path unit starts its service within a second of the file appearing, so
+       a wait this long is a machine whose helper is not there rather than one
+       that is slow. Saying so beats one word standing for ever. */
+    const tooLong = Date.now() - askedAt > PATIENCE_MS;
+    allowInstalling(tooLong);
+    gauge.hidden = true;
+    show("installer-caption",
+         t(tooLong ? "installer.not-started" : "installer.asked"));
+    show("installer-note",
+         tooLong ? t("installer.not-started.why") : whilstWaiting);
+    return;
+  }
+
   const running = Boolean(progress) && progress.finished_at === null;
   allowInstalling(!running);
   gauge.hidden = !running;
@@ -3304,8 +3368,18 @@ function drawWhatIsBeingInstalled(progress) {
   const step = t(`setup.step.${progress.step}`);
   if (running) {
     show("installer-caption", step);
-    show("installer-note", t("installer.step",
-                             { done: progress.done, of: progress.of }));
+    /* Which step of how many, and then what that step is doing at this moment
+       and how much of how much. One step can fetch, unpack and then move, and
+       a bar on its own says none of that. */
+    show("installer-note", [
+      t("installer.step", { done: progress.done, of: progress.of }),
+      progress.part
+        ? t(`installer.doing.${progress.part.doing}`, {
+            done: sized(progress.part.done, true),
+            of: sized(progress.part.of, true),
+          })
+        : "",
+    ].filter(Boolean).join(" "));
     /* Two measures in one bar: which step of how many, and how far through a
        step that knows. A download and an unpack are the only ones that know,
        and they are the ones that take the minutes. */
@@ -3319,7 +3393,15 @@ function drawWhatIsBeingInstalled(progress) {
 
   if (progress.ok) {
     show("installer-caption", t("installer.done"));
-    show("installer-note", "");
+    /* What it actually did. A run where every step found its work already done
+       is right and is over in a second, and "Finished" on its own reads as
+       nothing having happened at all. */
+    show("installer-note", progress.changed?.length
+      ? t("installer.changed", {
+          steps: progress.changed.map((name) => t(`setup.step.${name}`))
+            .join(", "),
+        })
+      : t("installer.nothing-to-do"));
     return;
   }
 
@@ -3386,12 +3468,23 @@ function allowInstalling(allowed) {
  * it from there.
  */
 async function askTheInstaller(job, system) {
+  waitingForTheHelper = true;
+  theRunBefore = setupState?.progress?.started_at ?? null;
+  askedAt = Date.now();
+  whilstWaiting = t("installer.asking");
+  drawWhatIsBeingInstalled(setupState?.progress ?? null);
+
   const answer = await tell(SETUP, { do: job, system: system ?? null });
+  waitingForTheHelper = Boolean(answer?.ok);
+
   if (answer === null) {
     show("installer-note", t("note.no-service"));
     return;
   }
-  show("installer-note", say(answer));
+  /* What the service said, kept for as long as the window is waiting, because
+     the draw that follows would otherwise wipe it before anybody reads it. */
+  whilstWaiting = say(answer);
+  show("installer-note", whilstWaiting);
   drawTheInstaller(answer.systems ? answer : setupState);
   refreshTheInstaller();
 }
@@ -3531,12 +3624,21 @@ function wireTheInstaller() {
 
   /* Whilst the window is open, or whilst something is being installed with it
      closed: a run takes minutes and goes on whether anybody is watching, and
-     what is on the screen when somebody comes back has to be true. */
+     what is on the screen when somebody comes back has to be true.
+
+     Four times as often whilst something is happening. A run where every step
+     finds its work already done is over in a second, and asking every two
+     seconds would miss it entirely: somebody would press Install and see the
+     window go from asked to finished with nothing in between, or nothing at
+     all. */
+  let ticks = 0;
   setInterval(() => {
-    const running = setupState?.progress
-      && setupState.progress.finished_at === null;
-    if (!window_.hidden || running) refreshTheInstaller();
-  }, INSTALLING_MS);
+    ticks += 1;
+    const busy = waitingForTheHelper
+      || (setupState?.progress && setupState.progress.finished_at === null);
+    if (!busy && ticks % EVERY_FOURTH !== 0) return;
+    if (!window_.hidden || busy) refreshTheInstaller();
+  }, WATCHING_MS);
 
   if (!window_.hidden) refreshTheInstaller();
 }

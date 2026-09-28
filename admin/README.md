@@ -315,7 +315,13 @@ What NeXT called the application that puts things on a machine and takes them of
 
 **What it costs is in the question rather than in the failure.** Fetching one says what it travels as, what it becomes, and what would be left on the card. A card that fills up during an unpack leaves a half written image and a person with no idea why.
 
-**Whilst it runs, the window says which step it is on and how far through.** The trough is there only whilst something is happening, the figure comes from the Pi rather than from anything the browser holds, and a reload shows the same thing. A failure says which step failed, why, and which steps were put back, in this interface's own words.
+**Every system shows what it costs, and the ones that are here carry a mark.** How large a system is belongs to the system and is always worth showing; whether it is on the card is a state, and a state is a mark rather than a word. It is NeXT's own, out of `Installer.app`, and the ones that are not here keep the space so the names line up.
+
+**Whilst it runs, the window says which step it is on, what that step is doing and how much of how much.** One step can fetch, then unpack, then move, and each of those takes minutes of its own, so a bar covering all three says none of it. The trough is there only whilst something is happening, the figures come from the Pi rather than from anything the browser holds, and a reload shows the same thing. A failure says which step failed, why, and which steps were put back, in this interface's own words.
+
+**Pressing anything says so at once.** The request is written into a file and a path unit starts the program that reads it, so for a moment the newest thing the Pi has to say is still about the run before. Until a record newer than the request appears, the window says it was asked and holds what the service answered, rather than reading out the last run's ending to somebody who has just pressed a button. It looks four times as often whilst something is happening, because a run where every step finds its work already done is over in a second and would otherwise be missed entirely.
+
+**A run that changed nothing says so.** Every step records whether it did anything, so a run on a machine that already has everything ends with "nothing needed doing" rather than with "finished" and a screen that looks exactly as it did.
 
 **Switching between systems that are already here is not in this window.** That is choosing which disk the machine boots, it takes no time at all, and it belongs with the disks themselves.
 
