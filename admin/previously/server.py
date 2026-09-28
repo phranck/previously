@@ -67,6 +67,14 @@ BOARD_OPERATIONS = {
     "/api/pi/poweroff": "poweroff",
 }
 
+#: Copying a disk and putting a copy back, by the job the privileged helper
+#: knows them as. Two gigabytes each way, so neither is done here: the request
+#: is left and the helper does the work.
+COPY_OPERATIONS = {
+    "/api/disk/backup": "back-up",
+    "/api/disk/restore": "restore",
+}
+
 
 class Handler(http.server.BaseHTTPRequestHandler):
     """Answers one request.
@@ -160,6 +168,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._change_machine()
         if route == "/api/disk":
             return self._boot_a_disk()
+        if route in COPY_OPERATIONS:
+            return self._copy_a_disk(COPY_OPERATIONS[route])
         if route == "/api/machine/save":
             return self._save_configuration()
         if route == "/api/machine/rename":
@@ -446,6 +456,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 settings["System"], settings["Memory"], settings["Dimension"]),
             "offers": machines.offers(machine),
         })
+
+    def _copy_a_disk(self, job):
+        """Asks the privileged helper to copy a disk, or to put a copy back.
+
+        @param job - Which of the two, as `setup.JOBS` names them.
+
+        Neither is done here. A disk is two gigabytes, the folder it lives in
+        is one this service may not write, and the helper is already what puts
+        things on the card and takes them off. So this leaves a request and the
+        window watches it exactly as it watches an installation.
+        """
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        taken, told = kiosk.ask_to_set_up(
+            self.settings.runtime_directory, self.settings.setup_directory,
+            job, body.get("system"), None, body.get("backup"))
+        return self._json({"ok": taken, **told, **self._setup()},
+                          status=200 if taken else 409)
 
     def _setup(self):
         """What can be put on this machine, what is on it, and what is happening.

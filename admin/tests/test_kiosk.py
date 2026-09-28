@@ -443,16 +443,17 @@ def test_a_runtime_directory_that_is_not_there_is_not_an_exception(tmp_path):
 # -- asking for the machine to be set up ---------------------------------
 
 
-def ask(tmp_path, job="install", system=None, machine=None):
+def ask(tmp_path, job="install", system=None, machine=None, backup=None):
     """Leaves the request, with both directories in the test's own."""
     return kiosk.ask_to_set_up(tmp_path, tmp_path / "setup-progress",
-                               job, system, machine)
+                               job, system, machine, backup)
 
 
-def test_the_request_carries_three_names_and_nothing_else(tmp_path):
+def test_the_request_carries_four_names_and_nothing_else(tmp_path):
     """Installing is more than one exact command, so this is the one request
-    that carries anything at all. What it carries is looked up in a table by
-    the privileged half, so none of it is a path, a URL or a command."""
+    that carries anything at all. Three of the four are looked up in a table by
+    the privileged half, and the fourth is matched against the listing of one
+    folder, so none of it is a path, a URL or a command."""
     import json
 
     taken, told = ask(tmp_path, "install", "nextstep-3.3", "nextcube-turbo")
@@ -461,7 +462,21 @@ def test_the_request_carries_three_names_and_nothing_else(tmp_path):
     assert told["reason"] == "setup.asked"
     written = json.loads((tmp_path / kiosk.SETUP_REQUEST).read_text())
     assert written == {"do": "install", "system": "nextstep-3.3",
-                       "machine": "nextcube-turbo"}
+                       "machine": "nextcube-turbo", "backup": None}
+
+
+def test_a_copy_is_named_in_the_request_that_puts_it_back(tmp_path):
+    """The one value in a request that is not a key of a table. The privileged
+    half matches it against the listing of the folder copies are kept in rather
+    than joining it onto a path."""
+    import json
+
+    taken, _ = ask(tmp_path, "restore", "nextstep-3.3",
+                   backup="nextstep-3.3 2026-09-28 15.10.42.dd")
+
+    assert taken is True
+    written = json.loads((tmp_path / kiosk.SETUP_REQUEST).read_text())
+    assert written["backup"] == "nextstep-3.3 2026-09-28 15.10.42.dd"
 
 
 def test_nothing_half_written_carries_the_name_the_watcher_fires_on(tmp_path):

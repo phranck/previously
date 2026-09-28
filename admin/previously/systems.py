@@ -30,10 +30,13 @@ ARCHIVE_HOSTS = ("archive.org", ".archive.org")
 #: gigabyte disks, so this is what each of them costs on the card.
 UNPACKED_BYTES = 2_012_774_400
 
-#: What has to be free before one is fetched. The disk, the archive beside it
-#: whilst it unpacks, and enough left over that a card filling up is this
-#: refusing rather than an unpack stopping half way through a disk image.
-ROOM_BYTES = UNPACKED_BYTES + 500_000_000
+#: What is left over after anything large is written, so that a card filling up
+#: is a refusal in front rather than a write stopping half way through.
+SPARE_BYTES = 500_000_000
+
+#: What has to be free before a system is fetched: the disk, the archive beside
+#: it whilst it unpacks, and that margin.
+ROOM_BYTES = UNPACKED_BYTES + SPARE_BYTES
 
 #: The least a file in one of these archives can be and still be the disk. The
 #: rest of what they carry is ROM images, a Windows binary and a text file, and
@@ -43,6 +46,11 @@ SMALLEST_DISK_BYTES = 512 * 1024 * 1024
 #: What a disk image is called once it is here. The identifier, so the file
 #: says which system it holds rather than `NS33_2GB.dd`.
 DISK_SUFFIX = ".dd"
+
+#: Where the copies of those disks are kept, inside the folder they are copies
+#: of. A folder holding both the thing that runs and the thing that is kept is
+#: one where the two look alike.
+BACKUPS = "backups"
 
 #: One prepared system.
 #:
@@ -174,6 +182,55 @@ def here(disks):
         if disk is not None:
             found[system.identifier] = disk
     return found
+
+
+def backups_in(disks):
+    """Where the copies of the disks are kept.
+
+    @param disks - pathlib.Path of the folder the disks live in.
+    @returns pathlib.Path
+
+    Beside the disks rather than among them, because a folder holding both is
+    one where the thing that runs and the thing that is kept look alike. It is
+    in the same home for the same reason the disks are: a copy somebody waited
+    ten minutes for is theirs.
+    """
+    return disks / BACKUPS
+
+
+def copies_in(disks):
+    """Every copy that has been made, newest first.
+
+    @param disks - pathlib.Path of the folder the disks live in.
+    @returns list of (path, System or None). The system is read off the name,
+      and a copy whose name says nothing this knows still appears: it is on the
+      card either way and hiding it would be hiding what is taking the room.
+    """
+    where = backups_in(disks)
+    try:
+        found = [path for path in where.iterdir()
+                 if path.is_file() and path.suffix == DISK_SUFFIX]
+    except OSError:
+        return []
+    found.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    return [(path, find(path.stem.split(" ", 1)[0])) for path in found]
+
+
+def a_copy_of(system, when):
+    """What a copy is called.
+
+    @param system - The System it is a copy of.
+    @param when - datetime of the moment it was made.
+    @returns str
+
+    The identifier first, so the system can be read back off the name by
+    splitting at the first space, and the moment after it, because that is the
+    one thing that tells two copies of the same system apart. Written in a form
+    that sorts the way it reads, with full stops where a clock has colons,
+    which a filesystem takes and a colon is not worth arguing with.
+    """
+    return "%s %s%s" % (system.identifier,
+                        when.strftime("%Y-%m-%d %H.%M.%S"), DISK_SUFFIX)
 
 
 def room_beside(disks):

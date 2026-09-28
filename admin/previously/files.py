@@ -62,6 +62,11 @@ PICTURES = "/Documents/Pictures"
 #: is installed on it, and either can be changed without the other.
 DISKS = "/Disks"
 
+#: And where the copies of them stand, inside Disks rather than beside them: a
+#: folder holding both is one where the thing that runs and the thing that is
+#: kept look alike.
+BACKUPS = "/Disks/Backups"
+
 #: What a disk wears. It is a hard disk, so it wears the one NeXTSTEP drew for
 #: a hard disk. What it arrived as is not what it is.
 DISK_ICON = "winchester"
@@ -171,7 +176,56 @@ def _disk_folder(disks, booting):
         return []
     here = [_disk(system, path, booting)
             for system, path in sorted(systems.here(disks).items())]
+    kept = _backups(disks)
+    if kept:
+        here.append(_folder("Backups", BACKUPS, FOLDER_ICON, kept))
     return [_folder("Disks", DISKS, FOLDER_ICON, here)] if here else []
+
+
+def _backups(disks):
+    """The copies that have been made, newest first.
+
+    @param disks - pathlib.Path the disk images live in.
+    @returns list, empty where none has been made.
+
+    They stand in a folder of their own inside Disks rather than beside the
+    disks, because a folder holding both is one where the thing that runs and
+    the thing that is kept look alike. A copy of a disk is a disk, so it wears
+    the same picture; where it is says which of the two it is.
+    """
+    return [
+        {
+            # The file's own name, which is what a request names and what the
+            # helper matches against the listing of that folder.
+            "id": path.name,
+            "name": _a_copy_called(path, system),
+            "icon": DISK_ICON,
+            "path": "%s/%s" % (BACKUPS, path.name),
+            "kind": "backup",
+            # Which system it is a copy of, so putting it back knows which disk
+            # it belongs over without reading the name again in the browser.
+            "system": system.identifier if system else None,
+            "bytes": _size_of(path),
+        }
+        for path, system in systems.copies_in(disks)
+    ]
+
+
+def _a_copy_called(path, system):
+    """What one copy is called on the screen.
+
+    @param path - pathlib.Path of the copy.
+    @param system - The System it is a copy of, or None where its name says
+      nothing this knows.
+    @returns str
+
+    The system and the moment, which is what tells two copies apart. The
+    seconds are in the file's name so that two copies made in one minute are
+    two files, and they are left off here because nobody reads them.
+    """
+    identifier, _, when = path.stem.partition(" ")
+    return "%s %s" % (system.name if system else identifier,
+                      when.rsplit(".", 1)[0] if when else "")
 
 
 def _disk(identifier, path, booting):

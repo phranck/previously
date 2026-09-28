@@ -791,6 +791,8 @@ function open(path, asker) {
   /* A disk is chosen the same way a machine is, because it is the same act:
      the guest goes down, one thing is written, and it comes back. */
   if (entry.kind === "disk") return bootFromDisk(entry);
+  /* And a copy of one is put back, which is the only thing to do with it. */
+  if (entry.kind === "backup") return putTheCopyBack(entry);
   /* Named rather than left as what everything else falls through to, because
      what else is in here has grown and falling through would have asked the
      machine to become whatever was double clicked. */
@@ -1114,6 +1116,73 @@ async function bootFromDisk(disk) {
      marked from here. */
   drawMachines();
   refresh();
+}
+
+/**
+ * Asks about a copy of a disk, and has one made when the answer is yes.
+ * @param {object} disk - Its entry in the tree.
+ *
+ * Two gigabytes, so what it costs and what would be left are in the question
+ * rather than in a failure afterwards. The figures are fetched at the moment
+ * the question is put, because what is free changes with everything else on
+ * the machine.
+ */
+async function backUpTheDisk(disk) {
+  const state = await ask(SETUP);
+  const agreed = await askPanel({
+    title: t("ask.backup.title", { name: disk.name }),
+    text: [
+      t("ask.backup.cost", { name: disk.name, size: sized(disk.bytes) }),
+      state ? t("ask.fetch.left", {
+        free: sized(state.room),
+        left: sized(Math.max(0, state.room - disk.bytes)),
+      }) : "",
+      t("ask.backup.off"),
+      t("ask.install.time"),
+    ].filter(Boolean),
+    icon: Art.Disk,
+    confirm: t("button.copy"),
+  });
+  if (agreed) askTheInstallerToCopy("/api/disk/backup", { system: disk.id });
+}
+
+/**
+ * Asks about a copy, and writes it back over its disk when the answer is yes.
+ * @param {object} copy - Its entry in the tree.
+ *
+ * The one thing that can be done with a copy, and the one that cannot be
+ * undone: what is on the disk now is written over. So the question says that
+ * before it says anything else.
+ */
+async function putTheCopyBack(copy) {
+  const agreed = await askPanel({
+    title: t("ask.restore.title", { name: copy.name }),
+    text: [t("ask.restore.loss"), t("ask.backup.off"), t("ask.install.time")],
+    icon: Art.Disk,
+    confirm: t("button.put-back"),
+  });
+  if (agreed) {
+    askTheInstallerToCopy("/api/disk/restore",
+                          { system: copy.system, backup: copy.id });
+  }
+}
+
+/**
+ * Leaves a request for a copy and shows the window that watches it.
+ * @param {string} route - Which of the two.
+ * @param {object} body - What to send.
+ *
+ * The Installer is opened, because it is the window that says what the Pi is
+ * doing and this takes minutes. Starting a five minute job from a viewer and
+ * leaving nothing on the screen about it would be the worst of both.
+ */
+async function askTheInstallerToCopy(route, body) {
+  const answer = await tell(route, body);
+  show("machine-note", answer === null ? t("note.no-service") : say(answer));
+  if (!answer?.ok) return;
+
+  document.querySelector('nx-window[name="installer"]')?.open();
+  refreshTheInstaller();
 }
 
 /**
@@ -2030,8 +2099,9 @@ function openMachineMenu(thing, x, y) {
      The other four are about a configuration and a disk is not one. */
   const found = find(root, where);
   const disk = found?.kind === "disk" ? found : null;
+  const copy = found?.kind === "backup" ? found : null;
   const onShelf = Boolean(thing.closest(".keep"));
-  if (!machine && !disk && !onShelf) return false;
+  if (!machine && !disk && !copy && !onShelf) return false;
 
   const menu = document.querySelector('nx-menu[name="machine-menu"]');
   /* Which machine this is about. The menu appears over whatever was clicked
@@ -2042,6 +2112,8 @@ function openMachineMenu(thing, x, y) {
   const edit = menu.querySelector('nx-menu-item[name="edit"]');
   const rename = menu.querySelector('nx-menu-item[name="rename"]');
   const remove = menu.querySelector('nx-menu-item[name="remove"]');
+  const backup = menu.querySelector('nx-menu-item[name="backup"]');
+  const restore = menu.querySelector('nx-menu-item[name="restore"]');
   const shelf = menu.querySelector('nx-menu-item[name="shelf"]');
 
   /* Three of the entries are about a machine, so a folder on the shelf shows
@@ -2053,6 +2125,18 @@ function openMachineMenu(thing, x, y) {
      renamed or removed, so for those the entries are not in the menu at all
      rather than in it and refusing. */
   for (const entry of [rename, remove]) entry.hidden = machine?.set !== "user";
+  /* A disk can be copied and a copy can be put back, and neither entry means
+     anything for the other three kinds of thing. */
+  backup.hidden = !disk;
+  restore.hidden = !copy;
+  backup.onclick = () => {
+    menu.close();
+    backUpTheDisk(disk);
+  };
+  restore.onclick = () => {
+    menu.close();
+    putTheCopyBack(copy);
+  };
 
   info.onclick = () => {
     menu.close();

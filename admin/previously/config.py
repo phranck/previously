@@ -16,9 +16,9 @@ import time
 #: directory. It holds one digest and nothing else.
 RECEIPT = "written.sha256"
 
-#: How many SCSI slots Previous keeps in its file. The machine boots from the
-#: first one that holds an inserted disk, and the rest are for whatever else is
-#: on the bus.
+#: How many SCSI slots Previous keeps in its file, which is `ESP_MAX_DEVS` in
+#: its src/includes/configuration.h. The machine boots from the first one that
+#: holds an inserted disk, and the rest are for whatever else is on the bus.
 SLOTS = 7
 
 #: The three keys that decide which disk the machine boots, by the slot they
@@ -26,8 +26,10 @@ SLOTS = 7
 #: everything else in that section, and the six further slots, belong to the
 #: installation and are passed through exactly as the file has them.
 #:
-#: `nDeviceType0` is what Previous calls a hard disk, read off the reference
-#: machine, where the disk it boots carries 1.
+#: `nDeviceType0` is what Previous calls a hard disk. Its own `SCSI_DEVTYPE` in
+#: src/includes/configuration.h counts none, hard disk, CD and floppy from
+#: zero, so a hard disk is 1, which is also what the reference machine holds
+#: for the disk it boots.
 BOOT_SLOT = 0
 HARD_DISK = "1"
 
