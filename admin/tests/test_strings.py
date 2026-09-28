@@ -111,6 +111,34 @@ def test_the_page_asks_for_strings_that_exist(english):
     assert missing == []
 
 
+#: An answer the page finishes off with a value before looking it up, so the
+#: catalogue holds one sentence per value rather than one for the name. Each is
+#: the name and the key of the value that follows it.
+BUILT_FROM_A_VALUE = {
+    "board.on-its-way": "action",
+    "setup.asked": "job",
+    "guest.still-shutting-down": "seconds",
+    "machine.running": "lines",
+    "disk.booting": "lines",
+    "disc.inserted": "lines",
+    "disc.ejected": "lines",
+}
+
+
+def test_every_answer_built_from_a_value_is_built_in_the_page(english):
+    """A name the page looks up whole, where the catalogue only holds it with
+    something on the end, reaches the screen as `told.setup.asked`. That is
+    what somebody saw the first time an installation was asked for."""
+    page = (INTERFACE / "app.js").read_text(encoding="utf-8")
+    said = page[page.index("function say("):page.index("\n}", page.index("function say("))]
+
+    for reason in BUILT_FROM_A_VALUE:
+        # Either the page finishes the key off itself, or the catalogue answers
+        # the bare name. One of the two, for every one of them.
+        finished = f'"{reason}"' in said
+        assert finished or f"told.{reason}" in english, reason
+
+
 def test_every_answer_the_service_can_give_has_a_sentence(english):
     """The service sends a name for what happened. A name nothing can say is a
     name that reaches the screen as it is."""
@@ -201,6 +229,16 @@ def test_every_step_of_an_installation_can_be_named(english):
 
     for name in sorted(setup.STEPS):
         assert f"setup.step.{name}" in english, name
+
+
+def test_everything_a_step_can_be_doing_can_be_said(english):
+    """One step can fetch, unpack and then move, and each takes minutes of its
+    own. The helper sends a name for which of them is running, and a name
+    nothing can say reaches the screen as itself."""
+    from previously import setup
+
+    for doing in setup.DOINGS:
+        assert f"installer.doing.{doing}" in english, doing
 
 
 def test_every_job_the_installer_can_ask_for_can_be_reported(english):

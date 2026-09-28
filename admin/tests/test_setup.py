@@ -245,6 +245,33 @@ def test_a_failure_says_which_step_and_what_was_put_back(tmp_path, monkeypatch):
     assert said["undone"] == ["tools", "host"]
 
 
+def test_a_run_says_which_steps_actually_did_something(tmp_path, monkeypatch):
+    """A run where every step finds its work already done is right and is over
+    in a second, and without this the window can only say "finished" to
+    somebody who saw nothing happen."""
+    def does(work):
+        work.undoes(lambda: None)
+
+    monkeypatch.setattr(setup, "STEPS", {
+        "host": lambda work: None, "tools": does, "archive": lambda work: None})
+    work = work_in(tmp_path, steps=("host", "tools", "archive"))
+
+    setup.carry_out(work)
+
+    assert work.reading()["changed"] == ["tools"]
+
+
+def test_a_run_that_changed_nothing_says_so(tmp_path, monkeypatch):
+    monkeypatch.setattr(setup, "STEPS",
+                        {name: (lambda work: None) for name in setup.STEPS})
+    work = work_in(tmp_path, steps=("host", "tools"))
+
+    setup.carry_out(work)
+
+    assert work.reading()["ok"] is True
+    assert work.reading()["changed"] == []
+
+
 def test_a_step_that_changed_nothing_is_not_undone(tmp_path, monkeypatch):
     """A step that skips what it finds already done records nothing, so a later
     failure never takes away what the machine already had."""
@@ -266,10 +293,11 @@ def test_what_it_is_doing_is_readable_whilst_it_runs(tmp_path, monkeypatch):
     progress = tmp_path / "progress" / setup.PROGRESS
 
     def looks(work):
-        work.through(512, 60508875)
+        work.through(512, 60508875, setup.FETCHING)
         said = json.loads(progress.read_text(encoding="utf-8"))
         assert said["step"] == "system"
-        assert said["part"] == {"done": 512, "of": 60508875}
+        assert said["part"] == {"done": 512, "of": 60508875,
+                                "doing": setup.FETCHING}
         assert said["finished_at"] is None
 
     monkeypatch.setattr(setup, "STEPS", {"system": looks})

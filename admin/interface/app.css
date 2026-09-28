@@ -387,17 +387,33 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   box-shadow: var(--sunken-inside);
 }
 
-/* One system. Its name on the left and what it costs, or that it is already
-   here, on the right, so the column of figures reads down the list. */
+/* One system: whether it is here, its name, and what it costs. Three columns
+   rather than two, because whether it is here and how large it is are two
+   facts and one of them was hiding the other. */
 .system {
   display: grid;
-  grid-template-columns: 1fr max-content;
+  grid-template-columns: max-content 1fr max-content;
   align-items: center;
   gap: 8px;
   height: var(--row);
   padding: 0 6px;
   cursor: default;
 }
+
+/* The mark for a system that is already on the card, which is NeXT's own from
+   Installer.app. The ones that are not here keep the space rather than closing
+   it, so every name in the list begins on one line. */
+.system-mark {
+  width: 18px;
+  height: 11px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.system-mark[here] { background-image: var(--Check); }
+
+/* On the row that is chosen the mark would be black on black, so it is turned
+   round the way the words above it are. */
+.system[chosen] .system-mark[here] { filter: invert(1); }
 
 /* The one chosen, drawn the way NeXTSTEP drew a selected row: the colours
    turned around rather than a mark put beside it. */

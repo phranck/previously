@@ -82,6 +82,11 @@ ICONS = {
     # change the machine rather than use it.
     "/NextAdmin/Installer.app/InstallerApp.tiff":
         ("Installer", "putting things on the machine and taking them off, as NeXT drew it"),
+    # The mark that application put beside what was already on the machine,
+    # which is the same question this one's list answers. 18 by 11 rather than
+    # an icon's 48, because it sits in a line of type.
+    "/NextAdmin/Installer.app/Check.tiff":
+        ("Check", "what is already here, as the Installer marked it"),
     # NeXT shipped an application for exactly this and called it Grab, so the
     # one here carries its name and its face. The camera is the picture inside
     # its own window rather than a Workspace icon, which is why it is 64 square

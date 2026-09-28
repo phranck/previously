@@ -152,6 +152,15 @@ SAY_EVERY_SECONDS = 0.5
 #: the way.
 COPY_BYTES = 4 * 1024 * 1024
 
+#: What a step is doing at this moment. One step can fetch, then unpack, then
+#: move, and each of those takes minutes of its own, so a person watching is
+#: told which of them is running rather than watching one bar cover all three.
+#: The browser says these in words; `tests/test_strings.py` holds it to that.
+FETCHING = "fetching"
+UNPACKING = "unpacking"
+COPYING = "copying"
+DOINGS = (FETCHING, UNPACKING, COPYING)
+
 #: How long to wait for one command. An unpack of two gigabytes on a Pi is the
 #: long one, and a step that hangs is worse than one that fails because nothing
 #: says so.
@@ -326,6 +335,11 @@ class Work:
         self.part = None
         self.failed = None
         self.undone = []
+        #: Which steps actually did something, as against the ones that found
+        #: their work already done and skipped. A run where every step skips is
+        #: right and is over in a second, and without this the window can only
+        #: say "finished" to somebody who saw nothing happen.
+        self.changed = []
         self._how = []
         self._said_at = 0.0
         self.started_at = time.time()
@@ -340,8 +354,13 @@ class Work:
         @param how - A callable taking nothing. Recorded whilst the step is
           running rather than afterwards, so a step that fails half way through
           still reverses the half it managed.
+
+        A step that records nothing is a step that found its work already done,
+        so this is also what says which steps did anything at all.
         """
         self._how.append((self.step, how))
+        if self.step not in self.changed:
+            self.changed.append(self.step)
 
     def reverse(self):
         """Walks the record backwards, so each step is reversed in a world that
@@ -364,20 +383,23 @@ class Work:
         self.part = None
         self.say(force=True)
 
-    def through(self, done, of):
+    def through(self, done, of, doing):
         """How far through something long, such as a download or an unpack.
 
         @param done - Bytes so far.
         @param of - Bytes in total, or 0 where nobody knows.
+        @param doing - What is being done, as a name the browser says in words:
+          one step can fetch, unpack and then move, and a bar on its own says
+          none of that.
 
         Rate limited, because a chunk of a quarter of a megabyte arrives many
         times a second and the progress file would be rewritten for each. The
-        first one of a step is written whatever the clock says, so that a
+        first of each thing is written whatever the clock says, so that a
         download shows as having started rather than as a step with nothing
         happening in it.
         """
-        beginning = self.part is None
-        self.part = {"done": done, "of": of}
+        beginning = self.part is None or self.part["doing"] != doing
+        self.part = {"done": done, "of": of, "doing": doing}
         self.say(force=beginning)
 
     def say(self, force=False):
@@ -418,6 +440,7 @@ class Work:
             "part": self.part,
             "failed": self.failed,
             "undone": list(self.undone),
+            "changed": list(self.changed),
         }
 
     def ends(self, ok, failure=None):
@@ -740,7 +763,7 @@ def _copied_across(source, into, work):
                     break
                 writing.write(chunk)
                 done += len(chunk)
-                work.through(done, total)
+                work.through(done, total, COPYING)
     except OSError as error:
         raise Refused("setup.cannot-copy",
                       name=work.system.name if work.system else "?") from error
@@ -1061,7 +1084,7 @@ def _copied(answer, into, work, size):
             running.update(chunk)
             done += len(chunk)
             if size:
-                work.through(done, size)
+                work.through(done, size, FETCHING)
     return running.hexdigest()
 
 
@@ -1112,7 +1135,7 @@ def _unpacked(archive, into, work):
         stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
     while unpacking.poll() is None:
         work.through(_written_into(into) - archive.stat().st_size,
-                     systems.UNPACKED_BYTES)
+                     systems.UNPACKED_BYTES, UNPACKING)
         time.sleep(SAY_EVERY_SECONDS)
     if unpacking.returncode != 0:
         raise Refused("setup.cannot-unpack",
