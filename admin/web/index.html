@@ -26,6 +26,7 @@
   <nx-menu-item for="preview" name="preview-delete" data-t-key="menu.delete.key" data-t="menu.delete"></nx-menu-item>
   <nx-menu-item for="preview" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
   <nx-menu-item for="terminal" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
+  <nx-menu-item for="installer" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
   <nx-menu-item for="preferences" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
 
   <nx-menu-item for="editor" name="editor-save" data-t-key="menu.save.key" data-t="menu.save"></nx-menu-item>
@@ -195,6 +196,47 @@
   <div class="buttons">
     <button id="editor-save" class="default" data-t="button.save-as"></button>
   </div>
+</nx-window>
+
+<nx-window name="installer" data-t-title="app.installer" fixed
+           x="260" y="120" w="470" closed>
+  <div class="info-body">
+    <nx-portrait>
+      <i class="art icon" id="installer-icon" style="background-image: var(--Installer)"></i>
+      <span class="caption" id="installer-caption">&mdash;</span>
+    </nx-portrait>
+    <div class="readings">
+      <nx-row><label data-t="installer.emulator"></label><nx-field id="installer-emulator">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="installer.systems"></label><nx-field id="installer-count">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="installer.card"></label><nx-field id="installer-room">&mdash;</nx-field></nx-row>
+    </div>
+  </div>
+  <div class="installer-groups">
+    <fieldset class="group">
+      <legend data-t="installer.emulator"></legend>
+      <p class="note" id="installer-emulator-note"></p>
+      <div class="buttons">
+        <button id="installer-remove" data-t="button.remove"></button>
+        <button id="installer-update" data-t="button.update"></button>
+        <button id="installer-install" class="default" data-t="button.install"></button>
+      </div>
+    </fieldset>
+    <fieldset class="group">
+      <legend data-t="installer.systems"></legend>
+
+      <div class="systems" id="installer-systems"></div>
+      <p class="note" id="installer-systems-note"></p>
+      <div class="buttons">
+        <button id="installer-forget" data-t="button.remove"></button>
+        <button id="installer-fetch" class="default" data-t="button.fetch"></button>
+      </div>
+    </fieldset>
+  </div>
+
+  <div class="gauge" id="installer-gauge" hidden>
+    <div class="gauge-fill" id="installer-fill"></div>
+  </div>
+  <p class="note" id="installer-note"></p>
 </nx-window>
 
 <nx-menu name="machine-menu" context data-t-title="menu.machine">

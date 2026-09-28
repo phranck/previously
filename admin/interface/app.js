@@ -36,6 +36,7 @@ const Art = {
   Cube: "nextcube",
   Station: "nextstation",
   Editor: "defaultAppIcon",
+  Installer: "Installer",
   Picture: "tiff",
 };
 
@@ -2885,6 +2886,389 @@ function wireGrab() {
   if (!window_.hidden) takeAPicture();
 }
 
+/* --- the Installer --------------------------------------------------------
+
+   What NeXT called the application that puts things on a machine and takes
+   them off again. Here there are two kinds of thing: the emulator, which is a
+   package and a handful of steps around it, and a system, which is a two
+   gigabyte disk that arrives as an archive of a few tens of megabytes.
+
+   The work is none of this window's. It asks the service, the service leaves a
+   request, and a program running as root does it and says how far it has got.
+   So what is drawn here comes from the Pi on every look, and a reload shows
+   the same thing a moment later. */
+
+/** Where the Installer asks and tells. One address for both, because what
+ *  comes back from asking is what the window shows anyway. */
+const SETUP = "/api/setup";
+
+/** What the service may be asked to do, by the name it takes. */
+const Install = {
+  Emulator: "install",
+  Newest: "update",
+  Away: "remove",
+  Fetch: "fetch",
+  Forget: "forget",
+};
+
+/** How often the Installer asks what is happening. Faster than the desk's own
+ *  poll, because a download says something new every second and this is a
+ *  window somebody sits and watches. Asked only whilst the window is open or
+ *  something is running. */
+const INSTALLING_MS = 2000;
+
+/** The last thing /api/setup said, so the window can be drawn again in another
+ *  language without asking for it. */
+let setupState = null;
+
+/** Which system is chosen in the list, by identifier, or null. */
+let chosenSystem = null;
+
+/**
+ * How large something is, in the words a person uses.
+ * @param {number} bytes
+ * @returns {string} Megabytes below a gigabyte and gigabytes above it, with the
+ *   figure written the way the language being read writes one.
+ */
+function sized(bytes) {
+  if (!bytes && bytes !== 0) return NOTHING;
+  const gigabytes = bytes >= 1e9;
+  const figure = new Intl.NumberFormat(currentLocale(),
+    { maximumFractionDigits: gigabytes ? 1 : 0 })
+    .format(bytes / (gigabytes ? 1e9 : 1e6));
+  return t(gigabytes ? "size.gb" : "size.mb", { size: figure });
+}
+
+/**
+ * Asks the service what can be installed and what is happening, and draws it.
+ *
+ * Every figure is read now rather than remembered. What is free changes with
+ * everything else on the machine, and a number from five minutes ago is what
+ * lets an unpack stop half way through a disk image.
+ */
+async function refreshTheInstaller() {
+  drawTheInstaller(await ask(SETUP));
+}
+
+/**
+ * Draws the whole window.
+ * @param {object|null} state - What /api/setup answered, or null on no contact.
+ */
+function drawTheInstaller(state) {
+  if (state === null) {
+    show("installer-caption", t("info.no-contact"));
+    allowInstalling(false);
+    return;
+  }
+  setupState = state;
+
+  const here = state.systems.filter((system) => system.here);
+  show("installer-emulator",
+       t(state.emulator ? "installer.emulator.in" : "installer.emulator.out"));
+  show("installer-count", t("installer.count",
+                            { here: here.length, all: state.systems.length }));
+  show("installer-room", sized(state.room));
+  explain("installer-emulator-note",
+          t(state.emulator ? "installer.emulator.note.in"
+                           : "installer.emulator.note.out"));
+  explain("installer-systems-note", t("installer.systems.note"));
+
+  drawTheSystems(state.systems);
+  drawWhatIsBeingInstalled(state.progress);
+}
+
+/**
+ * Draws the six systems, with the one chosen marked.
+ * @param {object[]} systems - What the service offers, each saying what it
+ *   costs and whether it is already here.
+ */
+function drawTheSystems(systems) {
+  document.getElementById("installer-systems").replaceChildren(
+    ...systems.map((system) => {
+      const row = document.createElement("div");
+      row.className = "system";
+      row.toggleAttribute("chosen", system.identifier === chosenSystem);
+
+      const name = document.createElement("span");
+      name.textContent = system.name;
+
+      const cost = document.createElement("span");
+      cost.className = "system-cost";
+      /* What it costs to fetch, or that there is nothing to fetch. The unpacked
+         size is said once under the list rather than six times in it. */
+      cost.textContent = system.here ? t("installer.here") : sized(system.size);
+
+      row.append(name, cost);
+      row.addEventListener("click", () => {
+        chosenSystem = system.identifier;
+        drawTheInstaller(setupState);
+      });
+      return row;
+    }));
+}
+
+/**
+ * Says what is being installed, how far it has got, and how it went.
+ * @param {object|null} progress - What the privileged helper wrote, or null
+ *   where it has never run on this machine since it last started.
+ *
+ * The step is named in words out of the catalogue, because the helper sends a
+ * name rather than a sentence for the same reason everything else here does.
+ * The trough is there whilst something is running and gone otherwise, since an
+ * empty gauge is a window claiming to be busy.
+ */
+function drawWhatIsBeingInstalled(progress) {
+  const gauge = document.getElementById("installer-gauge");
+  const running = Boolean(progress) && progress.finished_at === null;
+  allowInstalling(!running);
+  gauge.hidden = !running;
+
+  if (!progress) {
+    show("installer-caption", t("installer.idle"));
+    show("installer-note", "");
+    return;
+  }
+
+  const step = t(`setup.step.${progress.step}`);
+  if (running) {
+    show("installer-caption", step);
+    show("installer-note", t("installer.step",
+                             { done: progress.done, of: progress.of }));
+    /* Two measures in one bar: which step of how many, and how far through a
+       step that knows. A download and an unpack are the only ones that know,
+       and they are the ones that take the minutes. */
+    const through = progress.part?.of
+      ? progress.part.done / progress.part.of : 0;
+    const done = (progress.done - 1 + Math.min(1, through)) / progress.of;
+    document.getElementById("installer-fill").style.width =
+      `${Math.round(done * 100)}%`;
+    return;
+  }
+
+  if (progress.ok) {
+    show("installer-caption", t("installer.done"));
+    show("installer-note", "");
+    return;
+  }
+
+  /* A failure says which step it was and what was put back, in the words the
+     rest of the interface uses rather than as a line of shell output. */
+  show("installer-caption", step);
+  show("installer-note", [
+    whyItFailed(progress.failed),
+    progress.undone?.length
+      ? t("installer.undone", {
+          steps: progress.undone.map((name) => t(`setup.step.${name}`)).join(", "),
+        })
+      : "",
+  ].filter(Boolean).join(" "));
+}
+
+/**
+ * Why an installation stopped, as a sentence.
+ * @param {object|null} failed - What the helper said, as `answers.told` shapes
+ *   it, with the step it happened in beside it.
+ * @returns {string}
+ *
+ * One of those answers carries counts of bytes, and bytes are the one value the
+ * service cannot send ready to read: how large a number is worth writing out,
+ * and how it is written, are questions about the language rather than about the
+ * machine. So they are put into words here, as every other size in this window
+ * is.
+ */
+function whyItFailed(failed) {
+  if (!failed) return "";
+  if (failed.reason !== "setup.no-room") return say(failed);
+  return say({ ...failed, free: sized(failed.free),
+               needed: sized(failed.needed) });
+}
+
+/**
+ * Lets the window's buttons decide again, or turns them all off.
+ * @param {boolean} allowed - False whilst something is being installed, because
+ *   the service takes one installation at a time and a second request would be
+ *   refused rather than queued.
+ */
+function allowInstalling(allowed) {
+  const state = setupState;
+  const chosen = state?.systems.find((system) => system.identifier === chosenSystem);
+
+  document.getElementById("installer-install").disabled =
+    !allowed || Boolean(state?.emulator);
+  for (const id of ["installer-update", "installer-remove"]) {
+    document.getElementById(id).disabled = !allowed || !state?.emulator;
+  }
+  document.getElementById("installer-fetch").disabled =
+    !allowed || !chosen || chosen.here;
+  document.getElementById("installer-forget").disabled =
+    !allowed || !chosen || !chosen.here;
+}
+
+/**
+ * Asks the service to install, update, remove or fetch something.
+ * @param {string} job - One of Install.
+ * @param {string} [system] - Which system, where the job needs one.
+ *
+ * Nothing waits for it to finish: the work takes minutes and happens on the Pi,
+ * so what comes back is whether the request was taken, and the window follows
+ * it from there.
+ */
+async function askTheInstaller(job, system) {
+  const answer = await tell(SETUP, { do: job, system: system ?? null });
+  if (answer === null) {
+    show("installer-note", t("note.no-service"));
+    return;
+  }
+  show("installer-note", say(answer));
+  drawTheInstaller(answer.systems ? answer : setupState);
+  refreshTheInstaller();
+}
+
+/**
+ * Asks before the emulator is installed, and installs it when the answer is
+ * yes.
+ *
+ * NeXTSTEP 3.3 comes with it unless another system is chosen in the list, so
+ * that a machine which has just been set up boots into a system rather than
+ * into a prompt about what to do next.
+ */
+async function installTheEmulator() {
+  const system = whichSystemToInstallWith();
+  const agreed = await askPanel({
+    title: t("ask.install.title"),
+    text: [
+      t("ask.install.what"),
+      system ? t("ask.install.system", {
+        name: system.name,
+        size: sized(system.size),
+        unpacked: sized(system.unpacked),
+      }) : "",
+      t("ask.install.time"),
+    ].filter(Boolean),
+    icon: Art.Installer,
+    confirm: t("button.install"),
+  });
+  if (agreed) askTheInstaller(Install.Emulator, system?.identifier);
+}
+
+/**
+ * Which system the emulator is installed with.
+ * @returns {object|undefined} The one chosen in the list, or the one the
+ *   service says comes by default, or nothing at all where that one is already
+ *   here.
+ */
+function whichSystemToInstallWith() {
+  const systems = setupState?.systems ?? [];
+  const chosen = systems.find((system) => system.identifier === chosenSystem);
+  const wanted = chosen ?? systems.find(
+    (system) => system.identifier === setupState?.default);
+  return wanted?.here ? undefined : wanted;
+}
+
+/** Asks before the newest Previous is put in place, and does it if so. */
+async function updateTheEmulator() {
+  const agreed = await askPanel({
+    title: t("ask.update.title"),
+    text: [t("ask.update.what")],
+    icon: Art.Installer,
+    confirm: t("button.update"),
+  });
+  if (agreed) askTheInstaller(Install.Newest);
+}
+
+/** Asks before the emulator goes, and takes it away if so. */
+async function removeTheEmulator() {
+  const agreed = await askPanel({
+    title: t("ask.remove-emulator.title"),
+    text: [t("ask.remove-emulator.loss"), t("ask.remove-emulator.disks")],
+    icon: Art.Installer,
+    confirm: t("button.remove"),
+  });
+  if (agreed) askTheInstaller(Install.Away);
+}
+
+/**
+ * Asks before a system is fetched, saying what it costs and what is left.
+ *
+ * A card that fills up during an unpack leaves a half written image and a
+ * person with no idea why, so the figures are in the question rather than in a
+ * failure afterwards.
+ */
+async function fetchTheSystem() {
+  const system = setupState?.systems.find(
+    (entry) => entry.identifier === chosenSystem);
+  if (!system) return;
+
+  const agreed = await askPanel({
+    title: t("ask.fetch.title", { name: system.name }),
+    text: [
+      t("ask.fetch.cost", {
+        name: system.name,
+        size: sized(system.size),
+        unpacked: sized(system.unpacked),
+      }),
+      t("ask.fetch.left", {
+        free: sized(setupState.room),
+        left: sized(Math.max(0, setupState.room - system.unpacked)),
+      }),
+      /* The same sentence the other question ends on, because it says the same
+         thing: this takes minutes and the window can be left. Two copies of it
+         would part company the first time one was rewritten. */
+      t("ask.install.time"),
+    ],
+    icon: Art.Installer,
+    confirm: t("button.fetch"),
+  });
+  if (agreed) askTheInstaller(Install.Fetch, system.identifier);
+}
+
+/** Asks before a system's disk goes, and takes it away if so. */
+async function forgetTheSystem() {
+  const system = setupState?.systems.find(
+    (entry) => entry.identifier === chosenSystem);
+  if (!system) return;
+
+  const agreed = await askPanel({
+    title: t("ask.forget.title", { name: system.name }),
+    text: [t("ask.forget.loss"), t("ask.forget.again")],
+    icon: Art.Installer,
+    confirm: t("button.remove"),
+  });
+  if (agreed) askTheInstaller(Install.Forget, system.identifier);
+}
+
+/** Wires the Installer's five buttons and the look it takes on its own. */
+function wireTheInstaller() {
+  const window_ = document.querySelector('nx-window[name="installer"]');
+  if (!window_) return;
+
+  document.getElementById("installer-install")
+    .addEventListener("click", installTheEmulator);
+  document.getElementById("installer-update")
+    .addEventListener("click", updateTheEmulator);
+  document.getElementById("installer-remove")
+    .addEventListener("click", removeTheEmulator);
+  document.getElementById("installer-fetch")
+    .addEventListener("click", fetchTheSystem);
+  document.getElementById("installer-forget")
+    .addEventListener("click", forgetTheSystem);
+
+  /* Opening it asks straight away, because a window that filled itself at the
+     next poll would stand empty for a moment first. */
+  window_.addEventListener("nx-open", refreshTheInstaller);
+
+  /* Whilst the window is open, or whilst something is being installed with it
+     closed: a run takes minutes and goes on whether anybody is watching, and
+     what is on the screen when somebody comes back has to be true. */
+  setInterval(() => {
+    const running = setupState?.progress
+      && setupState.progress.finished_at === null;
+    if (!window_.hidden || running) refreshTheInstaller();
+  }, INSTALLING_MS);
+
+  if (!window_.hidden) refreshTheInstaller();
+}
+
 /**
  * Changes the language the whole interface speaks.
  * @param {string} code - One of `en`, `de`, `fr`, `it`, `es` and `sv`.
@@ -2905,6 +3289,9 @@ function speak(code) {
       ?? "localization");
     drawPlace();
     redrawTheEditor();
+    /* Every figure and every sentence in the Installer is this page's, so it is
+       drawn again from what the service last said rather than by asking. */
+    if (setupState) drawTheInstaller(setupState);
     /* The menu's title is a name this page chooses rather than a string in
        the markup, so translate() does not reach it. */
     drawTheMenu();
@@ -2922,6 +3309,7 @@ wireTerminal();
 wireGrab();
 wirePreview();
 wireEditor();
+wireTheInstaller();
 watchTheFrontWindow();
 watchTheApplications();
 drawLanguages();

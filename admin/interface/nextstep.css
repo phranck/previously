@@ -171,6 +171,7 @@
   --folder: url("parts/folder.png");
   --Grab: url("parts/Grab.png");
   --home: url("parts/home.png");
+  --Installer: url("parts/Installer.png");
   --Localization: url("parts/Localization.png");
   --Monitor: url("parts/Monitor.png");
   /* NeXTSTEP's own selection was a white rounded shape, and this is the corner
@@ -1112,6 +1113,18 @@ button:active {
   padding: 4px 13px 2px 15px;
 }
 button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weight: bold; }
+
+/* One that cannot be pressed, dimmed rather than taken away. The same grey a
+   disabled menu entry wears, because it is the same statement: this is here,
+   and it is not for now. Without it a button that does nothing looks exactly
+   like one that does, which is the whole of what a person reads a button by. */
+button:disabled { color: var(--dark); cursor: default; }
+
+/* The ring round the default button is a promise that the return key presses
+   it, and a button that cannot be pressed is not making that promise. The
+   weight stays, because taking it away would move every button beside it each
+   time one is switched off. */
+button.default:disabled { outline: none; }
 
 .buttons {
   display: flex;

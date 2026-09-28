@@ -574,10 +574,10 @@ def test_the_applications_are_there_and_say_what_they_open(service):
     apps = next(e for e in tree["entries"] if e["name"] == "Apps")
 
     assert [entry["name"] for entry in apps["entries"]] == [
-        "Config Editor.app", "Grab.app", "Preferences.app", "Preview.app",
-        "Terminal.app"]
+        "Config Editor.app", "Grab.app", "Installer.app", "Preferences.app",
+        "Preview.app", "Terminal.app"]
     assert [entry["opens"] for entry in apps["entries"]] == [
-        "editor", "grab", "preferences", "preview", "terminal"]
+        "editor", "grab", "installer", "preferences", "preview", "terminal"]
 
 
 def test_changing_the_machine_needs_a_session(service):

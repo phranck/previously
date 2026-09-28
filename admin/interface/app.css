@@ -366,3 +366,73 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 .subjects {
   margin-top: var(--portrait-gap);
 }
+
+/* --- the Installer -------------------------------------------------------- */
+
+/* Its two groups, stacked under the picture with the same step between them as
+   the editor's, so the two windows read as one interface. */
+.installer-groups {
+  display: grid;
+  gap: var(--band-gap);
+  margin-top: var(--portrait-gap);
+}
+
+/* The six systems, as a list in NeXT's white with one of them chosen. The same
+   shape the Preferences window gives the six languages, because it is the same
+   question: one of a set, and the set is short enough to show whole. */
+.systems {
+  background: var(--white);
+  border: 1px solid;
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
+}
+
+/* One system. Its name on the left and what it costs, or that it is already
+   here, on the right, so the column of figures reads down the list. */
+.system {
+  display: grid;
+  grid-template-columns: 1fr max-content;
+  align-items: center;
+  gap: 8px;
+  height: var(--row);
+  padding: 0 6px;
+  cursor: default;
+}
+
+/* The one chosen, drawn the way NeXTSTEP drew a selected row: the colours
+   turned around rather than a mark put beside it. */
+.system[chosen] {
+  background: var(--black);
+  color: var(--white);
+}
+
+/* What it costs to fetch, or that it is here already. In the smaller type the
+   interface uses for what it says about itself rather than for what can be
+   chosen. */
+.system-cost {
+  font-size: var(--status-size);
+  line-height: var(--status-line);
+}
+
+/* How far through something long. A sunken trough with a filled bar in it,
+   which is what NeXT's own Installer drew whilst it worked. Only there whilst
+   something is happening: an empty gauge would be a window claiming to be
+   busy. */
+.gauge {
+  height: var(--line);
+  margin-top: var(--band-gap);
+  padding: 2px;
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
+}
+
+/* The part that is done. The dark grey the interface states a fact in rather
+   than a colour of its own, because nothing in NeXTSTEP is coloured to mean
+   progress. */
+.gauge-fill {
+  height: 100%;
+  width: 0;
+  background: var(--dark);
+}

@@ -74,6 +74,14 @@ ICONS = {
         ("Monitor", "how large the interface is drawn, as Preferences drew a screen"),
     "/NextApps/Preferences.app/Preferences":
         ("Preferences", "the application itself, as it sat in NextApps"),
+    # NeXT shipped an application for putting software on a machine and taking
+    # it off again, and called it Installer. This tool's own does the same job
+    # for the emulator and the systems it runs, so it wears the same face: the
+    # open package that bundle carries as InstallerApp.tiff. In /NextAdmin
+    # rather than in /NextApps, which is where NeXT put the applications that
+    # change the machine rather than use it.
+    "/NextAdmin/Installer.app/InstallerApp.tiff":
+        ("Installer", "putting things on the machine and taking them off, as NeXT drew it"),
     # NeXT shipped an application for exactly this and called it Grab, so the
     # one here carries its name and its face. The camera is the picture inside
     # its own window rather than a Workspace icon, which is why it is 64 square
