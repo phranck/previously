@@ -16,8 +16,8 @@ import pathlib
 import threading
 import urllib.parse
 
-from . import (change, config, files, grab, kiosk, machines, pi, saved, setup,
-               systems, terminal, websocket)
+from . import (activity, change, config, files, grab, kiosk, machines, pi,
+               saved, setup, systems, terminal, websocket)
 from .password import COOKIE, SESSION_SECONDS, SMALLEST, Attempts, Sessions, acceptable
 
 #: The release this tool belongs to. The one place it is written down, and
@@ -115,6 +115,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # from here rather than from pi.py, which reads the board itself
             # and nothing else.
             return self._json({"version": VERSION, **pi.readings()})
+        if route == "/api/activity":
+            # Its own route rather than more of the one above, because this one
+            # is asked once a second whilst a monitor is open and that one
+            # forks three times to answer.
+            return self._json(activity.readings())
         if route == "/api/files":
             return self._json(files.tree(
                 self.settings.machines_file, self.settings.documents,
