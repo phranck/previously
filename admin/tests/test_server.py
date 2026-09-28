@@ -94,6 +94,17 @@ def test_the_board_readings_say_which_version_is_answering(service):
     assert "uptime_seconds" in payload
 
 
+def test_what_every_core_is_doing_is_open(service):
+    """A monitor asks once a second whilst its window is open, so this route
+    reads `/proc` and forks nothing. It is a reading, so it needs no password,
+    the way the board's own readings do not."""
+    status, _, body = fetch(service + "/api/activity")
+    payload = json.loads(body)
+
+    assert status == 200
+    assert set(payload) == {"cores", "load", "memory", "emulator"}
+
+
 def test_nothing_is_cached(service):
     """Every answer is about right now, and a cached one is a wrong one."""
     _, headers, _ = fetch(service + "/api/status")

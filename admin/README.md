@@ -15,6 +15,8 @@ make check        # lint and tests, which is what a commit needs
 
 The rest is the system's own and is assumed rather than installed: `systemd` for `systemctl`, `procps` for `pgrep` and `ps`, `raspi-utils-core` for `vcgencmd`, and `python3`. A Pi without `vcgencmd` still runs this; the window shows one reading fewer, because every reading in `pi.py` answers with nothing rather than failing.
 
+`activity.py` needs none of them. It answers the same kind of question once a second and reads `/proc` alone, because what is cheap at one answer every five seconds is not cheap at one a second. Measured on a Pi 5: a whole reading costs 0.42 ms whilst the emulator runs, against 9.9 ms for an answer to `/api/pi`, which forks `vcgencmd` twice and `ps` once at 1.5 ms a fork. Every figure it gives is the difference between two readings, since the kernel's counters are totals since the board started and a total says nothing about now.
+
 What each is for: `cage` is the compositor the emulator runs in, `7zip` unpacks the disk archive, `xdotool` presses the emulator's keys, and ImageMagick's `import` reads its screen, which is the only way to tell a machine that booted from one that did not.
 
 **To work on it**, `flake8` and `pytest` as well. They are not on the Pi and `install.sh` does not put them there, because nothing in running the service needs them.
@@ -52,6 +54,7 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/terminal.py` | The shell session behind the Terminal window |
 | `previously/websocket.py` | The protocol that session travels over |
 | `previously/pi.py` | What the board underneath is doing |
+| `previously/activity.py` | The same question asked once a second, off `/proc` alone |
 | `previously/server.py` | Which addresses exist and what answers them |
 | `previously/password.py` | The one secret, who is signed in, and what a request may do without it |
 | `previously/answers.py` | How the service names what happened, so the browser can say it |
@@ -100,6 +103,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/kiosk/stop` | Shuts it down properly and keeps it down |
 | `POST /api/kiosk/restart` | Both, in that order |
 | `GET /api/pi` | Temperature, power, sound, disk, what the emulator costs, and which version of this tool is answering |
+| `GET /api/activity` | What every core is doing, the load averages, memory, and what the emulator costs |
 | `GET /api/files` | Everything this tool holds, as a place with places in it |
 | `POST /api/machine` | Makes the emulated machine the one named, from either set |
 | `POST /api/machine/save` | Keeps a configuration under a name, without touching the running machine |
@@ -353,7 +357,7 @@ What follows is what the dock does: the Workspace tile is Previously itself and 
 
 NeXTSTEP had one menu, and the Workspace's own is what stands there whilst no application is in front. It is called Workspace, which is its name in every language, because it belongs to the desk rather than to any machine: a Pi with nothing installed still has one.
 
-**Info is about the machine this runs on**, which is the Raspberry Pi, and it is there whatever else is. **About NeXTcube Turbo is about the machine it runs**, and it carries that machine's own name, so its words are written by the page rather than taken from the catalogue. On a Pi where nothing is installed there is no machine to be about, and the entry is not in the menu at all.
+**Info is about the machine this runs on**, which is the Raspberry Pi, and it is there whatever else is. **About NeXTcube Turbo is about the machine it runs**, and it carries that machine's own name, so its words are written by the page rather than taken from the catalogue. On a Pi where nothing is installed there is no machine to be about, and the entry is not in the menu at all. Each window is titled the way its entry is: picking a name off the menu and reading a different one off the title bar is two windows as far as anybody looking at the screen is concerned.
 
 That entry says so with `away`, which is the page's word for something that is not in the menu just now. `hidden` belongs to the menu, which hides every entry owned by another application each time the front window changes, and a page writing into that one would have its work put back a moment later.
 

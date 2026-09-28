@@ -48,6 +48,10 @@ THROTTLING_SINCE_BOOT = {
 #: failure that looks like nothing at all.
 SOUND_CARDS = pathlib.Path("/proc/asound")
 
+#: What the kernel says about memory. Named here so a test can point it
+#: somewhere else, the way it can with the sound cards above.
+MEMINFO = pathlib.Path("/proc/meminfo")
+
 
 def readings():
     """Everything this window shows, in one answer.
@@ -63,7 +67,7 @@ def readings():
         "emulator": _emulator(),
         "sound": _sound(),
         "disk": _disk(),
-        "memory": _memory(),
+        "memory": memory(),
     }
 
 
@@ -190,15 +194,18 @@ def _disk():
     }
 
 
-def _memory():
+def memory():
     """@returns dict with `total_mb` and `available_mb`, or None.
 
     Available rather than free, because Linux lends unused memory to the page
     cache and free alone makes a healthy machine look exhausted.
+
+    Public, because `activity.py` answers the same question once a second and
+    a second reading of `/proc/meminfo` would be a second answer to it.
     """
     wanted = {"MemTotal": None, "MemAvailable": None}
     try:
-        for line in pathlib.Path("/proc/meminfo").read_text().splitlines():
+        for line in MEMINFO.read_text().splitlines():
             key, _, rest = line.partition(":")
             if key in wanted:
                 wanted[key] = int(rest.split()[0]) // 1024
