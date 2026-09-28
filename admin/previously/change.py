@@ -19,7 +19,7 @@ come back is put straight back the way it was.
 
 import time
 
-from . import config, kiosk, machines, saved, screen
+from . import config, kiosk, machines, saved, screen, systems
 from .answers import told
 
 #: How long to wait for the emulator to appear after the hold comes off. The
@@ -44,8 +44,6 @@ def to_machine(identifier, settings, sleep=None):
       values that fill it, because the sentence belongs to whoever is reading
       it and this service does not know their language.
     """
-    sleep = sleep or time.sleep
-
     # The eleven first, then what somebody saved. A saved configuration cannot be
     # called after one of the eleven, so the order settles which is meant and
     # neither can shadow the other.
@@ -58,14 +56,66 @@ def to_machine(identifier, settings, sleep=None):
     if machine is None:
         return False, told("machine.no-such", asked=identifier)
 
+    return _applied(settings, machines.settings_for(machine), machine.name,
+                    "machine.running", "machine.was-already-set",
+                    sleep or time.sleep)
+
+
+def to_disk(identifier, settings, sleep=None):
+    """Makes the machine boot the disk of that system.
+
+    @param identifier - Which system, as systems.CATALOGUE names them.
+    @param settings - Settings, for where the disks are and where the
+      configuration is.
+    @param sleep - Injected so a test does not wait in real time.
+    @returns (bool, dict)
+
+    The same cycle a change of machine goes through, for the same reason:
+    Previous reads its configuration once at the start, and a disk swapped
+    underneath a running system is a torn file system. What is different is
+    only which keys are written, and there are three of them.
+
+    Nothing is fetched and nothing is copied. Each system is one file, the
+    guest writes into that file, and pointing the machine elsewhere leaves the
+    first exactly as it was left.
+    """
+    system = systems.find(identifier)
+    if system is None:
+        return False, told("disk.no-such", asked=identifier)
+
+    disk = systems.disk_in(settings.disks, system)
+    if disk is None:
+        return False, told("disk.not-here", name=system.name)
+
+    return _applied(settings, config.booting(disk), system.name,
+                    "disk.booting", "disk.was-already-set",
+                    sleep or time.sleep)
+
+
+def _applied(settings, values, name, done, already, sleep):
+    """Writes a configuration and makes sure the machine still runs on it.
+
+    @param settings - Settings.
+    @param values - Section to key to value, which `config.write` applies and
+      which is everything this changes.
+    @param name - What was chosen, for whatever is said about it afterwards.
+    @param done - What to answer with where something was written.
+    @param already - What to answer with where the file already held it.
+    @param sleep - How to wait.
+    @returns (bool, dict)
+
+    One cycle for both of the things that can be chosen, because it is the
+    risky half and two copies of it would be two chances to get the order
+    wrong. What differs between a machine and a disk is the keys and the
+    words, and both arrive as arguments.
+    """
     stopped, reason = kiosk.stop(settings.runtime_directory, sleep=sleep)
     if not stopped:
         return False, reason
 
     try:
         config.back_up(settings.previous_config)
-        changed = config.write(
-            settings.previous_config, machines.settings_for(machine))
+        changed = config.write(settings.previous_config, values)
     except config.NotReadable as error:
         # Nothing was written, so there is nothing to undo. Let it come back as
         # whatever it was rather than leaving the machine switched off for a
@@ -80,22 +130,26 @@ def to_machine(identifier, settings, sleep=None):
     kiosk.start(settings.runtime_directory)
 
     if not _stayed_up(sleep):
-        return False, _rolled_back(settings, machine, sleep)
+        return False, _rolled_back(settings, name, sleep)
 
     # The emulator running is not the machine running. A configuration Previous
     # cannot make sense of leaves the process up and the screen blank, and the
     # screen is the only place that difference shows.
     if screen.looks_alive() is False:
-        return False, _rolled_back(settings, machine, sleep, blank=True)
+        return False, _rolled_back(settings, name, sleep, blank=True)
 
+    # `machine` rather than `name`, because that is what every sentence about
+    # this already calls the thing being changed to, and a disk is the machine
+    # from the reader's side: it is what will be running afterwards.
     if changed:
-        return True, told("machine.running", machine=machine.name, lines=changed)
-    return True, told("machine.was-already-set", machine=machine.name)
+        return True, told(done, machine=name, lines=changed)
+    return True, told(already, machine=name)
 
 
-def _rolled_back(settings, machine, sleep, blank=False):
+def _rolled_back(settings, name, sleep, blank=False):
     """Puts the previous configuration back and says so.
 
+    @param name - What was being changed to, which is what the sentence names.
     @param blank - Whether the machine is sitting there with nothing on its
       screen, which decides whether the emulator has to be got out of the way,
       and which of the two words the browser puts on it.
@@ -108,7 +162,7 @@ def _rolled_back(settings, machine, sleep, blank=False):
     try:
         settings.previous_config.write_bytes(backup.read_bytes())
     except OSError as error:
-        return told("rollback.could-not-write", machine=machine.name,
+        return told("rollback.could-not-write", machine=name,
                     why=why, detail=str(error))
 
     # Previous reads its configuration when it starts and never again, so a
@@ -116,13 +170,12 @@ def _rolled_back(settings, machine, sleep, blank=False):
     # emulator goes. Where it exited by itself the console has already started
     # it again; where it is sitting at a blank screen it has to be told.
     if blank and not kiosk.quit_emulator(sleep=sleep):
-        return told("rollback.emulator-will-not-end",
-                    machine=machine.name, why=why)
+        return told("rollback.emulator-will-not-end", machine=name, why=why)
 
     if _stayed_up(sleep):
-        return told("rollback.back-as-before", machine=machine.name, why=why)
+        return told("rollback.back-as-before", machine=name, why=why)
 
-    return told("rollback.nothing-runs", machine=machine.name, why=why)
+    return told("rollback.nothing-runs", machine=name, why=why)
 
 
 def _stayed_up(sleep):

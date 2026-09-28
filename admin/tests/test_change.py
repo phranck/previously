@@ -72,7 +72,14 @@ REAL_SHAPE = textwrap.dedent("""\
 
     [HardDisk]
     szImageName0 = /home/next/nextstep/NS33.dd
+    nDeviceType0 = 1
     bDiskInserted0 = TRUE
+    bWriteProtected0 = FALSE
+    szImageName1 = /home/next/discs/DeveloperTools.iso
+    nDeviceType1 = 2
+    bDiskInserted1 = TRUE
+    bWriteProtected1 = TRUE
+    nWriteProtection = 0
     """)
 
 
@@ -311,6 +318,143 @@ def test_a_guest_that_will_not_shut_down_leaves_the_file_alone(settings, machine
 
     assert finished is False
     assert told["reason"] == "guest.still-shutting-down"
+    assert settings.previous_config.read_text() == before
+
+
+# -- which disk the machine boots ----------------------------------------
+
+
+@pytest.fixture
+def disks(settings):
+    """Two systems on the card, and the configuration booting neither of them.
+
+    Neither, because the fixture's file points at a disk this folder does not
+    hold, which is the state of a machine that was set up by `install.sh`.
+    """
+    where = settings.disks
+    where.mkdir(parents=True, exist_ok=True)
+    (where / "nextstep-3.3.dd").write_bytes(b"a system")
+    (where / "openstep-4.2.dd").write_bytes(b"another")
+    return where
+
+
+def boot(identifier, settings, machine, come_back=True):
+    """Makes the machine boot a disk, with the emulator returning as told."""
+    def sleep(_seconds):
+        if come_back and not machine.running \
+                and not kiosk.is_held(settings.runtime_directory):
+            machine.comes_back()
+
+    return change.to_disk(identifier, settings, sleep=sleep)
+
+
+def test_a_disk_is_written_and_the_machine_comes_back(settings, machine, disks):
+    finished, told = boot("openstep-4.2", settings, machine)
+
+    assert finished is True
+    assert told["reason"] == "disk.booting"
+    assert told["machine"] == "OPENSTEP 4.2"
+    assert machine.powered_off == 1
+    assert config.booting_from(settings.previous_config) \
+        == str(disks / "openstep-4.2.dd")
+
+
+def test_nothing_in_that_section_is_written_but_the_three_keys(settings, machine, disks):
+    """The README says this tool leaves the disks, the sound, the network and
+    the screen exactly as the file has them, and this is the one exception to
+    it. A disc somebody put on the second slot is still on it afterwards, and
+    so is everything else in that section."""
+    before = settings.previous_config.read_text().splitlines()
+
+    boot("nextstep-3.3", settings, machine)
+
+    after = settings.previous_config.read_text().splitlines()
+    differ = [line for line in after if line not in before]
+
+    assert sorted(differ) == sorted([
+        "szImageName0 = %s" % (disks / "nextstep-3.3.dd"),
+    ])
+    # The three that were already what they will be, said out loud because they
+    # are the other two thirds of what this writes.
+    assert "nDeviceType0 = 1" in after
+    assert "bDiskInserted0 = TRUE" in after
+    # And the disc on the slot beside it, which is none of this tool's business.
+    assert "szImageName1 = /home/next/discs/DeveloperTools.iso" in after
+    assert "bWriteProtected1 = TRUE" in after
+    assert "nWriteProtection = 0" in after
+    assert len(before) == len(after)
+
+
+def test_the_guest_goes_down_before_a_disk_is_swapped(settings, machine, disks):
+    """A disk changed underneath a running system is a torn file system, which
+    is what pulling the plug does."""
+    written = []
+    original = config.write
+
+    def watch(path, values):
+        written.append(machine.running)
+        return original(path, values)
+
+    import unittest.mock
+    with unittest.mock.patch.object(config, "write", watch):
+        boot("nextstep-3.3", settings, machine)
+
+    assert written == [False]
+
+
+def test_a_disk_that_does_not_come_back_is_put_straight_back(settings, machine, disks):
+    """Which system runs on which machine is not written down anywhere this
+    tool can read, so what answers it is the machine itself: it is tried, and
+    a machine that does not come up gets its old disk back."""
+    before = settings.previous_config.read_text()
+
+    finished, told = boot("openstep-4.2", settings, machine, come_back=False)
+
+    assert finished is False
+    assert told["why"] == "never-came-up"
+    assert settings.previous_config.read_text() == before
+
+
+def test_a_blank_screen_after_a_swap_is_rolled_back_too(settings, machine, disks):
+    before = settings.previous_config.read_text()
+    machine.screen_after = False
+
+    finished, told = boot("openstep-4.2", settings, machine)
+
+    assert finished is False
+    assert told["why"] == "blank"
+    assert told["machine"] == "OPENSTEP 4.2"
+    assert settings.previous_config.read_text() == before
+
+
+def test_a_system_that_is_not_on_the_card_changes_nothing(settings, machine, disks):
+    before = settings.previous_config.read_text()
+
+    finished, told = boot("nextstep-2.2", settings, machine)
+
+    assert finished is False
+    assert told["reason"] == "disk.not-here"
+    assert told["name"] == "NeXTSTEP 2.2"
+    assert settings.previous_config.read_text() == before
+    assert machine.powered_off == 0
+
+
+def test_a_name_that_is_not_a_system_changes_nothing(settings, machine, disks):
+    finished, told = boot("nextstep-9.9", settings, machine)
+
+    assert finished is False
+    assert told["reason"] == "disk.no-such"
+    assert machine.powered_off == 0
+
+
+def test_booting_the_disk_that_is_already_booting_changes_nothing(settings, machine, disks):
+    boot("nextstep-3.3", settings, machine)
+    before = settings.previous_config.read_text()
+
+    finished, told = boot("nextstep-3.3", settings, machine)
+
+    assert finished is True
+    assert told["reason"] == "disk.was-already-set"
     assert settings.previous_config.read_text() == before
 
 

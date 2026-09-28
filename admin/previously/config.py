@@ -16,6 +16,21 @@ import time
 #: directory. It holds one digest and nothing else.
 RECEIPT = "written.sha256"
 
+#: How many SCSI slots Previous keeps in its file. The machine boots from the
+#: first one that holds an inserted disk, and the rest are for whatever else is
+#: on the bus.
+SLOTS = 7
+
+#: The three keys that decide which disk the machine boots, by the slot they
+#: belong to. These are the only keys in `[HardDisk]` this tool ever writes:
+#: everything else in that section, and the six further slots, belong to the
+#: installation and are passed through exactly as the file has them.
+#:
+#: `nDeviceType0` is what Previous calls a hard disk, read off the reference
+#: machine, where the disk it boots carries 1.
+BOOT_SLOT = 0
+HARD_DISK = "1"
+
 #: What the emulator calls each machine, by the number in the file. The names
 #: are Previous's own, from its machine type enumeration.
 MACHINE_NAMES = {
@@ -322,11 +337,34 @@ def _disk(parser):
     The first SCSI slot holding an inserted disk is the one that matters; the
     file keeps seven and leaves the rest empty.
     """
+    path = _booting(parser)
+    return path.rsplit("/", 1)[-1] if path else None
+
+
+def booting_from(path):
+    """Which disk image the machine is set to boot, whole.
+
+    @param path - pathlib.Path to previous.cfg.
+    @returns str, the path the file holds, or None where no slot is inserted or
+      the file cannot be read.
+
+    The whole path rather than the name, because this is what a disk in the
+    viewer is compared against and two disks of different systems can be called
+    the same thing. Absent rather than raising, because everything that asks
+    this is drawing a list and a list draws either way.
+    """
+    try:
+        return _booting(_parsed(path))
+    except NotReadable:
+        return None
+
+
+def _booting(parser):
+    """@returns The whole path of the first inserted slot, or None."""
     disks = _section(parser, "HardDisk")
-    for slot in range(7):
+    for slot in range(SLOTS):
         if _bool(disks, "bDiskInserted%d" % slot):
-            path = disks.get("szImageName%d" % slot, "")
-            return path.rsplit("/", 1)[-1] or None
+            return disks.get("szImageName%d" % slot, "") or None
     return None
 
 
@@ -404,6 +442,26 @@ def _appended(name, keys, out):
         lines.append("\n[%s]\n" % name)
     lines.extend("%s = %s\n" % (key, value) for key, value in keys.items())
     return lines
+
+
+def booting(disk):
+    """What to write so the machine boots that disk.
+
+    @param disk - pathlib.Path of the image.
+    @returns dict of section to key to value, as `write` takes it.
+
+    Three keys and no more. The README says this tool leaves the disks, the
+    sound, the network and the screen exactly as the file has them, and this is
+    the one exception to it: which disk a machine boots is what the whole idea
+    of having several of them is for. The six other slots, the write protection
+    and everything else in that section stay untouched, so a disc somebody put
+    on the bus is still on the bus afterwards.
+    """
+    return {"HardDisk": {
+        "szImageName%d" % BOOT_SLOT: str(disk),
+        "nDeviceType%d" % BOOT_SLOT: HARD_DISK,
+        "bDiskInserted%d" % BOOT_SLOT: "TRUE",
+    }}
 
 
 def back_up(path):

@@ -366,6 +366,61 @@ def test_the_1988_machine_is_reported_as_itself(tmp_path):
     assert answer["kind"] == 0
 
 
+def test_the_disk_the_machine_boots_is_read_whole(tmp_path):
+    """The whole path rather than the name, because two disks of different
+    systems can be called the same thing in two folders."""
+    path = write(tmp_path, textwrap.dedent("""
+        [HardDisk]
+        szImageName0 = /home/next/nextstep/nextstep-3.3.dd
+        nDeviceType0 = 1
+        bDiskInserted0 = TRUE
+        szImageName1 = /home/next/
+        bDiskInserted1 = FALSE
+        """))
+
+    assert config.booting_from(path) == "/home/next/nextstep/nextstep-3.3.dd"
+
+
+def test_a_machine_with_no_disk_in_it_boots_nothing(tmp_path):
+    path = write(tmp_path, "[HardDisk]\nbDiskInserted0 = FALSE\n")
+
+    assert config.booting_from(path) is None
+
+
+def test_a_file_that_cannot_be_read_boots_nothing(tmp_path):
+    """Everything that asks this is drawing a list, and a list draws either
+    way."""
+    assert config.booting_from(tmp_path / "never-written.cfg") is None
+
+
+def test_the_second_slot_is_read_where_the_first_is_empty(tmp_path):
+    """The machine boots the first slot that holds an inserted disk, and the
+    file keeps seven."""
+    path = write(tmp_path, textwrap.dedent("""
+        [HardDisk]
+        szImageName0 = /home/next/
+        bDiskInserted0 = FALSE
+        szImageName1 = /home/next/nextstep/openstep-4.2.dd
+        bDiskInserted1 = TRUE
+        """))
+
+    assert config.booting_from(path) == "/home/next/nextstep/openstep-4.2.dd"
+
+
+def test_what_is_written_to_boot_a_disk_is_three_keys(tmp_path):
+    """The README says this tool leaves the disks exactly as the file has them,
+    and this is the one exception to it. Everything else in that section stays,
+    which is what the test in test_change.py holds the whole cycle to."""
+    written = config.booting(tmp_path / "nextstep-3.3.dd")
+
+    assert sorted(written) == ["HardDisk"]
+    assert written["HardDisk"] == {
+        "szImageName0": str(tmp_path / "nextstep-3.3.dd"),
+        "nDeviceType0": "1",
+        "bDiskInserted0": "TRUE",
+    }
+
+
 def test_the_processor_is_the_one_the_level_stands_for():
     """Previous stores a level, and its own overview reads 3 as the 68030 and 4
     as the 68040. The 1988 machine is written as level 3, so reading that as a

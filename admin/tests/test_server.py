@@ -1159,6 +1159,81 @@ def test_a_machine_in_the_tree_carries_its_configuration(service):
     assert found["nextcube-dimension"]["configuration"]["dimensions"] == [32, 0, 0]
 
 
+def a_disk(tmp_path, identifier="nextstep-3.3", booting=False):
+    """Puts a system's disk on the card, and points the machine at it or not.
+
+    @returns pathlib.Path of the disk.
+    """
+    disks = tmp_path / "nextstep"
+    disks.mkdir(exist_ok=True)
+    disk = disks / ("%s.dd" % identifier)
+    disk.write_bytes(b"a system")
+    if booting:
+        server.Handler.settings.previous_config.write_text(
+            "[HardDisk]\nszImageName0 = %s\nbDiskInserted0 = TRUE\n" % disk)
+    return disk
+
+
+def test_there_is_no_disks_folder_until_a_disk_is_there(service):
+    """An empty folder promises a place to put something, and nothing here puts
+    a disk there but the Installer."""
+    _, _, body = fetch(service + "/api/files")
+
+    assert [entry["name"] for entry in json.loads(body)["entries"]] == [
+        "Apps", "Documents", "Machines"]
+
+
+def test_a_disk_is_a_thing_with_its_system_and_its_size(service, tmp_path):
+    disk = a_disk(tmp_path)
+
+    _, _, body = fetch(service + "/api/files")
+    folder = next(entry for entry in json.loads(body)["entries"]
+                  if entry["name"] == "Disks")
+    kept, = folder["entries"]
+
+    assert kept["name"] == "NeXTSTEP 3.3"
+    assert kept["id"] == "nextstep-3.3"
+    assert kept["kind"] == "disk"
+    assert kept["path"] == "/Disks/nextstep-3.3"
+    # A hard disk, because that is what it is, rather than the disc it arrived
+    # on.
+    assert kept["icon"] == "winchester"
+    assert kept["bytes"] == disk.stat().st_size
+
+
+def test_the_disk_the_machine_boots_is_marked(service, tmp_path):
+    """Read out of the configuration by the service, because the browser has no
+    business working it out from a path."""
+    a_disk(tmp_path, "openstep-4.2")
+    a_disk(tmp_path, "nextstep-3.3", booting=True)
+
+    _, _, body = fetch(service + "/api/files")
+    folder = next(entry for entry in json.loads(body)["entries"]
+                  if entry["name"] == "Disks")
+    booting = {entry["id"]: entry["booting"] for entry in folder["entries"]}
+
+    assert booting == {"nextstep-3.3": True, "openstep-4.2": False}
+
+
+def test_booting_a_disk_needs_a_session(service, tmp_path):
+    a_disk(tmp_path)
+    request = urllib.request.Request(
+        service + "/api/disk", data=b'{"disk": "nextstep-3.3"}', method="POST")
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        urllib.request.urlopen(request, timeout=5)
+
+    assert refused.value.code == 403
+
+
+def test_a_disk_that_is_not_on_the_card_is_refused(service, tmp_path):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/disk", {"disk": "openstep-4.0"})
+
+    assert refused.value.code == 409
+    assert json.loads(refused.value.read())["reason"] == "disk.not-here"
+
+
 def test_the_status_says_whether_this_machine_is_set_up_at_all(service):
     """A Pi with nothing on it is not broken, it is new, and from a page that
     has to guess those two look identical. The service knows, because it is the
