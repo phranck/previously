@@ -108,8 +108,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # and nothing else.
             return self._json({"version": VERSION, **pi.readings()})
         if route == "/api/files":
-            return self._json(files.tree(self.settings.machines_file,
-                                         self.settings.documents))
+            return self._json(files.tree(
+                self.settings.machines_file, self.settings.documents,
+                self.settings.disks,
+                config.booting_from(self.settings.previous_config)))
         if route == "/api/machine/settled":
             return self._settled_configuration()
         if route == "/api/setup":
@@ -156,6 +158,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if route == "/api/machine":
             return self._change_machine()
+        if route == "/api/disk":
+            return self._boot_a_disk()
         if route == "/api/machine/save":
             return self._save_configuration()
         if route == "/api/machine/rename":
@@ -197,6 +201,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json({"error": "unreadable request"}, status=400)
 
         finished, told = change.to_machine(body.get("machine"), self.settings)
+        return self._json(
+            {"ok": finished, **told, **self._status()},
+            status=200 if finished else 409,
+        )
+
+    def _boot_a_disk(self):
+        """Makes the machine boot the disk of the system the request names.
+
+        The same cycle as changing the machine, in the same module, because it
+        is the same risk: Previous reads its configuration once at the start,
+        so the guest goes down first and anything that does not come back is
+        put straight back the way it was.
+
+        What is different is how little is written. Three keys in `[HardDisk]`,
+        pointing at one of the disks this tool put there, and nothing else in
+        that section is touched.
+        """
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        finished, told = change.to_disk(body.get("disk"), self.settings)
         return self._json(
             {"ok": finished, **told, **self._status()},
             status=200 if finished else 409,

@@ -43,7 +43,7 @@ wherever it is spoken rather than where its bundle is shown.
 import datetime
 import pathlib
 
-from . import config, machines, saved
+from . import config, machines, saved, systems
 
 #: What the root is called and what it wears. NeXTSTEP drew a person's own
 #: directory as a house, and this is the one place everything here lives in.
@@ -56,6 +56,15 @@ HOME_ICON = "home"
 #: so what is on the screen says where the file is.
 DOCUMENTS = "/Documents"
 PICTURES = "/Documents/Pictures"
+
+#: Where the disks stand, beside the machines rather than inside them. A disk
+#: and a machine are two things: one is what the hardware is, the other is what
+#: is installed on it, and either can be changed without the other.
+DISKS = "/Disks"
+
+#: What a disk wears. It is a hard disk, so it wears the one NeXTSTEP drew for
+#: a hard disk. What it arrived as is not what it is.
+DISK_ICON = "winchester"
 
 #: Which set a machine belongs to. The eleven this project ships cannot be
 #: changed, and everything somebody saved can, so every machine says which it is
@@ -112,7 +121,7 @@ APPLICATIONS = (
 )
 
 
-def tree(machines_file=None, documents=None):
+def tree(machines_file=None, documents=None, disks=None, booting=None):
     """Everything Previously holds, as one place with places in it.
 
     @param machines_file - pathlib.Path of the file the configurations somebody
@@ -120,6 +129,10 @@ def tree(machines_file=None, documents=None):
     @param documents - pathlib.Path the real part of this tree stands in.
       None leaves Documents empty rather than leaving it out, so the place a
       picture goes is visible before the first one is taken.
+    @param disks - pathlib.Path the disk images live in. None leaves the Disks
+      folder out, the way User is left out until something is in it.
+    @param booting - What `previous.cfg` says the machine boots, as the whole
+      path, so the disk that is in force can be marked.
     @returns dict, a folder with `name`, `icon`, `path` and `entries`, and a
       `label` on the applications, which is what each is called in words.
     """
@@ -135,11 +148,66 @@ def tree(machines_file=None, documents=None):
             }
             for name, icon, opens, label in APPLICATIONS
         ]),
+        *_disk_folder(disks, booting),
         _folder("Documents", DOCUMENTS, FOLDER_ICON, [
             _folder("Pictures", PICTURES, FOLDER_ICON, pictures(documents)),
         ]),
         _folder("Machines", "/Machines", FOLDER_ICON, _machine_folders(machines_file)),
     ])
+
+
+def _disk_folder(disks, booting):
+    """The Disks folder, where there is one to show.
+
+    @param disks - pathlib.Path the disk images live in, or None.
+    @param booting - The whole path the configuration boots from, or None.
+    @returns list holding one folder, or an empty one.
+
+    Empty where nothing has been installed, the way User is absent until
+    something is saved: a folder with nothing in it promises a place to put
+    something, and nothing here puts a disk there but the Installer.
+    """
+    if disks is None:
+        return []
+    here = [_disk(system, path, booting)
+            for system, path in sorted(systems.here(disks).items())]
+    return [_folder("Disks", DISKS, FOLDER_ICON, here)] if here else []
+
+
+def _disk(identifier, path, booting):
+    """One disk as an entry of the folder it sits in.
+
+    @param identifier - Which system it holds, as systems.CATALOGUE names it.
+    @param path - pathlib.Path of the image on the card.
+    @param booting - The whole path the configuration boots from, or None.
+    @returns dict
+
+    It wears a hard disk, because that is what it is. A system is not drawn as
+    a disc here for the same reason a machine wears the drawing its own boot
+    ROM makes of it: the picture says what the thing is rather than how it
+    arrived.
+    """
+    system = systems.find(identifier)
+    return {
+        "id": identifier,
+        "name": system.name if system else identifier,
+        "icon": DISK_ICON,
+        "path": "%s/%s" % (DISKS, identifier),
+        "kind": "disk",
+        # Which one the machine is set to boot. Compared whole, because two
+        # disks can be called the same thing in different folders.
+        "booting": booting is not None and str(path) == str(booting),
+        "bytes": _size_of(path),
+    }
+
+
+def _size_of(path):
+    """@returns int - How much of the card it takes, or 0 where it cannot be
+      read. A figure nobody can read is not worth an exception in a listing."""
+    try:
+        return path.stat().st_size
+    except OSError:
+        return 0
 
 
 def pictures(documents):

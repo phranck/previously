@@ -150,7 +150,9 @@ Those values come from Previous itself, out of the function its own dialogue run
 
 **Previous never writes the file back by itself.** Not when it exits, and not when its own configuration dialogue closes. The only thing that writes is "Save Config" in that dialogue, which asks for a filename first. So what somebody sets behind F12 holds for that session and is gone at the next start unless they save it, and this tool cannot see it whilst it is only in the emulator's memory. What it does see, within five seconds, is a file somebody saved.
 
-That also decides what this tool overwrites, which is the sixteen keys that make up a machine and nothing else. Disks, sound, network and screen are left exactly as the file has them, whoever put them there.
+That also decides what this tool overwrites, which is the sixteen keys that make up a machine and nothing else. Sound, network and screen are left exactly as the file has them, whoever put them there.
+
+**Disks are the one exception, and it is three keys wide.** Which disk the machine boots is `szImageName0`, `nDeviceType0` and `bDiskInserted0`, and those are written when somebody activates a disk and at no other time. The six further slots, the write protection and everything else in `[HardDisk]` stay exactly as the file has them, so a disc somebody put on the bus is still on the bus afterwards. What it points at is always one of the disks this tool put on the card and never a path from anywhere else.
 
 So: shut the guest down properly, copy the file beside itself as `previous.cfg.bak`, write, let it come back, and watch long enough to know that it did. Anything that does not come back is put straight back the way it was.
 
@@ -213,6 +215,16 @@ A group with nothing to offer is not drawn, and a group's cells change with the 
 **Saving does not activate.** Opened on one of the eleven, which cannot be changed, it asks for a name and keeps a configuration of your own. Opened on one of your own, it writes that one back under the name it has. Either way `previous.cfg` is untouched, so the editor cannot leave a machine that will not boot. Starting one is the same double click as always.
 
 It opens three ways: from the context menu on a machine, which is the one that decides what is being edited; from its tile in the dock; and from `Config Editor.app` in the Apps folder. The last two open it on the configuration that is set now, because that is the machine in front of you.
+
+## Disks, and which one the machine boots
+
+A system is a disk, and several of them fit on the card. `Disks` in the File Viewer holds the ones that are here, each with the name of the system on it, how large it is and the picture of what it is: `winchester`, which is what NeXTSTEP drew for a hard disk. A disk is not drawn as a disc for the same reason a machine wears the drawing its own boot ROM makes of it.
+
+**Choosing which one the machine boots is the same gesture as choosing a machine**, a double click or Activate in the context menu, and it goes through the same cycle in `change.py`: the guest is shut down through the power key, three keys are written, the machine comes back, and anything that does not come back gets its old disk put straight back.
+
+**What was on the disk that was running stays on it.** Each system is one file, the guest writes into that file, and pointing the machine elsewhere freezes the first exactly as it was left. The panel says so before anything happens, because somebody who has spent an evening inside NeXTSTEP wants to read it there rather than find out afterwards.
+
+**Which system needs which machine is not written down anywhere this tool can read**, so it is not guessed at. What answers it is the machine itself: a disk that will not boot on the configuration in force does not come up, and the rollback puts the old one back. That is the same answer the tool already gives for a machine it cannot run, and it needs no table that would be wrong somewhere.
 
 ## Switching the machine on and off
 
@@ -330,6 +342,7 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
     Preferences.app
     Preview.app
     Terminal.app
+  Disks             the systems that are on the card, and only once one is
   Documents
     Pictures        the one real place here, holding the screenshots
   Machines

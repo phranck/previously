@@ -38,6 +38,7 @@ const Art = {
   Editor: "defaultAppIcon",
   Installer: "Installer",
   Picture: "tiff",
+  Disk: "winchester",
 };
 
 /** Which picture a machine wears, by the case the service says it comes in.
@@ -70,7 +71,9 @@ function say(told) {
 
   if (told.reason === "board.on-its-way") return t(`${key}.${told.action}`, values);
   if (told.reason === "guest.still-shutting-down") return t(key, values, told.seconds);
-  if (told.reason === "machine.running") return t(key, values, told.lines);
+  if (told.reason === "machine.running" || told.reason === "disk.booting") {
+    return t(key, values, told.lines);
+  }
   return t(key, values);
 }
 
@@ -553,8 +556,10 @@ let catalogue = [];
 const KEPT_KEY = "previously:kept";
 
 /** What lies there before anybody puts anything there: the root, so there is
- *  always one step home, and the machines, which is where the work is. */
-const KEPT_BY_DEFAULT = ["/", "/Machines"];
+ *  always one step home, the machines, and the disks, which are the two things
+ *  somebody switches between. A shelf entry for a folder that is not there is
+ *  dropped when the shelf is drawn, so a machine with no disks shows two. */
+const KEPT_BY_DEFAULT = ["/", "/Machines", "/Disks"];
 
 /** The identifiers on the viewer's shelf, in the order they were put there. */
 let kept = readKept();
@@ -783,6 +788,9 @@ function open(path, asker) {
     return window_ ? window_.open(asker) : notYet(appName(entry));
   }
   if (entry.kind === "picture") return showInPreview(entry);
+  /* A disk is chosen the same way a machine is, because it is the same act:
+     the guest goes down, one thing is written, and it comes back. */
+  if (entry.kind === "disk") return bootFromDisk(entry);
   /* Named rather than left as what everything else falls through to, because
      what else is in here has grown and falling through would have asked the
      machine to become whatever was double clicked. */
@@ -916,8 +924,15 @@ function keepOnShelf(where, onto) {
  */
 function markCurrent(identifier, untried) {
   for (const thing of document.querySelectorAll("#file-viewer nx-thing")) {
-    const entry = catalogue.find((machine) => machine.path === thing.getAttribute("value"));
-    const isCurrent = Boolean(identifier) && entry?.id === identifier;
+    const where = thing.getAttribute("value");
+    const entry = catalogue.find((machine) => machine.path === where);
+    /* A disk carries which one the machine boots, because the service reads
+       that out of the configuration and the browser has no business working it
+       out from a path. The same mark, because it is the same statement: this
+       is the one in force. */
+    const isCurrent = entry
+      ? Boolean(identifier) && entry.id === identifier
+      : Boolean(find(root, where)?.booting);
     thing.classList.toggle("current", isCurrent);
     thing.classList.toggle("untried", isCurrent && Boolean(untried));
     /* Switching to the machine that is already running would shut NeXTSTEP
@@ -1059,6 +1074,45 @@ async function changeTo(identifier) {
   const answer = await tell("/api/machine", { machine: identifier });
   setBusy(false, answer === null ? t("note.no-service") : say(answer));
   if (answer) drawStatus(answer);
+  refresh();
+}
+
+/**
+ * Asks about a disk and makes the machine boot it when the answer is yes.
+ * @param {object} disk - Its entry in the tree.
+ *
+ * Nothing is fetched and nothing is copied. Each system is one file, the guest
+ * writes into that file, and pointing the machine elsewhere leaves the first
+ * exactly as it was left. That is the sentence somebody who has spent an
+ * evening inside NeXTSTEP wants to read before they press anything, so it is
+ * in the question rather than in a manual.
+ */
+async function bootFromDisk(disk) {
+  if (disk.booting) return;
+
+  const agreed = await askPanel({
+    title: t("ask.disk.title"),
+    text: [
+      t("ask.disk.question", { name: disk.name }),
+      t("ask.disk.size", { name: disk.name, size: sized(disk.bytes) }),
+      t("ask.disk.freeze"),
+      /* The same two sentences a change of machine ends on, because it is the
+         same act and the same risk. */
+      t("ask.change.how"),
+      t("ask.change.rollback"),
+    ],
+    icon: Art.Disk,
+    confirm: t("button.change"),
+  });
+  if (!agreed) return;
+
+  setBusy(true, t("busy.changing", { machine: disk.name }));
+  const answer = await tell("/api/disk", { disk: disk.id });
+  setBusy(false, answer === null ? t("note.no-service") : say(answer));
+  if (answer) drawStatus(answer);
+  /* The tree says which disk is in force, so it is asked for again rather than
+     marked from here. */
+  drawMachines();
   refresh();
 }
 
@@ -1972,8 +2026,12 @@ function notYet(name) {
 function openMachineMenu(thing, x, y) {
   const where = thing.getAttribute("value");
   const machine = catalogue.find((entry) => entry.path === where);
+  /* A disk carries one of the same entries, because it is chosen the same way.
+     The other four are about a configuration and a disk is not one. */
+  const found = find(root, where);
+  const disk = found?.kind === "disk" ? found : null;
   const onShelf = Boolean(thing.closest(".keep"));
-  if (!machine && !onShelf) return false;
+  if (!machine && !disk && !onShelf) return false;
 
   const menu = document.querySelector('nx-menu[name="machine-menu"]');
   /* Which machine this is about. The menu appears over whatever was clicked
@@ -1987,8 +2045,10 @@ function openMachineMenu(thing, x, y) {
   const shelf = menu.querySelector('nx-menu-item[name="shelf"]');
 
   /* Three of the entries are about a machine, so a folder on the shelf shows
-     only the one that applies to it. */
-  for (const entry of [info, activate, edit]) entry.hidden = !machine;
+     only the one that applies to it. Activating is the exception: a disk is
+     started exactly as a machine is. */
+  for (const entry of [info, edit]) entry.hidden = !machine;
+  activate.hidden = !machine && !disk;
   /* And two are about a configuration somebody saved. The eleven cannot be
      renamed or removed, so for those the entries are not in the menu at all
      rather than in it and refusing. */
@@ -2010,8 +2070,8 @@ function openMachineMenu(thing, x, y) {
     keepOnShelf(where, !onShelf);
   };
 
-  if (machine) {
-    /* The machine that is already running cannot be activated: it would shut
+  if (machine || disk) {
+    /* The one that is already running cannot be activated: it would shut
        NeXTSTEP down, write the same values back and start it again, for
        nothing. The entry stays, so the menu keeps its shape. */
     activate.toggleAttribute("disabled", thing.hasAttribute("disabled"));
@@ -2019,9 +2079,12 @@ function openMachineMenu(thing, x, y) {
     activate.onclick = () => {
       if (activate.hasAttribute("disabled")) return;
       menu.close();
-      changeTo(machine.id);
+      if (machine) return changeTo(machine.id);
+      bootFromDisk(disk);
     };
+  }
 
+  if (machine) {
     rename.onclick = () => {
       menu.close();
       renameConfiguration(machine);
