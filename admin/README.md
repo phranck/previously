@@ -349,6 +349,14 @@ Two of those paths are worth telling apart. `state_directory` is `/var/lib/previ
 
 What follows is what the dock does: the Workspace tile is Previously itself and never carries the three marks, the Config Editor carries them whilst its window is closed and loses them whilst it is open, and everything else puts its tile on the floor of the screen whilst it is open, because those are not in the dock.
 
+## The one menu, and what is in it
+
+NeXTSTEP had one menu, and the Workspace's own is what stands there whilst no application is in front. It is called Workspace, which is its name in every language, because it belongs to the desk rather than to any machine: a Pi with nothing installed still has one.
+
+**Info is about the machine this runs on**, which is the Raspberry Pi, and it is there whatever else is. **About NeXTcube Turbo is about the machine it runs**, and it carries that machine's own name, so its words are written by the page rather than taken from the catalogue. On a Pi where nothing is installed there is no machine to be about, and the entry is not in the menu at all.
+
+That entry says so with `away`, which is the page's word for something that is not in the menu just now. `hidden` belongs to the menu, which hides every entry owned by another application each time the front window changes, and a page writing into that one would have its work put back a moment later.
+
 ## The six languages
 
 English, German, French, Italian, Spanish and Swedish, which are the six NeXTSTEP itself shipped. English is the default and the one every other falls back to, so a missing entry shows an English sentence rather than a name.

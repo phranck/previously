@@ -3,7 +3,8 @@
 NX_STRINGS.sv = {
   /* --- the menus ------------------------------------------------------- */
   "menu.info.key": "i",
-  "menu.pi.key": "r",
+  "menu.about": "Om {machine}",
+  "menu.about.key": "o",
   "menu.files.key": "f",
   "menu.preferences.key": "p",
   "menu.password.key": "l",

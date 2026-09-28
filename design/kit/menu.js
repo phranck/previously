@@ -58,7 +58,13 @@ class NxMenu extends HTMLElement {
 
     let last = null;
     for (const entry of this.querySelectorAll(":scope > nx-menu-item")) {
-      const belongs = (entry.getAttribute("for") ?? "") === owner;
+      /* `away` is an entry that is not in this menu at all just now, which is
+         the page's to say: an entry about a machine, on a desk where none is
+         installed, is a question with no answer. `hidden` stays this menu's
+         own, so the two never write over each other, and an entry that is away
+         is not the last one either. */
+      const belongs = (entry.getAttribute("for") ?? "") === owner
+        && !entry.hasAttribute("away");
       entry.hidden = !belongs;
       entry.removeAttribute("last");
       if (belongs) last = entry;

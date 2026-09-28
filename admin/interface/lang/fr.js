@@ -3,7 +3,8 @@
 NX_STRINGS.fr = {
   /* --- the menus ------------------------------------------------------- */
   "menu.info.key": "i",
-  "menu.pi.key": "r",
+  "menu.about": "À propos de {machine}",
+  "menu.about.key": "r",
   "menu.files.key": "f",
   "menu.preferences.key": "p",
   "menu.password.key": "m",
