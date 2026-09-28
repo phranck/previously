@@ -2,7 +2,7 @@
 
 One function, and it is the whole of the contract between the two halves of
 this tool: the service answers with a name and the values that fill it, and the
-catalogue in `web/lang/` turns that into a sentence in whichever language is
+catalogue in `interface/lang/` turns that into a sentence in whichever language is
 being read.
 
 It lives on its own because everything that can report an outcome needs it, and

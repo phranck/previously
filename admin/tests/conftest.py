@@ -6,9 +6,16 @@ Tests therefore start from DEFAULTS and override what they care about, which is
 what this helper is for.
 """
 
+import pathlib
+
 import pytest
 
 from previously.settings import DEFAULTS, Settings
+
+#: Where the interface is written, which is not where it is served from. The
+#: tests read the sources, because that is what somebody edits; what ships is
+#: built out of them and is held to them by test_web.py.
+INTERFACE = pathlib.Path(__file__).resolve().parent.parent / "interface"
 
 
 def settings_for(tmp_path, **overrides):

@@ -4,13 +4,32 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NeXTSTEP</title>
-
-<link rel="stylesheet" href="previously.css">
+<!-- The kit first and this application's own second, because what is here
+     names windows the kit only knows as windows. -->
+<link rel="stylesheet" href="vendor/xterm.css">
+<link rel="stylesheet" href="nextstep.css">
+<link rel="stylesheet" href="app.css">
 </head>
 <body>
 
-<!-- Built by admin/build_web.py from admin/interface/. The sources are in the repository. -->
+<!-- Every word a person reads is a key here rather than a sentence, and the
+     catalogues in lang/ hold the sentences. The markup carries no text at all,
+     so nothing can show the wrong language whilst the right one arrives. What
+     stays as it is written are names: NeXT's, the machine's own, and the
+     applications'. -->
 
+<!-- One menu, and it belongs to whatever is in front. NeXTSTEP had exactly
+     one: its title and its entries were replaced when another application
+     became active, and it stayed wherever somebody had dragged it. So every
+     entry any of them has is here, each saying through `for` which
+     application it belongs to, and the ones that do not belong are hidden.
+     An entry with no `for` is the workspace's own.
+
+     The letter beside an entry is a letter of the word that entry shows, so
+     it is a catalogue entry like the word itself, and the letters have to be
+     distinct within one menu rather than across all of them. Raspberry Pi
+     keeps its name in every language and still needs a letter of its own,
+     because whichever letter Preferences takes cannot also be this one. -->
 <nx-menu name="menu" title="Cube" x="8" y="8">
   <nx-menu-item opens="info" data-t-key="menu.info.key" data-t="window.info"></nx-menu-item>
   <nx-menu-item opens="pi" data-t-key="menu.pi.key">Raspberry Pi</nx-menu-item>
@@ -32,13 +51,18 @@
   <nx-menu-item for="editor" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
 </nx-menu>
 
+<!-- The Workspace is always running and never carries the marks. The editor
+     carries them whilst its window is closed, like any other application here. -->
 <nx-dock>
   <nx-tile icon="Workspace" title="NeXT" fixed></nx-tile>
-
+  <!-- No `opens`, unlike the other tiles: the editor is opened on a machine, and
+       the page decides which one before the window is shown. -->
   <nx-tile icon="defaultAppIcon" data-t-title="app.config-editor"
            name="editor" app="/Apps/Config Editor.app"></nx-tile>
 </nx-dock>
 
+<!-- Where an application that is not in the dock puts its icon whilst it is
+     running, from the left corner rightwards. -->
 <nx-floor id="floor"></nx-floor>
 
 <nx-window name="info" data-t-title="window.info" fixed drop x="180" y="16" w="400">
@@ -55,7 +79,11 @@
       <nx-row><label data-t="info.disk"></label><nx-field id="info-disk">&mdash;</nx-field></nx-row>
     </div>
   </div>
-
+  <!-- Under the picture rather than beside it, because there is no room for
+       two more rows there, and indented to the same column so that the list
+       carries on rather than starting again. The same two questions the
+       machine window asks about the file, in the same words, so that "Datei"
+       means one thing wherever it appears. -->
   <div class="readings">
     <nx-row><label data-t="info.file"></label><nx-field id="info-file">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="info.written"></label><nx-field id="info-written">&mdash;</nx-field></nx-row>
@@ -78,7 +106,10 @@
     <nx-row><label data-t="pi.sound"></label><div class="state" id="pi-sound">&mdash;</div></nx-row>
     <nx-row><label data-t="pi.memory"></label><nx-field id="pi-memory">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="pi.card"></label><nx-field id="pi-disk">&mdash;</nx-field></nx-row>
-
+    <!-- Which version of this tool is answering. A name rather than a
+         catalogue entry, the same way Raspberry Pi keeps its own in every
+         language, because a reader who cannot see this has no way to tell a
+         current installation from one that was left behind. -->
     <nx-row><label>Previously</label><nx-field id="pi-version">&mdash;</nx-field></nx-row>
   </div>
   <p class="note" id="pi-note"></p>
@@ -88,12 +119,17 @@
   </div>
 </nx-window>
 
+<!-- Everything this tool holds, arranged the way NeXTSTEP arranged things.
+     The name is the window's own, not the machines': what is in it is two
+     applications and two folders of machines. -->
 <nx-window name="files" title="Previously" x="180" y="330" w="470" h="460"
            min-w="340" min-h="340" closed>
   <nx-viewer id="file-viewer"></nx-viewer>
   <p class="note" id="machine-note"></p>
 </nx-window>
 
+<!-- What one machine is, opened from the context menu in the shelf. Its title
+     is the machine's own name, so two of these would never be confused. -->
 <nx-window name="machine-info" data-t-title="window.machine" fixed x="640" y="400" w="400" closed>
   <div class="info-body">
     <nx-portrait>
@@ -114,6 +150,20 @@
   </div>
 </nx-window>
 
+<!-- Config Editor, which is Previous's own System dialogue in this interface's
+     idiom: the choices on the left of that dialogue and the overview on the
+     right of it, here stacked as the picture and its readings over the groups
+     that change them.
+
+     Every cell in those groups is drawn by the page from what the service says
+     may be chosen, so the markup holds the boxes and none of the options. A
+     machine type, a clock and a size are always offered; a board is offered
+     where the machine takes one, and a group with nothing to offer is not shown
+     at all. Which cells a group holds changes with the machine, which is what
+     Previous does with its own 40 MHz option.
+
+     The note under each group is the page's as well: it says what the chosen
+     setting does, so it carries an id to write into rather than a key. -->
 <nx-window name="editor" data-t-title="app.config-editor" fixed drop
            x="220" y="90" w="470" closed>
   <div class="info-body">
@@ -121,7 +171,8 @@
       <i class="art icon" id="editor-icon" style="background-image: var(--root)"></i>
       <span class="caption" id="editor-caption">&mdash;</span>
     </nx-portrait>
-
+    <!-- The same four readings the machine window shows, in the same words, so
+         a machine being put together reads exactly like one that exists. -->
     <div class="readings">
       <nx-row><label data-t="info.processor"></label><nx-field id="editor-cpu">&mdash;</nx-field></nx-row>
       <nx-row><label data-t="info.memory"></label><nx-field id="editor-ram">&mdash;</nx-field></nx-row>
@@ -129,9 +180,14 @@
       <nx-row><label data-t="info.chips"></label><nx-field id="editor-chips">&mdash;</nx-field></nx-row>
     </div>
   </div>
-
+  <!-- Which subject is showing. The same raised cell every choice in this
+       window uses, in a row above them, which is the shape Preferences gives
+       its modules. Its cells carry words rather than pictures, because there is
+       no drawing of a processor or of memory to put in one. -->
   <div class="choices subjects" id="editor-subjects"></div>
-
+  <!-- Every group says which subject it belongs to, and the row above decides
+       which of them is drawn. `hidden` stays what it was, which is a group the
+       machine has nothing to offer for. -->
   <div class="editor-groups">
     <fieldset class="group" subject="machine">
       <legend data-t="editor.machine"></legend>
@@ -173,7 +229,8 @@
       <div class="choices" id="editor-dimensions"></div>
       <p class="note" id="editor-dimensions-note"></p>
     </fieldset>
-
+    <!-- One group per board that is in, built by the page, because how many
+         there are is what the slots above decide. -->
     <div class="boards-memory" id="editor-dimension-memory" subject="graphics"></div>
     <fieldset class="group" subject="fitted">
       <legend data-t="editor.drives"></legend>
@@ -197,25 +254,44 @@
   </div>
 </nx-window>
 
+<!-- What a right click on a machine offers. Put where the pointer is, and
+     taken away again, so it is not carried about and not remembered. -->
 <nx-menu name="machine-menu" context data-t-title="menu.machine">
-
+  <!-- Reading before acting, and nothing between them: NeXTSTEP's own menus
+       are one run of entries, with the submenu arrow and the shortcut letter
+       the only things that break it. -->
   <nx-menu-item name="info" data-t="menu.machine-info"></nx-menu-item>
   <nx-menu-item name="activate" data-t="menu.activate"></nx-menu-item>
   <nx-menu-item name="edit" icon="defaultAppIcon" data-t="menu.edit"></nx-menu-item>
-
+  <!-- Only a configuration somebody saved carries these two. The eleven are the
+       set to go back to, so for them the entries are not in the menu at all. -->
   <nx-menu-item name="rename" data-t="menu.rename"></nx-menu-item>
   <nx-menu-item name="remove" data-t="menu.remove"></nx-menu-item>
-
+  <!-- Last, and the only one a folder on the shelf shows. The rule that takes
+       the shadow off the foot of a menu asks for the last child, so the entry
+       that can stand alone has to be it. The page writes its wording, which is
+       one of two depending on where the thing already lies. -->
   <nx-menu-item name="shelf" data-t="menu.keep"></nx-menu-item>
 </nx-menu>
 
+<!-- What can be done to a picture, on a right click over one. The one entry
+     it has, because opening it is the double click and saving it needs the
+     picture in hand, which only the window showing it has. -->
 <nx-menu name="picture-menu" context data-t-title="menu.picture">
   <nx-menu-item name="delete" data-t="menu.delete"></nx-menu-item>
 </nx-menu>
 
+<!-- Preferences, as NeXTSTEP built one: a row of module pictures across the
+     top and the chosen module's panel underneath. The one module here is the
+     one NeXTSTEP called Localization, and its picture and its name in each
+     language are Preferences.app's own. -->
 <nx-window name="preferences" data-t-title="app.preferences" fixed
            x="560" y="120" w="440" h="330" min-h="240" closed>
-
+  <!-- A row of cells with a scroller under it, which is what NeXTSTEP drew:
+       fourteen modules do not fit across a panel this wide, so the row scrolls
+       and the chosen module's cell is white where the others are grey. Read off
+       the running system: a cell is 66 square on a 68 grid, parted by the
+       sunken line this interface uses everywhere. -->
   <nx-scroller class="modules" bars="across">
     <div class="module-row">
       <div class="module" value="localization" chosen><i class="art"></i></div>
@@ -223,12 +299,17 @@
     </div>
   </nx-scroller>
   <p class="module-name" id="module-name"></p>
-
+  <!-- One thing inside the scroller, because a scroller drives the child it
+       wraps and cannot drive whichever of two is showing. The modules'
+       panels live inside it and take turns. -->
   <nx-scroller>
    <div class="module-panel">
     <div class="options" id="languages"></div>
     <div class="panel" id="sizes" hidden>
-
+      <!-- A titled group holding a row of buttons that touch, which is how
+           Preferences offers a choice of a few: its Keyboard module puts the
+           repeat delay and the repeat rate in two of these. Each button shows
+           a letter at the size it sets, so the choice shows its own answer. -->
       <fieldset class="group">
         <legend data-t="size.title"></legend>
         <div class="choices" id="size-choices"></div>
@@ -238,6 +319,11 @@
   </nx-scroller>
 </nx-window>
 
+<!-- A real shell on the Pi, drawn by the one library this interface takes.
+     Flush, because a terminal runs to its frame, and opening on eighty columns
+     by twenty-four, which is what NeXT's Terminal opened on and what a shell
+     expects of one. In Ohlfs that is a cell of 8 by 16, so the frame carries
+     640 by 384 of text and the rest is the scroller and the two edges. -->
 <nx-window name="terminal" title="Terminal" flush drop
            x="180" y="330" w="694" h="436" min-w="320" min-h="200" closed>
   <nx-scroller>
@@ -245,6 +331,10 @@
   </nx-scroller>
 </nx-window>
 
+<!-- Grab, which is what NeXT called the application that takes a picture of
+     the screen. The picture is the machine's own 1120 by 832, and the window
+     opens at half of that with room for the button under it, so the whole
+     screen is in view before anything is resized. -->
 <nx-window name="grab" data-t-title="app.grab" drop
            x="600" y="330" w="576" h="480" min-w="320" min-h="260" closed>
   <nx-scroller>
@@ -256,6 +346,10 @@
   </div>
 </nx-window>
 
+<!-- Preview, which NeXT shipped for looking at a picture. It shows one at a
+     time, which is what a double click in the File Viewer hands it. Its title
+     is the picture's name rather than the application's, the way a document
+     window is titled. -->
 <nx-window name="preview" data-t-title="app.preview" drop
            x="640" y="120" w="576" h="480" min-w="320" min-h="240" closed>
   <nx-scroller>
@@ -266,9 +360,24 @@
 
 <nx-ask id="ask"></nx-ask>
 
+<!-- The words load first, then the kit, then the page. Every element is
+     therefore built around text it already has rather than being filled in
+     afterwards. -->
+<script src="strings.js"></script>
+<script src="lang/en.js"></script>
+<script src="lang/de.js"></script>
+<script src="lang/fr.js"></script>
+<script src="lang/it.js"></script>
+<script src="lang/es.js"></script>
+<script src="lang/sv.js"></script>
+<script>translate();</script>
+<script src="nextstep.js"></script>
+<!-- The one library this interface takes, and the view that uses it. Why it
+     is not part of the kit is at the head of terminal.js. -->
 <script src="vendor/xterm.js"></script>
 <script src="vendor/xterm-addon-fit.js"></script>
-<script src="previously.js"></script>
+<script src="terminal.js"></script>
+<script src="app.js"></script>
 
 </body>
 </html>

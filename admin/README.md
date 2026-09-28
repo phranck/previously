@@ -52,7 +52,9 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/server.py` | Which addresses exist and what answers them |
 | `previously/password.py` | The one secret, who is signed in, and what a request may do without it |
 | `previously/answers.py` | How the service names what happened, so the browser can say it |
-| `web/` | What the browser gets, including one catalogue of words per language |
+| `interface/` | Where the interface is written, including one catalogue of words per language |
+| `build_web.py` | What puts that into the three files a browser is given |
+| `web/` | What the browser gets, and nothing in it is written by hand |
 | `web/vendor/` | The one library this interface takes, with its licence |
 | `packaging/` | The unit and the default configuration |
 
@@ -124,9 +126,9 @@ The SSH client is told not to check the host key and not to write one down, beca
 
 `websocket.py` is the protocol, out of the standard library: the handshake from `hashlib`, the frames from `struct`. `terminal.py` is the session and the two directions it is pumped in.
 
-In the browser, `web/terminal.js` is the view and `app.js` holds the socket and the login prompt. The view draws what it is given, says what was typed into it and says how large it has become; what is on the other end is the page's business.
+In the browser, `interface/terminal.js` is the view and `interface/app.js` holds the socket and the login prompt. The view draws what it is given, says what was typed into it and says how large it has become; what is on the other end is the page's business.
 
-**The one library.** Everything else here is written from nothing, and a terminal is not: what arrives from a shell is a stream of escape sequences that move a cursor, switch to an alternate screen and scroll a region. `xterm.js` 5.5.0 and its fit addon 0.10.0 do that, both MIT, in `web/vendor/` with the licence beside them. That is also why the terminal view is not part of the kit, which takes nothing from anybody.
+**The one library.** Everything else here is written from nothing, and a terminal is not: what arrives from a shell is a stream of escape sequences that move a cursor, switch to an alternate screen and scroll a region. `xterm.js` 5.5.0 and its fit addon 0.10.0 do that, both MIT, in `web/vendor/` with the licence beside them, and its stylesheet is in `interface/vendor/`. That is also why the terminal view is not part of the kit, which takes nothing from anybody.
 
 It is themed to what NeXT's Terminal was, black on white with a blinking block cursor. The sixteen ANSI colours stay, because a shell that paints its prompt is saying something with them, and the pale ones are darkened to be readable on white. The scroller NeXTSTEP put on the left of its own terminal is #107.
 
@@ -243,7 +245,7 @@ Two of those paths are worth telling apart. `state_directory` is `/var/lib/previ
 
 ## The interface
 
-`web/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-tile`, `nx-floor`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`, `nx-viewer`.
+`interface/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-tile`, `nx-floor`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`, `nx-viewer`.
 
 **An application here is its window.** The Apps folder holds three, and one is running when the window it opens is open, so closing that window is quitting it. NeXTSTEP kept an application alive without windows; this tool has nothing for such an application to be, and a light saying it was running would mean nothing.
 
@@ -253,7 +255,7 @@ What follows is what the dock does: the Workspace tile is Previously itself and 
 
 English, German, French, Italian, Spanish and Swedish, which are the six NeXTSTEP itself shipped. English is the default and the one every other falls back to, so a missing entry shows an English sentence rather than a name.
 
-`web/lang/` holds one catalogue per language, `web/strings.js` the lookup. A string is asked for by its key, `t("info.disk")`, and where it says how many of something there are the browser's own rules decide between one wording and another, so French gets its singular for zero without the catalogue saying so. Dates follow the same choice, and German means Austrian here.
+`interface/lang/` holds one catalogue per language, `interface/strings.js` the lookup. A string is asked for by its key, `t("info.disk")`, and where it says how many of something there are the browser's own rules decide between one wording and another, so French gets its singular for zero without the catalogue saying so. Dates follow the same choice, and German means Austrian here.
 
 Neither the markup nor the kit holds any words. `index.html` carries `data-t` keys and no text, which is why the page cannot show the wrong language for a moment whilst the right one arrives, and `nx-ask` is given the wording of its two buttons by whoever asks the question.
 
@@ -302,9 +304,24 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
 
 A thing with a `value` can be lifted and carried, and a window with `drop` takes what lands on it. A menu with `context` is the same menu put where the pointer is and taken away again, and an item in one can carry an `icon` and be `disabled`. Both raise `nx-choose` carrying that value, so double clicking a thing and dragging it somewhere mean the same to whoever answers, and a page answers once. They are split into files here rather than baked into one page, and the pictures are files rather than data URIs.
 
-`web/nextstep.css` and `web/nextstep.js` are generated. The kit is one source per part in `../design/kit/`, each holding its element and its styles beside each other, and `../design/build.py` puts them together into those two files and into the draft. Edit a part there and run `make kit`; `tests/test_kit.py` fails when either file has been edited by hand instead.
+`interface/nextstep.css` and `interface/nextstep.js` are generated. The kit is one source per part in `../design/kit/`, each holding its element and its styles beside each other, and `../design/build.py` puts them together into those two files and into the draft. Edit a part there and run `make kit`; `tests/test_kit.py` fails when either file has been edited by hand instead.
 
-`web/previously.css` is this application's own and is not generated. What goes in it is what only Previously has, which is its Preferences window and its Config Editor.
+## What is written and what ships
+
+`interface/` is where the interface is written: one file per subject, with the comments that say why each of them is the way it is. `web/` is what a browser is given, and nothing in it is written by hand.
+
+`make web` runs `build_web.py`, which puts the sources together in the order the page loads them, hands them to esbuild and writes three files: `web/index.html` with its comments gone and three tags where fourteen stood, `web/previously.js` with everything of ours inside one function and every name in it shortened, and `web/previously.css` with the vendor stylesheet, the kit and this application's own. `tests/test_web.py` builds them again and fails when what is committed is not what the sources say, so a source edited without `make web` is caught rather than shipped.
+
+The vendor library keeps its own tag. It arrives minified from the people who wrote it, it is a third of a megabyte, and it never changes, so putting it in a file that is rewritten on every edit would cost a great deal and save one request on a local network.
+
+esbuild is needed here and on whatever runs the tests, and never on the Pi: what it writes is committed, so a package built from a checkout carries the same files as the published one.
+
+```bash
+brew install esbuild                 # macOS
+npm install --global esbuild         # anywhere with node
+```
+
+`interface/app.css` is this application's own. What goes in it is what only Previously has, which is its Preferences window and its Config Editor.
 
 `../design/extract.py` says where the icons came from, and `../design/bootpicture.py` where the two machines came from.
 

@@ -3,8 +3,8 @@
 
 The kit is one source per component in kit/, each holding that component's
 element and that component's styles beside it. This writes the two files the
-admin serves out of them, and the same two into the mockup, so a component is
-edited in one place and cannot drift from itself.
+admin's interface is built from, and the same two into the mockup, so a
+component is edited in one place and cannot drift from itself.
 
 The pictures come from two places, and extract.py puts them there: the icons
 out of a NeXTSTEP 3.3 disk image, and the interface parts out of a screenshot
@@ -22,10 +22,14 @@ HERE = pathlib.Path(__file__).parent
 KIT = HERE / "kit"
 PARTS = HERE / "parts"
 MOCKUP = HERE / "mockup-nextstep.html"
-SERVED = HERE.parent / "admin" / "web"
+#: Where the admin's interface is written. The kit goes there rather than into
+#: what is served, because admin/build_web.py is what puts the served files
+#: together out of these and everything else the interface is made of.
+INTERFACE = HERE.parent / "admin" / "interface"
 #: The Terminal's face, which fonts.py puts there. The admin serves these as
-#: files; the mockup carries them inside itself, like the pictures.
-FONTS = SERVED / "fonts"
+#: files beside the built interface; the mockup carries them inside itself,
+#: like the pictures.
+FONTS = HERE.parent / "admin" / "web" / "fonts"
 
 #: The kit, in the order its parts go together. Each entry names a source in
 #: kit/, the custom elements that source defines, and what the part is for.
@@ -203,8 +207,8 @@ def main():
 
     # Everything is written at the end, so a run that cannot finish leaves all
     # three as they were rather than two of them half done.
-    (SERVED / "nextstep.css").write_text(css)
-    (SERVED / "nextstep.js").write_text(js)
+    (INTERFACE / "nextstep.css").write_text(css)
+    (INTERFACE / "nextstep.js").write_text(js)
     MOCKUP.write_text(html)
 
     print("wrote %d lines of stylesheet and %d of script from %d parts, "

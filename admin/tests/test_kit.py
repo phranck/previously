@@ -1,4 +1,4 @@
-"""The two files the browser gets are the kit, put together.
+"""The two files the interface is built from are the kit, put together.
 
 They are generated, and a generated file that somebody edits by hand is a
 change that the next build throws away without saying so. This is what says
@@ -11,11 +11,11 @@ import re
 
 import pytest
 
-from previously.server import WEB_ROOT
+from conftest import INTERFACE
 
 #: The builder, loaded from where it lives rather than installed. It writes
 #: nothing when it is imported.
-BUILDER = WEB_ROOT.parent.parent / "design" / "build.py"
+BUILDER = INTERFACE.parent.parent / "design" / "build.py"
 
 
 @pytest.fixture(scope="module")
@@ -31,13 +31,13 @@ def test_the_builder_is_where_the_tests_look_for_it():
 
 
 def test_the_stylesheet_is_what_the_kit_says(build):
-    served = (WEB_ROOT / "nextstep.css").read_text(encoding="utf-8")
+    served = (INTERFACE / "nextstep.css").read_text(encoding="utf-8")
 
     assert served == build.stylesheet(), "run design/build.py"
 
 
 def test_the_script_is_what_the_kit_says(build):
-    served = (WEB_ROOT / "nextstep.js").read_text(encoding="utf-8")
+    served = (INTERFACE / "nextstep.js").read_text(encoding="utf-8")
 
     assert served == build.script(), "run design/build.py"
 
@@ -62,7 +62,7 @@ def test_a_tile_that_can_be_carried_carries_a_name():
     """The dock remembers where a tile was put under that tile's name, so one
     without a name goes back to where the markup has it at every reload, and
     nothing says why."""
-    markup = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+    markup = (INTERFACE / "index.html").read_text(encoding="utf-8")
     dock = re.search(r"<nx-dock>(.*?)</nx-dock>", markup, re.S)
     assert dock, "the dock is not in the markup"
 
