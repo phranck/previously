@@ -309,9 +309,15 @@ The Intel builds of OPENSTEP are not offered. Previous emulates 68k hardware, an
 
 What NeXT called the application that puts things on a machine and takes them off again, and it wears that application's own face: the open package out of `/NextAdmin/Installer.app`. Two kinds of thing are in it, and they differ in cost and in kind.
 
-**The emulator** is installed, updated and removed as one thing, because Previous on its own is not a machine that boots: what goes with it is the compositor it runs in, the console that logs in by itself, the silenced startup and the start on the first console. Removing it is that list backwards, and it is the half to get right rather than the half to leave out, since a tool that can only install is one nobody dares press.
+**Two tabs**, because they are not the same kind of thing: a package and a two gigabyte disk. The row above them is the same cell the Config Editor gives its five subjects, and the group below takes its turn.
 
-**The six systems** are a list, one of which is chosen. Each says what it costs to fetch or that it is already here, and the sentence under the list says what it becomes on the card. NeXTSTEP 3.3 comes with the emulator unless another is chosen, so a machine that has just been set up boots into a system rather than into a prompt about what to do next.
+**Previous Emulator** is installed, updated and removed as one thing, because Previous on its own is not a machine that boots: what goes with it is the compositor it runs in, the console that logs in by itself, the silenced startup and the start on the first console. Removing it is that list backwards, and it is the half to get right rather than the half to leave out, since a tool that can only install is one nobody dares press.
+
+A line under the group says what each button does. Update is not there at all unless the archive has something newer, and where it is, it names the version it would bring: a button that would fetch the version already installed is a button that does nothing. That takes two facts, `dpkg-query` for what is here and `apt-cache policy` for what apt would install, and `dpkg --compare-versions` to decide between them, because Debian's ordering is its own and a string comparison calls 4.10 older than 4.9. All three are read-only and want no privilege, and what they said is kept for a few seconds, since the window asks twice a second whilst it is open.
+
+**Systeme** is a list, one of which is chosen. Each says what it costs, whether it is here or not, and the ones that are here carry NeXT's own checkmark. Three buttons: Remove, Fetch and Activate. NeXTSTEP 3.3 comes with the emulator unless another is chosen, so a machine that has just been set up boots into a system rather than into a prompt about what to do next.
+
+**Activate is the same act as a double click on a disk in the File Viewer**, with the same question and the same code behind it: the guest is shut down through the power key, the configuration is changed to the other system, the machine starts again on it, and a machine that does not come up gets its old disk back. It is offered for a system that is on the card and is not the one already running.
 
 **What it costs is in the question rather than in the failure.** Fetching one says what it travels as, what it becomes, and what would be left on the card. A card that fills up during an unpack leaves a half written image and a person with no idea why.
 

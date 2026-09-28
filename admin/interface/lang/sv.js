@@ -364,6 +364,13 @@ NX_STRINGS.sv = {
   /* --- installing -------------------------------------------------------- */
   "app.installer": "Installer",
   "installer.emulator": "Emulator",
+  "installer.emulator.title": "Emulatorn Previous",
+  "installer.emulator.in.version": "{version} installerad",
+  "installer.emulator.what.install": "Installera sätter det aktuella Previous på den här maskinen, med allt den behöver runt omkring.",
+  "installer.emulator.what.remove": "Ta bort tar bort Previous igen, och allt som kom med den.",
+  "installer.emulator.what.update": "Uppdatera hämtar Previous {version} från arkivet den kommer från.",
+  "installer.emulator.what.nothing-newer": "Arkivet har inget nyare, så det finns ingenting att uppdatera till.",
+  "button.activate": "Aktivera",
   "installer.systems": "System",
   "installer.card": "Kort",
   "installer.emulator.in": "installerad",

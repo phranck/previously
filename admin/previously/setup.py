@@ -166,6 +166,19 @@ DOINGS = (FETCHING, UNPACKING, COPYING)
 #: says so.
 COMMAND_SECONDS = 1800
 
+#: And how long to wait for one that only reads, such as asking dpkg what is
+#: installed. A question that hangs is worse than one that fails, because the
+#: page waits with it.
+TIMEOUT_SECONDS = 5
+
+#: How long what dpkg and apt said is worth keeping. The Installer asks twice a
+#: second whilst its window is open, and those answers change when something is
+#: installed and at no other time.
+REMEMBER_SECONDS = 5
+
+#: The last of those answers and when it was given, or None.
+_REMEMBERED = None
+
 
 class Refused(Exception):
     """A step could not be taken, said in a way the browser can read out.
@@ -243,6 +256,103 @@ def installed(package):
     except OSError:
         return False
     return "ok installed" in answer.stdout
+
+
+def version_of(package):
+    """@returns str - The version dpkg has in place, or None.
+
+    What is running, as against what could be. Read from dpkg rather than from
+    the archive, because a machine whose package lists are stale still knows
+    exactly what is on it.
+    """
+    return _said(["dpkg-query", "-W", "-f=${Version}", package]) or None
+
+
+def newest_of(package):
+    """@returns str - What apt would install now, or None.
+
+    Out of `apt-cache policy`, which reads the package lists as they stand. A
+    machine that has not refreshed them answers with what it last saw, which is
+    what apt itself would do, so this is what would actually be installed
+    rather than what exists somewhere.
+    """
+    for line in _said(["apt-cache", "policy", package]).splitlines():
+        said = line.strip()
+        if said.startswith("Candidate:"):
+            version = said.split(":", 1)[1].strip()
+            return None if version in ("", "(none)") else version
+    return None
+
+
+def newer_than(version, other):
+    """Whether `other` is a later version than `version`.
+
+    @param version - What is installed.
+    @param other - What the archive offers.
+    @returns bool. False where either is missing, because an unknown version is
+      not something to offer an update to.
+
+    Asked of dpkg rather than compared as text. Debian's ordering is its own,
+    and a string comparison would call 4.10 older than 4.9 and offer a
+    downgrade as an update.
+    """
+    if not version or not other:
+        return False
+    try:
+        answer = subprocess.run(
+            ["dpkg", "--compare-versions", version, "lt", other],
+            capture_output=True, check=False)
+    except OSError:
+        return False
+    return answer.returncode == 0
+
+
+def emulator():
+    """What is on this machine and what the archive has.
+
+    @returns dict with `here`, `version`, `newest` and `newer`, the last being
+      whether there is anything to update to.
+
+    Kept for a few seconds, because the Installer window asks twice a second
+    whilst it is open and these three commands are the most expensive thing
+    behind that route. What they answer changes when something is installed
+    and at no other time, so a few seconds of memory costs nothing and saves a
+    Pi real work.
+    """
+    global _REMEMBERED
+    if _REMEMBERED and time.monotonic() - _REMEMBERED[0] < REMEMBER_SECONDS:
+        return dict(_REMEMBERED[1])
+
+    version = version_of(EMULATOR_PACKAGE)
+    newest = newest_of(EMULATOR_PACKAGE)
+    said = {
+        "here": installed(EMULATOR_PACKAGE),
+        "version": version,
+        "newest": newest,
+        "newer": newer_than(version, newest),
+    }
+    _REMEMBERED = (time.monotonic(), said)
+    return dict(said)
+
+
+def forget():
+    """Throws that memory away, for a test and for the moment after a run.
+
+    A run that installs or removes the emulator changes every one of those
+    answers, and the window asks again the instant it finishes.
+    """
+    global _REMEMBERED
+    _REMEMBERED = None
+
+
+def _said(command):
+    """@returns str - What a read-only command printed, or "" on any failure."""
+    try:
+        answer = subprocess.run(command, capture_output=True, text=True,
+                                timeout=TIMEOUT_SECONDS, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return answer.stdout.strip() if answer.returncode == 0 else ""
 
 
 class Owner:

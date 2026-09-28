@@ -1113,7 +1113,9 @@ async function bootFromDisk(disk) {
       t("ask.change.rollback"),
     ],
     icon: Art.Disk,
-    confirm: t("button.change"),
+    /* The same word as the button that opens this, wherever it was opened
+       from. Two words for one act is one word too many. */
+    confirm: t("button.activate"),
   });
   if (!agreed) return;
 
@@ -3200,6 +3202,19 @@ let setupState = null;
 /** Which system is chosen in the list, by identifier, or null. */
 let chosenSystem = null;
 
+/** What the Installer shows one of at a time, and what each is called. Two
+ *  subjects in one window, because the emulator is a package and a system is a
+ *  two gigabyte disk: they belong together and want to be apart. */
+const INSTALLER_TABS = {
+  emulator: "installer.emulator.title",
+  systems: "installer.systems",
+};
+
+/** Which of them is showing. Kept here rather than read back off the markup,
+ *  so a redraw whilst something is installing leaves somebody where they
+ *  were. */
+let showingInTheInstaller = Object.keys(INSTALLER_TABS)[0];
+
 /** Whether something has been asked for and the helper has not started yet.
  *
  *  The request is written into a file and a path unit starts the program that
@@ -3269,18 +3284,75 @@ function drawTheInstaller(state) {
   setupState = state;
 
   const here = state.systems.filter((system) => system.here);
-  show("installer-emulator",
-       t(state.emulator ? "installer.emulator.in" : "installer.emulator.out"));
+  show("installer-emulator", emulatorLine(state.emulator));
   show("installer-count", t("installer.count",
                             { here: here.length, all: state.systems.length }));
   show("installer-room", sized(state.room));
-  explain("installer-emulator-note",
-          t(state.emulator ? "installer.emulator.note.in"
-                           : "installer.emulator.note.out"));
+  show("installer-emulator-note", whatTheButtonsDo(state.emulator));
   explain("installer-systems-note", t("installer.systems.note"));
 
+  drawTheTabs();
   drawTheSystems(state.systems);
   drawWhatIsBeingInstalled(state.progress);
+}
+
+/**
+ * Draws the row that chooses between the two subjects.
+ *
+ * The same raised cell every choice in this interface uses, and the groups
+ * below are shown by the attribute the page marks them with, so the subjects
+ * are named in one place.
+ */
+function drawTheTabs() {
+  fillWithChoices("installer-tabs",
+    Object.entries(INSTALLER_TABS).map(([subject, word]) => ({
+      label: t(word),
+      chosen: subject === showingInTheInstaller,
+      choose: () => {
+        showingInTheInstaller = subject;
+        drawTheTabs();
+      },
+    })));
+
+  for (const group of document.querySelectorAll(".installer-groups > [subject]")) {
+    group.toggleAttribute(
+      "away", group.getAttribute("subject") !== showingInTheInstaller);
+  }
+}
+
+/**
+ * What the readings say about the emulator.
+ * @param {object} emulator - What the service says: whether it is here, which
+ *   version, and what the archive offers.
+ * @returns {string} The version where there is one, because that is the fact
+ *   somebody wants, and the bare word where there is not.
+ */
+function emulatorLine(emulator) {
+  if (!emulator?.here) return t("installer.emulator.out");
+  return emulator.version
+    ? t("installer.emulator.in.version", { version: emulator.version })
+    : t("installer.emulator.in");
+}
+
+/**
+ * A line per button, so that what each one does is read rather than guessed.
+ * @param {object} emulator - What the service says about it.
+ * @returns {string} The lines, one per button that is there, parted by
+ *   newlines, which the stylesheet keeps.
+ *
+ * Update is left out entirely where the archive has nothing newer, because a
+ * button that would bring the same version is a button that does nothing. Its
+ * line names the version it would bring, since that is the whole of why
+ * somebody would press it.
+ */
+function whatTheButtonsDo(emulator) {
+  if (!emulator?.here) return t("installer.emulator.what.install");
+  return [
+    t("installer.emulator.what.remove"),
+    emulator.newer
+      ? t("installer.emulator.what.update", { version: emulator.newest })
+      : t("installer.emulator.what.nothing-newer"),
+  ].join("\n");
 }
 
 /**
@@ -3445,17 +3517,26 @@ function whyItFailed(failed) {
  */
 function allowInstalling(allowed) {
   const state = setupState;
+  const here = Boolean(state?.emulator?.here);
   const chosen = state?.systems.find((system) => system.identifier === chosenSystem);
 
-  document.getElementById("installer-install").disabled =
-    !allowed || Boolean(state?.emulator);
-  for (const id of ["installer-update", "installer-remove"]) {
-    document.getElementById(id).disabled = !allowed || !state?.emulator;
-  }
+  document.getElementById("installer-install").disabled = !allowed || here;
+  document.getElementById("installer-remove").disabled = !allowed || !here;
+  /* Not there at all where the archive has nothing newer, because a button
+     that would bring the version that is already here is a button that does
+     nothing. */
+  const update = document.getElementById("installer-update");
+  update.hidden = !state?.emulator?.newer;
+  update.disabled = !allowed || !here;
+
   document.getElementById("installer-fetch").disabled =
     !allowed || !chosen || chosen.here;
   document.getElementById("installer-forget").disabled =
     !allowed || !chosen || !chosen.here;
+  /* A system that is not on the card cannot be started, and neither can the
+     one the machine is already running. */
+  document.getElementById("installer-activate").disabled =
+    !allowed || !chosen || !chosen.here || Boolean(chosen.booting);
 }
 
 /**
@@ -3602,7 +3683,28 @@ async function forgetTheSystem() {
   if (agreed) askTheInstaller(Install.Forget, system.identifier);
 }
 
-/** Wires the Installer's five buttons and the look it takes on its own. */
+/**
+ * Starts the machine on the system chosen in the list.
+ *
+ * The same act as a double click on a disk in the File Viewer, and the same
+ * question, so there is one implementation of it and one thing to get right.
+ * What it costs to know is built here because the Installer names a system by
+ * what it is rather than by where its file sits.
+ */
+function activateTheSystem() {
+  const chosen = setupState?.systems.find(
+    (system) => system.identifier === chosenSystem);
+  if (!chosen?.here) return;
+
+  bootFromDisk({
+    id: chosen.identifier,
+    name: chosen.name,
+    bytes: chosen.unpacked,
+    booting: chosen.booting,
+  });
+}
+
+/** Wires the Installer's six buttons and the look it takes on its own. */
 function wireTheInstaller() {
   const window_ = document.querySelector('nx-window[name="installer"]');
   if (!window_) return;
@@ -3617,6 +3719,8 @@ function wireTheInstaller() {
     .addEventListener("click", fetchTheSystem);
   document.getElementById("installer-forget")
     .addEventListener("click", forgetTheSystem);
+  document.getElementById("installer-activate")
+    .addEventListener("click", activateTheSystem);
 
   /* Opening it asks straight away, because a window that filled itself at the
      next poll would stand empty for a moment first. */
@@ -3666,6 +3770,7 @@ function speak(code) {
     /* Every figure and every sentence in the Installer is this page's, so it is
        drawn again from what the service last said rather than by asking. */
     if (setupState) drawTheInstaller(setupState);
+    else drawTheTabs();
     /* The menu's title is a name this page chooses rather than a string in
        the markup, so translate() does not reach it. */
     drawTheMenu();

@@ -364,6 +364,13 @@ NX_STRINGS.it = {
   /* --- installing -------------------------------------------------------- */
   "app.installer": "Installer",
   "installer.emulator": "Emulatore",
+  "installer.emulator.title": "Emulatore Previous",
+  "installer.emulator.in.version": "{version} installato",
+  "installer.emulator.what.install": "Installa mette il Previous attuale su questa macchina, con tutto quello che gli serve intorno.",
+  "installer.emulator.what.remove": "Rimuovi toglie Previous e tutto quello che è arrivato con lui.",
+  "installer.emulator.what.update": "Aggiorna porta Previous {version} dall'archivio da cui viene.",
+  "installer.emulator.what.nothing-newer": "L'archivio non ha nulla di più recente, quindi non c'è nulla da aggiornare.",
+  "button.activate": "Attiva",
   "installer.systems": "Sistemi",
   "installer.card": "Scheda",
   "installer.emulator.in": "installato",

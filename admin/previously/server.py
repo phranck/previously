@@ -520,6 +520,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """
         disks = self.settings.disks
         here = systems.here(disks)
+        # Which of them the machine is set to boot, so the window knows which
+        # one cannot be started again. Compared whole, because two disks can be
+        # called the same thing in two folders.
+        booting = config.booting_from(self.settings.previous_config)
         return {
             "systems": [
                 {
@@ -528,11 +532,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     "size": system.size,
                     "unpacked": systems.UNPACKED_BYTES,
                     "here": system.identifier in here,
+                    "booting": (booting is not None
+                                and str(here.get(system.identifier)) == str(booting)),
                 }
                 for system in systems.CATALOGUE
             ],
             "default": systems.DEFAULT,
-            "emulator": setup.installed(setup.EMULATOR_PACKAGE),
+            # Which version is on the machine and which the archive offers, so
+            # the window can say what an update would bring rather than
+            # offering one that brings nothing.
+            "emulator": setup.emulator(),
             "needs": systems.ROOM_BYTES,
             "room": systems.room_beside(disks),
             "progress": kiosk.setting_up(self.settings.setup_directory),
@@ -553,6 +562,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         taken, told = kiosk.ask_to_set_up(
             self.settings.runtime_directory, self.settings.setup_directory,
             body.get("do"), body.get("system"), body.get("machine"))
+        # What dpkg and apt last said is about to stop being true, and the
+        # window asks again the moment this answer arrives.
+        setup.forget()
         return self._json({"ok": taken, **told, **self._setup()},
                           status=200 if taken else 409)
 
