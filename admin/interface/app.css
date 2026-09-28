@@ -145,7 +145,11 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 /* The one child of the scroller, holding whichever module's panel is up. */
 .module-panel { min-height: 100%; }
 
-.panel { padding: 10px; }
+/* One module's own page inside it. Named for the module rather than `panel`,
+   which is the name the kit's own attention panel already carries: a bare rule
+   for that one reaches inside `nx-ask` and moves its title bar off the frame.
+   `tests/test_kit.py` holds this interface to naming nothing the kit builds. */
+.module-page { padding: 10px; }
 
 .group {
   position: relative;
