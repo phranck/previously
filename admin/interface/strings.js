@@ -143,13 +143,21 @@ function translate(root = document) {
  * A menu entry ends up holding a picture, its words and its shortcut letter,
  * in that order, and the kit builds the first and the last around the middle.
  * Writing the whole element's text would throw both away, so the text node
- * itself is written where there is one, and a new one is added beside what is
- * there where there is not.
+ * itself is written where there is one.
+ *
+ * Where there is none, which is an entry whose words are the page's rather
+ * than the catalogue's, the new one goes in front of the letter rather than
+ * after it. Appended it reads as `bÜber NeXTcube Turbo`, with the shortcut
+ * inside the label and nothing on the right where every other entry has it.
  */
 function writeWords(element, text) {
   const words = [...element.childNodes].find((node) => node.nodeType === Node.TEXT_NODE);
-  if (words) words.data = text;
-  else element.append(document.createTextNode(text));
+  if (words) return void (words.data = text);
+
+  const letter = element.querySelector(":scope > .key");
+  const written = document.createTextNode(text);
+  if (letter) element.insertBefore(written, letter);
+  else element.append(written);
 }
 
 /**

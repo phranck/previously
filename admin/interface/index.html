@@ -31,8 +31,14 @@
      keeps its name in every language and still needs a letter of its own,
      because whichever letter Preferences takes cannot also be this one. -->
 <nx-menu name="menu" title="Cube" x="8" y="8">
-  <nx-menu-item opens="info" data-t-key="menu.info.key" data-t="window.info"></nx-menu-item>
-  <nx-menu-item opens="pi" data-t-key="menu.pi.key">Raspberry Pi</nx-menu-item>
+  <!-- Info is about the machine this runs on, which is the Raspberry Pi. What
+       the emulated machine is belongs to the entry below, and that one is not
+       there at all whilst there is no emulated machine to be about. -->
+  <nx-menu-item opens="pi" data-t-key="menu.info.key" data-t="window.info"></nx-menu-item>
+  <!-- Its words are the page's, because they carry the machine's own name.
+       No data-t, so a change of language never shows the unfilled sentence
+       for the moment before the page writes it. -->
+  <nx-menu-item opens="info" name="about" data-t-key="menu.about.key" hidden></nx-menu-item>
   <nx-menu-item opens="files" data-t-key="menu.files.key" data-t="menu.files"></nx-menu-item>
   <nx-menu-item opens="preferences" data-t-key="menu.preferences.key" data-t="app.preferences"></nx-menu-item>
   <nx-menu-item name="password" data-t-key="menu.password.key" data-t="menu.password"></nx-menu-item>

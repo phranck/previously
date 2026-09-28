@@ -12,8 +12,10 @@
 <!-- Built by admin/build_web.py from admin/interface/. The sources are in the repository. -->
 
 <nx-menu name="menu" title="Cube" x="8" y="8">
-  <nx-menu-item opens="info" data-t-key="menu.info.key" data-t="window.info"></nx-menu-item>
-  <nx-menu-item opens="pi" data-t-key="menu.pi.key">Raspberry Pi</nx-menu-item>
+
+  <nx-menu-item opens="pi" data-t-key="menu.info.key" data-t="window.info"></nx-menu-item>
+
+  <nx-menu-item opens="info" name="about" data-t-key="menu.about.key" hidden></nx-menu-item>
   <nx-menu-item opens="files" data-t-key="menu.files.key" data-t="menu.files"></nx-menu-item>
   <nx-menu-item opens="preferences" data-t-key="menu.preferences.key" data-t="app.preferences"></nx-menu-item>
   <nx-menu-item name="password" data-t-key="menu.password.key" data-t="menu.password"></nx-menu-item>

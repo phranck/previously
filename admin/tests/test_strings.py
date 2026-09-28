@@ -325,6 +325,16 @@ def test_no_two_menu_entries_share_a_letter(language):
 
 
 @pytest.mark.parametrize("language", LANGUAGES)
+def test_the_entry_about_this_machine_carries_a_letter_of_its_own_word(language):
+    """Its words are the page's rather than the markup's, because they hold the
+    machine's own name, so the test below skips it. This is that check, made
+    where the sentence actually is."""
+    words = catalogue(language)
+
+    assert words["menu.about.key"] in words["menu.about"].lower(), language
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
 def test_every_menu_letter_is_in_the_word_beside_it(language):
     """A shortcut whose letter is not in its word is one nobody will guess,
     which is the thing this is for."""

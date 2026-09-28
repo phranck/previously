@@ -95,6 +95,30 @@ def test_every_application_opens_a_window_that_is_there(markup):
     assert sorted(opens - windows) == []
 
 
+def test_the_entry_about_this_machine_is_written_by_the_page(page, markup):
+    """It carries the machine's own name, so the catalogue holds a sentence
+    with a place in it rather than the words themselves. Given `data-t` as
+    well, a change of language would write `Über {machine}` into the menu for
+    the moment before the page filled it in."""
+    entry = re.search(r'<nx-menu-item[^>]*name="about"[^>]*>', markup)
+
+    assert entry, "the entry about this machine is not in the menu"
+    assert "data-t=" not in entry.group(0)
+    assert 'data-t-key="menu.about.key"' in entry.group(0)
+    assert 't("menu.about"' in page
+
+
+def test_an_entry_the_page_takes_out_stays_out(page):
+    """The menu hides every entry belonging to another application each time
+    the front window changes, so a page that used `hidden` for something else
+    would have it put back a moment later. `away` is the page's word and the
+    kit reads it."""
+    kit = (INTERFACE / "nextstep.js").read_text(encoding="utf-8")
+
+    assert 'hasAttribute("away")' in kit
+    assert 'toggleAttribute("away"' in page
+
+
 def test_the_page_asks_for_something(page, markup):
     """Both tests above pass on an empty set, so this is what says they were
     measuring anything at all."""

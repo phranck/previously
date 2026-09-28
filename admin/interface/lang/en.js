@@ -11,7 +11,8 @@ NX_STRINGS.en = {
      word that entry shows. Distinct within the language, because the page
      acts on the first entry whose letter matches. */
   "menu.info.key": "i",
-  "menu.pi.key": "r",
+  "menu.about": "About {machine}",
+  "menu.about.key": "a",
   "menu.files.key": "f",
   "menu.preferences.key": "p",
   "menu.password.key": "s",

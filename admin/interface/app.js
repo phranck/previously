@@ -393,6 +393,7 @@ function allowActions(reachable) {
 function drawStatus(status) {
   const state = document.getElementById("info-state");
   lastStatus = status;
+  drawWhatThisMachineIs(status);
 
   if (status === null) {
     /* Nothing can be asked of a machine that is not answering, and whilst it
@@ -504,6 +505,40 @@ function offerTheInstaller() {
   offeredTheInstaller = true;
   document.querySelector('nx-window[name="installer"]')?.open();
 }
+
+/**
+ * Draws the menu entry that says what the emulated machine is, or takes it
+ * away.
+ * @param {object|null} status - What /api/status answered, or null.
+ *
+ * It carries the machine's own name, so its words are written here rather than
+ * taken from the catalogue: `About NeXTcube Turbo`. On a Pi with nothing
+ * installed there is no machine to be about, and an entry that opened a window
+ * of em dashes would be a question with no answer, so it is not in the menu at
+ * all.
+ */
+function drawWhatThisMachineIs(status) {
+  const entry = document.querySelector('nx-menu-item[name="about"]');
+  if (!entry) return;
+
+  const machine = status?.ready?.set_up ? status.configuration : null;
+  if (machine) writeWords(entry, t("menu.about", { machine: nameOf(machine) }));
+
+  /* `away` rather than `hidden`, because the menu owns that one: it hides
+     every entry that belongs to another application each time the front
+     window changes, and would put this one back. */
+  const there = Boolean(machine);
+  if (there === aboutIsThere) return;
+  aboutIsThere = there;
+  entry.toggleAttribute("away", !there);
+  /* The menu works out what it shows when the front window changes, and this
+     is neither, so it is asked again. */
+  drawTheMenu();
+}
+
+/** Whether the entry about this machine is in the menu, so that the menu is
+ *  drawn again when that changes and not twice a second when it does not. */
+let aboutIsThere = null;
 
 /**
  * Asks the service to do something to the emulator.
@@ -3021,9 +3056,11 @@ function drawTheMenu(front) {
                application ? appName(application) : WORKSPACE);
 }
 
-/** What the workspace's own menu is called. The machine's name, because that
- *  is what this tool administers and what a person came here for. */
-const WORKSPACE = "Cube";
+/** What the workspace's own menu is called. NeXTSTEP's own name for it, and
+ *  not translated anywhere, the way the applications' names are not: this menu
+ *  belongs to the desk rather than to any machine, and it is there whether one
+ *  is installed or not. */
+const WORKSPACE = "Workspace";
 
 /** Follows the front window, and the windows that open and close with it. */
 function watchTheFrontWindow() {

@@ -3,7 +3,8 @@
 NX_STRINGS.de = {
   /* --- the menus ------------------------------------------------------- */
   "menu.info.key": "i",
-  "menu.pi.key": "r",
+  "menu.about": "Über {machine}",
+  "menu.about.key": "b",
   "menu.files.key": "d",
   "menu.preferences.key": "p",
   "menu.password.key": "s",
