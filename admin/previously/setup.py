@@ -16,8 +16,9 @@ refuses the whole request.
 
 The work itself is the nine steps `install.sh` takes, in the same order, each
 of them skipping what it finds already done, plus the sound that script does
-tenth. Every step that changes something records how to undo exactly that, and
-a failure walks the record backwards, which is what that script does too.
+tenth and the start that leaves a fresh machine running rather than waiting for
+a reboot. Every step that changes something records how to undo exactly that,
+and a failure walks the record backwards, which is what that script does too.
 
 `install.sh` keeps its own copy of those steps for now, because it is the way
 in on a machine that has no admin tool yet and therefore cannot ask for any of
@@ -200,11 +201,14 @@ class Refused(Exception):
 #:
 #: `install` is the whole of `install.sh`: the emulator with everything around
 #: it, a system to run on it where one was asked for, and a configuration
-#: pointing at that system. Every step skips what it finds already done, so
+#: pointing at that system. It ends by starting the machine, so what an
+#: installation leaves behind is a running NeXT rather than a machine that
+#: needs rebooting first. Every step skips what it finds already done, so
 #: asking for it twice changes nothing the second time.
 JOBS = {
     "install": ("host", "tools", "archive", "emulator", "system",
-                "configuration", "autologin", "quiet", "autostart", "sound"),
+                "configuration", "autologin", "quiet", "autostart", "sound",
+                "start"),
     "update": ("archive", "newest-emulator"),
     "remove": ("no-autostart", "loud", "no-autologin", "no-emulator"),
     "fetch": ("host", "tools", "system"),
@@ -469,6 +473,17 @@ class Work:
         so this is also what says which steps did anything at all.
         """
         self._how.append((self.step, how))
+        self.did()
+
+    def did(self):
+        """Records that the step now running changed something it cannot undo.
+
+        For the one step whose work is not a thing to put back: a machine that
+        was switched on cannot be switched off again by a failure in a later
+        step, and pretending otherwise would take somebody's running machine
+        away. What is left is the other half of `undoes`, which is saying that
+        this step did something at all.
+        """
         if self.step not in self.changed:
             self.changed.append(self.step)
 
@@ -688,14 +703,17 @@ def _newest_emulator(work):
 
 
 def _no_emulator(work):
-    """Takes Previous and its source away.
+    """Takes Previous away, along with what it brought, and its source with it.
 
-    The four tools stay. Something else on this machine may use ImageMagick or
-    7zip by now, and leaving a package behind costs a few megabytes whilst
-    taking one away can cost somebody their own work.
+    What it brought is whatever apt installed for its sake and nothing else:
+    autoremove only takes packages that were pulled in as dependencies and that
+    nothing left on the machine still wants. The four tools were asked for by
+    name, so apt holds them as somebody's own choice and leaves them, which is
+    what should happen: something else here may use ImageMagick or 7zip by now.
     """
     if installed(EMULATOR_PACKAGE):
         run(["apt-get", "purge", "-y", "-qq", EMULATOR_PACKAGE])
+        run(["apt-get", "autoremove", "--purge", "-y", "-qq"])
     for path in (REPOSITORY_PINS, REPOSITORY_SOURCE, REPOSITORY_KEY):
         path.unlink(missing_ok=True)
 
@@ -1121,6 +1139,29 @@ def _without_autostart(profile):
     profile.write_text("".join(kept), encoding="utf-8")
 
 
+def _start(work):
+    """Starts the emulator, so an installation ends with a machine running.
+
+    The console is what starts it: it logs itself in on the first text console
+    and the profile written a step earlier runs Previous there. That console
+    has been sitting at a login prompt since before any of this existed, so it
+    is restarted to pick both of them up. Without this the machine is fully
+    installed and shows nothing until somebody reboots it.
+
+    The hold goes first, because the tool leaves that file behind when somebody
+    switched the emulator off, and a console that finds it waits rather than
+    starting anything.
+
+    Left alone where the emulator is already running, since restarting the
+    console under a running guest costs whatever that guest had not written.
+    """
+    if _the_guest_is_running():
+        return
+    pathlib.Path(HOLD).unlink(missing_ok=True)
+    run(["systemctl", "restart", work.settings.kiosk_unit])
+    work.did()
+
+
 #: Every step there is, by the name a job names it with. The name is what the
 #: browser says a sentence about, so one added here without a sentence beside
 #: it shows on the screen as itself, which `tests/test_strings.py` refuses.
@@ -1141,6 +1182,7 @@ STEPS = {
     "autostart": _autostart,
     "no-autostart": _no_autostart,
     "sound": _sound,
+    "start": _start,
     "copy": _copy,
     "put-back": _put_back,
 }

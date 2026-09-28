@@ -307,9 +307,22 @@ function explain(id, ...sentences) {
  * a sentence, so it is added here.
  */
 function nameOf(machine) {
+  const name = modelOf(machine);
+  return machine.dimension ? t("machine.with-dimension", { name }) : name;
+}
+
+/**
+ * What the machine is called, and nothing about the boards in it.
+ * @param {object} machine - A configuration or a catalogue entry.
+ * @returns {string} The model's own name, with Turbo where that is part of it.
+ *
+ * For the one place a whole sentence does not fit: a menu entry is a line in a
+ * narrow column, and a machine named after everything fitted to it runs off
+ * the end of it.
+ */
+function modelOf(machine) {
   let name = machine.model;
   if (machine.turbo && machine.kind !== 0) name += " Turbo";
-  if (machine.dimension) name = t("machine.with-dimension", { name });
   return name;
 }
 
@@ -522,7 +535,7 @@ function drawWhatThisMachineIs(status) {
   if (!entry) return;
 
   const machine = status?.ready?.set_up ? status.configuration : null;
-  if (machine) writeWords(entry, t("menu.about", { machine: nameOf(machine) }));
+  if (machine) writeWords(entry, t("menu.about", { machine: modelOf(machine) }));
 
   /* `away` rather than `hidden`, because the menu owns that one: it hides
      every entry that belongs to another application each time the front
@@ -3384,12 +3397,15 @@ function emulatorLine(emulator) {
  */
 function whatTheButtonsDo(emulator) {
   if (!emulator?.here) return t("installer.emulator.what.install");
+  /* Nothing at all about updating where there is nothing newer, because the
+     button is not there either. A sentence explaining a button nobody can see
+     is a sentence about nothing. */
   return [
     t("installer.emulator.what.remove"),
     emulator.newer
       ? t("installer.emulator.what.update", { version: emulator.newest })
-      : t("installer.emulator.what.nothing-newer"),
-  ].join("\n");
+      : "",
+  ].filter(Boolean).join("\n");
 }
 
 /**
@@ -3502,14 +3518,13 @@ function drawWhatIsBeingInstalled(progress) {
 
   if (progress.ok) {
     show("installer-caption", t("installer.done"));
-    /* What it actually did. A run where every step found its work already done
-       is right and is over in a second, and "Finished" on its own reads as
-       nothing having happened at all. */
+    /* What the machine has now, in one sentence about the job. The steps it
+       took are what somebody watched go past whilst it ran, and reading them
+       back as a list afterwards tells them nothing they can act on. A run
+       where every step found its work already done is right and is over in a
+       second, and "Finished" on its own reads as nothing having happened. */
     show("installer-note", progress.changed?.length
-      ? t("installer.changed", {
-          steps: progress.changed.map((name) => t(`setup.step.${name}`))
-            .join(", "),
-        })
+      ? t(`installer.finished.${progress.do}`)
       : t("installer.nothing-to-do"));
     return;
   }
