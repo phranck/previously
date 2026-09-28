@@ -25,6 +25,7 @@ this. Making it ask, so that there is one implementation rather than two, waits
 until this one has set a real machine up.
 """
 
+import datetime
 import grp
 import hashlib
 import json
@@ -50,9 +51,14 @@ from .settings import Settings
 #: `previously-setup.path` watches for this name and starts this program.
 REQUEST = "setup"
 
-#: The most a request may be. Everything one can say is three names, so
-#: anything past this is not the tool talking.
+#: The most a request may be. Everything one can say is four names, so anything
+#: past this is not the tool talking.
 LARGEST_REQUEST = 4096
+
+#: The most a copy's name may be. It is matched against the listing of the
+#: folder copies are kept in rather than joined onto a path, and a name longer
+#: than any file can have is one nothing will match.
+LONGEST_NAME = 255
 
 #: Where this writes what it is doing. Its own directory rather than the tool's,
 #: and that is the point: the tool's runtime directory belongs to an
@@ -141,6 +147,11 @@ VOLUME = "0.614"
 CHUNK_BYTES = 256 * 1024
 SAY_EVERY_SECONDS = 0.5
 
+#: How much of a disk to copy at a time. Larger than a download's chunk,
+#: because this is a card reading and writing itself and there is no network in
+#: the way.
+COPY_BYTES = 4 * 1024 * 1024
+
 #: How long to wait for one command. An unpack of two gigabytes on a Pi is the
 #: long one, and a step that hangs is worse than one that fails because nothing
 #: says so.
@@ -176,6 +187,10 @@ JOBS = {
     "remove": ("no-autostart", "loud", "no-autologin", "no-emulator"),
     "fetch": ("host", "tools", "system"),
     "forget": ("no-system",),
+    # A copy of a disk, and the same copy the other way. Both are one step,
+    # because a copy of a file is one thing that either happens or does not.
+    "back-up": ("copy",),
+    "restore": ("put-back",),
 }
 
 
@@ -293,13 +308,18 @@ class Work:
     """
 
     def __init__(self, job, steps, owner, system, machine, settings=None,
-                 into=OUR_DIRECTORY):
+                 backup=None, into=OUR_DIRECTORY):
         self.job = job
         self.steps = steps
         self.owner = owner
         self.system = system
         self.machine = machine
         self.settings = settings
+        #: Which copy is being put back, by the name it has in the folder
+        #: copies are kept in. Nothing else in a request is a file name, and
+        #: this one is matched against that folder's listing rather than joined
+        #: onto a path.
+        self.backup = backup
         self.into = into
         self.done = 0
         self.step = None
@@ -620,6 +640,127 @@ def _in_use(configuration, disk):
     return str(disk) in text
 
 
+def _copy(work):
+    """Copies a disk, so that what is on it can be got back.
+
+    Only with the guest shut down. A copy taken whilst NeXTSTEP is writing is a
+    torn file system: it looks like a disk and fails on the first boot in a way
+    nobody can debug.
+    """
+    if work.system is None:
+        raise Refused("setup.no-system-named")
+    if _the_guest_is_running():
+        raise Refused("setup.machine-is-running")
+
+    disk = systems.disk_in(work.settings.disks, work.system)
+    if disk is None:
+        raise Refused("setup.system-is-not-here", name=work.system.name)
+
+    size = disk.stat().st_size
+    free = systems.room_beside(work.settings.disks)
+    if free is not None and free < size + systems.SPARE_BYTES:
+        raise Refused("setup.no-room", name=work.system.name, free=free,
+                      needed=size + systems.SPARE_BYTES)
+
+    where = systems.backups_in(work.settings.disks)
+    for made in work.owner.directory(where):
+        work.undoes(lambda place=made: place.rmdir())
+
+    copy = where / systems.a_copy_of(work.system, datetime.datetime.now())
+    work.undoes(lambda: copy.unlink(missing_ok=True))
+    _copied_across(disk, copy, work)
+    work.owner.owns(copy)
+    copy.chmod(0o644)
+
+
+def _put_back(work):
+    """Writes a copy back over the disk it was made from.
+
+    The same two conditions, and one more: the copy has to be one that is
+    actually in the folder copies are kept in. The name arrives from a browser,
+    so it is matched against what is there rather than joined onto a path.
+    """
+    if work.system is None:
+        raise Refused("setup.no-system-named")
+    if _the_guest_is_running():
+        raise Refused("setup.machine-is-running")
+
+    copy = _the_copy_named(work)
+    disk = systems.disk_in(work.settings.disks, work.system)
+    if disk is None:
+        raise Refused("setup.system-is-not-here", name=work.system.name)
+
+    # Beside the disk and moved into place, so a copy that stops half way
+    # through leaves the disk that was there rather than half of each.
+    coming = disk.with_name(disk.name + ".coming-back")
+    work.undoes(lambda: coming.unlink(missing_ok=True))
+    _copied_across(copy, coming, work)
+    work.owner.owns(coming)
+    coming.chmod(0o644)
+    coming.replace(disk)
+
+
+def _the_copy_named(work):
+    """Which copy the request meant.
+
+    @param work - The run, whose `backup` is the name that arrived.
+    @returns pathlib.Path
+    @raises Refused where nothing of that name is in the folder.
+
+    Matched against the listing rather than joined onto a path, so a name
+    carrying separators or dots asks for a file that is not in the answer and
+    is refused. Nothing that arrives from a browser reaches the filesystem as a
+    path here, any more than anywhere else in this program.
+    """
+    for path, _ in systems.copies_in(work.settings.disks):
+        if path.name == work.backup:
+            return path
+    raise Refused("setup.no-such-copy")
+
+
+def _copied_across(source, into, work):
+    """Copies one file, saying how far it has got.
+
+    @param source - pathlib.Path to read.
+    @param into - pathlib.Path to write.
+    @param work - The run, which is told how far through this is.
+    @raises Refused where it could not be done.
+
+    Two gigabytes on a card, so it is minutes and the window says so. Written
+    in chunks rather than through shutil, because what a person watching wants
+    is the figure and shutil has nowhere to put one.
+    """
+    total = source.stat().st_size
+    done = 0
+    try:
+        with open(source, "rb") as reading, open(into, "wb") as writing:
+            while True:
+                chunk = reading.read(COPY_BYTES)
+                if not chunk:
+                    break
+                writing.write(chunk)
+                done += len(chunk)
+                work.through(done, total)
+    except OSError as error:
+        raise Refused("setup.cannot-copy",
+                      name=work.system.name if work.system else "?") from error
+
+
+def _the_guest_is_running():
+    """Whether the emulator is up.
+
+    @returns bool
+
+    Asked through `kiosk.py`, which is the one place that question is answered,
+    and imported here rather than at the top because that module writes the
+    request this program reads and importing it back at load time would be a
+    circle. One import inside one function is cheaper than a second answer to
+    the same question.
+    """
+    from . import kiosk
+    return kiosk.emulator_is_running()
+
+
 def _configuration(work):
     """The emulator's configuration, pointing at the system that is here.
 
@@ -867,6 +1008,8 @@ STEPS = {
     "autostart": _autostart,
     "no-autostart": _no_autostart,
     "sound": _sound,
+    "copy": _copy,
+    "put-back": _put_back,
 }
 
 
@@ -1053,12 +1196,13 @@ def asked_for(request):
     """What a request means, or a refusal.
 
     @param request - What was read.
-    @returns (job, steps, system, machine)
-    @raises Refused where any of the three names is not one this knows.
+    @returns (job, steps, system, machine, backup)
+    @raises Refused where any of the names is not one this knows.
 
-    Every value is a key of a table. Nothing in a request is a path, a URL, a
-    command or a number, so there is nothing here to get right beyond looking a
-    name up and refusing the rest.
+    Three of the four are keys of a table that ships with this package, so
+    nothing in a request is a path, a URL, a command or a number. The fourth is
+    the name of a copy, and it is matched against the listing of the folder
+    copies are kept in when the step runs, rather than joined onto a path here.
     """
     job = request.get("do")
     if job not in JOBS:
@@ -1075,7 +1219,12 @@ def asked_for(request):
     if machine is None:
         raise Refused("setup.no-such-machine")
 
-    return job, tuple(JOBS[job]), system, machine
+    backup = request.get("backup")
+    if backup is not None and (not isinstance(backup, str)
+                               or len(backup) > LONGEST_NAME):
+        raise Refused("setup.no-such-copy")
+
+    return job, tuple(JOBS[job]), system, machine, backup
 
 
 # -- the run -----------------------------------------------------------------
@@ -1119,7 +1268,7 @@ def main(argv=None):
         return 0
 
     try:
-        job, steps, system, machine = asked_for(request)
+        job, steps, system, machine, backup = asked_for(request)
     except Refused as refusal:
         Work("?", (), None, None, None).ends(False, dict(refusal.told))
         return 1
@@ -1131,7 +1280,7 @@ def main(argv=None):
         return 1
 
     work = Work(job, steps, owner, system, machine,
-                Settings.load(home=owner.home))
+                Settings.load(home=owner.home), backup)
     return 0 if carry_out(work) else 1
 
 

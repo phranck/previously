@@ -1234,6 +1234,64 @@ def test_a_disk_that_is_not_on_the_card_is_refused(service, tmp_path):
     assert json.loads(refused.value.read())["reason"] == "disk.not-here"
 
 
+def test_a_copy_of_a_disk_is_asked_for_rather_than_made_here(service, tmp_path):
+    """A disk is two gigabytes and the folder it lives in is one this service
+    may not write, so the helper does it and this leaves a request."""
+    a_disk(tmp_path)
+
+    with tell(service, "/api/disk/backup", {"system": "nextstep-3.3"}) as answer:
+        assert json.loads(answer.read())["ok"] is True
+
+    assert json.loads((tmp_path / "setup").read_text()) == {
+        "do": "back-up", "system": "nextstep-3.3", "machine": None,
+        "backup": None}
+
+
+def test_putting_a_copy_back_names_which_copy(service, tmp_path):
+    a_disk(tmp_path)
+
+    with tell(service, "/api/disk/restore",
+              {"system": "nextstep-3.3",
+               "backup": "nextstep-3.3 2026-09-28 15.10.42.dd"}) as answer:
+        assert json.loads(answer.read())["ok"] is True
+
+    written = json.loads((tmp_path / "setup").read_text())
+    assert written["do"] == "restore"
+    assert written["backup"] == "nextstep-3.3 2026-09-28 15.10.42.dd"
+
+
+@pytest.mark.parametrize("route", ["/api/disk/backup", "/api/disk/restore"])
+def test_copying_a_disk_needs_a_session(service, tmp_path, route):
+    request = urllib.request.Request(
+        service + route, data=b'{"system": "nextstep-3.3"}', method="POST")
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        urllib.request.urlopen(request, timeout=5)
+
+    assert refused.value.code == 403
+    assert not (tmp_path / "setup").exists(), "refused and asked anyway"
+
+
+def test_the_copies_that_have_been_made_are_in_the_tree(service, tmp_path):
+    """Visible as what they are rather than as files somebody has to find."""
+    a_disk(tmp_path)
+    backups = tmp_path / "nextstep" / "backups"
+    backups.mkdir()
+    (backups / "nextstep-3.3 2026-09-28 15.10.42.dd").write_bytes(b"a copy")
+
+    _, _, body = fetch(service + "/api/files")
+    disks = next(entry for entry in json.loads(body)["entries"]
+                 if entry["name"] == "Disks")
+    folder = next(entry for entry in disks["entries"]
+                  if entry["name"] == "Backups")
+    kept, = folder["entries"]
+
+    assert kept["kind"] == "backup"
+    assert kept["name"] == "NeXTSTEP 3.3 2026-09-28 15.10"
+    assert kept["system"] == "nextstep-3.3"
+    assert kept["id"] == "nextstep-3.3 2026-09-28 15.10.42.dd"
+
+
 def test_the_status_says_whether_this_machine_is_set_up_at_all(service):
     """A Pi with nothing on it is not broken, it is new, and from a page that
     has to guess those two look identical. The service knows, because it is the
@@ -1335,7 +1393,8 @@ def test_an_installation_is_asked_for_by_leaving_a_request(service, tmp_path):
     assert said["ok"] is True
     assert said["reason"] == "setup.asked"
     assert json.loads((tmp_path / "setup").read_text()) == {
-        "do": "install", "system": "nextstep-2.2", "machine": None}
+        "do": "install", "system": "nextstep-2.2", "machine": None,
+        "backup": None}
 
 
 def test_the_answer_carries_what_the_window_shows(service, tmp_path):

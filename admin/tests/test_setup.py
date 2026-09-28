@@ -133,19 +133,20 @@ def test_a_request_larger_than_three_names_is_refused(tmp_path):
 
 
 def test_every_name_in_a_request_is_looked_up():
-    job, steps, system, machine = setup.asked_for(
+    job, steps, system, machine, backup = setup.asked_for(
         {"do": "install", "system": "nextstep-3.3", "machine": "nextstation"})
 
     assert job == "install"
     assert steps == setup.JOBS["install"]
     assert system.identifier == "nextstep-3.3"
     assert machine.identifier == "nextstation"
+    assert backup is None
 
 
 def test_a_request_with_no_machine_gets_the_one_install_sh_writes():
     """The cube with the turbo board, so a machine set up through the browser
     and one set up through the script are the same machine."""
-    _, _, _, machine = setup.asked_for({"do": "install"})
+    machine = setup.asked_for({"do": "install"})[3]
 
     assert machine.identifier == setup.DEFAULT_MACHINE
     assert machine.identifier in machines.BY_IDENTIFIER
@@ -153,9 +154,21 @@ def test_a_request_with_no_machine_gets_the_one_install_sh_writes():
 
 def test_a_request_with_no_system_names_none():
     """Which is how the emulator is installed on its own."""
-    _, _, system, _ = setup.asked_for({"do": "install", "system": None})
+    system = setup.asked_for({"do": "install", "system": None})[2]
 
     assert system is None
+
+
+@pytest.mark.parametrize("named", [12, ["a", "list"], "x" * 300])
+def test_a_copy_named_by_something_that_is_not_a_name_is_refused(named):
+    """It is matched against the listing of one folder when the step runs, and
+    a name longer than any file can have is one nothing will match. Refusing it
+    here is refusing it before anything is switched off for it."""
+    with pytest.raises(setup.Refused) as refused:
+        setup.asked_for({"do": "restore", "system": "nextstep-3.3",
+                         "backup": named})
+
+    assert refused.value.told["reason"] == "setup.no-such-copy"
 
 
 @pytest.mark.parametrize("request_, reason", [
@@ -453,6 +466,154 @@ def test_an_archive_with_no_disk_in_it_is_said_so(tmp_path):
         setup._disk_among(tmp_path, systems.find("nextstep-3.3"))
 
     assert refused.value.told["reason"] == "setup.no-disk-in-the-archive"
+
+
+# -- a copy of a disk, and the copy put back ------------------------------
+
+
+@pytest.fixture
+def quiet(monkeypatch):
+    """A machine with nothing running on it, which is what a copy needs."""
+    monkeypatch.setattr(setup, "_the_guest_is_running", lambda: False)
+
+
+@pytest.fixture
+def card(tmp_path, quiet):
+    """A card with one system's disk on it, and the run that acts on it."""
+    work = work_in(tmp_path, job="back-up")
+    disk = work.settings.disks / "nextstep-3.3.dd"
+    disk.parent.mkdir(parents=True)
+    disk.write_bytes(b"a whole system" * 100)
+    return work
+
+
+def test_a_copy_is_named_after_the_system_and_the_moment(card):
+    setup.STEPS["copy"](card)
+
+    copies = systems.copies_in(card.settings.disks)
+    (path, system), = copies
+
+    assert system.identifier == "nextstep-3.3"
+    assert path.name.startswith("nextstep-3.3 20")
+    assert path.read_bytes() == (card.settings.disks / "nextstep-3.3.dd").read_bytes()
+
+
+def test_a_copy_is_not_taken_whilst_the_machine_runs(card, monkeypatch):
+    """A copy taken whilst NeXTSTEP is writing is a torn file system: it looks
+    like a disk and fails on the first boot in a way nobody can debug."""
+    monkeypatch.setattr(setup, "_the_guest_is_running", lambda: True)
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.STEPS["copy"](card)
+
+    assert refused.value.told["reason"] == "setup.machine-is-running"
+    assert systems.copies_in(card.settings.disks) == []
+
+
+def test_a_copy_that_will_not_fit_is_said_so_first(card, monkeypatch):
+    """What a copy costs and what is left is said before it starts, because a
+    card that fills up half way leaves a file that looks like a disk."""
+    monkeypatch.setattr(systems, "room_beside", lambda where: 1024)
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.STEPS["copy"](card)
+
+    assert refused.value.told["reason"] == "setup.no-room"
+    assert systems.copies_in(card.settings.disks) == []
+
+
+def test_a_copy_of_a_system_that_is_not_here_is_refused(tmp_path, quiet):
+    work = work_in(tmp_path, job="back-up")
+    work.settings.disks.mkdir(parents=True)
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.STEPS["copy"](work)
+
+    assert refused.value.told["reason"] == "setup.system-is-not-here"
+
+
+def test_a_copy_is_written_back_over_its_disk(card):
+    setup.STEPS["copy"](card)
+    (copy, _), = systems.copies_in(card.settings.disks)
+    disk = card.settings.disks / "nextstep-3.3.dd"
+    disk.write_bytes(b"an evening of work")
+
+    card.backup = copy.name
+    setup.STEPS["put-back"](card)
+
+    assert disk.read_bytes() == copy.read_bytes()
+    # And the copy is still there, because putting one back is not spending it.
+    assert copy.is_file()
+
+
+@pytest.mark.parametrize("named", [
+    None,
+    "../../etc/passwd",
+    "nothing-of-that-name.dd",
+    "/etc/passwd",
+])
+def test_a_copy_that_is_not_in_that_folder_is_refused(card, named):
+    """The name arrives from a browser, so it is matched against the listing of
+    one folder rather than joined onto a path. A name carrying separators asks
+    for a file that is not in the answer."""
+    setup.STEPS["copy"](card)
+    disk = card.settings.disks / "nextstep-3.3.dd"
+    before = disk.read_bytes()
+    card.backup = named
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.STEPS["put-back"](card)
+
+    assert refused.value.told["reason"] == "setup.no-such-copy"
+    assert disk.read_bytes() == before
+
+
+def test_nothing_is_put_back_whilst_the_machine_runs(card, monkeypatch):
+    setup.STEPS["copy"](card)
+    (copy, _), = systems.copies_in(card.settings.disks)
+    card.backup = copy.name
+    monkeypatch.setattr(setup, "_the_guest_is_running", lambda: True)
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.STEPS["put-back"](card)
+
+    assert refused.value.told["reason"] == "setup.machine-is-running"
+
+
+def test_a_copy_that_stops_half_way_leaves_the_disk_alone(card, monkeypatch):
+    """It is written beside the disk and moved into place, so a card that fills
+    up during the copy leaves the disk that was there rather than half of each.
+    """
+    setup.STEPS["copy"](card)
+    (copy, _), = systems.copies_in(card.settings.disks)
+    disk = card.settings.disks / "nextstep-3.3.dd"
+    disk.write_bytes(b"an evening of work")
+    before = disk.read_bytes()
+    card.backup = copy.name
+
+    def stops(source, into, work):
+        into.write_bytes(b"half of it")
+        raise setup.Refused("setup.cannot-copy", name="NeXTSTEP 3.3")
+
+    monkeypatch.setattr(setup, "_copied_across", stops)
+
+    with pytest.raises(setup.Refused):
+        setup.STEPS["put-back"](card)
+
+    assert disk.read_bytes() == before
+
+
+def test_how_far_a_copy_has_got_is_readable_whilst_it_runs(card):
+    """Two gigabytes on a card is minutes, so this is a window somebody leaves
+    open and comes back to."""
+    setup.carry_out(card)
+
+    said = json.loads(
+        (card.into / setup.PROGRESS).read_text(encoding="utf-8"))
+
+    assert said["ok"] is True
+    assert said["step"] == "copy"
+    assert said["of"] == 1
 
 
 # -- what may be fetched, and from where ----------------------------------

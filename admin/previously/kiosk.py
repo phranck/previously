@@ -326,7 +326,7 @@ def board(action, runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS,
 
 
 def ask_to_set_up(runtime_directory, setup_directory, job, system=None,
-                  machine=None):
+                  machine=None, backup=None):
     """Asks the privileged helper to install something, and says whether it took.
 
     @param runtime_directory - The service's runtime directory, which is where
@@ -339,6 +339,10 @@ def ask_to_set_up(runtime_directory, setup_directory, job, system=None,
     @param machine - Which of the eleven a fresh configuration describes, by
       identifier, or None for the one `setup.py` gives a machine that has never
       been configured.
+    @param backup - Which copy is being put back, by the name it has in the
+      folder copies are kept in, or None. The one value here that is not a key
+      of a table, and the privileged half matches it against that folder's
+      listing rather than joining it onto a path.
     @returns (bool, dict) as everything else here answers.
 
     The three names are checked here as well as there, and that is not two
@@ -361,7 +365,8 @@ def ask_to_set_up(runtime_directory, setup_directory, job, system=None,
     if running is not None and running.get("finished_at") is None:
         return False, told("setup.one-at-a-time")
 
-    asking = {"do": job, "system": system, "machine": machine}
+    asking = {"do": job, "system": system, "machine": machine,
+              "backup": backup}
     scratch = runtime_directory / (SETUP_REQUEST + ".writing")
     try:
         scratch.write_text(json.dumps(asking), encoding="utf-8")

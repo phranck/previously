@@ -159,14 +159,27 @@ def test_the_installer_holds_no_list_of_systems(page):
         assert system.identifier not in page, system.identifier
 
 
+#: What the Installer names as a job, which is one table in the page written
+#: out one entry per line.
+A_JOB = re.compile(r"^const Install = \{(.*?)^\};", re.M | re.S)
+
+
 def test_the_installer_asks_for_jobs_the_service_knows(page):
     """A name the service has no job for is refused, and the window would show
-    that refusal rather than doing anything."""
+    that refusal rather than doing anything.
+
+    One direction only. Two of the jobs are asked for by a route of their own
+    rather than by name here, because copying a disk is started from the
+    viewer, so the page naming fewer than the service knows is right.
+    """
     from previously import setup
 
-    asked = set(re.findall(r'^  \w+: "([\w-]+)",$', page, re.M))
+    table = A_JOB.search(page)
+    assert table
+    asked = set(re.findall(r'"([\w-]+)"', table.group(1)))
 
-    assert set(setup.JOBS) <= asked
+    assert asked
+    assert asked <= set(setup.JOBS)
 
 
 def test_every_scale_in_the_editor_is_a_slider(page, markup):

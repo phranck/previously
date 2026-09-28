@@ -104,6 +104,9 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/machine/save` | Keeps a configuration under a name, without touching the running machine |
 | `POST /api/machine/rename` | Gives a saved configuration another name |
 | `POST /api/machine/remove` | Takes a saved configuration out of the list |
+| `POST /api/disk` | Makes the machine boot the disk of the system named |
+| `POST /api/disk/backup` | Asks for a copy of one of the disks |
+| `POST /api/disk/restore` | Asks for a copy to be written back over its disk |
 | `POST /api/pi/reboot` | Shuts NeXTSTEP down, then restarts the board |
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
 | `GET /api/setup` | Which systems there are, which are here, how much room is left, and what is being installed |
@@ -224,6 +227,10 @@ A system is a disk, and several of them fit on the card. `Disks` in the File Vie
 
 **What was on the disk that was running stays on it.** Each system is one file, the guest writes into that file, and pointing the machine elsewhere freezes the first exactly as it was left. The panel says so before anything happens, because somebody who has spent an evening inside NeXTSTEP wants to read it there rather than find out afterwards.
 
+**A disk can be copied, and a copy can be put back.** A system is one file, so a backup of it is a copy of that file, kept in `Backups` inside the disks folder and shown there as what it is. Both directions are the helper's work, because a disk is two gigabytes and that folder is one this service may not write, so the Installer window is where the copying is watched.
+
+Both directions need the machine switched off. A copy taken whilst NeXTSTEP is writing is a torn file system: it looks like a disk and fails on its first boot in a way nobody can debug. What a copy costs and what would be left on the card is in the question, and putting one back says plainly that what is on that disk now is written over. The copy is written beside the disk and moved into place, so a card that fills up half way through leaves the disk that was there rather than half of each.
+
 **Which system needs which machine is not written down anywhere this tool can read**, so it is not guessed at. What answers it is the machine itself: a disk that will not boot on the configuration in force does not come up, and the rollback puts the old one back. That is the same answer the tool already gives for a machine it cannot run, and it needs no table that would be wrong somewhere.
 
 ## Switching the machine on and off
@@ -343,6 +350,7 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
     Preview.app
     Terminal.app
   Disks             the systems that are on the card, and only once one is
+    Backups         the copies that have been made of them
   Documents
     Pictures        the one real place here, holding the screenshots
   Machines
