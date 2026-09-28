@@ -1,10 +1,38 @@
 # Running it
 
-Everything the README leaves out: what the install script does step by step, how to check the result, and how to get back into a machine whose screen now belongs to a NeXT.
+Everything the README leaves out: how a machine is set up, how to check the result, and how to get back into one whose screen now belongs to a NeXT.
+
+## Three ways in
+
+There are three, in this order, and none of them goes away.
+
+1. **In the browser, through Previously.** The comfortable one, and the one everything else is written around.
+2. **In a terminal, with `install.sh`.** For somebody who would rather see what runs before it runs.
+3. **In a terminal, by hand.** For somebody who wants to know what each step does, and who will change some of them.
+
+The third is what the other two automate. It is not written out here, because a third copy of those steps would be a third thing to keep in step with the other two; `install.sh` is that list, it is one file, and it says at every step why it does what it does.
+
+## In the browser
+
+One package is installed by hand, and it is the only step that happens outside a browser:
+
+```bash
+curl -fsSL https://previous.li/install.sh | bash
+```
+
+That fetches the admin tool, installs it and starts it. Open `http://<hostname>.local:8810`, choose a password, and the desk comes up with the Installer already open, because a Pi with nothing on it has nothing else to offer.
+
+**The Installer puts the rest there.** Previous with everything around it, and a system to run on it: NeXTSTEP 3.3 unless another of the six is chosen. It says what each costs to fetch and what would be left on the card before it starts, and whilst it runs it says which step it is on and how far through. A failure says which step failed and which of the earlier ones were put back.
+
+**Nothing in the browser holds any privilege.** The tool writes a small file into its own runtime directory, and a systemd path unit starts a program that runs as root and reads it. That file carries four names: a job, a system, a machine and, for putting a copy back, the name of that copy. Three of the four are looked up in tables that ship with the package and the fourth is matched against the listing of one folder, so nothing that arrives from a browser is ever a path, a URL or a command. `admin/previously/setup.py` is the whole of what root does, and it is one file.
+
+**Afterwards the same window takes things off again**, which is the half worth having: the emulator can be updated or removed, a system can be fetched or taken off the card, and a disk can be copied and the copy put back.
 
 ## What the script does
 
-It installs `cage` and `7zip`, adds the signed [Window Maker Live archive](https://wmlive.rumbero.org/repo/) pinned to Previous alone, installs Previous from it, fetches a preinstalled NeXTSTEP 3.3 disk image, writes `~/.config/previous/previous.cfg`, installs the admin tool as a Debian package, enables console autologin, silences the boot and hands the first console to Previous.
+The second way in, and what the first one automates. It installs `cage` and `7zip`, adds the signed [Window Maker Live archive](https://wmlive.rumbero.org/repo/) pinned to Previous alone, installs Previous from it, fetches a preinstalled NeXTSTEP 3.3 disk image, writes `~/.config/previous/previous.cfg`, installs the admin tool as a Debian package, enables console autologin, silences the boot and hands the first console to Previous.
+
+These steps exist a second time, in `admin/previously/setup.py`, which is what the browser asks. Two copies of one thing is one too many, and this is the copy that goes: the browser cannot be the way in on a machine that has no admin tool yet, so the script stays until the other one has set a real machine up, and then shrinks to installing the package and asking for the rest.
 
 Run it as the user the machine will belong to, not under `sudo`. It writes the configuration and the startup line into your home directory and raises its own privileges where it needs them, asking for your password once. The pipe does not get in the way of that, because `sudo` reads the password from the terminal device rather than from stdin.
 
