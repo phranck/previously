@@ -405,8 +405,13 @@ function drawStatus(status) {
   /* Three states, not two. Held down means somebody switched it off from here
      and nothing will start it again; stopped without a hold means it went away
      on its own, which is a different thing and worth saying differently. */
+  /* Four states, and the fourth is the one a fresh machine is in. A Pi with
+     nothing installed is not stopped and not switched off: there is nothing
+     there to be either, and saying "stopped" would read as a fault. */
+  const isNew = status.ready?.set_up === false;
   let words = t("state.stopped");
   if (status.running) words = t("state.running", { since: since(status.uptime_seconds) });
+  else if (isNew) words = t("state.not-set-up");
   else if (status.held) words = t("state.held");
   /* The file has been written since this machine started, so it holds a
      machine nobody has tried. It marks the machine in the shelf, and the file
@@ -426,20 +431,27 @@ function drawStatus(status) {
     noteState = null;
   }
 
-  document.getElementById("kiosk-start").disabled = status.running;
+  document.getElementById("kiosk-start").disabled = status.running || isNew;
   document.getElementById("kiosk-stop").disabled = !status.running;
   document.getElementById("kiosk-restart").disabled = !status.running;
 
-  /* Without the console session there is nothing waiting to start the emulator
-     again, so switching it on would report success and do nothing. Saying so
-     here is the only place that failure becomes visible. */
-  if (!status.console_active) {
+  /* A machine with nothing on it says so and is offered the one thing that can
+     be done with it. Before the console, because that one is also missing on a
+     fresh Pi and "switching on will do nothing" is true and unhelpful: there is
+     nothing to switch on yet. */
+  if (isNew) {
+    show("kiosk-note", t("note.not-set-up"));
+    offerTheInstaller();
+  } else if (!status.console_active) {
+    /* Without the console session there is nothing waiting to start the
+       emulator again, so switching it on would report success and do nothing.
+       Saying so here is the only place that failure becomes visible. */
     show("kiosk-note", t("note.no-console"));
   }
 
   const machine = status.configuration;
   if (!machine) {
-    show("info-caption", t("info.unreadable"));
+    show("info-caption", t(isNew ? "info.not-set-up" : "info.unreadable"));
     const empty = ["info-cpu", "info-ram", "info-screen", "info-disk",
                    "info-file", "info-written"];
     for (const id of empty) show(id, NOTHING);
@@ -461,6 +473,26 @@ function drawStatus(status) {
      one, and the line above says which tube is in it. */
   runningArt = machineArt(machine.enclosure);
   document.getElementById("info-icon").style.backgroundImage = `var(--${runningArt})`;
+}
+
+/** Whether the Installer has been put in front of somebody in this visit. Once
+ *  per visit rather than once ever: a machine with nothing on it has nothing
+ *  else to offer, so somebody coming back to the page is offered it again, and
+ *  somebody who closed the window is left alone until they do. */
+let offeredTheInstaller = false;
+
+/**
+ * Puts the Installer in front of somebody on a machine that has nothing on it.
+ *
+ * This is what a fresh installation opens into. Everything else in the
+ * interface is about a machine that exists, and on a Pi where nothing has been
+ * installed those windows have nothing to say: the honest answer is not an
+ * empty Info window but the one window that can change that.
+ */
+function offerTheInstaller() {
+  if (offeredTheInstaller) return;
+  offeredTheInstaller = true;
+  document.querySelector('nx-window[name="installer"]')?.open();
 }
 
 /**

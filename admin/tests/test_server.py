@@ -1159,6 +1159,48 @@ def test_a_machine_in_the_tree_carries_its_configuration(service):
     assert found["nextcube-dimension"]["configuration"]["dimensions"] == [32, 0, 0]
 
 
+def test_the_status_says_whether_this_machine_is_set_up_at_all(service):
+    """A Pi with nothing on it is not broken, it is new, and from a page that
+    has to guess those two look identical. The service knows, because it is the
+    same question the installer's own steps ask before they skip a step."""
+    _, _, body = fetch(service + "/api/status")
+    ready = json.loads(body)["ready"]
+
+    # The emulator is not installed on whatever runs this suite, and there is
+    # no disk in the test's own directory.
+    assert ready["emulator"] is False
+    assert ready["system"] is False
+    # The fixture writes one, so this is the one of the three that is there.
+    assert ready["configuration"] is True
+    assert ready["set_up"] is False
+
+
+def test_a_machine_with_all_three_is_set_up(service, tmp_path, monkeypatch):
+    """The emulator installed, a system on the card and a configuration to
+    point at it. Any one of them missing is a machine that cannot boot."""
+    monkeypatch.setattr(server.setup, "installed", lambda package: True)
+    disks = tmp_path / "nextstep"
+    disks.mkdir()
+    (disks / "nextstep-3.3.dd").write_bytes(b"a disk")
+
+    _, _, body = fetch(service + "/api/status")
+    ready = json.loads(body)["ready"]
+
+    assert ready == {"emulator": True, "system": True, "configuration": True,
+                     "set_up": True}
+
+
+def test_a_machine_with_no_system_is_not_set_up(service, monkeypatch):
+    """The emulator on its own is not a machine that boots."""
+    monkeypatch.setattr(server.setup, "installed", lambda package: True)
+
+    _, _, body = fetch(service + "/api/status")
+    ready = json.loads(body)["ready"]
+
+    assert ready["emulator"] is True
+    assert ready["set_up"] is False
+
+
 # -- installing ----------------------------------------------------------
 
 

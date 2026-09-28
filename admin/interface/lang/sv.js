@@ -144,11 +144,13 @@ NX_STRINGS.sv = {
   "info.written": "Skriven",
   "info.no-contact": "ingen förbindelse",
   "info.unreadable": "konfigurationen går inte att läsa",
+  "info.not-set-up": "ingenting installerat än",
   "info.no-disk": "ingen isatt",
 
   "state.running": "igång {since}",
   "state.stopped": "stoppad",
   "state.held": "avstängd",
+  "state.not-set-up": "inte iordninggjord",
   "state.unreachable": "onåbar",
 
   "since.hours": "sedan {hours}:{minutes} tim",
@@ -217,6 +219,7 @@ NX_STRINGS.sv = {
   "busy.board-poweroff": "NeXTSTEP stängs av, sedan stängs Pi:n av",
 
   "note.no-console": "Konsolen är inte igång. Att slå på gör ingenting.",
+  "note.not-set-up": "På den här Pi:n är ingenting installerat än. Installer sätter dit emulatorn och ett system.",
   "note.no-service": "ingen förbindelse med tjänsten",
   "note.board-gone": "Inget svar längre. Det är väntat medan Pi:n stängs av.",
 
