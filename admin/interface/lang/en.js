@@ -156,11 +156,13 @@ NX_STRINGS.en = {
   "info.written": "Written",
   "info.no-contact": "no contact",
   "info.unreadable": "configuration not readable",
+  "info.not-set-up": "nothing installed yet",
   "info.no-disk": "none inserted",
 
   "state.running": "running {since}",
   "state.stopped": "stopped",
   "state.held": "switched off",
+  "state.not-set-up": "not set up",
   "state.unreachable": "not reachable",
 
   "since.hours": "for {hours}:{minutes} h",
@@ -229,6 +231,7 @@ NX_STRINGS.en = {
   "busy.board-poweroff": "NeXTSTEP shuts down, then the Pi switches off",
 
   "note.no-console": "The console is not running. Switching on will do nothing.",
+  "note.not-set-up": "Nothing is installed on this Pi yet. The Installer puts the emulator and a system on it.",
   "note.no-service": "no contact with the service",
   "note.board-gone": "No more answer. That is what to expect while the Pi is switching off.",
 

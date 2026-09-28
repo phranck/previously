@@ -281,6 +281,8 @@ What NeXT called the application that puts things on a machine and takes them of
 
 **Switching between systems that are already here is not in this window.** That is choosing which disk the machine boots, it takes no time at all, and it belongs with the disks themselves.
 
+**A machine with nothing on it opens into this window.** `GET /api/status` says whether the emulator is installed, whether a system is on the card and whether there is a configuration, and a machine missing any of the three is not set up. The Info window then says "not set up" rather than drawing a machine it cannot read, the buttons that would switch something on are off, and the Installer is put in front of whoever arrived. That answer comes from the service because it is the same question the installer's own steps ask before they decide what to skip, and because a Pi with nothing on it and a Pi that cannot be reached look identical to a page that has to guess.
+
 **`install.sh` still carries its own copy of these steps.** It is the way in on a machine that has no admin tool yet and therefore cannot ask for any of this. Making it ask, so that there is one implementation rather than two, waits until this one has set a real machine up.
 
 ## Its own configuration

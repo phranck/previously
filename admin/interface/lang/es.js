@@ -144,11 +144,13 @@ NX_STRINGS.es = {
   "info.written": "Escrito",
   "info.no-contact": "sin conexión",
   "info.unreadable": "configuración ilegible",
+  "info.not-set-up": "todavía no hay nada instalado",
   "info.no-disk": "ninguno puesto",
 
   "state.running": "en marcha {since}",
   "state.stopped": "detenida",
   "state.held": "apagada",
+  "state.not-set-up": "sin instalar",
   "state.unreachable": "inalcanzable",
 
   "since.hours": "desde hace {hours}:{minutes} h",
@@ -217,6 +219,7 @@ NX_STRINGS.es = {
   "busy.board-poweroff": "NeXTSTEP se apaga, luego el Pi se apaga",
 
   "note.no-console": "La consola no está en marcha. Encender no hará nada.",
+  "note.not-set-up": "En este Pi todavía no hay nada instalado. El Installer le pone el emulador y un sistema.",
   "note.no-service": "sin conexión con el servicio",
   "note.board-gone": "Ya no hay respuesta. Es lo que cabe esperar mientras el Pi se apaga.",
 

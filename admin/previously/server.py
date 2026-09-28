@@ -323,7 +323,29 @@ class Handler(http.server.BaseHTTPRequestHandler):
         answer["file"] = config.file_state(
             self.settings.previous_config, kiosk.emulator_uptime_seconds(),
             state_directory=self.settings.state_directory)
+        answer["ready"] = self._ready(answer["configuration"] is not None)
         return answer
+
+    def _ready(self, configured):
+        """Whether this machine has been set up at all, and what is missing.
+
+        @param configured - Whether previous.cfg could be read, which the
+          caller has just found out and which is one of the three.
+        @returns dict with the three facts and the one that follows from them.
+
+        Answered here rather than worked out in the browser, because it is the
+        same question the installer's own steps ask before they decide what to
+        skip. A machine with nothing on it is not broken, it is new, and those
+        two look identical from a page that has to guess.
+        """
+        emulator = setup.installed(setup.EMULATOR_PACKAGE)
+        system = bool(systems.here(self.settings.disks))
+        return {
+            "emulator": emulator,
+            "system": system,
+            "configuration": configured,
+            "set_up": emulator and system and configured,
+        }
 
     def _choices(self):
         """Every configuration that can be named, the eleven first.
