@@ -16,7 +16,8 @@ import pathlib
 import threading
 import urllib.parse
 
-from . import change, config, files, grab, kiosk, machines, pi, saved, terminal, websocket
+from . import (change, config, files, grab, kiosk, machines, pi, saved, setup,
+               systems, terminal, websocket)
 from .password import COOKIE, SESSION_SECONDS, SMALLEST, Attempts, Sessions, acceptable
 
 #: The release this tool belongs to. The one place it is written down, and
@@ -111,6 +112,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                          self.settings.documents))
         if route == "/api/machine/settled":
             return self._settled_configuration()
+        if route == "/api/setup":
+            return self._json(self._setup())
         if route == "/api/session":
             # How short a password may be travels with the answer, so the panel
             # that asks for one says the rule that will actually be applied
@@ -161,6 +164,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._remove_configuration()
         if route == "/api/picture/delete":
             return self._delete_picture()
+        if route == "/api/setup":
+            return self._ask_to_set_up()
 
         board = BOARD_OPERATIONS.get(route)
         if board is not None:
@@ -393,6 +398,55 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 settings["System"], settings["Memory"], settings["Dimension"]),
             "offers": machines.offers(machine),
         })
+
+    def _setup(self):
+        """What can be put on this machine, what is on it, and what is happening.
+
+        A reading, so it is open the way `/api/status` is. Nothing here is about
+        whoever is sitting at the machine: it is what the card holds and how
+        much room is left on it.
+
+        The figures are read now rather than remembered. What is free changes
+        with everything else on the machine, and a number from five minutes ago
+        is what lets an unpack stop half way through a disk image.
+        """
+        disks = self.settings.disks
+        here = systems.here(disks)
+        return {
+            "systems": [
+                {
+                    "identifier": system.identifier,
+                    "name": system.name,
+                    "size": system.size,
+                    "unpacked": systems.UNPACKED_BYTES,
+                    "here": system.identifier in here,
+                }
+                for system in systems.CATALOGUE
+            ],
+            "default": systems.DEFAULT,
+            "emulator": setup.installed(setup.EMULATOR_PACKAGE),
+            "needs": systems.ROOM_BYTES,
+            "room": systems.room_beside(disks),
+            "progress": kiosk.setting_up(self.settings.setup_directory),
+        }
+
+    def _ask_to_set_up(self):
+        """Leaves the request the privileged helper acts on.
+
+        This service does none of the work and holds none of the privilege. It
+        writes three names into a file, and `previously-setup.path` starts the
+        program that reads them. What comes back says whether the request was
+        taken, and `GET /api/setup` is where it is watched.
+        """
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        taken, told = kiosk.ask_to_set_up(
+            self.settings.runtime_directory, self.settings.setup_directory,
+            body.get("do"), body.get("system"), body.get("machine"))
+        return self._json({"ok": taken, **told, **self._setup()},
+                          status=200 if taken else 409)
 
     def _terminal(self):
         """Carries a login on a WebSocket, to one browser at a time.

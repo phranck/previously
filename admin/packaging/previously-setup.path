@@ -1,0 +1,19 @@
+# Watches for the admin tool's request to set this machine up.
+#
+# The tool itself has no privileges and needs none. It writes one file in its
+# own runtime directory, naming a job, a system and a machine, and this unit
+# starts the program that does the work as root. Nothing in that file is a
+# path, a URL or a command: every name in it is looked up in a table the
+# privileged half holds, and a name that is not in the table refuses the whole
+# request.
+
+[Unit]
+Description=Watch for a request to set this machine up
+Documentation=https://github.com/phranck/previously
+
+[Path]
+PathExists=/run/previously/setup
+Unit=previously-setup.service
+
+[Install]
+WantedBy=paths.target

@@ -1,0 +1,44 @@
+# Installs the emulator and the systems it runs, when previously-setup.path
+# says somebody asked.
+#
+# This is the only thing on the machine that runs as root on the tool's behalf
+# and does more than one exact command, because installing is more than one
+# exact command: packages, an apt source, the boot files and a disk image of
+# two gigabytes. What keeps it narrow is that the request names a job, a system
+# and a machine, and nothing else. Every one of those three is looked up in a
+# table that ships with this package.
+#
+# None of the usual hardening is here, and that is on purpose rather than by
+# omission. This writes into /etc, into /boot and into somebody's home, and
+# runs apt. A unit claiming ProtectSystem whilst doing that would be a unit
+# somebody had to switch off again at the first failure.
+
+[Unit]
+Description=Set this machine up at the admin tool's request
+Documentation=https://github.com/phranck/previously
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -m previously.setup
+WorkingDirectory=/usr/lib/previously
+Environment=PYTHONPATH=/usr/lib/previously
+# Nothing of its own in that directory, for the same reason the service itself
+# says so: compiled modules beside the source belong to no package, and dpkg
+# then leaves the directory standing on purge.
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+# Where it writes what it is doing, which the tool reads. Kept after this unit
+# stops, because the last thing it wrote is the answer to how the run went.
+# Emptied at the next boot, like everything else on a tmpfs.
+RuntimeDirectory=previously-setup
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+
+# Fetching and unpacking two gigabytes on a Pi is the long one. A run that
+# hangs is worse than one that fails, because nothing says so.
+TimeoutStartSec=3600
+
+# Belt and braces. The program takes the request away as its first act, so that
+# the path unit does not start it again the moment it finishes; this is what
+# happens where it could not, such as a crash before the first line ran.
+ExecStopPost=/bin/rm -f /run/previously/setup

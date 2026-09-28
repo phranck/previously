@@ -36,6 +36,14 @@ def settings_for(tmp_path, **overrides):
         "kiosk_unit": "does-not-exist.service",
         "password_file": str(tmp_path / "password"),
         "runtime_directory": str(tmp_path),
+        # Where the disks would be and where the privileged helper would say
+        # what it is doing. Both into the test's own directory, because the
+        # defaults are a real folder in somebody's home and a real one under
+        # /run, and a test has no business reading either.
+        "disks": str(tmp_path / "nextstep"),
+        # Not `setup`, because the runtime directory above is this same one and
+        # the request the helper reads is a file of that name in it.
+        "setup_directory": str(tmp_path / "setup-progress"),
         # Both into the test's own directory, because what the service keeps in
         # them is real on the machine running the suite: the note about its last
         # write, and the configurations somebody saved.

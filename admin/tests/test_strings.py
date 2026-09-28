@@ -115,7 +115,7 @@ def test_every_answer_the_service_can_give_has_a_sentence(english):
     """The service sends a name for what happened. A name nothing can say is a
     name that reaches the screen as it is."""
     service = ""
-    for name in ["kiosk.py", "change.py", "saved.py", "server.py"]:
+    for name in ["kiosk.py", "change.py", "saved.py", "server.py", "setup.py"]:
         service += (INTERFACE.parent / "previously" / name).read_text(encoding="utf-8")
 
     for reason in sorted(set(TOLD.findall(service))):
@@ -191,6 +191,27 @@ def test_nothing_in_the_viewer_is_shown_by_a_key(english):
     assert system["entries"]
     assert all("label" not in machine for machine in system["entries"])
     assert all(entry["label"] for entry in apps["entries"])
+
+
+def test_every_step_of_an_installation_can_be_named(english):
+    """The privileged helper says which step it is on, by a name out of its own
+    table. A step added there without a sentence beside it would show on the
+    screen as `no-autologin`, which is nobody's language."""
+    from previously import setup
+
+    for name in sorted(setup.STEPS):
+        assert f"setup.step.{name}" in english, name
+
+
+def test_every_job_is_made_of_steps_that_exist(english):
+    """A job naming a step nothing implements is a run that stops in the
+    middle, as root, on somebody's machine."""
+    from previously import setup
+
+    for job, steps in setup.JOBS.items():
+        assert steps, job
+        for name in steps:
+            assert name in setup.STEPS, (job, name)
 
 
 def test_every_word_the_board_can_report_has_a_sentence(english):

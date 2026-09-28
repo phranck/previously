@@ -1159,6 +1159,109 @@ def test_a_machine_in_the_tree_carries_its_configuration(service):
     assert found["nextcube-dimension"]["configuration"]["dimensions"] == [32, 0, 0]
 
 
+# -- installing ----------------------------------------------------------
+
+
+def test_what_can_be_installed_is_open(service):
+    """What the card holds and how much room is left costs nothing to know, so
+    it reads like the rest. Nothing here is about whoever is sitting at the
+    machine."""
+    status, _, body = fetch(service + "/api/setup")
+    said = json.loads(body)
+
+    assert status == 200
+    assert len(said["systems"]) == 6
+    assert said["default"] == "nextstep-3.3"
+    assert said["progress"] is None
+    assert said["room"] > 0
+    assert said["needs"] > said["systems"][0]["size"]
+
+
+def test_every_system_says_what_it_costs_and_whether_it_is_here(service, tmp_path):
+    """A window that says what a system costs before it fetches it is the whole
+    of what keeps a card from filling up during an unpack."""
+    disks = tmp_path / "nextstep"
+    disks.mkdir()
+    (disks / "nextstep-3.3.dd").write_bytes(b"x")
+
+    _, _, body = fetch(service + "/api/setup")
+    offered = {system["identifier"]: system
+               for system in json.loads(body)["systems"]}
+
+    assert offered["nextstep-3.3"]["here"] is True
+    assert offered["openstep-4.2"]["here"] is False
+    assert offered["nextstep-3.3"]["name"] == "NeXTSTEP 3.3"
+    assert offered["nextstep-3.3"]["size"] == 60508875
+    assert offered["nextstep-3.3"]["unpacked"] > 2_000_000_000
+
+
+def test_asking_for_an_installation_needs_a_session(service, tmp_path):
+    """It puts a program of root's to work, which is as far from a reading as
+    anything this tool does."""
+    request = urllib.request.Request(
+        service + "/api/setup", data=b'{"do": "install"}', method="POST")
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        urllib.request.urlopen(request, timeout=5)
+
+    assert refused.value.code == 403
+    assert not (tmp_path / "setup").exists(), "refused and asked anyway"
+
+
+def test_an_installation_is_asked_for_by_leaving_a_request(service, tmp_path):
+    """This service does none of the work and holds none of the privilege. It
+    writes three names into a file that a path unit watches for."""
+    with tell(service, "/api/setup",
+              {"do": "install", "system": "nextstep-2.2"}) as answer:
+        said = json.loads(answer.read())
+
+    assert said["ok"] is True
+    assert said["reason"] == "setup.asked"
+    assert json.loads((tmp_path / "setup").read_text()) == {
+        "do": "install", "system": "nextstep-2.2", "machine": None}
+
+
+def test_the_answer_carries_what_the_window_shows(service, tmp_path):
+    """So the window that asked has the new state without asking again."""
+    with tell(service, "/api/setup", {"do": "install"}) as answer:
+        said = json.loads(answer.read())
+
+    assert len(said["systems"]) == 6
+    assert "room" in said
+
+
+@pytest.mark.parametrize("body,reason", [
+    ({"do": "rm -rf /"}, "setup.no-such-job"),
+    ({"do": "fetch", "system": "https://example.com/x.7z"}, "setup.no-such-system"),
+    ({"do": "install", "machine": "amiga-2000"}, "setup.no-such-machine"),
+])
+def test_a_request_naming_something_nobody_offers_is_refused(service, tmp_path,
+                                                             body, reason):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/setup", body)
+
+    assert refused.value.code == 409
+    assert json.loads(refused.value.read())["reason"] == reason
+    assert not (tmp_path / "setup").exists()
+
+
+def test_what_the_helper_is_doing_is_readable_while_it_runs(service, tmp_path):
+    """A person will reload the page, so what is happening comes from the Pi
+    rather than from anything the browser is holding."""
+    progress = tmp_path / "setup-progress"
+    progress.mkdir()
+    (progress / "progress.json").write_text(json.dumps({
+        "do": "install", "step": "system", "done": 5, "of": 10,
+        "part": {"done": 1024, "of": 60508875}, "finished_at": None,
+    }), encoding="utf-8")
+
+    _, _, body = fetch(service + "/api/setup")
+    said = json.loads(body)["progress"]
+
+    assert said["step"] == "system"
+    assert said["part"]["of"] == 60508875
+
+
 def test_the_1988_machine_is_a_68030_everywhere(service):
     """It is written as processor level 3, which is what Previous calls a
     68030."""
