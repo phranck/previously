@@ -112,6 +112,37 @@ def test_the_bundle_keeps_itself_to_itself(built):
     assert built["previously.js"].startswith("(()=>{")
 
 
+def test_no_class_carries_two_rule_blocks():
+    """One name, one thing, and one block that says what it looks like.
+
+    The two stylesheets are concatenated into one, so a class declared in two
+    places is a class whose appearance depends on which block was read last.
+    Nothing warns: the element simply takes the wrong size, and whoever finds
+    the first block has no reason to look for a second.
+
+    Found on 2026-09-28, when `.module` was both a tile in the Preferences row
+    and a memory module in a bank. The bank's block came second and handed the
+    Preferences tiles its `width: 100%`, so a row of square icons stretched
+    into two bars as wide as the window.
+    """
+    block = re.compile(r"([^{}]+)\{[^{}]*\}", re.DOTALL)
+    comment = re.compile(r"/\*.*?\*/", re.DOTALL)
+    simple = re.compile(r"^\.[a-zA-Z][\w-]*$")
+
+    seen = {}
+    for sheet in sorted(INTERFACE.glob("*.css")):
+        text = comment.sub("", sheet.read_text(encoding="utf-8"))
+        for rule in block.finditer(text):
+            for selector in rule.group(1).split(","):
+                selector = selector.strip()
+                if simple.match(selector):
+                    seen.setdefault(selector, []).append(sheet.name)
+
+    twice = {name: sheets for name, sheets in seen.items() if len(sheets) > 1}
+
+    assert twice == {}, f"declared more than once: {twice}"
+
+
 def test_the_names_inside_are_shortened(built):
     """Which is what minifying with the names mangled means, and the reason
     nothing outside may reach in."""
