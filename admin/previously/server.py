@@ -119,7 +119,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(files.tree(
                 self.settings.machines_file, self.settings.documents,
                 self.settings.disks,
-                config.booting_from(self.settings.previous_config)))
+                config.booting_from(self.settings.previous_config),
+                config.slots(self.settings.previous_config)))
         if route == "/api/machine/settled":
             return self._settled_configuration()
         if route == "/api/setup":
@@ -170,6 +171,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._boot_a_disk()
         if route in COPY_OPERATIONS:
             return self._copy_a_disk(COPY_OPERATIONS[route])
+        if route == "/api/disc":
+            return self._put_a_disc_in()
+        if route == "/api/disc/eject":
+            return self._take_a_disc_out()
         if route == "/api/machine/save":
             return self._save_configuration()
         if route == "/api/machine/rename":
@@ -456,6 +461,31 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 settings["System"], settings["Memory"], settings["Dimension"]),
             "offers": machines.offers(machine),
         })
+
+    def _put_a_disc_in(self):
+        """Puts a disc on a free slot beside the disk the machine is booting.
+
+        The same cycle as changing a disk, and for a reason: Previous reads its
+        configuration when it starts and never again, so a disc written into
+        that file from here arrives when the machine next comes up.
+        """
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        finished, told = change.to_disc(body.get("disc"), self.settings)
+        return self._json({"ok": finished, **told, **self._status()},
+                          status=200 if finished else 409)
+
+    def _take_a_disc_out(self):
+        """Takes the disc off the slot the request names, and never the disk."""
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        finished, told = change.eject_disc(body.get("slot"), self.settings)
+        return self._json({"ok": finished, **told, **self._status()},
+                          status=200 if finished else 409)
 
     def _copy_a_disk(self, job):
         """Asks the privileged helper to copy a disk, or to put a copy back.

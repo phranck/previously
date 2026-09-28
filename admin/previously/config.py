@@ -12,6 +12,8 @@ import configparser
 import hashlib
 import time
 
+from . import discs
+
 #: Where the note about the last write is kept, inside the service's own state
 #: directory. It holds one digest and nothing else.
 RECEIPT = "written.sha256"
@@ -463,6 +465,89 @@ def booting(disk):
         "szImageName%d" % BOOT_SLOT: str(disk),
         "nDeviceType%d" % BOOT_SLOT: HARD_DISK,
         "bDiskInserted%d" % BOOT_SLOT: "TRUE",
+    }}
+
+
+def slots(path):
+    """What is on each SCSI slot.
+
+    @param path - pathlib.Path to previous.cfg.
+    @returns list of SLOTS dicts, each with `image`, `type` and `inserted`. An
+      unreadable file answers with seven empty slots rather than raising,
+      because everything that asks this is drawing a list.
+
+    The machine boots the first slot that holds something, and the rest are the
+    bus: whatever else somebody has put on it.
+    """
+    try:
+        parser = _parsed(path)
+    except NotReadable:
+        return [{"image": None, "type": 0, "inserted": False}
+                for _ in range(SLOTS)]
+
+    disks = _section(parser, "HardDisk")
+    return [
+        {
+            "image": disks.get("szImageName%d" % slot) or None,
+            "type": _int(disks, "nDeviceType%d" % slot),
+            "inserted": _bool(disks, "bDiskInserted%d" % slot),
+        }
+        for slot in range(SLOTS)
+    ]
+
+
+def free_slot(path):
+    """Which slot a disc can go on.
+
+    @param path - pathlib.Path to previous.cfg.
+    @returns int, or None where every slot is taken.
+
+    The first that holds nothing, and never the boot slot, because that is the
+    disk the machine is running. Previous keeps seven and a machine set up by
+    this tool uses one, so there are six.
+    """
+    for slot, what in enumerate(slots(path)):
+        if slot != BOOT_SLOT and not what["inserted"]:
+            return slot
+    return None
+
+
+def inserting(slot, disc):
+    """What to write so a disc sits on that slot.
+
+    @param slot - Which of the seven.
+    @param disc - pathlib.Path of the image.
+    @returns dict of section to key to value, as `write` takes it.
+
+    Write protected as well as inserted, which is two ways of saying the same
+    thing: Previous makes a CD target read only from its type alone, in
+    `scsi.c`, and forces the flag when its own dialogue closes. Written here so
+    that a person reading the file sees what the machine has rather than having
+    to know that rule.
+    """
+    return {"HardDisk": {
+        "szImageName%d" % slot: str(disc),
+        "nDeviceType%d" % slot: discs.CD,
+        "bDiskInserted%d" % slot: "TRUE",
+        "bWriteProtected%d" % slot: "TRUE",
+    }}
+
+
+def ejecting(slot):
+    """What to write so that slot holds nothing.
+
+    @param slot - Which of the seven.
+    @returns dict of section to key to value.
+
+    The drive goes with the disc rather than staying empty on the bus. Previous
+    takes a slot of no type as having nothing on it at all, and leaving an
+    empty CD drive behind would be leaving a device NeXTSTEP asks about at
+    every scan for no reason.
+    """
+    return {"HardDisk": {
+        "nDeviceType%d" % slot: discs.NOTHING,
+        "bDiskInserted%d" % slot: "FALSE",
+        "bWriteProtected%d" % slot: "FALSE",
     }}
 
 

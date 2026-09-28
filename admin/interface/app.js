@@ -39,6 +39,9 @@ const Art = {
   Installer: "Installer",
   Picture: "tiff",
   Disk: "winchester",
+  /* NeXTSTEP 3.3 has no picture of a CD, so a disc wears the generic SCSI
+     device, which is what a CD-ROM on the bus is. */
+  Disc: "scsi",
 };
 
 /** Which picture a machine wears, by the case the service says it comes in.
@@ -71,7 +74,8 @@ function say(told) {
 
   if (told.reason === "board.on-its-way") return t(`${key}.${told.action}`, values);
   if (told.reason === "guest.still-shutting-down") return t(key, values, told.seconds);
-  if (told.reason === "machine.running" || told.reason === "disk.booting") {
+  if (["machine.running", "disk.booting", "disc.inserted", "disc.ejected"]
+      .includes(told.reason)) {
     return t(key, values, told.lines);
   }
   return t(key, values);
@@ -793,6 +797,8 @@ function open(path, asker) {
   if (entry.kind === "disk") return bootFromDisk(entry);
   /* And a copy of one is put back, which is the only thing to do with it. */
   if (entry.kind === "backup") return putTheCopyBack(entry);
+  /* A disc goes into the machine, or comes out of it again. */
+  if (entry.kind === "disc") return useTheDisc(entry);
   /* Named rather than left as what everything else falls through to, because
      what else is in here has grown and falling through would have asked the
      machine to become whatever was double clicked. */
@@ -1109,11 +1115,84 @@ async function bootFromDisk(disk) {
   if (!agreed) return;
 
   setBusy(true, t("busy.changing", { machine: disk.name }));
-  const answer = await tell("/api/disk", { disk: disk.id });
-  setBusy(false, answer === null ? t("note.no-service") : say(answer));
-  if (answer) drawStatus(answer);
   /* The tree says which disk is in force, so it is asked for again rather than
      marked from here. */
+  reportAboutTheMachine(await tell("/api/disk", { disk: disk.id }));
+}
+
+/**
+ * Puts a disc into the machine, or takes it out again.
+ * @param {object} disc - Its entry in the tree, which says which slot it is on
+ *   where it is in the machine at all.
+ *
+ * One gesture for both, because it is one thing: the disc is either in the
+ * machine or it is not, and a double click swaps that over. The same as taking
+ * a board out and putting it back, which is what this interface already does
+ * wherever something is in or out rather than one of several.
+ */
+function useTheDisc(disc) {
+  return disc.slot === null ? putTheDiscIn(disc) : takeTheDiscOut(disc);
+}
+
+/**
+ * Asks about a disc, and puts it in the machine when the answer is yes.
+ * @param {object} disc - Its entry in the tree.
+ *
+ * It goes beside the disk the machine boots rather than instead of it, on a
+ * free slot of the bus, and it is read only there because that is what a disc
+ * is.
+ */
+async function putTheDiscIn(disc) {
+  const agreed = await askPanel({
+    title: t("ask.disc.title", { name: disc.name }),
+    text: [
+      t("ask.disc.beside"),
+      /* NeXT's own CDs carry a variation of 4.3BSD FFS, so an image that says
+         ISO 9660 mounts nowhere however good it is. Said before somebody waits
+         for a machine to come back with nothing new in it. */
+      disc.iso ? t("ask.disc.iso") : "",
+      t("ask.change.how"),
+      t("ask.change.rollback"),
+    ].filter(Boolean),
+    icon: Art.Disc,
+    confirm: t("button.insert"),
+  });
+  if (!agreed) return;
+
+  setBusy(true, t("busy.changing", { machine: disc.name }));
+  const answer = await tell("/api/disc", { disc: disc.id });
+  reportAboutTheMachine(answer);
+}
+
+/**
+ * Asks about a disc that is in the machine, and takes it out when the answer
+ * is yes.
+ * @param {object} disc - Its entry in the tree.
+ */
+async function takeTheDiscOut(disc) {
+  const agreed = await askPanel({
+    title: t("ask.disc.eject-title", { name: disc.name }),
+    text: [t("ask.disc.eject-question"), t("ask.change.how")],
+    icon: Art.Disc,
+    confirm: t("button.eject"),
+  });
+  if (!agreed) return;
+
+  setBusy(true, t("busy.changing", { machine: disc.name }));
+  const answer = await tell("/api/disc/eject", { slot: disc.slot });
+  reportAboutTheMachine(answer);
+}
+
+/**
+ * Says what came of a change to the machine, and draws everything again.
+ * @param {object|null} answer - What the service said, or null on no contact.
+ *
+ * The tree as well as the status, because what it says about a disk or a disc
+ * comes out of the same file that has just been written.
+ */
+function reportAboutTheMachine(answer) {
+  setBusy(false, answer === null ? t("note.no-service") : say(answer));
+  if (answer) drawStatus(answer);
   drawMachines();
   refresh();
 }
@@ -2100,8 +2179,9 @@ function openMachineMenu(thing, x, y) {
   const found = find(root, where);
   const disk = found?.kind === "disk" ? found : null;
   const copy = found?.kind === "backup" ? found : null;
+  const disc = found?.kind === "disc" ? found : null;
   const onShelf = Boolean(thing.closest(".keep"));
-  if (!machine && !disk && !copy && !onShelf) return false;
+  if (!machine && !disk && !copy && !disc && !onShelf) return false;
 
   const menu = document.querySelector('nx-menu[name="machine-menu"]');
   /* Which machine this is about. The menu appears over whatever was clicked
@@ -2114,6 +2194,7 @@ function openMachineMenu(thing, x, y) {
   const remove = menu.querySelector('nx-menu-item[name="remove"]');
   const backup = menu.querySelector('nx-menu-item[name="backup"]');
   const restore = menu.querySelector('nx-menu-item[name="restore"]');
+  const media = menu.querySelector('nx-menu-item[name="disc"]');
   const shelf = menu.querySelector('nx-menu-item[name="shelf"]');
 
   /* Three of the entries are about a machine, so a folder on the shelf shows
@@ -2137,6 +2218,18 @@ function openMachineMenu(thing, x, y) {
     menu.close();
     putTheCopyBack(copy);
   };
+  /* One entry whichever way round it is, because it is one act. The key goes
+     with the wording, so a change of language finds what it is showing rather
+     than what the markup started with. */
+  media.hidden = !disc;
+  if (disc) {
+    media.dataset.t = disc.slot === null ? "menu.insert" : "menu.eject";
+    writeWords(media, t(media.dataset.t));
+    media.onclick = () => {
+      menu.close();
+      useTheDisc(disc);
+    };
+  }
 
   info.onclick = () => {
     menu.close();

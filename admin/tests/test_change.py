@@ -8,7 +8,7 @@ import textwrap
 
 import pytest
 
-from previously import change, config, kiosk, saved, screen
+from previously import change, config, discs, kiosk, saved, screen
 
 REAL_SHAPE = textwrap.dedent("""\
     [Log]
@@ -456,6 +456,154 @@ def test_booting_the_disk_that_is_already_booting_changes_nothing(settings, mach
     assert finished is True
     assert told["reason"] == "disk.was-already-set"
     assert settings.previous_config.read_text() == before
+
+
+# -- what goes beside the system -----------------------------------------
+
+
+@pytest.fixture
+def media(settings):
+    """A disc somebody has put on the Pi, and one that says it is ISO 9660."""
+    where = discs.folder(settings.disks)
+    where.mkdir(parents=True, exist_ok=True)
+    (where / "DeveloperTools.img").write_bytes(b"not an iso")
+
+    an_iso = where / "SomethingElse.iso"
+    an_iso.write_bytes(b"\0" * discs.ISO_AT + discs.ISO_SIGNATURE)
+    return where
+
+
+def put_in(name, settings, machine):
+    """Puts a disc in, with the emulator returning as told."""
+    def sleep(_seconds):
+        if not machine.running and not kiosk.is_held(settings.runtime_directory):
+            machine.comes_back()
+
+    return change.to_disc(name, settings, sleep=sleep)
+
+
+def test_a_disc_goes_on_a_free_slot_beside_the_disk(settings, machine, media):
+    """The machine boots slot 0 and everything else is the bus. The fixture
+    already holds a disc on slot 1, so the first free one is the third, and
+    neither of the two before it is touched."""
+    finished, told = put_in("DeveloperTools.img", settings, machine)
+
+    assert finished is True
+    assert told["reason"] == "disc.inserted"
+    written = config.slots(settings.previous_config)
+    assert written[2]["image"] == str(media / "DeveloperTools.img")
+    # Read only, because that is what a disc is, and Previous makes a CD target
+    # read only from its type alone.
+    assert written[2]["type"] == int(discs.CD)
+    assert written[2]["inserted"] is True
+    # The disk the machine boots, and the disc that was already on the bus.
+    assert written[0]["image"] == "/home/next/nextstep/NS33.dd"
+    assert written[1]["image"] == "/home/next/discs/DeveloperTools.iso"
+
+
+def test_a_disc_that_is_not_on_this_machine_changes_nothing(settings, machine, media):
+    before = settings.previous_config.read_text()
+
+    finished, told = put_in("NothingOfThatName.iso", settings, machine)
+
+    assert finished is False
+    assert told["reason"] == "disc.no-such"
+    assert settings.previous_config.read_text() == before
+    assert machine.powered_off == 0
+
+
+@pytest.mark.parametrize("named", ["../../etc/passwd", "/etc/passwd", ""])
+def test_a_name_that_is_a_path_asks_for_a_file_that_is_not_there(
+        settings, machine, media, named):
+    """The name is matched against the listing of one folder rather than joined
+    onto a path, so nothing that arrives from a browser reaches the filesystem
+    as a path."""
+    finished, told = put_in(named, settings, machine)
+
+    assert finished is False
+    assert told["reason"] == "disc.no-such"
+
+
+def test_a_bus_with_no_room_on_it_says_so(settings, machine, media, monkeypatch):
+    monkeypatch.setattr(config, "free_slot", lambda path: None)
+    before = settings.previous_config.read_text()
+
+    finished, told = put_in("DeveloperTools.img", settings, machine)
+
+    assert finished is False
+    assert told["reason"] == "disc.no-free-slot"
+    assert settings.previous_config.read_text() == before
+
+
+def test_a_disc_can_be_taken_out_again(settings, machine, media):
+    def sleep(_seconds):
+        if not machine.running and not kiosk.is_held(settings.runtime_directory):
+            machine.comes_back()
+
+    finished, told = change.eject_disc(1, settings, sleep=sleep)
+
+    assert finished is True
+    assert told["reason"] == "disc.ejected"
+    assert told["machine"] == "DeveloperTools.iso"
+    written = config.slots(settings.previous_config)
+    assert written[1]["inserted"] is False
+    assert written[1]["type"] == 0
+
+
+def test_the_disk_the_machine_boots_is_not_a_disc(settings, machine):
+    """Slot 0 is the system. Taking it out from under NeXTSTEP is not ejecting
+    a disc, it is pulling the disk out of a running machine."""
+    before = settings.previous_config.read_text()
+
+    finished, told = change.eject_disc(0, settings, sleep=lambda _s: None)
+
+    assert finished is False
+    assert told["reason"] == "disc.that-is-the-disk"
+    assert settings.previous_config.read_text() == before
+    assert machine.powered_off == 0
+
+
+@pytest.mark.parametrize("slot", [-1, 7, 99, None, "1"])
+def test_a_slot_that_is_not_one_of_the_seven_is_refused(settings, machine, slot):
+    finished, told = change.eject_disc(slot, settings, sleep=lambda _s: None)
+
+    assert finished is False
+    assert told["reason"] == "disc.no-such-slot"
+
+
+def test_a_slot_with_nothing_on_it_is_not_ejected(settings, machine):
+    finished, told = change.eject_disc(3, settings, sleep=lambda _s: None)
+
+    assert finished is False
+    assert told["reason"] == "disc.nothing-there"
+    assert machine.powered_off == 0
+
+
+def test_the_guest_goes_down_before_a_disc_arrives(settings, machine, media):
+    """Previous reads its configuration when it starts and never again, so a
+    disc written into that file arrives when the machine next comes up. Its own
+    dialogue can do it without a reset; a file written from outside cannot."""
+    written = []
+    original = config.write
+
+    def watch(path, values):
+        written.append(machine.running)
+        return original(path, values)
+
+    import unittest.mock
+    with unittest.mock.patch.object(config, "write", watch):
+        put_in("DeveloperTools.img", settings, machine)
+
+    assert written == [False]
+
+
+def test_an_image_that_says_iso_9660_is_known_for_one(settings, media):
+    """NeXT's own discs carry a variation of 4.3BSD FFS, so an ISO 9660 image
+    mounts nowhere however good it is. The interface says so before somebody
+    waits for a machine to come back with nothing new in it."""
+    assert discs.is_iso_9660(media / "SomethingElse.iso") is True
+    assert discs.is_iso_9660(media / "DeveloperTools.img") is False
+    assert discs.is_iso_9660(media / "never-written.iso") is False
 
 
 # -- a configuration somebody saved --------------------------------------

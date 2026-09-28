@@ -1234,6 +1234,89 @@ def test_a_disk_that_is_not_on_the_card_is_refused(service, tmp_path):
     assert json.loads(refused.value.read())["reason"] == "disk.not-here"
 
 
+def a_disc(tmp_path, name="DeveloperTools.img"):
+    """Puts a disc where somebody would have put one, and answers with it."""
+    where = tmp_path / "nextstep" / "discs"
+    where.mkdir(parents=True, exist_ok=True)
+    disc = where / name
+    disc.write_bytes(b"media")
+    return disc
+
+
+def test_there_is_no_discs_folder_until_somebody_puts_one_there(service):
+    """They are files somebody puts on the Pi rather than anything this tool
+    fetches, so an empty folder would promise a place this tool fills."""
+    _, _, body = fetch(service + "/api/files")
+
+    assert "Discs" not in [entry["name"]
+                           for entry in json.loads(body)["entries"]]
+
+
+def test_a_disc_is_a_thing_beside_the_disks(service, tmp_path):
+    disc = a_disc(tmp_path)
+
+    _, _, body = fetch(service + "/api/files")
+    folder = next(entry for entry in json.loads(body)["entries"]
+                  if entry["name"] == "Discs")
+    kept, = folder["entries"]
+
+    assert kept["kind"] == "disc"
+    assert kept["name"] == "DeveloperTools"
+    assert kept["id"] == "DeveloperTools.img"
+    # NeXTSTEP 3.3 has no picture of a CD, so it wears the generic SCSI device.
+    assert kept["icon"] == "scsi"
+    assert kept["iso"] is False
+    # Not in the machine, which is what says it can be put in.
+    assert kept["slot"] is None
+    assert kept["bytes"] == disc.stat().st_size
+
+
+def test_a_disc_that_is_in_the_machine_says_which_slot(service, tmp_path):
+    disc = a_disc(tmp_path)
+    server.Handler.settings.previous_config.write_text(
+        "[HardDisk]\nszImageName2 = %s\nnDeviceType2 = 2\n"
+        "bDiskInserted2 = TRUE\n" % disc)
+
+    _, _, body = fetch(service + "/api/files")
+    folder = next(entry for entry in json.loads(body)["entries"]
+                  if entry["name"] == "Discs")
+
+    assert folder["entries"][0]["slot"] == 2
+
+
+def test_an_image_that_says_iso_9660_says_so_in_the_tree(service, tmp_path):
+    from previously import discs
+
+    disc = a_disc(tmp_path, "Something.iso")
+    disc.write_bytes(b"\0" * discs.ISO_AT + discs.ISO_SIGNATURE)
+
+    _, _, body = fetch(service + "/api/files")
+    folder = next(entry for entry in json.loads(body)["entries"]
+                  if entry["name"] == "Discs")
+
+    assert folder["entries"][0]["iso"] is True
+
+
+def test_putting_a_disc_in_needs_a_session(service, tmp_path):
+    a_disc(tmp_path)
+    request = urllib.request.Request(
+        service + "/api/disc", data=b'{"disc": "DeveloperTools.img"}',
+        method="POST")
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        urllib.request.urlopen(request, timeout=5)
+
+    assert refused.value.code == 403
+
+
+def test_the_disk_the_machine_boots_cannot_be_ejected(service, tmp_path):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/disc/eject", {"slot": 0})
+
+    assert refused.value.code == 409
+    assert json.loads(refused.value.read())["reason"] == "disc.that-is-the-disk"
+
+
 def test_a_copy_of_a_disk_is_asked_for_rather_than_made_here(service, tmp_path):
     """A disk is two gigabytes and the folder it lives in is one this service
     may not write, so the helper does it and this leaves a request."""
