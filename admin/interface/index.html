@@ -281,9 +281,17 @@
       <nx-row><label data-t="installer.card"></label><nx-field id="installer-room">&mdash;</nx-field></nx-row>
     </div>
   </div>
+  <!-- Two subjects in one window, and they are not the same kind of thing: the
+       emulator is a package and a system is a two gigabyte disk. The row
+       chooses between them and the groups below it take turns, which is what
+       the Config Editor does with its five. -->
+  <div class="choices subjects" id="installer-tabs"></div>
   <div class="installer-groups">
-    <fieldset class="group">
-      <legend data-t="installer.emulator"></legend>
+    <fieldset class="group" subject="emulator">
+      <legend data-t="installer.emulator.title"></legend>
+      <!-- One line per button, written by the page: what each of them does
+           depends on what is on the machine, and Update is not there at all
+           unless the archive has something newer. -->
       <p class="note" id="installer-emulator-note"></p>
       <div class="buttons">
         <button id="installer-remove" data-t="button.remove"></button>
@@ -291,7 +299,7 @@
         <button id="installer-install" class="default" data-t="button.install"></button>
       </div>
     </fieldset>
-    <fieldset class="group">
+    <fieldset class="group" subject="systems">
       <legend data-t="installer.systems"></legend>
       <!-- The six, drawn by the page. A list in NeXT's white, which is the
            shape this interface already gives a set of things one of which is
@@ -300,7 +308,8 @@
       <p class="note" id="installer-systems-note"></p>
       <div class="buttons">
         <button id="installer-forget" data-t="button.remove"></button>
-        <button id="installer-fetch" class="default" data-t="button.fetch"></button>
+        <button id="installer-fetch" data-t="button.fetch"></button>
+        <button id="installer-activate" class="default" data-t="button.activate"></button>
       </div>
     </fieldset>
   </div>

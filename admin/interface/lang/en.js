@@ -377,6 +377,13 @@ NX_STRINGS.en = {
   /* --- installing -------------------------------------------------------- */
   "app.installer": "Installer",
   "installer.emulator": "Emulator",
+  "installer.emulator.title": "Previous Emulator",
+  "installer.emulator.in.version": "{version} installed",
+  "installer.emulator.what.install": "Install puts the current Previous on this machine, with everything it needs around it.",
+  "installer.emulator.what.remove": "Remove takes Previous off again, and everything that came with it.",
+  "installer.emulator.what.update": "Update brings Previous {version} from the archive it comes from.",
+  "installer.emulator.what.nothing-newer": "The archive has nothing newer, so there is nothing to update to.",
+  "button.activate": "Activate",
   "installer.systems": "Systems",
   "installer.card": "Card",
   "installer.emulator.in": "installed",

@@ -496,6 +496,91 @@ def test_an_archive_with_no_disk_in_it_is_said_so(tmp_path):
     assert refused.value.told["reason"] == "setup.no-disk-in-the-archive"
 
 
+# -- which version is here, and which the archive has ---------------------
+
+
+@pytest.mark.parametrize("version,other,newer", [
+    ("4.3-0wmlive1", "4.4-0wmlive1", True),
+    ("4.4-0wmlive1", "4.4-0wmlive1", False),
+    ("4.4-0wmlive1", "4.3-0wmlive1", False),
+    # Debian's ordering is its own, and a string comparison calls this one the
+    # wrong way round and offers a downgrade as an update.
+    ("4.9", "4.10", True),
+    ("4.10", "4.9", False),
+    (None, "4.4", False),
+    ("4.4", None, False),
+])
+def test_whether_one_version_is_newer_is_asked_of_dpkg(version, other, newer):
+    assert setup.newer_than(version, other) is newer
+
+
+def test_what_the_archive_offers_is_read_off_apt(monkeypatch):
+    """`apt-cache policy` says what would actually be installed, which is what
+    the window offers rather than what exists somewhere."""
+    monkeypatch.setattr(setup, "_said", lambda command: (
+        "previous:\n  Installed: 4.3-0wmlive1\n  Candidate: 4.4-0wmlive1\n"
+        "  Version table:\n"))
+
+    assert setup.newest_of("previous") == "4.4-0wmlive1"
+
+
+def test_a_package_the_archive_does_not_have_offers_nothing(monkeypatch):
+    monkeypatch.setattr(setup, "_said", lambda command: (
+        "previous:\n  Installed: (none)\n  Candidate: (none)\n"))
+
+    assert setup.newest_of("previous") is None
+
+
+def test_nothing_at_all_from_apt_offers_nothing(monkeypatch):
+    """A machine with no apt, or one where the archive is not configured."""
+    monkeypatch.setattr(setup, "_said", lambda command: "")
+
+    assert setup.newest_of("previous") is None
+
+
+def test_what_dpkg_and_apt_said_is_kept_for_a_few_seconds(monkeypatch):
+    """The window asks twice a second whilst it is open, and those three
+    commands are the most expensive thing behind that route."""
+    asked = []
+    monkeypatch.setattr(setup, "installed", lambda package: True)
+    monkeypatch.setattr(setup, "version_of",
+                        lambda package: asked.append(package) or "4.4")
+    monkeypatch.setattr(setup, "newest_of", lambda package: "4.4")
+
+    setup.emulator()
+    setup.emulator()
+
+    assert len(asked) == 1
+
+
+def test_what_was_remembered_is_thrown_away_when_something_is_installed(monkeypatch):
+    """A run that installs or removes the emulator changes every one of those
+    answers, and the window asks again the instant it finishes."""
+    asked = []
+    monkeypatch.setattr(setup, "installed", lambda package: True)
+    monkeypatch.setattr(setup, "version_of",
+                        lambda package: asked.append(package) or "4.4")
+    monkeypatch.setattr(setup, "newest_of", lambda package: "4.4")
+
+    setup.emulator()
+    setup.forget()
+    setup.emulator()
+
+    assert len(asked) == 2
+
+
+def test_what_is_remembered_cannot_be_changed_from_outside(monkeypatch):
+    """It is handed out as a copy, so a caller that writes into the answer does
+    not write into what the next caller is given."""
+    monkeypatch.setattr(setup, "installed", lambda package: True)
+    monkeypatch.setattr(setup, "version_of", lambda package: "4.4")
+    monkeypatch.setattr(setup, "newest_of", lambda package: "4.4")
+
+    setup.emulator()["here"] = "nonsense"
+
+    assert setup.emulator()["here"] is True
+
+
 # -- a copy of a disk, and the copy put back ------------------------------
 
 

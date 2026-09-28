@@ -369,12 +369,25 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 
 /* --- the Installer -------------------------------------------------------- */
 
-/* Its two groups, stacked under the picture with the same step between them as
-   the editor's, so the two windows read as one interface. */
+/* Its two groups, under the row that chooses between them, with the same step
+   as the editor's so the two windows read as one interface. */
 .installer-groups {
   display: grid;
   gap: var(--band-gap);
   margin-top: var(--portrait-gap);
+}
+
+/* One subject at a time, marked by the page on each group rather than matched
+   here against the row, so naming the subjects twice is not a thing that can
+   drift. The same rule the editor's groups follow. */
+.installer-groups > [subject][away] {
+  display: none;
+}
+
+/* The emulator's note is a line per button rather than a paragraph, so the
+   newlines the page writes are the lines a reader sees. */
+#installer-emulator-note {
+  white-space: pre-line;
 }
 
 /* The six systems, as a list in NeXT's white with one of them chosen. The same

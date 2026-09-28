@@ -1433,6 +1433,35 @@ def test_what_can_be_installed_is_open(service):
     assert said["progress"] is None
     assert said["room"] > 0
     assert said["needs"] > said["systems"][0]["size"]
+    # The emulator is not installed on whatever runs this suite, so there is
+    # no version to name and nothing to update to.
+    assert said["emulator"]["here"] is False
+    assert said["emulator"]["newer"] is False
+
+
+def test_the_window_is_told_which_version_is_here_and_which_is_offered(
+        service, monkeypatch):
+    """So it can say what an update would bring rather than offering one that
+    brings nothing."""
+    monkeypatch.setattr(server.setup, "installed", lambda package: True)
+    monkeypatch.setattr(server.setup, "version_of", lambda package: "4.3-0wmlive1")
+    monkeypatch.setattr(server.setup, "newest_of", lambda package: "4.4-0wmlive1")
+
+    _, _, body = fetch(service + "/api/setup")
+    said = json.loads(body)["emulator"]
+
+    assert said == {"here": True, "version": "4.3-0wmlive1",
+                    "newest": "4.4-0wmlive1", "newer": True}
+
+
+def test_an_archive_with_nothing_newer_offers_no_update(service, monkeypatch):
+    monkeypatch.setattr(server.setup, "installed", lambda package: True)
+    monkeypatch.setattr(server.setup, "version_of", lambda package: "4.4-0wmlive1")
+    monkeypatch.setattr(server.setup, "newest_of", lambda package: "4.4-0wmlive1")
+
+    _, _, body = fetch(service + "/api/setup")
+
+    assert json.loads(body)["emulator"]["newer"] is False
 
 
 def test_every_system_says_what_it_costs_and_whether_it_is_here(service, tmp_path):

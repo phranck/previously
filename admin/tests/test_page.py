@@ -48,6 +48,18 @@ def markup():
     return (INTERFACE / "index.html").read_text(encoding="utf-8")
 
 
+def inside(markup, window):
+    """@returns str - One window's markup, from its tag to the next one's.
+
+    Two windows show one subject at a time now, and their subjects are their
+    own: a test that reads the whole document would hold each of them to the
+    other's.
+    """
+    at = markup.index('<nx-window name="%s"' % window)
+    after = markup.find("<nx-window ", at + 1)
+    return markup[at:after if after > 0 else len(markup)]
+
+
 def test_every_element_the_page_writes_into_is_in_the_markup(page, markup):
     wanted = set(BY_ID.findall(page))
     have = set(IN_MARKUP.findall(markup))
@@ -106,9 +118,13 @@ def test_the_editor_reads_what_a_machine_type_actually_carries(page):
 def test_every_subject_the_editor_offers_has_groups_to_show(page, markup):
     """The window shows one subject at a time, so one that no group belongs to
     is a cell that empties the window, and a group belonging to a subject the row
-    does not offer is a group nobody can reach."""
+    does not offer is a group nobody can reach.
+
+    Inside that window alone. Two windows use this arrangement now, and their
+    subjects are their own.
+    """
     offered = set(THE_SUBJECTS.findall(page))
-    in_markup = set(A_GROUP_S_SUBJECT.findall(markup))
+    in_markup = set(A_GROUP_S_SUBJECT.findall(inside(markup, "editor")))
 
     assert offered
     assert offered == in_markup
@@ -142,6 +158,21 @@ def test_every_part_of_the_installer_the_page_names_is_in_the_markup(page, marku
 
     assert len(wanted) > 5
     assert sorted(wanted - have) == []
+
+
+#: What the Installer shows one of at a time, as the page names them.
+THE_INSTALLER_TABS = re.compile(r'^  (\w+): "installer\.[\w.-]+",$', re.M)
+
+
+def test_every_tab_the_installer_offers_has_a_group_to_show(page, markup):
+    """The window shows one subject at a time, so a tab no group belongs to is
+    a cell that empties the window, and a group belonging to no tab is a group
+    nobody can reach."""
+    offered = set(THE_INSTALLER_TABS.findall(page))
+    in_markup = set(A_GROUP_S_SUBJECT.findall(inside(markup, "installer")))
+
+    assert offered == {"emulator", "systems"}
+    assert offered == in_markup
 
 
 def test_the_installer_holds_no_list_of_systems(page):

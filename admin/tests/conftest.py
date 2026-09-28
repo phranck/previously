@@ -54,6 +54,21 @@ def settings_for(tmp_path, **overrides):
     return Settings(values)
 
 
+@pytest.fixture(autouse=True)
+def nothing_remembered_about_packages():
+    """What dpkg and apt last said, thrown away before and after every test.
+
+    The service keeps that answer for a few seconds, because the Installer
+    window asks twice a second. Between two tests it would be one test's
+    machine answering another test's question.
+    """
+    from previously import setup
+
+    setup.forget()
+    yield
+    setup.forget()
+
+
 @pytest.fixture
 def readable_config(tmp_path):
     """A previous.cfg describing a machine, at the path settings_for expects.
