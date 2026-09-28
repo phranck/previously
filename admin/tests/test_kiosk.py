@@ -438,3 +438,98 @@ def test_a_runtime_directory_that_is_not_there_is_not_an_exception(tmp_path):
     """Every other reading in this tool answers rather than raises, and a
     request that cannot be left is the same kind of thing."""
     assert kiosk._request(tmp_path / "gone", "reboot") is False
+
+
+# -- asking for the machine to be set up ---------------------------------
+
+
+def ask(tmp_path, job="install", system=None, machine=None):
+    """Leaves the request, with both directories in the test's own."""
+    return kiosk.ask_to_set_up(tmp_path, tmp_path / "setup-progress",
+                               job, system, machine)
+
+
+def test_the_request_carries_three_names_and_nothing_else(tmp_path):
+    """Installing is more than one exact command, so this is the one request
+    that carries anything at all. What it carries is looked up in a table by
+    the privileged half, so none of it is a path, a URL or a command."""
+    import json
+
+    taken, told = ask(tmp_path, "install", "nextstep-3.3", "nextcube-turbo")
+
+    assert taken is True
+    assert told["reason"] == "setup.asked"
+    written = json.loads((tmp_path / kiosk.SETUP_REQUEST).read_text())
+    assert written == {"do": "install", "system": "nextstep-3.3",
+                       "machine": "nextcube-turbo"}
+
+
+def test_nothing_half_written_carries_the_name_the_watcher_fires_on(tmp_path):
+    """The unit fires the moment the name appears, so a file half written is a
+    request half read."""
+    ask(tmp_path)
+
+    assert [path.name for path in tmp_path.iterdir()] == [kiosk.SETUP_REQUEST]
+
+
+@pytest.mark.parametrize("job,system,machine,reason", [
+    ("burn-it-down", None, None, "setup.no-such-job"),
+    ("install", "../../etc/passwd", None, "setup.no-such-system"),
+    ("install", None, "amiga-2000", "setup.no-such-machine"),
+])
+def test_a_name_nobody_offers_leaves_no_request(tmp_path, job, system, machine, reason):
+    """Answered at once rather than by a run that starts, refuses and leaves a
+    failure to read."""
+    taken, told = ask(tmp_path, job, system, machine)
+
+    assert taken is False
+    assert told["reason"] == reason
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_second_request_whilst_one_runs_is_refused(tmp_path):
+    """One installation at a time, which is what the terminal route does too."""
+    import json
+
+    progress = tmp_path / "setup-progress"
+    progress.mkdir()
+    (progress / "progress.json").write_text(
+        json.dumps({"do": "install", "finished_at": None}), encoding="utf-8")
+
+    taken, told = ask(tmp_path)
+
+    assert taken is False
+    assert told["reason"] == "setup.one-at-a-time"
+    assert not (tmp_path / kiosk.SETUP_REQUEST).exists()
+
+
+def test_a_request_after_one_has_finished_is_taken(tmp_path):
+    import json
+
+    progress = tmp_path / "setup-progress"
+    progress.mkdir()
+    (progress / "progress.json").write_text(
+        json.dumps({"do": "install", "finished_at": 1759, "ok": True}),
+        encoding="utf-8")
+
+    taken, _ = ask(tmp_path)
+
+    assert taken is True
+
+
+def test_a_setup_request_that_cannot_be_written_is_reported(tmp_path):
+    taken, told = ask(tmp_path / "not-there")
+
+    assert taken is False
+    assert told["reason"] == "setup.request-refused"
+
+
+def test_a_helper_that_has_never_run_says_nothing(tmp_path):
+    """The ordinary state of a machine somebody set up by hand."""
+    assert kiosk.setting_up(tmp_path) is None
+
+
+def test_progress_that_cannot_be_read_says_nothing_either(tmp_path):
+    (tmp_path / "progress.json").write_text("half a fi", encoding="utf-8")
+
+    assert kiosk.setting_up(tmp_path) is None

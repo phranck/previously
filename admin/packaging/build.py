@@ -71,14 +71,21 @@ MODIFIED = ".modified"
 #: its own modules and falls back to the release where there is none.
 VERSION_FILE = "version.txt"
 
-#: The unit files, and which of them is the service itself. The other four are
-#: how the board is switched off and restarted without this service holding
-#: any privilege: it leaves a file in its runtime directory and a path unit
-#: running as root does the one thing that file means.
+#: The unit files, and which of them is the service itself. The other six are
+#: how the machine is changed without this service holding any privilege: it
+#: leaves a file in its runtime directory and a path unit running as root acts
+#: on it. Two of those do one exact command each, and the third installs.
 SERVICE = NAME + ".service"
 UNIT_FILES = (SERVICE,
               NAME + "-poweroff.path", NAME + "-poweroff.service",
-              NAME + "-reboot.path", NAME + "-reboot.service")
+              NAME + "-reboot.path", NAME + "-reboot.service",
+              NAME + "-setup.path", NAME + "-setup.service")
+
+#: Which of those are switched on when the package is installed. A path unit
+#: costs nothing whilst nothing is asked of it: it watches for one file and
+#: starts its service when that file appears.
+WATCHERS = (NAME + "-poweroff.path", NAME + "-reboot.path",
+            NAME + "-setup.path")
 
 
 def release():
@@ -208,7 +215,7 @@ if [ "$1" = configure ]; then
     systemctl enable --now %(service)s
     # These act for the service without it holding any privilege, so they are
     # part of it rather than something to switch on separately.
-    systemctl enable --now %(name)s-poweroff.path %(name)s-reboot.path
+    systemctl enable --now %(watchers)s
 fi
 """
 
@@ -219,7 +226,7 @@ set -e
 
 if [ "$1" = remove ] || [ "$1" = upgrade ]; then
     systemctl disable --now %(service)s || true
-    systemctl disable --now %(name)s-poweroff.path %(name)s-reboot.path || true
+    systemctl disable --now %(watchers)s || true
 fi
 """
 
@@ -284,6 +291,21 @@ def lay_out(into):
     shutil.copy(HERE / "config.ini", into / CONFIG / "config.ini")
 
 
+def scripts():
+    """The three maintainer scripts, filled in.
+
+    @returns dict of name to what goes into DEBIAN.
+
+    Here rather than inside `write_control`, so the tests that read them are
+    reading what the package carries instead of filling the same names in a
+    second time and agreeing with themselves.
+    """
+    words = {"name": NAME, "service": SERVICE, "units": UNITS,
+             "watchers": " ".join(WATCHERS)}
+    return {"postinst": POSTINST % words, "prerm": PRERM % words,
+            "postrm": POSTRM % words}
+
+
 def write_control(into):
     """Writes DEBIAN/control and the three scripts, and makes them runnable."""
     debian = into / "DEBIAN"
@@ -297,11 +319,9 @@ def write_control(into):
     # upgrade, which is what conffiles means.
     (debian / "conffiles").write_text("/%s/config.ini\n" % CONFIG, encoding="utf-8")
 
-    words = {"name": NAME, "service": SERVICE, "units": UNITS}
-    for script, body in [("postinst", POSTINST), ("prerm", PRERM),
-                         ("postrm", POSTRM)]:
+    for script, body in scripts().items():
         path = debian / script
-        path.write_text(body % words, encoding="utf-8")
+        path.write_text(body, encoding="utf-8")
         path.chmod(0o755)
 
 

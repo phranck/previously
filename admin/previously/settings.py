@@ -20,6 +20,13 @@ STATE_DIRECTORY = "/var/lib/previously"
 #: whoever switched it off before the last shutdown.
 RUNTIME_DIRECTORY = "/run/previously"
 
+#: Where the privileged helper says what it is doing. Root's own directory
+#: rather than the one above, because this service may not write there: a file
+#: root wrote into a directory an unprivileged user owns could be replaced by a
+#: link to somewhere else between one write and the next. This service only
+#: reads it.
+SETUP_DIRECTORY = "/run/previously-setup"
+
 #: Everything a fresh installation runs on. The emulator's configuration lives
 #: in the home of whoever owns it, which is the user this service runs as, so
 #: the default is expressed relative to that rather than to a name.
@@ -39,9 +46,15 @@ DEFAULTS = {
     # file. In the emulator owner's home, which is the user this service runs
     # as, so it needs nothing but its own permission to write there.
     "documents": "~/Previously",
+    # Where the disk images live, one per system that is on this machine. In
+    # the same home, because a disk is the person's: purging this package must
+    # not take away two gigabytes they waited for. `install.sh` chose this
+    # folder, so a machine set up by it already has its disk here.
+    "disks": "~/nextstep",
     "kiosk_unit": "getty@tty1.service",
     "state_directory": STATE_DIRECTORY,
     "runtime_directory": RUNTIME_DIRECTORY,
+    "setup_directory": SETUP_DIRECTORY,
     # A hash of the password somebody chose in the interface, which is what a
     # request proves before it may change anything. State the service maintains
     # itself, so /var/lib rather than /etc, which holds what an administrator
@@ -52,13 +65,20 @@ DEFAULTS = {
 }
 
 
-def _path(value):
+def _path(value, home=None):
     """A configured path with ~ expanded.
 
     @param value - What the file said.
+    @param home - Whose home ~ means. Left out it is the user running this,
+      which is right for the service and wrong for the privileged helper: that
+      one runs as root and has to read the same file as the person who owns
+      the emulator, whose home is not root's.
     @returns pathlib.Path
     """
-    return pathlib.Path(os.path.expanduser(value.strip()))
+    written = value.strip()
+    if home is not None and written.startswith("~"):
+        return pathlib.Path(home) / written.lstrip("~/")
+    return pathlib.Path(os.path.expanduser(written))
 
 
 class Settings:
@@ -69,30 +89,35 @@ class Settings:
     file that has to repeat everything.
     """
 
-    def __init__(self, values):
+    def __init__(self, values, home=None):
         self.address = values["address"]
         self.port = int(values["port"])
-        self.previous_config = _path(values["previous_config"])
-        self.machines_file = _path(values["machines_file"])
-        self.documents = _path(values["documents"])
+        self.previous_config = _path(values["previous_config"], home)
+        self.machines_file = _path(values["machines_file"], home)
+        self.documents = _path(values["documents"], home)
+        self.disks = _path(values["disks"], home)
         self.kiosk_unit = values["kiosk_unit"]
-        self.state_directory = _path(values["state_directory"])
-        self.runtime_directory = _path(values["runtime_directory"])
-        self.password_file = _path(values["password_file"])
+        self.state_directory = _path(values["state_directory"], home)
+        self.runtime_directory = _path(values["runtime_directory"], home)
+        self.setup_directory = _path(values["setup_directory"], home)
+        self.password_file = _path(values["password_file"], home)
 
     @classmethod
-    def load(cls, path=CONFIG_FILE):
+    def load(cls, path=CONFIG_FILE, home=None):
         """Reads the file, falling back to the defaults for anything missing.
 
         @param path - Where to look. A path that is not there is not an error:
           the defaults are a working configuration on their own.
+        @param home - Whose home a path beginning with ~ means. The service
+          leaves this out, because it runs as that person. The privileged
+          helper runs as root and passes theirs.
         @returns Settings
         """
         parser = configparser.ConfigParser()
         parser.read_dict({"service": DEFAULTS})
         if path.exists():
             parser.read(path)
-        return cls(parser["service"])
+        return cls(parser["service"], home)
 
     def __repr__(self):
         return "Settings(address=%r, port=%d, previous_config=%r)" % (

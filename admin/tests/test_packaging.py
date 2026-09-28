@@ -74,8 +74,7 @@ def test_the_package_creates_that_directory(build):
     """systemd skips a ReadWritePaths entry whose path is absent, so the entry
     above is worth nothing until the directory exists. Nothing the service does
     can create it: by the time it runs, the home is already read only."""
-    postinst = build.POSTINST % {
-        "name": build.NAME, "service": build.SERVICE, "units": build.UNITS}
+    postinst = build.scripts()["postinst"]
 
     assert "install -d" in postinst
     assert where_they_live() in postinst
@@ -85,8 +84,7 @@ def test_the_package_asks_the_unit_who_the_user_is(build):
     """Rather than naming them a second time. The unit is where it is decided,
     and a package that disagreed with it would create the directory in the wrong
     home and leave the right one read only."""
-    postinst = build.POSTINST % {
-        "name": build.NAME, "service": build.SERVICE, "units": build.UNITS}
+    postinst = build.scripts()["postinst"]
 
     assert "s/^User=//p" in postinst
     assert "getent passwd" in postinst
@@ -97,12 +95,66 @@ def test_purging_the_package_leaves_the_home_alone(build):
     configuration. The configurations somebody saved are in their home, beside
     the emulator's configuration and the disk image, and removing this tool is
     not removing the machines they built with it."""
-    postrm = build.POSTRM % {"name": build.NAME, "service": build.SERVICE}
-
-    for line in postrm.splitlines():
+    for line in build.scripts()["postrm"].splitlines():
         if line.strip().startswith("rm -rf"):
             assert "/home" not in line, line
             assert "~" not in line, line
+
+
+def test_every_unit_the_package_names_is_beside_it(build):
+    """A unit named in the list and absent from the directory is a package that
+    installs half of what it promises, and dpkg says nothing about it."""
+    for unit in build.UNIT_FILES:
+        assert (PACKAGING / unit).is_file(), unit
+
+
+def test_the_package_switches_on_every_watcher_it_ships(build):
+    """A path unit that is not enabled watches nothing, and the request it was
+    meant to answer sits in the runtime directory for ever."""
+    watching = {unit for unit in build.UNIT_FILES if unit.endswith(".path")}
+
+    assert set(build.WATCHERS) == watching
+    postinst = build.scripts()["postinst"]
+    prerm = build.scripts()["prerm"]
+    for unit in watching:
+        assert unit in postinst, unit
+        assert unit in prerm, unit
+
+
+def test_the_privileged_helper_watches_where_the_service_writes(build):
+    """Three files have to agree about one path: the setting the service writes
+    the request through, the `PathExists=` the watcher fires on, and the name
+    the helper reads. A machine where they disagree looks exactly like one where
+    they agree, right up to the first installation, which then never starts."""
+    from previously import kiosk
+
+    watching = (PACKAGING / "previously-setup.path").read_text(encoding="utf-8")
+    wanted = "%s/%s" % (DEFAULTS["runtime_directory"], kiosk.SETUP_REQUEST)
+
+    assert "PathExists=%s" % wanted in watching
+
+
+def test_the_helper_keeps_what_it_wrote_after_it_stops(build):
+    """The last thing it wrote is the answer to how the run went, and a runtime
+    directory systemd empties when the unit stops takes that answer with it."""
+    unit = (PACKAGING / "previously-setup.service").read_text(encoding="utf-8")
+
+    assert "RuntimeDirectory=previously-setup" in unit
+    assert "RuntimeDirectoryPreserve=yes" in unit
+
+
+def test_the_helper_writes_where_the_service_reads(build):
+    """Root's own directory rather than the service's, because a file root wrote
+    into a directory an unprivileged user owns could be replaced by a link to
+    somewhere else between one write and the next."""
+    from previously import setup
+
+    unit = (PACKAGING / "previously-setup.service").read_text(encoding="utf-8")
+    named = DEFAULTS["setup_directory"]
+
+    assert str(setup.OUR_DIRECTORY) == named
+    assert "RuntimeDirectory=%s" % named.rsplit("/", 1)[-1] in unit
+    assert named != DEFAULTS["runtime_directory"]
 
 
 # -- which build a package is --------------------------------------------

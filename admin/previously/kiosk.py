@@ -13,12 +13,19 @@ down, so this tool does not: it leaves a file in its own runtime directory, and
 a systemd path unit running as root does the one thing that file means. The
 name of the file is the whole of the request, so there is nothing to pass and
 no shell to pass it through.
+
+Setting the machine up works the same way and is the one request that carries
+anything inside it, because installing is more than one exact command. What it
+carries is three names: a job, a system and a machine. `setup.py` is what reads
+them, and it looks every one of them up in a table of its own, so nothing that
+arrives from a browser is ever a path, a URL or a command.
 """
 
+import json
 import subprocess
 import time
 
-from . import screen
+from . import machines, screen, setup, systems
 from .answers import told
 
 #: How long to wait for systemctl before giving up. A query that hangs is worse
@@ -68,6 +75,11 @@ POLL_SECONDS = 1
 #: this service creates and of the systemd path unit watching for it, so a name
 #: added here without a pair of units to match is a request nothing answers.
 BOARD_REQUESTS = ("reboot", "poweroff")
+
+#: What the request to set the machine up is called. The only one of these that
+#: carries anything inside it, and `previously-setup.path` watches for this
+#: name in the same directory as the two above.
+SETUP_REQUEST = "setup"
 
 
 def is_running(unit):
@@ -311,6 +323,71 @@ def board(action, runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS,
         return False, told("board.request-refused", action=action)
 
     return True, told("board.on-its-way", action=action)
+
+
+def ask_to_set_up(runtime_directory, setup_directory, job, system=None,
+                  machine=None):
+    """Asks the privileged helper to install something, and says whether it took.
+
+    @param runtime_directory - The service's runtime directory, which is where
+      `previously-setup.path` watches for the request.
+    @param setup_directory - Where the helper says what it is doing, which is
+      read here to refuse a second request whilst one is still running.
+    @param job - What to do, which has to be one of `setup.JOBS`.
+    @param system - Which system, by identifier, or None where the job needs
+      none.
+    @param machine - Which of the eleven a fresh configuration describes, by
+      identifier, or None for the one `setup.py` gives a machine that has never
+      been configured.
+    @returns (bool, dict) as everything else here answers.
+
+    The three names are checked here as well as there, and that is not two
+    answers to one question: the check there is the boundary, and this one is
+    so that a name nobody offers is answered at once rather than by a run that
+    starts, refuses and leaves a failure to read.
+
+    Written under another name and moved into place, because the unit watching
+    for it fires the moment the name appears and a file half written is a
+    request half read.
+    """
+    if job not in setup.JOBS:
+        return False, told("setup.no-such-job")
+    if system is not None and systems.find(system) is None:
+        return False, told("setup.no-such-system")
+    if machine is not None and machines.find(machine) is None:
+        return False, told("setup.no-such-machine")
+
+    running = setting_up(setup_directory)
+    if running is not None and running.get("finished_at") is None:
+        return False, told("setup.one-at-a-time")
+
+    asking = {"do": job, "system": system, "machine": machine}
+    scratch = runtime_directory / (SETUP_REQUEST + ".writing")
+    try:
+        scratch.write_text(json.dumps(asking), encoding="utf-8")
+        scratch.replace(runtime_directory / SETUP_REQUEST)
+    except OSError:
+        return False, told("setup.request-refused")
+    return True, told("setup.asked", job=job)
+
+
+def setting_up(setup_directory):
+    """What the privileged helper is doing, or last did.
+
+    @param setup_directory - Where it writes, which is root's own runtime
+      directory and one this service only reads.
+    @returns dict as `setup.Work.reading` describes it, or None where it has
+      never run on this machine since it was last started.
+
+    Answered as None rather than as an error, because a helper that has never
+    run is the ordinary state of a machine somebody set up by hand.
+    """
+    try:
+        found = json.loads(
+            (setup_directory / setup.PROGRESS).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return found if isinstance(found, dict) else None
 
 
 def _request(runtime_directory, action):
