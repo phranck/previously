@@ -267,6 +267,20 @@ The Intel builds of OPENSTEP are not offered. Previous emulates 68k hardware, an
 
 **A disk is named after its system**, `nextstep-3.3.dd`, in `~/nextstep` beside whatever else is there. A machine set up by `install.sh` has its disk inside a folder named after the archive instead, and that is recognised rather than fetched a second time.
 
+### Installer.app
+
+What NeXT called the application that puts things on a machine and takes them off again, and it wears that application's own face: the open package out of `/NextAdmin/Installer.app`. Two kinds of thing are in it, and they differ in cost and in kind.
+
+**The emulator** is installed, updated and removed as one thing, because Previous on its own is not a machine that boots: what goes with it is the compositor it runs in, the console that logs in by itself, the silenced startup and the start on the first console. Removing it is that list backwards, and it is the half to get right rather than the half to leave out, since a tool that can only install is one nobody dares press.
+
+**The six systems** are a list, one of which is chosen. Each says what it costs to fetch or that it is already here, and the sentence under the list says what it becomes on the card. NeXTSTEP 3.3 comes with the emulator unless another is chosen, so a machine that has just been set up boots into a system rather than into a prompt about what to do next.
+
+**What it costs is in the question rather than in the failure.** Fetching one says what it travels as, what it becomes, and what would be left on the card. A card that fills up during an unpack leaves a half written image and a person with no idea why.
+
+**Whilst it runs, the window says which step it is on and how far through.** The trough is there only whilst something is happening, the figure comes from the Pi rather than from anything the browser holds, and a reload shows the same thing. A failure says which step failed, why, and which steps were put back, in this interface's own words.
+
+**Switching between systems that are already here is not in this window.** That is choosing which disk the machine boots, it takes no time at all, and it belongs with the disks themselves.
+
 **`install.sh` still carries its own copy of these steps.** It is the way in on a machine that has no admin tool yet and therefore cannot ask for any of this. Making it ask, so that there is one implementation rather than two, waits until this one has set a real machine up.
 
 ## Its own configuration
@@ -310,6 +324,7 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
   Apps
     Config Editor.app
     Grab.app
+    Installer.app
     Preferences.app
     Preview.app
     Terminal.app

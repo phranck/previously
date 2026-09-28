@@ -8,6 +8,7 @@ and three applications is choosing in a place rather than reading a list.
       Apps
         Config Editor.app
         Grab.app
+        Installer.app
         Preferences.app
         Preview.app
         Terminal.app
@@ -70,6 +71,11 @@ USER = "user"
 FOLDER_ICON = "folder"
 DEFAULT_APP_ICON = "defaultAppIcon"
 GRAB_ICON = "Grab"
+#: What the Installer wears. NeXT shipped an application for putting software
+#: on a machine and taking it off again and called it Installer, and this one
+#: does the same job for the emulator and the systems it runs, so it carries
+#: that name and the open package that bundle drew.
+INSTALLER_ICON = "Installer"
 PREFERENCES_ICON = "Preferences"
 TERMINAL_ICON = "Terminal"
 
@@ -99,6 +105,7 @@ TERMINAL_ICON = "Terminal"
 APPLICATIONS = (
     ("Config Editor.app", DEFAULT_APP_ICON, "editor", "app.config-editor"),
     ("Grab.app", GRAB_ICON, "grab", "app.grab"),
+    ("Installer.app", INSTALLER_ICON, "installer", "app.installer"),
     ("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences"),
     ("Preview.app", PREVIEW_ICON, "preview", "app.preview"),
     ("Terminal.app", TERMINAL_ICON, "terminal", "app.terminal"),

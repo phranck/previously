@@ -127,6 +127,48 @@ def test_every_group_in_the_editor_belongs_to_a_subject(markup):
     assert [group for group in groups if "subject=" not in group] == []
 
 
+#: Every element of the Installer the page names. It reaches several of them
+#: through a list rather than one at a time, which the pattern above does not
+#: see, so they are caught by their names instead.
+AN_INSTALLER_ELEMENT = re.compile(r'"(installer-[\w-]+)"')
+
+
+def test_every_part_of_the_installer_the_page_names_is_in_the_markup(page, markup):
+    """Its buttons are switched on and off through a list of names, so a typing
+    mistake in one of those is a button that never changes and says nothing
+    about it."""
+    wanted = set(AN_INSTALLER_ELEMENT.findall(page))
+    have = set(IN_MARKUP.findall(markup))
+
+    assert len(wanted) > 5
+    assert sorted(wanted - have) == []
+
+
+def test_the_installer_holds_no_list_of_systems(page):
+    """What can be installed is decided by what can be fetched, and a second
+    copy of that list in the page is how the two come to disagree. The window
+    draws whatever the service offers, and there are no six of anything in it.
+
+    By identifier, which is what the page would have to hold to name one. A
+    system's name turns up in a comment explaining what comes with the
+    emulator, and a comment is not a copy of anything.
+    """
+    from previously import systems
+
+    for system in systems.CATALOGUE:
+        assert system.identifier not in page, system.identifier
+
+
+def test_the_installer_asks_for_jobs_the_service_knows(page):
+    """A name the service has no job for is refused, and the window would show
+    that refusal rather than doing anything."""
+    from previously import setup
+
+    asked = set(re.findall(r'^  \w+: "([\w-]+)",$', page, re.M))
+
+    assert set(setup.JOBS) <= asked
+
+
 def test_every_scale_in_the_editor_is_a_slider(page, markup):
     """A group whose values have an order is a knob in a trough. Drawn as a row
     of cells it would say they have none, and more memory being to the right is

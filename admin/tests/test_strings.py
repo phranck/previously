@@ -203,6 +203,15 @@ def test_every_step_of_an_installation_can_be_named(english):
         assert f"setup.step.{name}" in english, name
 
 
+def test_every_job_the_installer_can_ask_for_can_be_reported(english):
+    """What came of asking is keyed by the job, because five different things
+    are being reported and one sentence for all of them would say nothing."""
+    from previously import setup
+
+    for job in sorted(setup.JOBS):
+        assert f"told.setup.asked.{job}" in english, job
+
+
 def test_every_job_is_made_of_steps_that_exist(english):
     """A job naming a step nothing implements is a run that stops in the
     middle, as root, on somebody's machine."""
