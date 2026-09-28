@@ -44,6 +44,8 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/files.py` | The places this tool shows, which are not places on any disk |
 | `previously/change.py` | Changing the machine without leaving it unable to start |
 | `previously/kiosk.py` | Everything this tool does to the machine, in one file |
+| `previously/systems.py` | The six systems that can be put on this machine, and where each comes from |
+| `previously/setup.py` | What root does on this tool's behalf, and the only thing root does |
 | `previously/screen.py` | Reading the emulated screen, and pressing its keys |
 | `previously/grab.py` | Taking a picture of that screen and keeping it |
 | `previously/terminal.py` | The shell session behind the Terminal window |
@@ -63,6 +65,8 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 **What a version is.** `RELEASE` in `server.py` is the release, and it is written down in that one place. `packaging/build.py` reads it and asks git what the tree is, so a package built on the tag of that release is the plain number and every other build carries how far it stands from the last tag and which commit it is: `1.0.0+7.g2f250d5` after the release, `1.0.0~7.g2f250d5` on the way to one, and `.modified` on the end where something was uncommitted. The count is there because dpkg orders versions and a hash does not. The version it settles on is written into the package as `previously/version.txt`, which is what the service reports about itself, so what the Raspberry Pi window says and what `dpkg` says are the same string.
 
 **It needs no privileges at all.** Reading state does not, because `systemctl is-active` answers any user. Switching the emulated machine on and off does not either, because it happens through one file rather than through systemd. The next section says why.
+
+Installing the emulator does need them, and the tool still does not have them: it writes a request and a separate program acts on it as root. "Installing from the browser" below says what that program may be asked to do, which is three names out of three tables.
 
 ## What anybody on the network can reach
 
@@ -102,6 +106,8 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/machine/remove` | Takes a saved configuration out of the list |
 | `POST /api/pi/reboot` | Shuts NeXTSTEP down, then restarts the board |
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
+| `GET /api/setup` | Which systems there are, which are here, how much room is left, and what is being installed |
+| `POST /api/setup` | Asks the privileged helper to install, update, remove or fetch something |
 | `GET /api/terminal` | Becomes a WebSocket carrying a login on this machine |
 
 Every POST is checked for a session before anything looks at what was sent, and the three routes above about the secret itself are what a browser goes through to have one. A POST that says it comes from another page is refused whatever it carries, because a cookie rides along with every request to this host and a session alone would let another site act here.
@@ -236,6 +242,32 @@ That path is a tmpfs and is empty at every boot, which is what makes restarting 
 Stopping writes that file, presses F10 and waits for the guest to go. Starting removes the file, and the waiting console notices within two seconds. Nothing is killed, nothing races, and the service never needs a privilege it could misuse.
 
 **The warning before stopping is always shown and always says the same thing.** Previous exposes nothing about what the emulated machine is doing, so a warning that appeared only sometimes would teach the reader that its absence means safe, which cannot be known.
+
+## Installing from the browser
+
+Somebody with a bare Raspberry Pi OS installs one package and does everything else in a browser. What that takes is root, twenty-five times over: apt sources, packages, files in `/etc/systemd/system`, the kernel's command line in `/boot/firmware`. The tool has none of that and gets none of it.
+
+**A second program has it, and knows one job.** `previously-setup.path` watches for `/run/previously/setup`, and the unit it starts runs `previously/setup.py` as root. That file is the whole of the privileged surface: no routes, nothing parsed from the network, and nothing that arrives from a browser is ever a path, a URL or a command.
+
+**A request is three names.** A job, a system and a machine. Every one of them is looked up in a table that ships with this package, and a name that is not in its table refuses the whole request before anything is touched. So the disk image, which was the one free value in the whole of `install.sh`, stops being free: the helper is asked for one of six systems by name and holds the addresses itself.
+
+The jobs are `install`, which is the whole of `install.sh` and takes a system with it; `update` and `remove` for the emulator; and `fetch` and `forget` for one system's disk.
+
+**The request is read carefully, because the directory it sits in is not root's.** It is opened without following a link, checked for being an ordinary file and read no further than four kilobytes, and it is taken away before any of the work starts, so the unit watching for it cannot start the same run twice.
+
+**What it writes back is in a directory of root's own**, `/run/previously-setup`, which the tool reads and never writes. The other way round, a file root wrote into a directory an unprivileged service owns could be replaced by a link to somewhere else between one write and the next, and that is a way to have root overwrite anything on the machine.
+
+**Every step skips what it finds already done, and records how to undo what it did.** A failure walks that record backwards, so each step is reversed in the world it left behind, and the record says which step failed and which ones were put back. A step that skipped records nothing, so nothing the machine already had is ever taken away.
+
+**It says how far it has got whilst it runs.** Fetching a system is tens of megabytes and unpacking it is two gigabytes, which is minutes on a Pi, so the progress is a real figure: bytes against bytes for the download and what has been written against what a two gigabyte disk comes to for the unpack. It survives the page being reloaded, because it is a file on the Pi rather than anything the browser holds.
+
+**The six systems are in `systems.py`**, from NeXTSTEP 2.2 to OPENSTEP 4.2, each an archive of 22 to 72 MB that unpacks to a two gigabyte disk: such a disk is mostly zeros. Each carries its size and its SHA-1 as measured from the archive's own metadata, and anything that arrives as something else is thrown away rather than installed. Redirects are followed, because archive.org answers a download by sending the caller to whichever node holds the item, and every hop is checked again so that one leading off the archive ends the fetch.
+
+The Intel builds of OPENSTEP are not offered. Previous emulates 68k hardware, and one of those would download, unpack and never boot.
+
+**A disk is named after its system**, `nextstep-3.3.dd`, in `~/nextstep` beside whatever else is there. A machine set up by `install.sh` has its disk inside a folder named after the archive instead, and that is recognised rather than fetched a second time.
+
+**`install.sh` still carries its own copy of these steps.** It is the way in on a machine that has no admin tool yet and therefore cannot ask for any of this. Making it ask, so that there is one implementation rather than two, waits until this one has set a real machine up.
 
 ## Its own configuration
 
