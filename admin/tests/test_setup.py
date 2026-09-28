@@ -404,6 +404,44 @@ def test_an_autostart_that_is_already_there_is_not_written_twice(tmp_path, comma
     assert profile.read_text() == once
 
 
+def test_an_installation_ends_with_the_machine_running(tmp_path, commands, monkeypatch):
+    """Everything up to here leaves a machine that is installed and shows
+    nothing, because the console has been at a login prompt since before any of
+    it existed. So the console is restarted, and the hold that would stop it
+    starting the emulator goes first."""
+    monkeypatch.setattr(setup, "_the_guest_is_running", lambda: False)
+    hold = tmp_path / "hold"
+    hold.touch()
+    monkeypatch.setattr(setup, "HOLD", str(hold))
+    work = work_in(tmp_path)
+    work.at("start", len(setup.JOBS["install"]))
+
+    setup.STEPS["start"](work)
+
+    assert not hold.exists()
+    assert ["systemctl", "restart", work.settings.kiosk_unit] in commands
+    assert work.changed == ["start"]
+
+
+def test_a_machine_that_is_already_running_is_not_restarted(tmp_path, commands,
+                                                            monkeypatch):
+    """Restarting the console under a running guest costs whatever that guest
+    had not written, so asking for an installation a second time leaves the
+    machine somebody is using alone."""
+    monkeypatch.setattr(setup, "_the_guest_is_running", lambda: True)
+    hold = tmp_path / "hold"
+    hold.touch()
+    monkeypatch.setattr(setup, "HOLD", str(hold))
+    work = work_in(tmp_path)
+    work.at("start", len(setup.JOBS["install"]))
+
+    setup.STEPS["start"](work)
+
+    assert hold.exists()
+    assert commands == []
+    assert work.changed == []
+
+
 # -- the disk a machine boots ---------------------------------------------
 
 

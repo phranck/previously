@@ -250,6 +250,16 @@ def test_every_job_the_installer_can_ask_for_can_be_reported(english):
         assert f"told.setup.asked.{job}" in english, job
 
 
+def test_every_job_says_what_the_machine_has_when_it_finishes(english):
+    """And what came of it afterwards, keyed by the job for the same reason.
+    A job without one ends by showing `installer.finished.fetch` to whoever
+    waited for it."""
+    from previously import setup
+
+    for job in sorted(setup.JOBS):
+        assert f"installer.finished.{job}" in english, job
+
+
 def test_every_job_is_made_of_steps_that_exist(english):
     """A job naming a step nothing implements is a run that stops in the
     middle, as root, on somebody's machine."""
