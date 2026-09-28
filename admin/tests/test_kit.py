@@ -58,6 +58,58 @@ def test_every_element_it_defines_is_in_its_own_part(build):
             assert f"class {class_name} " in script, (name, class_name)
 
 
+#: What the kit's own scripts build, by the class they put on it. Those are the
+#: kit's inner structure rather than names an interface is meant to use.
+BUILT_BY_THE_KIT = re.compile(r'class(?:Name)?\s*=\s*"([a-z][a-z0-9 -]*)"')
+
+#: The first thing a rule matches on, which is what decides whether it reaches
+#: into somebody else's element or only into its own.
+FIRST_OF_A_SELECTOR = re.compile(r"^\s*([.#\w\[][^\s,{>+~]*)", re.M)
+
+
+def kit_classes():
+    """@returns set of every class the kit's scripts put on an element."""
+    found = set()
+    for source in (INTERFACE.parent.parent / "design" / "kit").glob("*.js"):
+        for names in BUILT_BY_THE_KIT.findall(source.read_text(encoding="utf-8")):
+            found.update(names.split())
+    return found
+
+
+def test_the_kit_builds_things_this_can_name():
+    """Both tests below pass on an empty set, so this is what says they were
+    measuring anything at all."""
+    assert len(kit_classes()) > 10
+    assert "panel" in kit_classes()
+
+
+def test_this_interface_names_nothing_the_kit_builds(build):
+    """A bare rule for a class the kit puts on its own elements reaches inside
+    them. `.panel { padding: 10px }` here, meant for one module of Preferences,
+    moved the attention panel's title bar thirteen pixels off its frame, and
+    nothing in either file said the two were the same name.
+
+    Only where the rule begins with it. `.module .art` is this interface
+    reaching into its own module, which is its business.
+    """
+    ours = (INTERFACE / "app.css").read_text(encoding="utf-8")
+    # The rules alone, so a class named inside a comment or a value is not read
+    # as a selector.
+    ours = re.sub(r"/\*.*?\*/", "", ours, flags=re.S)
+
+    theirs = kit_classes()
+    reaching = set()
+    for block in ours.split("}"):
+        selector = block.split("{")[0]
+        if not selector.strip():
+            continue
+        for first in FIRST_OF_A_SELECTOR.findall(selector):
+            if first.startswith(".") and first[1:] in theirs:
+                reaching.add(first)
+
+    assert sorted(reaching) == []
+
+
 def test_a_tile_that_can_be_carried_carries_a_name():
     """The dock remembers where a tile was put under that tile's name, so one
     without a name goes back to where the markup has it at every reload, and

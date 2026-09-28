@@ -908,6 +908,12 @@ nx-ask[data-open] { display: grid; }
 
 nx-ask .panel {
   width: 430px;
+  /* Its own, stated rather than left at nothing. `panel` is a plain name, and
+     the document this is read into may have a rule for one of its own: a bare
+     `.panel { padding: 10px }` there reaches in here and pushes the title bar
+     thirteen pixels off the frame, which is what happened. The kit owns its
+     own geometry. */
+  padding: 0;
   border: 1px solid var(--black);
   background: var(--light);
   box-shadow: 4px 4px 0 rgba(0,0,0,.35);
