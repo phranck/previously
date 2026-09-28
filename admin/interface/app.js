@@ -535,7 +535,15 @@ function drawWhatThisMachineIs(status) {
   if (!entry) return;
 
   const machine = status?.ready?.set_up ? status.configuration : null;
-  if (machine) writeWords(entry, t("menu.about", { machine: modelOf(machine) }));
+  if (machine) {
+    /* The window says what the entry that opens it says. Two names for one
+       window is two windows as far as anybody reading the screen is
+       concerned. */
+    const words = t("menu.about", { machine: modelOf(machine) });
+    writeWords(entry, words);
+    const window_ = document.querySelector('nx-window[name="info"]');
+    if (window_) writeTitle(window_, words);
+  }
 
   /* `away` rather than `hidden`, because the menu owns that one: it hides
      every entry that belongs to another application each time the front

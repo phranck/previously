@@ -72,7 +72,11 @@
      running, from the left corner rightwards. -->
 <nx-floor id="floor"></nx-floor>
 
-<nx-window name="info" data-t-title="window.info" fixed drop x="180" y="16" w="400">
+<!-- Its title is the page's, because it says what the menu entry that opens
+     it says, and that carries the machine's own name. No data-t-title, so a
+     change of language never shows the unfilled sentence for the moment
+     before the page writes it. -->
+<nx-window name="info" fixed drop x="180" y="16" w="400">
   <div class="info-body">
     <nx-portrait>
       <i class="art icon" id="info-icon" style="background-image: var(--root)"></i>
@@ -103,7 +107,7 @@
   </div>
 </nx-window>
 
-<nx-window name="pi" title="Raspberry Pi" fixed x="600" y="16" w="360" closed>
+<nx-window name="pi" data-t-title="window.info" fixed x="600" y="16" w="360" closed>
   <div class="readings">
     <nx-row><label data-t="pi.model"></label><nx-field id="pi-model">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="pi.uptime"></label><nx-field id="pi-uptime">&mdash;</nx-field></nx-row>
