@@ -2026,7 +2026,7 @@ function fillWithBanks(id, offered) {
     }
 
     const module_ = document.createElement("div");
-    module_.className = "module";
+    module_.className = "bank-module";
     module_.toggleAttribute("empty", !size);
     module_.textContent = size
       ? t("editor.megabytes", { mb: size })

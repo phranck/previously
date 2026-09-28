@@ -290,7 +290,11 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   box-shadow: none;
 }
 
-.module {
+/* Named for the bank it sits in rather than for what it is, because Preferences
+   has modules of its own further up this file and one stylesheet cannot hold
+   two blocks for one name. The one read last would win, and neither block says
+   the other exists. */
+.bank-module {
   width: 100%;
   height: 100%;
   display: grid;
@@ -305,7 +309,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    as a bank that is not there. It carries no edge, since there is no module to
    raise, and its word is set in the smaller type the interface uses for what it
    says about itself rather than for what can be chosen. */
-.module[empty] {
+.bank-module[empty] {
   border-color: transparent;
   box-shadow: none;
   background: none;
