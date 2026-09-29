@@ -133,6 +133,10 @@ Every POST is checked for a session before anything looks at what was sent, and 
 
 The one route with no check of ours at all is the terminal, and the section below says why: what answers there is this machine's own SSH server, so whoever is connecting proves who they are to that.
 
+**Every answer from the API is `no-store`**, because each one is about right now and a kept copy is a wrong one. Files are the opposite and say so: each carries an `ETag` and a `Last-Modified`, and a browser that already has one is told `304` rather than sent it again. The pictures, the faces and the one vendor library also carry a day's `max-age`, since they change when a package is installed and at no other time. The page, the script and the stylesheet carry `no-cache`, which means the browser asks every time and is told `304` when nothing changed, so a new build is picked up at once.
+
+**The connection stays open.** `http.server` speaks HTTP/1.0 unless it is told otherwise, which closes the socket after every answer. That was costing a page load thirty connections, and on a Pi joined by Wi-Fi each of those took two seconds to open: measured on 2026-09-29, an icon of 1232 bytes arrived 8.7 seconds after it was asked for, of which 1 millisecond was the data. Every answer here carries a `Content-Length`, which is what lets the handler speak 1.1 and keep the socket.
+
 ## The shell
 
 `GET /api/terminal` upgrades to a WebSocket, and what runs on the pseudo terminal behind it is `ssh` to this machine's own SSH server on the loopback. So what somebody sees is the login prompt sshd puts up, and what they get afterwards is an ordinary login shell: their own home, `sudo` if they have it, everything they would have sitting at the machine.

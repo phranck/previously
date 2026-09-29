@@ -7,6 +7,7 @@ line, the headers and the body.
 
 import json
 import threading
+import http.client
 import http.server
 import urllib.error
 import urllib.parse
@@ -109,6 +110,105 @@ def test_nothing_is_cached(service):
     """Every answer is about right now, and a cached one is a wrong one."""
     _, headers, _ = fetch(service + "/api/status")
     assert headers["Cache-Control"] == "no-store"
+
+
+def asking(url, holding=None, since=None):
+    """Asks for a file the way a browser that may already have it asks.
+
+    @param url - What to fetch.
+    @param holding - What to send as If-None-Match, or None.
+    @param since - What to send as If-Modified-Since, or None.
+    @returns (status, headers, body). A 304 arrives as an error to urllib,
+      which is how it reports anything that is not a 2xx, and it carries the
+      same three things.
+    """
+    request = urllib.request.Request(url)
+    if holding:
+        request.add_header("If-None-Match", holding)
+    if since:
+        request.add_header("If-Modified-Since", since)
+    try:
+        with urllib.request.urlopen(request, timeout=5) as answer:
+            return answer.status, answer.headers, answer.read()
+    except urllib.error.HTTPError as answer:
+        return answer.status, answer.headers, answer.read()
+
+
+def test_a_file_says_what_it_is_and_how_long_it_is_good_for(service):
+    """Without a validator a reload fetches every icon again, and on a Pi
+    joined by Wi-Fi each of those is a new connection costing two seconds."""
+    status, headers, body = fetch(service + "/index.html")
+
+    assert status == 200
+    assert headers["ETag"]
+    assert headers["Last-Modified"]
+    assert body
+
+
+def test_a_browser_that_has_the_file_is_told_so_rather_than_sent_it(service):
+    status, headers, _ = fetch(service + "/index.html")
+
+    again, headers_again, body = asking(service + "/index.html",
+                                        holding=headers["ETag"])
+
+    assert again == 304
+    assert body == b""
+    assert headers_again["ETag"] == headers["ETag"]
+
+
+def test_a_date_answers_the_same_question(service):
+    """For a browser that kept the date rather than the tag, which is what one
+    that was given the file by something else has."""
+    _, headers, _ = fetch(service + "/index.html")
+
+    again, _, body = asking(service + "/index.html",
+                            since=headers["Last-Modified"])
+
+    assert again == 304
+    assert body == b""
+
+
+def test_a_browser_holding_something_else_is_sent_the_file(service):
+    again, _, body = asking(service + "/index.html", holding='"not this one"')
+
+    assert again == 200
+    assert body
+
+
+def test_what_changes_on_every_build_is_asked_about_each_time(service):
+    """The page, the script and the stylesheet are written by every build, so
+    a browser that kept one for a day would be running the build before."""
+    _, headers, _ = fetch(service + "/index.html")
+
+    assert headers["Cache-Control"] == "no-cache"
+
+
+def test_what_a_package_brings_is_kept(service, tmp_path):
+    """A picture changes when a new package is installed and at no other time,
+    so asking about it on every reload is a round trip that answers nothing."""
+    _, headers, _ = fetch(service + "/parts/folder.png")
+
+    assert headers["Cache-Control"] == "public, max-age=86400"
+
+
+def test_the_connection_carries_more_than_one_file(service):
+    """Thirty files on one connection rather than thirty connections. That is
+    the whole of why a reload took seconds."""
+    parsed = urllib.parse.urlparse(service)
+    connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=5)
+    try:
+        answers = []
+        for route in ["/index.html", "/parts/folder.png", "/index.html"]:
+            connection.request("GET", route)
+            answer = connection.getresponse()
+            answer.read()
+            answers.append((answer.status, answer.version))
+    finally:
+        connection.close()
+
+    # 11 is what http.client calls HTTP/1.1, and a connection that had been
+    # closed would have raised rather than answered the second time.
+    assert answers == [(200, 11), (200, 11), (200, 11)]
 
 
 def test_the_python_version_is_not_announced(service):
