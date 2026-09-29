@@ -504,14 +504,27 @@ nx-row .beside nx-field { flex: 1 1 auto; min-width: 0; }
 
 /* --- a document in preview ------------------------------------------------ */
 
+:root {
+  /* A document is read, and the rest of this desk is operated. --text-size is
+     what a label and a field are set in, which is a size for naming things
+     rather than for paragraphs, so a document is set larger. NeXTSTEP's own
+     documentation gives no figure for this, so it is chosen rather than
+     measured: 14 is where a paragraph of this face stops being a control and
+     starts being prose, and the headings step up from it.
+
+     Code is smaller, because a monospaced face at the same size reads larger
+     than the one around it. */
+  --document-size: 14px;
+  --document-code-size: 13px;
+}
+
 /* Release notes, rendered from the Markdown they were written in. The window
    already draws NeXT's white page under a picture, and this is the same page
    with text on it rather than a second kind of surface. */
 .document {
   background: var(--white);
-  padding: 12px 16px;
-  min-height: 100%;
-  box-sizing: border-box;
+  padding: 14px 18px;
+  font-size: var(--document-size);
 }
 
 /* Headings are the page's own face one step up and in bold, because NeXTSTEP
@@ -521,32 +534,36 @@ nx-row .beside nx-field { flex: 1 1 auto; min-width: 0; }
 .document h2,
 .document h3 {
   font-weight: bold;
-  margin: 16px 0 6px;
+  margin: 18px 0 7px;
 }
 
-.document h1 { font-size: 18px; }
-.document h2 { font-size: 15px; }
-.document h3 { font-size: 13px; }
+.document h1 { font-size: 20px; }
+.document h2 { font-size: 17px; }
+.document h3 { font-size: 15px; }
 .document > :first-child { margin-top: 0; }
 
-.document p { margin: 0 0 10px; line-height: 1.45; }
+.document p { margin: 0 0 11px; line-height: 1.5; }
 .document ul,
-.document ol { margin: 0 0 10px; padding-left: 22px; }
-.document li { margin: 0 0 3px; line-height: 1.45; }
+.document ol { margin: 0 0 11px; padding-left: 24px; }
+.document li { margin: 0 0 4px; line-height: 1.5; }
 
-/* Code is set in the face the Terminal is set in, which is the one face on this
-   desk that was drawn for reading characters one at a time. */
+/* The host's own monospaced face rather than Ohlfs, which the Terminal is set
+   in. Ohlfs carries no hinting and its em is 1500, so it is on the pixel grid
+   only at a type size of 15 and whole multiples of it, which the head of
+   nextstep.css says and the Terminal obeys. A document sets code at the size
+   the prose around it wants, and at 13 that face would be off the grid and
+   blurred, which is what reading these notes at 100 per cent showed. */
 .document code,
-.document pre { font-family: var(--terminal-font); }
-.document code { font-size: 12px; }
+.document pre { font-family: var(--mono); }
+.document code { font-size: var(--document-code-size); }
 
 /* A block keeps its own line breaks and its own indentation, which is what a
    fence is for, and it scrolls sideways rather than wrapping: a wrapped command
    is one somebody would copy wrongly. */
 .document pre {
-  font-size: 12px;
-  margin: 0 0 10px;
-  padding: 8px 10px;
+  font-size: var(--document-code-size);
+  margin: 0 0 11px;
+  padding: 9px 11px;
   background: var(--light);
   border: 1px solid;
   border-color: var(--sunken-sides);
