@@ -85,6 +85,16 @@ def test_the_vendor_licence_survives_being_bundled(built):
     assert (WEB_ROOT / "vendor" / "LICENSE").is_file()
 
 
+def test_the_library_names_no_map():
+    """Each of the two arrives with a `sourceMappingURL` at its foot, naming a
+    map that is not vendored with it. Left on, every page load with the
+    console open asks for it and is told 404. Held here, because an upgrade
+    brings the line back and nothing else would say so."""
+    for name in ["xterm.js", "xterm-addon-fit.js"]:
+        text = (WEB_ROOT / "vendor" / name).read_text(encoding="utf-8")
+        assert "sourceMappingURL" not in text, name
+
+
 def test_the_page_asks_for_three_files(markup):
     """One stylesheet, the vendor library, and everything of ours."""
     assert re.findall(r'<link rel="stylesheet" href="([^"]+)"', markup) \
