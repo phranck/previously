@@ -334,3 +334,17 @@ def test_a_scroller_holding_more_than_one_view_is_told_which_one_to_measure():
         if len(rooms) < 2:
             continue
         assert ".drive(" in page, rooms
+
+
+def test_preview_puts_back_what_it_was_showing_when_it_comes_back_open():
+    """The desk restores a window's geometry and whether it was open, and
+    nothing else: what is inside one belongs to whatever fills it. So a reload
+    with a document up brought Preview back with its rooms as the markup leaves
+    them, which is a window showing nothing. The Config Editor carries the same
+    hook for the same reason, and this is what stops either being dropped."""
+    preview = (INTERFACE / "app" / "preview.js").read_text(encoding="utf-8")
+    wiring = preview[preview.index("function wirePreview("):]
+
+    assert "fillPreviewIfItCameBackOpen()" in wiring
+    # And what it puts back has to have been written down in the first place.
+    assert "keepShowing(" in preview
