@@ -19,6 +19,19 @@ import { ask, tell } from "./service.js";
 import { drawMachines, find, root } from "./viewer.js";
 import { Art } from "./words.js";
 
+/** Where Preview keeps what it is showing, so a reload comes back to it.
+ *
+ *  The desk remembers that a window was open and where it stood, and nothing
+ *  else: what is inside one belongs to whatever fills it. Every other part of
+ *  this interface that outlives a reload keeps its own key the same way, which
+ *  is what the chosen size, the shelf and the language do.
+ *
+ *  What is kept is the document rather than what it turned into, so coming back
+ *  to it fetches the picture again and asks for the notes of whichever release
+ *  is published now. A window that reopened onto a copy of yesterday's answer
+ *  would be a window saying something nothing else on the desk says. */
+const SHOWING_KEY = "previously.preview";
+
 /**
  * What Preview can show, one entry per kind of document.
  *
@@ -101,6 +114,7 @@ async function showInPreview(document_) {
   emptyThePreview(document_.kind);
   window_.rename(document_.name);
   window_.open();
+  keepShowing({ kind: document_.kind, name: document_.name });
 
   /* The scroller takes its bar from one element, which is its first child
      unless it is told otherwise, and this window has a room per kind of
@@ -112,6 +126,59 @@ async function showInPreview(document_) {
 
   /** @type {any} */ (document.getElementById("preview-note")).textContent =
     await renderer.show(document_);
+}
+
+/**
+ * Writes down what the window is showing, or forgets it.
+ * @param {any} showing - The document, as `{ kind, name }`, or null.
+ */
+function keepShowing(showing) {
+  try {
+    if (showing) localStorage.setItem(SHOWING_KEY, JSON.stringify(showing));
+    else localStorage.removeItem(SHOWING_KEY);
+  } catch {
+    /* A browser that will not keep anything is one where Preview opens empty
+       after a reload, which is worse than it was and is not worth failing the
+       window somebody just opened. */
+  }
+}
+
+/** @returns {any} What it was showing, or null. */
+function whatItWasShowing() {
+  try {
+    const kept = JSON.parse(localStorage.getItem(SHOWING_KEY));
+    return kept && RENDERERS[kept.kind] ? kept : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Puts back what Preview was showing, where it came back open.
+ *
+ * The desk restores a window's geometry and whether it was open, so a reload
+ * with the notes up brought the window back with both rooms as the markup
+ * leaves them, which is an empty picture room and a window showing nothing.
+ * The Config Editor has the same hook for the same reason.
+ *
+ * The document is fetched again rather than kept, so what comes back is what
+ * the Pi says now.
+ */
+function fillPreviewIfItCameBackOpen() {
+  const window_ = /** @type {any} */ (document.querySelector('nx-window[name="preview"]'));
+  if (!window_ || window_.hidden) return;
+
+  const showing = whatItWasShowing();
+  if (!showing) {
+    /* Open with nothing to put in it, which is a browser that forgot or a
+       first visit to a desk somebody left open. Saying so beats a blank. */
+    emptyThePreview();
+    /** @type {any} */ (document.getElementById("preview-note")).textContent =
+      t("preview.empty");
+    return;
+  }
+  if (showing.kind === "notes") return void showTheReleaseNotes();
+  showInPreview(showing);
 }
 
 /**
@@ -197,7 +264,14 @@ function openPictureMenu(thing, x, y) {
 /** Wires Preview, which holds nothing of its own once it is closed. */
 function wirePreview() {
   document.querySelector('nx-window[name="preview"]')
-    ?.addEventListener("nx-close", () => emptyThePreview());
+    ?.addEventListener("nx-close", () => {
+      emptyThePreview();
+      /* So a desk that comes back does not reopen a window onto a document
+         somebody closed. */
+      keepShowing(null);
+    });
+
+  fillPreviewIfItCameBackOpen();
 }
 
 export {
