@@ -143,7 +143,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if route == "/api/setup":
             return self._json(self._setup())
         if route == "/api/update":
-            return self._json(self._update())
+            # Opening the window that shows this asks GitHub again; the poll
+            # that redraws it whilst it is open does not, because sixty
+            # requests an hour is what an address is allowed and a loop would
+            # spend them.
+            asked = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            return self._json(self._update(check=asked.get("check") == ["1"]))
         if route == "/api/session":
             # How short a password may be travels with the answer, so the panel
             # that asks for one says the rule that will actually be applied
@@ -589,26 +594,29 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return self._json({"ok": taken, **told, **self._setup()},
                           status=200 if taken else 409)
 
-    def _update(self):
+    def _update(self, check=False):
         """What this tool is, what is published, and how a replacement is going.
+
+        @param check - Whether to ask GitHub again behind this answer. Set by
+          `?check=1`, which the browser sends when somebody opens the window
+          that shows this and at no other time.
 
         A reading, so it is open the way `/api/status` and `/api/setup` are: what
         version a machine on this network runs is not anybody's private
         business, and the answer is the same one the About panel already shows.
 
-        Nothing here touches the network. What GitHub said is kept for a quarter
-        of an hour and looked up again in a thread, so this answers as quickly on
-        a board with no internet as on one with it, and `published` is None until
-        the first lookup comes back.
+        Nothing here waits for the network even when it does ask. The lookup runs
+        in a thread and `release.py` puts a floor under how often one may start,
+        so this answers as quickly on a board with no internet as on one with it
+        and `published` is None until the first one comes back.
 
         What is installed is asked of dpkg rather than taken from `VERSION`
         above, because dpkg is what apt compares an update against and therefore
-        what decides whether there is one. The two differ for as long as a
-        package is in place and the service has not been restarted onto it, and
-        that difference is worth seeing rather than hiding: the Raspberry Pi
-        window shows what is answering beside what is installed.
+        what decides whether there is one. Both carry the build on the end, which
+        is what apt orders by; dropping it is the browser's business, since it is
+        a question about reading rather than about comparing.
         """
-        newest = release.published()
+        newest = release.published(check=check)
         here = setup.version_of(release.PACKAGE)
         running = kiosk.setting_up(self.settings.setup_directory)
         return {

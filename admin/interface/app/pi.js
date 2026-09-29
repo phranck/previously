@@ -3,7 +3,7 @@
 import { t } from "../strings.js";
 import { show, showState } from "./page.js";
 import { allowActions } from "./status.js";
-import { NOTHING, duration, named, when } from "./words.js";
+import { NOTHING, duration, named, released, when } from "./words.js";
 
 /** How often the status is fetched. A machine whose job is to sit there does
  *  not repay a faster poll than this. */
@@ -78,8 +78,10 @@ function drawPi(pi) {
 
   /* Which tool is answering. The one reading here that is about this program
      rather than about the board, and it is here because this is the window
-     somebody opens to find out what a machine is running. */
-  show("pi-version", pi.version ?? NOTHING);
+     somebody opens to find out what a machine is running. The release alone:
+     the build the service also reports is what apt orders packages by and is
+     read off the Pi when somebody needs it. */
+  show("pi-version", released(pi.version));
 }
 
 export {

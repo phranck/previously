@@ -255,6 +255,33 @@ function sized(bytes, fine) {
   return t(gigabytes ? "size.gb" : "size.mb", { size: figure });
 }
 
+/** Where a version stops being the release and starts being the build. The
+ *  release is digits and full stops, and a package built between two releases
+ *  carries how far it stands from a tag and which commit it is after a `+` or
+ *  a `~`. */
+const RELEASE_IN = /^\d+(?:\.\d+)*/;
+
+/**
+ * A version of this tool, as a person reads one.
+ * @param {string} version - What the service reports, which for a build between
+ *   two releases is something like `1.0.0+35.g553551d`.
+ * @returns {string} The release alone, so `1.0.0`. A version this does not
+ *   recognise is shown whole rather than swallowed, because a string nobody
+ *   expected is still better on the screen than nothing.
+ *
+ * The build is dropped here rather than at the service, which goes on reporting
+ * it: apt orders packages by it, and `dpkg-query -W previously` on the Pi is
+ * where somebody reads it when they need it. What it buys on a screen is
+ * nothing, and it costs the whole line.
+ *
+ * Only for versions of this tool. The emulator's is Debian's, and `4.3-0wmlive1`
+ * cut down to `4.3` would name a version that does not exist.
+ */
+function released(version) {
+  if (!version) return NOTHING;
+  return RELEASE_IN.exec(version)?.[0] ?? version;
+}
+
 export {
   APPLICATION,
   Art,
@@ -269,6 +296,7 @@ export {
   modelOf,
   nameOf,
   named,
+  released,
   say,
   screenOf,
   since,

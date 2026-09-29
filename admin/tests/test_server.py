@@ -1672,9 +1672,11 @@ def a_published_release(monkeypatch):
     """
     def published(newest, here):
         monkeypatch.setattr(server.release, "published",
-                            lambda: {"version": newest, "asked_at": 0.0,
-                                     "url": "https://github.com/x",
-                                     "size": 269770, "digest": "0" * 64})
+                            lambda check=False: {"version": newest,
+                                                 "asked_at": 0.0,
+                                                 "url": "https://github.com/x",
+                                                 "size": 269770,
+                                                 "digest": "0" * 64})
         monkeypatch.setattr(server.setup, "version_of", lambda package: here)
     return published
 
@@ -1693,6 +1695,31 @@ def test_which_version_is_here_and_which_is_published_is_open(
     assert said["published"] == "1.0.1"
     assert said["newer"] is True
     assert said["progress"] is None
+
+
+def test_a_poll_reads_what_is_known_and_does_not_reach_github(service, monkeypatch):
+    """The window redraws itself every two seconds whilst it is open, and an
+    address may ask GitHub sixty times an hour."""
+    asked = []
+    monkeypatch.setattr(server.release, "published",
+                        lambda check=False: asked.append(check) or None)
+
+    fetch(service + "/api/update")
+
+    assert asked == [False]
+
+
+def test_opening_the_window_asks_github_again(service, monkeypatch):
+    """Which is the whole of what makes a release published whilst this runs
+    turn up at all. `release.py` puts the floor under how often that may
+    happen, so the route only has to pass the asking on."""
+    asked = []
+    monkeypatch.setattr(server.release, "published",
+                        lambda check=False: asked.append(check) or None)
+
+    fetch(service + "/api/update?check=1")
+
+    assert asked == [True]
 
 
 def test_nothing_newer_is_answered_as_nothing_newer(service, a_published_release):
@@ -1722,7 +1749,7 @@ def test_a_board_that_has_not_reached_github_says_so_rather_than_waiting(
         service, monkeypatch):
     """The window asks every five seconds, so a reading that waited for a
     connection to fail would hold the whole window up."""
-    monkeypatch.setattr(server.release, "published", lambda: None)
+    monkeypatch.setattr(server.release, "published", lambda check=False: None)
 
     status, _, body = fetch(service + "/api/update")
     said = json.loads(body)
