@@ -20,9 +20,11 @@
 # And nothing in here reads from stdin, which is where the script itself
 # arrives when it is piped in. A program that did would swallow the rest of
 # the script. That is why apt runs with DEBIAN_FRONTEND set: a package asking
-# a configuration question would otherwise reach for stdin. sudo is not a
-# concern, because it reads the password from the terminal device rather than
-# from stdin unless told otherwise with -S.
+# a configuration question would otherwise reach for stdin. `apt_get` below is
+# what sets it, and it sets it on the sudo rather than in this shell, because
+# sudo runs with env_reset and drops whatever this shell exports. sudo itself
+# is not a concern, because it reads the password from the terminal device
+# rather than from stdin unless told otherwise with -S.
 #
 # Interrupting it is safe. Every step records how to undo exactly what it
 # changed, and Ctrl+C or a failure walks that record backwards. Untouched is
@@ -54,7 +56,23 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd -P || pwd -P)"
 readonly SCRIPT_DIR
 
-export DEBIAN_FRONTEND=noninteractive
+# Every apt call in this script, so the frontend is stated once and reaches
+# the command that needs it.
+#
+# Exporting it into this shell does nothing, which is what it did until now:
+# sudo runs with `Defaults env_reset`, so it builds a fresh environment and
+# whatever this shell set is gone by the time apt-get starts. Measured on a Pi:
+# `export DEBIAN_FRONTEND=noninteractive; sudo printenv DEBIAN_FRONTEND` prints
+# nothing. Given to the sudo it survives, because sudo puts an assignment in
+# front of the command into the environment it builds.
+#
+# What it buys is a package that would ask a configuration question answering
+# itself instead. Without it debconf tries three frontends that need a
+# terminal, prints two lines about each, and only then falls back to the one
+# this asks for, which it reaches by luck rather than by being told.
+apt_get() {
+  sudo DEBIAN_FRONTEND=noninteractive apt-get "$@"
+}
 
 readonly REPO_HOST="wmlive.rumbero.org"
 readonly REPO_URL="https://${REPO_HOST}/repo"
@@ -249,9 +267,9 @@ install_packages() {
     return
   fi
 
-  sudo apt-get update -qq
-  sudo apt-get install -y -qq "${missing[@]}"
-  undo "remove ${missing[*]}" "sudo apt-get remove -y -qq ${missing[*]}"
+  apt_get update -qq
+  apt_get install -y -qq "${missing[@]}"
+  undo "remove ${missing[*]}" "apt_get remove -y -qq ${missing[*]}"
 }
 
 # ---------------------------------------------------------------------------
@@ -307,9 +325,9 @@ install_previous() {
     return
   fi
 
-  sudo apt-get update -qq
-  sudo apt-get install -y previous
-  undo "remove previous" "sudo apt-get remove -y -qq previous"
+  apt_get update -qq
+  apt_get install -y previous
+  undo "remove previous" "apt_get remove -y -qq previous"
 }
 
 # ---------------------------------------------------------------------------
@@ -576,10 +594,10 @@ install_admin() {
 
   # apt rather than dpkg, so the dependencies it declares are resolved. The
   # package enables and starts the service and both path units itself.
-  sudo apt-get install -y -qq "$ADMIN_PACKAGE" \
+  apt_get install -y -qq "$ADMIN_PACKAGE" \
     || abort "Could not install ${ADMIN_PACKAGE}."
 
-  undo "remove the admin tool" "sudo apt-get purge -y -qq previously"
+  undo "remove the admin tool" "apt_get purge -y -qq previously"
 }
 
 # The admin tool on its own, for a machine that already has everything else.
@@ -604,7 +622,7 @@ update_admin() {
   # the same build in place again, which is what a rebuild of one commit is,
   # and --allow-downgrades is for going back to a release from a checkout that
   # ran ahead of it.
-  sudo apt-get install -y -qq --reinstall --allow-downgrades "$ADMIN_PACKAGE" \
+  apt_get install -y -qq --reinstall --allow-downgrades "$ADMIN_PACKAGE" \
     || abort "Could not install ${ADMIN_PACKAGE}."
 
   local after
@@ -707,8 +725,8 @@ install_audio() {
   done
 
   if [[ ${#missing[@]} -gt 0 ]]; then
-    sudo apt-get install -y -qq "${missing[@]}"
-    undo "remove ${missing[*]}" "sudo apt-get remove -y -qq ${missing[*]}"
+    apt_get install -y -qq "${missing[@]}"
+    undo "remove ${missing[*]}" "apt_get remove -y -qq ${missing[*]}"
   else
     skip "pipewire already installed"
   fi
