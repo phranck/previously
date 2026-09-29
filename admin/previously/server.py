@@ -8,6 +8,8 @@ the machine arrives as a POST and is refused without a signed in session,
 which password.py decides.
 """
 
+import email.utils
+import hashlib
 import http.cookies
 import http.server
 import json
@@ -99,6 +101,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
     server_version = "previously/" + VERSION
     #: Without this the base class announces the Python version to the network.
     sys_version = ""
+
+    #: One connection carries as many files as the page needs, which is what
+    #: HTTP/1.1 is for. Left at 1.0 the socket is closed after every answer,
+    #: and on a Pi joined by Wi-Fi opening the next one costs two seconds:
+    #: measured on 2026-09-29, thirty requests each paying it again, with a
+    #: 1232-byte icon taking 8.7 seconds to arrive. Every answer here carries
+    #: a Content-Length, which is what this needs to be safe.
+    protocol_version = "HTTP/1.1"
 
     def do_GET(self):
         """Routes a GET. The API first, then files, then a refusal."""
@@ -601,11 +611,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         self.close_connection = True
         try:
-            # Written out rather than sent through send_response, because that
-            # answers in the protocol version this handler speaks and this
-            # handler speaks HTTP/1.0. A browser refuses a handshake that is
-            # not answered in 1.1, and raising the version for every other
-            # answer as well would change how they are all framed.
+            # Written out rather than sent through send_response, because what
+            # follows is not HTTP at all: this socket becomes a WebSocket the
+            # moment these lines are on it, so nothing more may be added to
+            # the answer and nothing may be kept open for a next request.
             self.log_request(101)
             self.wfile.write(
                 b"HTTP/1.1 101 Switching Protocols\r\n"
@@ -851,18 +860,70 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _file(self, route):
-        """Serves a file from the web directory, and nothing outside it."""
+        """Serves a file from the web directory, and nothing outside it.
+
+        Everything here says how long it is worth keeping and what it is, so a
+        reload asks about a file rather than fetching it again. A browser that
+        already has it sends what it holds, and this answers 304 with nothing
+        in it.
+
+        The pictures, the faces and the one library are given a day, because
+        they change when a new package is installed and at no other time. The
+        page, the script and the stylesheet are given none: they change on
+        every build, and being told 304 costs a few bytes on a connection that
+        is already open.
+        """
         target = safe_path(WEB_ROOT, route)
         if target is None or not target.is_file():
             return self._json({"error": "not found"}, status=404)
 
         body = target.read_bytes()
+        tag = '"%s"' % hashlib.sha1(body).hexdigest()
+        written = email.utils.formatdate(target.stat().st_mtime, usegmt=True)
+        keeping = ("public, max-age=%d" % KEEP_SECONDS
+                   if route.startswith(KEPT) else "no-cache")
+
+        if self._already_has(tag, target.stat().st_mtime):
+            self.send_response(304)
+            self.send_header("ETag", tag)
+            self.send_header("Cache-Control", keeping)
+            self.send_header("Content-Length", "0")
+            return self.end_headers()
+
         kind = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
         self.send_response(200)
         self.send_header("Content-Type", kind)
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("ETag", tag)
+        self.send_header("Last-Modified", written)
+        self.send_header("Cache-Control", keeping)
         self.end_headers()
         self.wfile.write(body)
+
+    def _already_has(self, tag, changed_at):
+        """Whether the browser is holding this exact file.
+
+        @param tag - The ETag of what is here now.
+        @param changed_at - When the file last changed, as a timestamp.
+        @returns bool
+
+        The tag is asked about first, because it is about the bytes and the
+        date is only about the file. A date is compared by the second, and a
+        file written in the same second as the answer went out would otherwise
+        read as unchanged for ever.
+        """
+        held = self.headers.get("If-None-Match")
+        if held:
+            return any(one.strip() in (tag, "*") for one in held.split(","))
+
+        since = self.headers.get("If-Modified-Since")
+        if not since:
+            return False
+        try:
+            asked = email.utils.parsedate_to_datetime(since).timestamp()
+        except (TypeError, ValueError):
+            return False
+        return int(changed_at) <= int(asked)
 
 
 def safe_path(root, route):
@@ -904,3 +965,17 @@ def serve(settings, password=None):
         print("previously %s on http://%s:%d"
               % (VERSION, settings.address, settings.port), flush=True)
         httpd.serve_forever()
+
+
+#: What is kept rather than asked about again: the pictures, the faces the
+#: Terminal is set in, and the one library this interface takes. They change
+#: when a package is installed and at no other time, so a browser holding
+#: yesterday's copy is holding the right one. Everything else under web/ is
+#: written by every build and is asked about each time.
+KEPT = ("/parts/", "/fonts/", "/vendor/")
+
+#: For how long. A day rather than a year, because a picture that does change
+#: should not outlive the package that brought it by much, and because the
+#: cost of asking again is one round trip on a connection that is already
+#: open.
+KEEP_SECONDS = 24 * 60 * 60
