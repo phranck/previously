@@ -60,8 +60,10 @@ function recall(name) {
 
    CSS zoom, because it is the one thing that scales a layout rather than a
    picture of one: the pointer lands where it looks, a window measures what it
-   is, and the dock stays against the edge. Whole and half steps only, since
-   every icon here is a bitmap and anything else draws them between pixels. */
+   is, and the dock stays against the edge. Any multiplier is allowed. The
+   icons are bitmaps, so a step that is neither whole nor half draws their
+   pixels across fractions of a screen pixel, and that is accepted here.
+   Which steps are offered is the interface's to say, in app/size.js. */
 
 /** How large the desk is drawn, as a multiplier. */
 function deskScale() {
@@ -70,7 +72,7 @@ function deskScale() {
 
 /**
  * Draws the desk at that size.
- * @param {number} scale - 1, 1.5 or 2.
+ * @param {number} scale - A multiplier, such as 1, 1.25 or 2.
  *
  * Drawing larger leaves less room: at twice the size a desk 1200 across is
  * 600 wide in the units a window's own position is written in, and a window
