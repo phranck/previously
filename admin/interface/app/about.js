@@ -2,7 +2,7 @@
 
 import { theWindow } from "./page.js";
 import { ask } from "./service.js";
-import { NOTHING } from "./words.js";
+import { released } from "./words.js";
 import { deskIsNew } from "../nextstep.js";
 import { t } from "../strings.js";
 
@@ -27,7 +27,7 @@ async function showWhatThisIs() {
     icon: "Previously",
     name: PRODUCT,
     text: [
-      t("about.version", { version: version ?? NOTHING }),
+      t("about.version", { version: released(version) }),
       copyrightLine(),
     ],
     confirm: t("about.ok"),

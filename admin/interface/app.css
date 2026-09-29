@@ -473,3 +473,19 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   width: 0;
   background: var(--dark);
 }
+
+
+/* --- the raspberry pi window --------------------------------------------- */
+
+:root {
+  /* What a field carries when what is in it is not what is running. NeXTSTEP
+     had nothing of this kind at all, so this is not read off the original: it
+     is phranck's, chosen on 29 September 2026, and the palest of pinks reads as
+     a mark on a grey desk without reading as a warning. */
+  --newer: #ffe8fb;
+}
+
+/* The published version, where it is newer than the one answering. Marked here
+   as well as by the Update button appearing, because the button is at the foot
+   of the window and this is the line somebody is reading. */
+#pi-newest[newer] { background: var(--newer); }

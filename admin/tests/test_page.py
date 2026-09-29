@@ -249,3 +249,37 @@ def test_every_scale_in_the_editor_is_a_slider(page, markup):
     # The memory of a NeXTdimension board is the fourth, and its group is built
     # by the page because how many there are is what the slots decide.
     assert 'createElement("nx-slider")' in page
+
+
+#: What cuts a version down to its release. One place decides it, so this is
+#: what finding a second one looks like.
+CUTS_A_VERSION = re.compile(r"\\d\+.*\\.\\d")
+
+
+def test_only_one_thing_decides_what_a_version_reads_as():
+    """A version of this tool is shown in three windows, and it carries the
+    build it came from: `1.0.0+35.g553551d`. The interface shows the release
+    alone. Written twice, the two would come to differ, and the way they would
+    differ is one window saying something nobody else says about the same
+    machine."""
+    written = {
+        path.name for path in sorted((INTERFACE / "app").glob("*.js"))
+        if CUTS_A_VERSION.search(path.read_text(encoding="utf-8"))
+    }
+
+    assert written == {"words.js"}, written
+
+
+def test_no_window_shows_a_version_of_ours_with_its_build_on_it():
+    """Every place a version of this tool reaches the screen goes through that
+    one function. The emulator's is not one of ours: `4.3-0wmlive1` is what
+    dpkg calls that package, and cut down it would name a version that does not
+    exist."""
+    page = page_source()
+
+    for reading in ['show("pi-version"', 'show("pi-newest"',
+                    't("about.version"', 't("pi.update.done"',
+                    't("pi.update.available"']:
+        at = page.index(reading)
+        # As far as the end of that call, which is where the value it shows is.
+        assert "released(" in page[at:page.index("\n", at) + 120], reading

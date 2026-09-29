@@ -14,7 +14,7 @@
 import { t } from "../strings.js";
 import { show } from "./page.js";
 import { ask, tell } from "./service.js";
-import { NOTHING, say, sized } from "./words.js";
+import { released, say, sized } from "./words.js";
 
 /** Where the update asks and tells. One address for both, because what comes
  *  back from asking is what the window shows anyway. */
@@ -64,9 +64,13 @@ let weAskedForOne = false;
 
 /**
  * Asks what is installed, what is published and how a run is getting on.
+ * @param {boolean} [check] - Whether to have the Pi ask GitHub again. True when
+ *   somebody opens this window, and false for the poll that redraws it whilst
+ *   it is open: an address may ask GitHub sixty times an hour, and a loop
+ *   would spend that in twenty minutes.
  */
-async function refreshTheUpdate() {
-  drawTheUpdate(await ask(UPDATE));
+async function refreshTheUpdate(check) {
+  drawTheUpdate(await ask(check ? `${UPDATE}?check=1` : UPDATE));
 }
 
 /**
@@ -86,7 +90,13 @@ function drawTheUpdate(state) {
   }
   updateState = state;
 
-  show("pi-newest", state.published ?? NOTHING);
+  /* The release alone, because the build on the end of what the service reports
+     is what apt orders packages by and says nothing to a reader. */
+  show("pi-newest", released(state.published));
+  /* And marked where it is not the version answering, so the line somebody is
+     reading says so rather than only the button at the foot of the window. */
+  /** @type {any} */ (document.getElementById("pi-newest"))
+    .toggleAttribute("newer", Boolean(state.newer));
   drawWhatIsHappening(state);
 }
 
@@ -122,7 +132,7 @@ function drawWhatIsHappening(state) {
   if (progress && !progress.ok) return drawWhyItStopped(progress);
   if (progress && weAskedForOne) {
     return show("pi-update-note",
-                t("pi.update.done", { version: state.installed ?? NOTHING }));
+                t("pi.update.done", { version: released(state.installed) }));
   }
 
   /* Nothing has been asked for, so the sentence is what there is to do. Which
@@ -132,7 +142,7 @@ function drawWhatIsHappening(state) {
     return show("pi-update-note", t("pi.update.unknown"));
   }
   show("pi-update-note", state.newer
-    ? t("pi.update.available", { version: state.published })
+    ? t("pi.update.available", { version: released(state.published) })
     : t("pi.update.current"));
 }
 
@@ -247,8 +257,12 @@ function wireTheUpdate() {
     .addEventListener("click", askForTheNewest);
 
   /* Opening it asks straight away, because a window that filled itself at the
-     next poll would stand empty for a moment first. */
-  window_.addEventListener("nx-open", refreshTheUpdate);
+     next poll would stand empty for a moment first, and this is also the one
+     moment that has the Pi ask GitHub. A release published whilst somebody sits
+     in front of this window therefore turns up when they close it and open it
+     again, which is what keeps a window left open from spending the sixty
+     requests an hour an address is allowed. */
+  window_.addEventListener("nx-open", () => refreshTheUpdate(true));
 
   /* Whilst the window is open, or whilst a replacement is running with it
      closed. The second matters more than it looks: the service goes away in the
@@ -259,10 +273,12 @@ function wireTheUpdate() {
     ticks += 1;
     const busy = replacing();
     if (!busy && ticks % EVERY_FOURTH !== 0) return;
-    if (!window_.hidden || busy) refreshTheUpdate();
+    if (!window_.hidden || busy) refreshTheUpdate(false);
   }, WATCHING_MS);
 
-  if (!window_.hidden) refreshTheUpdate();
+  /* Open already, which is where the desk came back with it open. That is an
+     opening too, so it asks. */
+  if (!window_.hidden) refreshTheUpdate(true);
 }
 
 export {

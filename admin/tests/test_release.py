@@ -9,6 +9,7 @@ refused against. An answer this half understood would be worse than none.
 import io
 import json
 import threading
+import time
 
 import pytest
 
@@ -172,40 +173,89 @@ def test_nothing_is_known_before_anything_is_asked(monkeypatch):
     assert release.published() is None
 
 
-def test_asking_the_first_time_happens_behind_the_answer(monkeypatch):
-    """The window asking is polled every five seconds, so a reading that waited
-    for GitHub would hold up the whole window on a board with no internet."""
-    asked = []
+def test_a_poll_reads_what_is_known_and_asks_for_nothing(monkeypatch):
+    """The window redraws itself every two seconds whilst it is open. An address
+    may ask GitHub sixty times an hour, so a poll that asked would spend that in
+    twenty minutes and then stop answering without saying so."""
     monkeypatch.setattr(release, "_look_behind_this",
-                        lambda: asked.append(True))
+                        lambda: pytest.fail("asked anyway"))
 
     release.published()
 
-    assert asked == [True]
 
-
-def test_what_was_learnt_is_answered_without_asking_again(answering, monkeypatch):
-    answering(ANSWERED)
-    release.look()
-    monkeypatch.setattr(release, "_look_behind_this",
-                        lambda: pytest.fail("asked again"))
-
-    assert release.published()["version"] == "1.0.0"
-
-
-def test_a_reading_that_has_got_old_is_looked_up_again(answering, monkeypatch):
-    """Answered with anyway and looked up behind it, so what somebody gets is at
-    most this stale and never late."""
-    answering(ANSWERED)
-    found = release.look()
+def test_opening_the_window_asks(monkeypatch):
+    """Which is the whole of what makes a release published whilst this runs
+    turn up at all."""
     asked = []
     monkeypatch.setattr(release, "_look_behind_this",
                         lambda: asked.append(True))
 
-    still = release.published(now=found["asked_at"] + release.REMEMBER_SECONDS)
+    release.published(check=True)
 
     assert asked == [True]
-    assert still["version"] == "1.0.0"
+
+
+def test_asking_happens_behind_the_answer(answering):
+    """A reading that waited for GitHub would hold the window up for as long as
+    a connection takes to fail, which on a board with no internet is the whole
+    timeout."""
+    answering(OSError("no route to host"))
+
+    assert release.published(check=True) is None
+
+
+def test_no_more_than_three_a_minute_leave_the_board(monkeypatch):
+    """However often the window is opened. Three a minute sustained is already
+    three times what an address is allowed an hour, and the floor is what stops
+    somebody opening and closing it from going past even that."""
+    asked = []
+    monkeypatch.setattr(release, "look", lambda: asked.append(True))
+
+    release.published(check=True)
+    for _ in range(20):
+        release.published(check=True)
+
+    # The thread is started and finished before the next call, because `look`
+    # here does nothing, so a second lookup would show up as a second entry.
+    for _ in range(50):
+        if asked:
+            break
+        time.sleep(0.02)
+
+    assert asked == [True]
+
+
+def test_the_floor_lets_go_once_it_has_passed(monkeypatch):
+    """Twenty seconds later the window may ask again, which is what three a
+    minute means."""
+    asked = []
+    monkeypatch.setattr(release, "_look_behind_this",
+                        lambda: asked.append(True))
+
+    release.published(check=True)
+    release._ASKED_AT = time.time()
+    release.published(check=True)
+    release.published(check=True, now=time.time() + release.SOONEST_SECONDS)
+
+    assert len(asked) == 2
+
+
+def test_a_lookup_that_learns_nothing_still_counts_against_the_floor(monkeypatch):
+    """The floor is about how often GitHub is asked rather than how often it
+    answers. Counted the other way, a board whose network is down would ask
+    again at every open with nothing holding it back."""
+    def refuses():
+        raise release.Unreachable("no route to host")
+
+    monkeypatch.setattr(release, "look", refuses)
+
+    release.published(check=True)
+    for _ in range(50):
+        if release._ASKED_AT:
+            break
+        time.sleep(0.02)
+
+    assert release._ASKED_AT > 0
 
 
 def test_what_is_answered_cannot_be_changed_from_outside(answering):

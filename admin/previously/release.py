@@ -71,11 +71,20 @@ LARGEST_ANSWER = 1024 * 1024
 #: download are sized from.
 LARGEST_PACKAGE = 64 * 1024 * 1024
 
-#: How long what GitHub said is worth keeping. The Raspberry Pi window asks
-#: every five seconds whilst it is open, and a release appears a few times a
-#: year: this is four requests an hour against the sixty an address is allowed
-#: unauthenticated.
-REMEMBER_SECONDS = 15 * 60
+#: The least time between two lookups, whoever asks for one. Three a minute,
+#: which is what opening the Raspberry Pi window is allowed to cost.
+#:
+#: It is a floor rather than an age, because what asks is a person opening a
+#: window rather than a loop: the window's own poll reads what is known and asks
+#: for nothing. Three a minute sustained would be a hundred and eighty an hour
+#: against the sixty an address is allowed unauthenticated, so a poll that asked
+#: would stop working part way through an afternoon and say nothing about it.
+#:
+#: A conditional request does not buy that back. Measured against
+#: api.github.com on 29 September 2026: an `If-None-Match` answered `304` and
+#: `x-ratelimit-remaining` still fell by one each time, 49 to 48 to 47. So the
+#: floor is the whole mechanism.
+SOONEST_SECONDS = 20
 
 #: What GitHub states an asset's digest as, which is the algorithm and the hex,
 #: and the algorithm on its own for the fetch that checks it. Beside the pattern
@@ -87,8 +96,14 @@ DIGEST = re.compile(r"^%s:([0-9a-f]{64})$" % ALGORITHM)
 #: What a version tag looks like, so `v1.0.0` becomes the `1.0.0` dpkg knows.
 TAG = re.compile(r"^v?(\d[\w.+~-]*)$")
 
-#: The last answer, and one at a time whilst it is replaced or looked up again.
+#: The last answer, when GitHub was last asked anything at all, and one lookup
+#: at a time.
+#:
+#: The moment is kept apart from the answer because it is about attempts rather
+#: than about successes: a board whose network is down learns nothing, and
+#: without this every ask would set off another lookup with no floor under it.
 _KNOWN = None
+_ASKED_AT = 0.0
 _LOOKING = threading.Lock()
 
 
@@ -96,21 +111,25 @@ class Unreachable(Exception):
     """GitHub could not be asked, or said something this does not understand."""
 
 
-def published(now=None):
+def published(check=False, now=None):
     """What the newest release is, without waiting for GitHub.
 
-    @param now - The moment to measure the age against, for a test. None means
+    @param check - Whether to ask GitHub again behind this answer. True where
+      somebody opened the window that shows it, and False where a poll is only
+      redrawing what is already on the screen.
+    @param now - The moment to measure the floor against, for a test. None means
       the clock.
     @returns dict as `look` describes it, or None where nothing has been learnt
-      yet. None is not an error: it is the ordinary state of the first few
-      seconds after this service starts, and of a machine with no internet.
+      yet. None is not an error: it is the ordinary state of the first seconds
+      after this service starts, and of a machine with no internet.
 
-    A reading that has got old is answered with anyway and looked up again
-    behind it, so the answer somebody gets is at most this stale and never late.
+    Asking never holds this up. The lookup runs in a thread and this answers
+    with what is known, so the first open of the window draws nothing for a
+    second and everything after it draws what came back.
     """
-    known = _KNOWN
-    if known is None or (now or time.time()) - known["asked_at"] >= REMEMBER_SECONDS:
+    if check and (now or time.time()) - _ASKED_AT >= SOONEST_SECONDS:
         _look_behind_this()
+    known = _KNOWN
     return dict(known) if known else None
 
 
@@ -141,13 +160,14 @@ def look():
 
 
 def forget():
-    """Throws that answer away, for a test and for the moment before an update.
+    """Throws that answer and the floor under it away, for a test.
 
-    A run that replaces this tool makes every one of those readings wrong, and
-    the window asks again the instant it finishes.
+    A test that left either behind would be one test's machine answering
+    another test's question, or one refusing to ask at all.
     """
-    global _KNOWN
+    global _KNOWN, _ASKED_AT
     _KNOWN = None
+    _ASKED_AT = 0.0
 
 
 def _understood(said):
@@ -202,18 +222,21 @@ def _the_package(asset):
 def _look_behind_this():
     """Looks again in a thread, where nothing is already looking.
 
-    One at a time, so a window polling every five seconds cannot start a
-    lookup per poll whilst the first is still waiting for a timeout.
+    The moment is written down before the thread starts rather than after it
+    finishes, because the floor is about how often GitHub is asked and a lookup
+    that takes twenty seconds to time out is still a lookup that happened.
     """
+    global _ASKED_AT
     if not _LOOKING.acquire(blocking=False):
         return
+    _ASKED_AT = time.time()
 
     def asking():
         try:
             look()
         except Unreachable:
             # Nothing to do about it here. What is known stays known, or stays
-            # unknown, and the reading says so by being old or absent.
+            # unknown, and the reading says so by being absent.
             pass
         finally:
             _LOOKING.release()
