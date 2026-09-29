@@ -13,9 +13,17 @@
  * whilst the right one arrives.
  */
 
-/** Where each catalogue registers itself. `lang/en.js` and the rest fill this
- *  as they load, before anything reads from it. */
-const NX_STRINGS = {};
+import { en } from "./lang/en.js";
+import { de } from "./lang/de.js";
+import { fr } from "./lang/fr.js";
+import { it } from "./lang/it.js";
+import { es } from "./lang/es.js";
+import { sv } from "./lang/sv.js";
+
+/** Every catalogue, by the code it answers to. Gathered here rather than
+ *  written into by each of them, so that a catalogue is a table and nothing
+ *  else: what it is called, and when it is read, is this file's business. */
+const NX_STRINGS = { en, de, fr, it, es, sv };
 
 /** The one that is always complete, and the one every other falls back to. */
 const FALLBACK = "en";
@@ -214,3 +222,15 @@ function setLanguage(code, redraw) {
   redraw?.();
   return true;
 }
+
+export {
+  LANGUAGE_NAMES,
+  currentLanguage,
+  currentLocale,
+  setLanguage,
+  t,
+  translate,
+  writeKey,
+  writeTitle,
+  writeWords,
+};

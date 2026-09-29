@@ -1,6 +1,6 @@
 /* Swedish. */
 
-NX_STRINGS.sv = {
+export const sv = {
   /* --- the menus ------------------------------------------------------- */
   "menu.about-previously": "Om Previously...",
   "menu.about-previously.key": "v",

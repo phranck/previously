@@ -79,6 +79,19 @@ MARKS = {
 #: carrying the pictures themselves, which is what keeps that file one file.
 PARTS_MARKER = "/* PARTS: the pictures, which build.py bakes into the mockup as data URIs */"
 
+#: What a part declares at its top level, which is what the kit offers. A part
+#: keeps nothing private: the twelve of them are one script split into files so
+#: that a person can find things, and every name in them is the kit's.
+DECLARED = re.compile(
+    r"^(?:export\s+)?(?:async\s+)?(?:function|class|const|let)\s+([A-Za-z_$][\w$]*)",
+    re.M)
+
+#: And what already says so itself, which is left out of that list: a name
+#: exported twice is what a bundler refuses.
+EXPORTED = re.compile(
+    r"^export\s+(?:async\s+)?(?:function|class|const|let)\s+([A-Za-z_$][\w$]*)",
+    re.M)
+
 
 def source(name, kind):
     """@returns the text of one part, or "" where it has none of that kind."""
@@ -94,25 +107,63 @@ def stylesheet():
 
 
 def script():
-    """@returns the whole kit as one script, with the definitions at its foot.
+    """@returns the whole kit as one module, with its elements behind a call.
 
     The list of elements is written from the same table that orders the
     sources, so a part that is added is defined without anybody remembering to
-    say so twice.
+    say so twice. What the kit offers is read out of the sources for the same
+    reason: a list kept by hand is a list that goes wrong.
+
+    Defining the elements is a call rather than something the module does when
+    it is imported, because the interface translates itself first and an
+    element that is built before that happens is built around a key.
     """
     parts = [name for name, _, _ in KIT_PARTS if source(name, "js")]
     blocks = [overview()] + [source(name, "js") for name in parts]
     defined = [(tag, cls) for _, tags, _ in KIT_PARTS for tag, cls in tags]
     pairs = ",\n  ".join('["%s", %s]' % (tag, cls) for tag, cls in defined)
     blocks.append(
-        "for (const [tag, type] of [\n  %s,\n]) {\n"
-        "  customElements.define(tag, type);\n}\n"
+        "/**\n"
+        " * Defines every element the kit brings, and picks the front window.\n"
+        " *\n"
+        " * Called rather than done at import, so that whoever imports this\n"
+        " * has put the words on the page before the first element is built.\n"
+        " */\n"
+        "export function defineTheKit() {\n"
+        "  for (const [tag, type] of [\n  %s,\n  ]) {\n"
+        "    customElements.define(tag, type);\n"
+        "  }\n"
         "\n"
-        "/* After the definitions, because every window has to exist and know\n"
-        "   whether it is open before one of them can be picked out as the\n"
-        "   front one. */\n"
-        "restoreFront();\n" % pairs)
+        "  /* After the definitions, because every window has to exist and\n"
+        "     know whether it is open before one of them can be picked out as\n"
+        "     the front one. */\n"
+        "  restoreFront();\n"
+        "}\n" % pairs)
+    blocks.append(exported(blocks))
     return "\n".join(block.rstrip("\n") + "\n" for block in blocks)
+
+
+def exported(blocks):
+    """What the kit offers, as one export at its foot.
+
+    @param blocks - The sources it was built from.
+    @returns str
+
+    Read out of the sources rather than listed, so a part that gains a
+    function offers it without anybody being told. Everything a part declares
+    at its top level is the kit's, because a part keeps nothing private: they
+    are one script split into files for reading.
+
+    Anything already carrying its own `export` is left out of this list, since
+    naming it twice is what a bundler refuses.
+    """
+    names = set()
+    already = set()
+    for block in blocks:
+        names.update(DECLARED.findall(block))
+        already.update(EXPORTED.findall(block))
+    offered = sorted(names - already)
+    return "export {\n%s\n};\n" % "".join("  %s,\n" % name for name in offered).rstrip("\n")
 
 
 def overview():
@@ -220,3 +271,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

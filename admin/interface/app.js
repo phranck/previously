@@ -7,6 +7,31 @@
  * machine on and off do, and the service refuses them without one.
  */
 
+import {
+  NEAR_FLIGHT_MS,
+  between,
+  defineTheKit,
+  deskIsNew,
+  deskRect,
+  fly,
+  gesture,
+  remember,
+  setDeskScale,
+  zoom,
+} from "./nextstep.js";
+import {
+  LANGUAGE_NAMES,
+  currentLanguage,
+  currentLocale,
+  setLanguage,
+  t,
+  translate,
+  writeTitle,
+  writeWords,
+} from "./strings.js";
+import { defineTheTerminal } from "./terminal.js";
+
+
 /** How often the status is fetched. A machine whose job is to sit there does
  *  not repay a faster poll than this. */
 const REFRESH_MS = 5000;
@@ -3910,6 +3935,13 @@ function speak(code) {
     refresh();
   });
 }
+
+/* The words first, so every element is built around text it already has.
+   Then the elements, and only then this application's own wiring: a window
+   that does not exist yet cannot be wired to anything. */
+translate();
+defineTheKit();
+defineTheTerminal();
 
 drawAtSize(chosenSize());
 wireButtons();

@@ -1951,7 +1951,14 @@ class NxSlider extends HTMLElement {
   }
 }
 
-for (const [tag, type] of [
+/**
+ * Defines every element the kit brings, and picks the front window.
+ *
+ * Called rather than done at import, so that whoever imports this
+ * has put the words on the page before the first element is built.
+ */
+export function defineTheKit() {
+  for (const [tag, type] of [
   ["nx-window", NxWindow],
   ["nx-menu", NxMenu],
   ["nx-menu-item", NxMenuItem],
@@ -1964,11 +1971,55 @@ for (const [tag, type] of [
   ["nx-ask", NxAsk],
   ["nx-viewer", NxViewer],
   ["nx-slider", NxSlider],
-]) {
-  customElements.define(tag, type);
+  ]) {
+    customElements.define(tag, type);
+  }
+
+  /* After the definitions, because every window has to exist and
+     know whether it is open before one of them can be picked out as
+     the front one. */
+  restoreFront();
 }
 
-/* After the definitions, because every window has to exist and know
-   whether it is open before one of them can be picked out as the
-   front one. */
-restoreFront();
+export {
+  DESK_WAS_NEW,
+  FLIGHT_MS,
+  GRIP_PX,
+  NEAR_FLIGHT_MS,
+  NxAsk,
+  NxDock,
+  NxFloor,
+  NxMenu,
+  NxMenuItem,
+  NxScroller,
+  NxShelf,
+  NxSlider,
+  NxThing,
+  NxTile,
+  NxViewer,
+  NxWindow,
+  STORE,
+  SVG_NS,
+  WAYS,
+  ZOOM_MS,
+  ZOOM_RECTANGLES,
+  between,
+  deskIsNew,
+  deskPoint,
+  deskRect,
+  deskRoom,
+  deskScale,
+  draggable,
+  fly,
+  gatherWindows,
+  gesture,
+  onDesk,
+  readState,
+  recall,
+  remember,
+  restoreFront,
+  setDeskScale,
+  showArt,
+  stillness,
+  zoom,
+};

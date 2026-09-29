@@ -1,6 +1,6 @@
 /* Spanish. */
 
-NX_STRINGS.es = {
+export const es = {
   /* --- the menus ------------------------------------------------------- */
   "menu.about-previously": "Acerca de Previously...",
   "menu.about-previously.key": "v",

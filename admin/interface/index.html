@@ -452,24 +452,17 @@
 
 <nx-ask id="ask"></nx-ask>
 
-<!-- The words load first, then the kit, then the page. Every element is
-     therefore built around text it already has rather than being filled in
-     afterwards. -->
-<script src="strings.js"></script>
-<script src="lang/en.js"></script>
-<script src="lang/de.js"></script>
-<script src="lang/fr.js"></script>
-<script src="lang/it.js"></script>
-<script src="lang/es.js"></script>
-<script src="lang/sv.js"></script>
-<script>translate();</script>
-<script src="nextstep.js"></script>
 <!-- The one library this interface takes, and the view that uses it. Why it
-     is not part of the kit is at the head of terminal.js. -->
+     is not part of the kit is at the head of terminal.js. It stands before
+     the interface because it puts a name on the page that the terminal
+     reaches for. -->
 <script src="vendor/xterm.js"></script>
 <script src="vendor/xterm-addon-fit.js"></script>
-<script src="terminal.js"></script>
-<script src="app.js"></script>
+<!-- Everything else is reached from app.js through its imports: the kit, the
+     six catalogues, the terminal and this application's own modules. What is
+     served is the one file build_web.py bundles out of them, and this tag is
+     what it stands in place of. -->
+<script type="module" src="app.js"></script>
 
 </body>
 </html>
