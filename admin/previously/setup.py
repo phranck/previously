@@ -1138,31 +1138,40 @@ def _without_the_block(text):
 def _autostart_block(owner):
     """@returns str - What is added to the profile, markers and all.
 
-    `install.sh` writes the same lines, because it is the way in on a machine
-    that has no admin tool yet. `tests/test_setup.py` holds the two together.
+    Every line of this, comments included, is what `install.sh` writes.
+    That script is the way in on a machine with no admin tool yet, so
+    either of the two may have set a given machine up, and both replace a
+    block that no longer says what they write. A difference between them
+    would therefore be the two rewriting each other for ever.
+
+    `tests/test_setup.py` holds them together character for character.
     """
     return (
         "\n%s\n"
-        "# Hand the first console to Previous. XDG_VTNR carries the number of\n"
-        "# the text console and is set only where one is actually behind the\n"
-        "# login, so an SSH session falls through and stays the way in once the\n"
-        "# screen is taken.\n"
+        "# Hand the first console to Previous. XDG_VTNR carries the number of the text\n"
+        "# console and is set only where one is actually behind the login, so an SSH\n"
+        "# session falls through and stays the way in once the screen is taken.\n"
         "#\n"
-        "# The wait is how the admin tool stops and starts the emulator without\n"
-        "# any privileges at all: it creates %s to hold it down and removes the\n"
-        "# file to let it come back. Waiting rather than exiting keeps the\n"
-        "# console from falling through to a shell prompt whilst the emulator is\n"
-        "# held.\n"
+        "# The wait is how the admin tool stops and starts the emulator without any\n"
+        "# privileges at all: it creates %s to hold it down and removes the\n"
+        "# file to let it come back. Waiting rather than exiting matters twice. It keeps\n"
+        "# the console from falling through to a shell prompt while the emulator is\n"
+        "# held, and it avoids the race that stopping through systemd would have, since\n"
+        "# this unit restarts itself the moment a session ends and would bring a fresh\n"
+        "# emulator up underneath whatever stopped the last one.\n"
         "#\n"
-        "# The directory it runs in is where it writes a screen grab, and the\n"
-        "# admin tool reads those and removes them.\n"
+        "# The file is on a tmpfs, so a board that has just booted never finds one and\n"
+        "# always starts its emulator.\n"
         "#\n"
-        "# An emulator that ends badly says so in one line, which the Raspberry\n"
-        "# Pi window reads. It goes in the runtime directory because that is a\n"
-        "# tmpfs: the file is gone at every boot, so whatever is in it happened\n"
-        "# since this board came up and nothing has to work out when. The exit\n"
-        "# runs the session down exactly as exec did, so the console never falls\n"
-        "# through to a prompt.\n"
+        "# The directory it runs in is where it writes a screen grab, and the admin tool\n"
+        "# reads those and removes them. Its own rather than the home directory, so the\n"
+        "# tool needs write access to that one directory and to nothing else of yours.\n"
+        "#\n"
+        "# An emulator that ends badly says so in one line, which the Raspberry Pi window\n"
+        "# reads. It goes in the runtime directory because that is a tmpfs: the file is\n"
+        "# gone at every boot, so whatever is in it happened since this board came up and\n"
+        "# nothing has to work out when. The exit runs the session down exactly as exec\n"
+        "# did, so the console never falls through to a prompt.\n"
         'if [ "$XDG_VTNR" = 1 ] && [ -z "$WAYLAND_DISPLAY" ]; then\n'
         "  clear\n"
         "  while [ -f %s ]; do sleep 2; done\n"
@@ -1176,7 +1185,8 @@ def _autostart_block(owner):
         '  exit "$status"\n'
         "fi\n"
         "%s\n" % (AUTOSTART_OPENS, HOLD, HOLD,
-                  owner.home / WORK_DIRECTORY, owner.home / WORK_DIRECTORY,
+                  owner.home / WORK_DIRECTORY,
+                  owner.home / WORK_DIRECTORY,
                   RUNTIME, CRASHES, AUTOSTART_CLOSES))
 
 

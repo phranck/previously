@@ -640,18 +640,13 @@ update_admin() {
 #    back into a machine whose screen now belongs to NeXTSTEP.
 # ---------------------------------------------------------------------------
 
-install_autostart() {
-  info "Installing the autostart"
-
-  if [[ -f "$PROFILE" ]] && grep -qF "$AUTOSTART_MARKER" "$PROFILE"; then
-    skip "already present"
-    return
-  fi
-
-  # Fenced by markers so the undo removes exactly this block and leaves
-  # whatever else the file holds.
-  cat >> "$PROFILE" <<EOF
-
+# What the autostart says, as one piece. Written out here rather than straight
+# into the file, because a block that is already there has to be compared with
+# it: it is generated, so a machine set up before this version carries whatever
+# that version wrote, and the change that matters most is the one nobody would
+# notice, which is the line that writes down a crash.
+autostart_block() {
+  cat <<EOF
 ${AUTOSTART_MARKER}
 # Hand the first console to Previous. XDG_VTNR carries the number of the text
 # console and is set only where one is actually behind the login, so an SSH
@@ -691,9 +686,66 @@ if [ "\$XDG_VTNR" = 1 ] && [ -z "\$WAYLAND_DISPLAY" ]; then
 fi
 ${AUTOSTART_END}
 EOF
+}
 
+# What the file says now, between the markers, or nothing where there is none.
+autostart_in_profile() {
+  [[ -f "$PROFILE" ]] || return 0
+  sed -n "/${AUTOSTART_MARKER}/,/${AUTOSTART_END}/p" "$PROFILE"
+}
+
+# Puts the block in place.
+#
+# $1 is `add` on a full run, and `replace` under --update-admin, where a
+# machine that has never had a console must not be given one: that flag exists
+# to replace the admin tool and touch nothing else.
+set_autostart() {
+  local wanted there
+  wanted="$(autostart_block)"
+  there="$(autostart_in_profile)"
+
+  if [[ "$there" == "$wanted" ]]; then
+    skip "already current"
+    return
+  fi
+
+  if [[ -n "$there" ]]; then
+    # The whole file is kept, rather than the block alone, so the undo puts
+    # back what was there instead of taking the console away altogether.
+    local was
+    was="$(mktemp)"
+    cp "$PROFILE" "$was"
+    remove_autostart_block "$PROFILE"
+    printf '\n%s\n' "$wanted" >> "$PROFILE"
+    undo "put ${PROFILE} back as it was" \
+         "mv -f $(printf '%q' "$was") $(printf '%q' "$PROFILE")"
+    skip "replaced, because it no longer said what this version writes"
+    return
+  fi
+
+  if [[ "$1" == replace ]]; then
+    skip "none here, and --update-admin adds none"
+    return
+  fi
+
+  printf '\n%s\n' "$wanted" >> "$PROFILE"
   undo "remove the autostart from ${PROFILE}" \
        "remove_autostart_block $(printf '%q' "$PROFILE")"
+  skip "installed"
+}
+
+install_autostart() {
+  info "Installing the autostart"
+  set_autostart add
+}
+
+# Under --update-admin, where the console is as much a part of the tool as the
+# package is: it is what starts the emulator and what writes down a crash, and
+# a machine whose tool has moved on with a console that has not is the state
+# this exists to prevent.
+refresh_autostart() {
+  info "Checking the autostart"
+  set_autostart replace
 }
 
 # ---------------------------------------------------------------------------
@@ -761,9 +813,12 @@ Usage: install.sh [--update-admin]
 With no arguments it sets a Raspberry Pi up from nothing, and skips every step
 it finds already done.
 
-  --update-admin   Replace the admin tool with the newest one and touch nothing
-                   else. Built from the checkout this script sits in, or taken
-                   from the latest release where there is no checkout.
+  --update-admin   Replace the admin tool with the newest one. Built from the
+                   checkout this script sits in, or taken from the latest
+                   release where there is no checkout. The console that starts
+                   the emulator comes with it, where this machine has one and
+                   it no longer says what this version writes. A machine that
+                   has none is given none.
 EOF
 }
 
@@ -772,6 +827,7 @@ main() {
     --update-admin)
       check_host
       update_admin
+      refresh_autostart
       COMPLETED=true
       return
       ;;
