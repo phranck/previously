@@ -19,12 +19,12 @@ import { wireGrab } from "./app/grab.js";
 import { wireTheInstaller } from "./app/installer.js";
 import { wireMachines } from "./app/machines.js";
 import { watchTheFrontWindow } from "./app/menu.js";
+import { REFRESH_MS } from "./app/pi.js";
 import { drawLanguages, wirePreferences } from "./app/preferences.js";
 import { wirePreview } from "./app/preview.js";
-import { REFRESH_MS } from "./app/pi.js";
+import { wireTerminal } from "./app/shell.js";
 import { chosenSize, drawAtSize } from "./app/size.js";
 import { refresh, wireButtons } from "./app/status.js";
-import { wireTerminal } from "./app/shell.js";
 import { drawMachines, wireOpening } from "./app/viewer.js";
 
 /* The words first, so every element is built around text it already has.
