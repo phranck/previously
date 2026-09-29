@@ -5,7 +5,7 @@
 
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
-package copies Python, static files and five unit files into place. Nothing is
+package copies Python, static files and seven unit files into place. Nothing is
 compiled, nothing is patched and nothing is generated at install time, so the
 debhelper machinery would be a build system around a copy.
 

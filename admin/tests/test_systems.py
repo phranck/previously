@@ -12,7 +12,7 @@ import os
 
 import pytest
 
-from previously import systems
+from previously import fetching, systems
 
 
 def test_there_are_six_and_they_are_the_ones_measured():
@@ -67,8 +67,9 @@ def test_the_address_is_built_from_the_table():
 ])
 def test_a_redirect_that_stays_on_the_archive_is_allowed(url):
     """archive.org answers a download by sending the caller to whichever node
-    holds the item, so following redirects is not optional."""
-    assert systems.from_our_archive(url) is True
+    holds the item, so following redirects is not optional. The one host name in
+    the table allows those nodes as well."""
+    assert fetching.allowed(url, systems.ARCHIVE_HOSTS) is True
 
 
 @pytest.mark.parametrize("url", [
@@ -81,7 +82,20 @@ def test_a_redirect_that_stays_on_the_archive_is_allowed(url):
 def test_a_redirect_that_leaves_it_is_not(url):
     """Whoever answers the first request chooses where the second one goes, so
     a redirect is checked exactly as the first address was."""
-    assert systems.from_our_archive(url) is False
+    assert fetching.allowed(url, systems.ARCHIVE_HOSTS) is False
+
+
+def test_what_a_system_has_to_turn_out_to_be_carries_its_algorithm():
+    """The digests in the table are archive.org's, which are sha1, and the other
+    place this fetches from states a sha256. A fetch that took the wrong one
+    would refuse every file it downloaded."""
+    system = systems.find("nextstep-3.3")
+    expected = systems.expected(system)
+
+    assert expected.algorithm == "sha1"
+    assert len(expected.digest) == 40
+    assert expected.size == system.size
+    assert expected.name == system.name
 
 
 # -- what is already on the machine ---------------------------------------

@@ -19,7 +19,7 @@ import threading
 import urllib.parse
 
 from . import (activity, change, config, files, grab, kiosk, machines, pi,
-               saved, setup, systems, terminal, websocket)
+               release, saved, setup, systems, terminal, websocket)
 from .password import COOKIE, SESSION_SECONDS, SMALLEST, Attempts, Sessions, acceptable
 
 #: The release this tool belongs to. The one place it is written down, and
@@ -142,6 +142,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._settled_configuration()
         if route == "/api/setup":
             return self._json(self._setup())
+        if route == "/api/update":
+            return self._json(self._update())
         if route == "/api/session":
             # How short a password may be travels with the answer, so the panel
             # that asks for one says the rule that will actually be applied
@@ -202,6 +204,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._delete_picture()
         if route == "/api/setup":
             return self._ask_to_set_up()
+        if route == "/api/update":
+            return self._ask_to_update()
 
         board = BOARD_OPERATIONS.get(route)
         if board is not None:
@@ -583,6 +587,59 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # window asks again the moment this answer arrives.
         setup.forget()
         return self._json({"ok": taken, **told, **self._setup()},
+                          status=200 if taken else 409)
+
+    def _update(self):
+        """What this tool is, what is published, and how a replacement is going.
+
+        A reading, so it is open the way `/api/status` and `/api/setup` are: what
+        version a machine on this network runs is not anybody's private
+        business, and the answer is the same one the About panel already shows.
+
+        Nothing here touches the network. What GitHub said is kept for a quarter
+        of an hour and looked up again in a thread, so this answers as quickly on
+        a board with no internet as on one with it, and `published` is None until
+        the first lookup comes back.
+
+        What is installed is asked of dpkg rather than taken from `VERSION`
+        above, because dpkg is what apt compares an update against and therefore
+        what decides whether there is one. The two differ for as long as a
+        package is in place and the service has not been restarted onto it, and
+        that difference is worth seeing rather than hiding: the Raspberry Pi
+        window shows what is answering beside what is installed.
+        """
+        newest = release.published()
+        here = setup.version_of(release.PACKAGE)
+        running = kiosk.setting_up(self.settings.setup_directory)
+        return {
+            "installed": here,
+            "published": newest["version"] if newest else None,
+            "newer": (setup.newer_than(here, newest["version"]) if newest
+                      else False),
+            # Only a run that is about this tool. The helper takes one job at a
+            # time and writes them all into the same record, so without this the
+            # window would draw a two gigabyte unpack as though it were the
+            # update somebody pressed.
+            "progress": (running if running
+                         and running.get("do") == setup.UPDATE_TOOL else None),
+        }
+
+    def _ask_to_update(self):
+        """Leaves the request that replaces this tool with the newest release.
+
+        This service fetches nothing and holds no privilege. It writes the name
+        of one job into a file, and `previously-setup.path` starts the program
+        that reads it, which is the same road an installation takes.
+
+        The answer goes out before anything is replaced, because it has to: the
+        run this asks for stops this service and starts the new one, so a reply
+        written afterwards would be written by a process that is no longer there.
+        `GET /api/update` is where the rest of it is watched.
+        """
+        taken, told = kiosk.ask_to_set_up(
+            self.settings.runtime_directory, self.settings.setup_directory,
+            setup.UPDATE_TOOL)
+        return self._json({"ok": taken, **told, **self._update()},
                           status=200 if taken else 409)
 
     def _terminal(self):

@@ -132,12 +132,35 @@
          language, because a reader who cannot see this has no way to tell a
          current installation from one that was left behind. -->
     <nx-row><label>Previously</label><nx-field id="pi-version">&mdash;</nx-field></nx-row>
+    <!-- And which one is published, which is the other half of deciding whether
+         to press Update. Its own line rather than beside the version above,
+         because that one says what is answering and this one says what could
+         be, and the two come from different places: dpkg for what is on the
+         card, and GitHub for what has been released. -->
+    <nx-row><label data-t="pi.newest"></label><nx-field id="pi-newest">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="pi.emulator"></label><nx-field id="pi-emulator">&mdash;</nx-field></nx-row>
   </div>
+  <!-- How far a replacement of this tool has got. The trough is there only
+       whilst one is running, and what fills it is read from the Pi rather than
+       held here, which is what lets the page pick the same run up again after
+       the service it was talking to has been stopped and started underneath
+       it. -->
+  <div class="gauge" id="pi-update-gauge" hidden>
+    <div class="gauge-fill" id="pi-update-fill"></div>
+  </div>
+  <!-- Its own line rather than the one below, which the board's two buttons
+       write into: a replacement takes minutes and is drawn again at every poll,
+       so sharing one paragraph would wipe whatever the last press said. -->
+  <p class="note" id="pi-update-note"></p>
   <p class="note" id="pi-note"></p>
   <div class="buttons">
     <button id="pi-poweroff" data-t="button.power-off"></button>
     <button id="pi-reboot" data-t="button.restart"></button>
+    <!-- Not there at all unless something newer is published, because a button
+         that would put the version already here back is a button that does
+         nothing. Rightmost, since the two beside it take the machine away and
+         this one does not. -->
+    <button id="pi-update" data-t="button.update" hidden></button>
   </div>
 </nx-window>
 

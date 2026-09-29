@@ -56,6 +56,8 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/change.py` | Changing the machine without leaving it unable to start |
 | `previously/kiosk.py` | Everything this tool does to the machine, in one file |
 | `previously/systems.py` | The six systems that can be put on this machine, and where each comes from |
+| `previously/release.py` | Which release of this tool is published, and where its package is |
+| `previously/fetching.py` | Where a download may go, and where it may be sent on to |
 | `previously/discs.py` | The media that go beside the system, and what NeXTSTEP cannot read |
 | `previously/setup.py` | What root does on this tool's behalf, and the only thing root does |
 | `previously/screen.py` | Reading the emulated screen, and pressing its keys |
@@ -129,6 +131,8 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
 | `GET /api/setup` | Which systems there are, which are here, how much room is left, and what is being installed |
 | `POST /api/setup` | Asks the privileged helper to install, update, remove or fetch something |
+| `GET /api/update` | Which version of this tool is installed, which is published, and how a replacement of it is getting on |
+| `POST /api/update` | Asks the privileged helper to replace this tool with the newest release |
 | `GET /api/terminal` | Becomes a WebSocket carrying a login on this machine |
 
 Every POST is checked for a session before anything looks at what was sent, and the three routes above about the secret itself are what a browser goes through to have one. A POST that says it comes from another page is refused whatever it carries, because a cookie rides along with every request to this host and a session alone would let another site act here.
@@ -319,7 +323,7 @@ Somebody with a bare Raspberry Pi OS installs one package and does everything el
 
 **A request is three names.** A job, a system and a machine. Every one of them is looked up in a table that ships with this package, and a name that is not in its table refuses the whole request before anything is touched. So the disk image, which was the one free value in the whole of `install.sh`, stops being free: the helper is asked for one of six systems by name and holds the addresses itself.
 
-The jobs are `install`, which is the whole of `install.sh` and takes a system with it; `update` and `remove` for the emulator; and `fetch` and `forget` for one system's disk.
+The jobs are `install`, which is the whole of `install.sh` and takes a system with it; `update` and `remove` for the emulator; `fetch` and `forget` for one system's disk; `back-up` and `restore` for a copy of one; and `update-tool`, which replaces this tool itself.
 
 **The request is read carefully, because the directory it sits in is not root's.** It is opened without following a link, checked for being an ordinary file and read no further than four kilobytes, and it is taken away before any of the work starts, so the unit watching for it cannot start the same run twice.
 
@@ -364,6 +368,24 @@ A line under the group says what each button does. Update is not there at all un
 **A machine with nothing on it opens into this window.** `GET /api/status` says whether the emulator is installed, whether a system is on the card and whether there is a configuration, and a machine missing any of the three is not set up. The Info window then says "not set up" rather than drawing a machine it cannot read, the buttons that would switch something on are off, and the Installer is put in front of whoever arrived. That answer comes from the service because it is the same question the installer's own steps ask before they decide what to skip, and because a Pi with nothing on it and a Pi that cannot be reached look identical to a page that has to guess.
 
 **`install.sh` still carries its own copy of these steps.** It is the way in on a machine that has no admin tool yet and therefore cannot ask for any of this. Making it ask, so that there is one implementation rather than two, waits until this one has set a real machine up.
+
+### Replacing the tool itself
+
+The Raspberry Pi window says which version is here and which is published, and where they differ it offers a button. Pressing it is the whole of updating this tool: no terminal, no `sudo`, and nothing to copy. `install.sh --update-admin` still does the same thing from a shell and is what a machine with no tool on it needs.
+
+**It is the same helper and the same road.** `update-tool` is a job of `setup.py`, so the request mechanism, the progress record, the allow-listed fetch and the reversal of a run that failed are the ones already described above rather than a second set beside them. The service writes the name of one job into a file and holds no privilege, exactly as it does for an installation.
+
+**Root does the download, and that is the point.** The privileged half has to be able to prove that the file it hands `apt-get` is the package that was asked for, and it cannot prove that about a file an unprivileged user wrote: `/var/lib/previously` belongs to the user this service runs as, so a package downloaded there and a digest reported about it would both be that user's to choose. A digest in the request changes nothing, because whoever writes the file writes the request. So the file never leaves root's hands. The helper fetches it into a directory of its own making, checks it, installs it and removes the directory, whichever way the run went.
+
+**Three things have to agree before `apt-get` is reached.** The size and the SHA-256 that the release states for that asset, then `dpkg-deb -f` saying the package is `previously`, and then `dpkg-deb -f` saying its version is the one the release is tagged as. The digest proves the bytes are the bytes GitHub served; the last two prove that what GitHub served is this tool at the version somebody was offered.
+
+**Which release is newest comes from `api.github.com`**, which carries the tag, the download address, the size and the digest in one answer. `release.py` keeps that answer for a quarter of an hour and looks it up again in a thread, so `GET /api/update` never waits for the network: a board with no internet answers as quickly as one with it and says that nothing is known yet. Four requests an hour against the sixty an address is allowed unauthenticated. The address that answer carries is checked against the same hosts the fetch is allowed, because it arrives inside somebody else's answer and is then handed to a download root makes.
+
+**Two steps, because the second one is the part nobody can see.** Fetching and checking the package is measured in bytes. Installing it stops this service and starts the new one, which the package's own maintainer scripts do, so for a few seconds there is nothing for the page to talk to.
+
+**That is why the record is root's and not the service's.** The helper writes how far it has got into `/run/previously-setup`, which carries `RuntimeDirectoryPreserve=yes` and therefore outlives the service being replaced. The page reads the same run before and after: whilst there is no answer it says the tool is being put in place rather than claiming no contact, and when the new service answers it reads the finished record out of the same file and says which version is now talking to it. Nothing about the run is ever held in the browser.
+
+**A failure leaves the tool that is here running**, which is the safe direction, and nothing is reversed for the same reason `install.sh --update-admin` records no undo: taking a working tool away to answer for a replacement that never happened is worse than the failure. What the window says is which step stopped it and why, in this interface's own words.
 
 ## Its own configuration
 

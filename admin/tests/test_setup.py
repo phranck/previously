@@ -31,13 +31,17 @@ def commands(monkeypatch):
     """
     class Commands(list):
         refuse = ()
+        #: What a command answers with, by its last argument, for the few steps
+        #: that ask something rather than do something. `dpkg-deb -f x Package`
+        #: is the one, and its last argument is the field being asked for.
+        answers = {}
 
         def __call__(self, command, seconds=None):
             self.append(command)
             if command[0] in self.refuse:
                 raise setup.Refused("setup.command-failed",
                                     command=command[0], code=1)
-            return ""
+            return self.answers.get(command[-1], "")
 
     answer = Commands()
     monkeypatch.setattr(setup, "run", answer)
@@ -849,21 +853,179 @@ def test_how_far_a_copy_has_got_is_readable_whilst_it_runs(card):
     assert said["of"] == 1
 
 
+# -- this tool replacing itself -------------------------------------------
+
+
+#: What the newest release comes back as, which is what `release.look` answers.
+PUBLISHED = {
+    "version": "1.0.1",
+    "url": ("https://github.com/phranck/previously/releases/download/v1.0.1/"
+            "previously_all.deb"),
+    "size": 269770,
+    "digest": "7298d28c17d560ad4cc97906ab35ffbe2795130457f8374375ef529bcdc293ad",
+    "asked_at": 0.0,
+}
+
+
+@pytest.fixture
+def a_release(tmp_path, monkeypatch, commands):
+    """A published release, a version that is here, and a download that works.
+
+    @returns the list of commands, as `commands` does, so a test can read what
+      root would have run and make one of them fail.
+
+    Nothing reaches the network and nothing writes outside the test's own
+    directory: the package this leaves is whatever the fetch was told to write,
+    and where it is written is inside `tmp_path` so a step that stops half way
+    leaves nothing for pytest to clean up after.
+    """
+    monkeypatch.setattr(setup.release, "look", lambda: dict(PUBLISHED))
+    monkeypatch.setattr(setup, "version_of", lambda package: "1.0.0")
+    monkeypatch.setattr(setup, "newer_than",
+                        lambda version, other: version != other)
+
+    holding = tmp_path / "downloaded"
+    monkeypatch.setattr(setup.tempfile, "mkdtemp",
+                        lambda prefix=None: str(holding.mkdir() or holding))
+
+    def fetched(url, into, work, hosts, expecting=None):
+        into.write_bytes(b"a package")
+
+    monkeypatch.setattr(setup, "_fetched", fetched)
+    commands.answers = {"Package": "previously", "Version": "1.0.1"}
+    return commands
+
+
+def test_the_newest_release_is_fetched_and_then_installed(tmp_path, a_release):
+    """The two steps together, because what the first leaves is what the second
+    acts on and the point of splitting them is that the second is where the
+    service goes away."""
+    work = work_in(tmp_path, job="update-tool", system=None)
+
+    setup.STEPS["tool-package"](work)
+    package = work.tool / setup.release.ASSET
+
+    assert package.read_bytes() == b"a package"
+
+    setup.STEPS["newest-tool"](work)
+
+    assert ["apt-get", "install", "-y", "-qq", str(package)] in a_release
+    assert not work.tool.exists(), "the package was left on the card"
+
+
+def test_nothing_is_fetched_where_this_is_already_the_newest(tmp_path, a_release,
+                                                             monkeypatch):
+    """Which is what the button being absent says in the window, and this is the
+    same answer where somebody asks anyway."""
+    monkeypatch.setattr(setup, "version_of", lambda package: "1.0.1")
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.STEPS["tool-package"](work_in(tmp_path, job="update-tool",
+                                            system=None))
+
+    assert refused.value.told["reason"] == "setup.tool-is-current"
+
+
+def test_a_github_that_cannot_be_asked_stops_it_before_anything_is_written(
+        tmp_path, a_release, monkeypatch):
+    def refuses():
+        raise setup.release.Unreachable("no route to host")
+
+    monkeypatch.setattr(setup.release, "look", refuses)
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.STEPS["tool-package"](work_in(tmp_path, job="update-tool",
+                                            system=None))
+
+    assert refused.value.told["reason"] == "setup.cannot-ask-about-releases"
+
+
+def test_a_package_that_is_not_this_tool_never_reaches_apt(tmp_path, a_release):
+    """The one check a digest cannot make. A digest proves the bytes are the
+    bytes GitHub served, and this proves that what GitHub served is this tool."""
+    a_release.answers = {"Package": "coreutils", "Version": "1.0.1"}
+    work = work_in(tmp_path, job="update-tool", system=None)
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.STEPS["tool-package"](work)
+
+    assert refused.value.told["reason"] == "setup.not-our-package"
+    assert not any(command[0] == "apt-get" for command in a_release)
+
+
+def test_a_package_of_another_version_never_reaches_apt(tmp_path, a_release):
+    """Somebody was offered 1.0.1, so 1.0.1 is what may be installed. Anything
+    else is a release that changed underneath the offer."""
+    a_release.answers = {"Package": "previously", "Version": "0.9.0"}
+    work = work_in(tmp_path, job="update-tool", system=None)
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.STEPS["tool-package"](work)
+
+    assert refused.value.told["reason"] == "setup.not-that-version"
+    assert refused.value.told["found"] == "0.9.0"
+    assert not any(command[0] == "apt-get" for command in a_release)
+
+
+def test_a_fetch_that_stopped_leaves_nothing_on_the_card(tmp_path, a_release):
+    """The directory is on the record of what to undo as well as removed by the
+    step that installs, so a run that stops between the two leaves neither a
+    package nor a directory holding one."""
+    work = work_in(tmp_path, job="update-tool", system=None)
+    a_release.answers = {"Package": "previously", "Version": "0.9.0"}
+    with pytest.raises(setup.Refused):
+        setup.STEPS["tool-package"](work)
+
+    work.reverse()
+
+    assert not work.tool.exists()
+
+
+def test_an_installation_that_failed_leaves_nothing_on_the_card(tmp_path,
+                                                                a_release):
+    """A failure leaves the tool that is here installed and running, which is the
+    safe direction, and it must not also leave a quarter of a megabyte behind."""
+    work = work_in(tmp_path, job="update-tool", system=None)
+    setup.STEPS["tool-package"](work)
+    a_release.refuse = ("apt-get",)
+
+    with pytest.raises(setup.Refused):
+        setup.STEPS["newest-tool"](work)
+
+    assert not work.tool.exists()
+
+
+def test_installing_with_nothing_fetched_is_refused(tmp_path, a_release):
+    """Which cannot happen through a job, because the steps are in order. It is
+    checked because the alternative is `apt-get install` on a path built from
+    None."""
+    with pytest.raises(setup.Refused) as refused:
+        setup.STEPS["newest-tool"](work_in(tmp_path, job="update-tool",
+                                           system=None))
+
+    assert refused.value.told["reason"] == "setup.no-package-to-install"
+
+
+def test_what_the_window_is_told_whilst_this_runs(tmp_path, a_release):
+    """The whole reason the work is done by the helper rather than by the
+    service: the record outlives the service being stopped and started, so this
+    is what a page reads before and after."""
+    work = work_in(tmp_path, job="update-tool", system=None)
+
+    setup.STEPS["tool-package"](work)
+    said = json.loads((work.into / setup.PROGRESS).read_text())
+
+    assert said["do"] == "update-tool"
+    assert said["part"]["doing"] == setup.CHECKING
+    assert said["part"]["of"] == PUBLISHED["size"]
+
+    setup.STEPS["newest-tool"](work)
+    said = json.loads((work.into / setup.PROGRESS).read_text())
+
+    assert said["part"]["doing"] == setup.INSTALLING
+
+
 # -- what may be fetched, and from where ----------------------------------
-
-
-@pytest.mark.parametrize("newurl", [
-    "https://example.com/x.7z",
-    "http://archive.org/x.7z",
-])
-def test_a_redirect_off_the_archive_ends_the_fetch(newurl):
-    """Whoever answers the first request chooses where the second one goes."""
-    import urllib.error
-
-    handler = setup._OnlyOurArchive()
-
-    with pytest.raises(urllib.error.HTTPError):
-        handler.redirect_request(None, None, 302, "Found", {}, newurl)
 
 
 def test_the_emulator_comes_from_the_one_archive_it_comes_from():

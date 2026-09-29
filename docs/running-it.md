@@ -103,7 +103,13 @@ The package owns `/usr/bin` and `/usr/share/previous`. The disk image and the co
 
 ## Updating the admin tool
 
-Nothing needs stopping, and NeXTSTEP keeps running throughout:
+**From the browser.** Open the Raspberry Pi window. The line marked Previously is the version that is answering, the one under it is the newest that has been published, and where the second is newer than the first there is an Update button beside Restart. Pressing it is the whole of it.
+
+The window then says which step it is on and how much of the package has come down. Half way through, the tool is stopped and the new one started, so for a few seconds there is nothing for the page to talk to; it says so rather than going blank, and when the new tool answers it says which version is now talking to it. Nothing needs reloading and nothing needs stopping, and NeXTSTEP keeps running throughout.
+
+An update that fails leaves the tool that is here running, and the window says which step stopped it and why. A board that cannot reach GitHub offers no update and says that it does not know what is published.
+
+**From a shell**, which is what a machine with no admin tool on it needs:
 
 ```bash
 curl -fsSL https://previous.li/install.sh | bash -s -- --update-admin
@@ -115,9 +121,7 @@ From a checkout on the Pi, the same script builds the package out of what is bes
 ./install.sh --update-admin
 ```
 
-The password in `/var/lib/previously/password` and the configuration in `/etc/previously/config.ini` both survive, because the password is state the tool wrote itself and the configuration is a conffile that an upgrade never overwrites. The service is restarted by the package, so the browser has the new tool on its next load.
-
-The version it put there is in the Raspberry Pi window, on the line marked Previously, which is also how to tell a machine that is up to date from one that was left behind. `dpkg-query -W previously` says the same thing on the Pi itself.
+The password in `/var/lib/previously/password` and the configuration in `/etc/previously/config.ini` both survive either way, because the password is state the tool wrote itself and the configuration is a conffile that an upgrade never overwrites. `dpkg-query -W previously` says on the Pi itself what the window says in the browser.
 
 **A version says which build it is, not only which release.** A release is a plain number such as `1.0.0`. Anything built between two releases carries how far it stands from the last tag and which commit it came from, so `1.0.0+7.g2f250d5` is seven commits past the release, and `1.0.0~7.g2f250d5` is seven commits on the way to a release that has not been tagged yet. A build from a tree with something uncommitted in it ends in `.modified`, because a package that claims a commit it was not built from is worse than one that admits nobody can look it up. Every one of those sorts the way apt expects, so an upgrade is an upgrade in either direction.
 
