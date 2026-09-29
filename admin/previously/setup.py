@@ -1085,14 +1085,54 @@ def _autostart(work):
 
     Fenced by markers, so taking it out again leaves whatever else the file
     holds.
+
+    A block that is already there and no longer says what this version writes
+    is replaced rather than left. It is generated, so a machine set up a year
+    ago carries a year-old console, and the one change that matters most is
+    the one nobody would notice: the line that writes down a crash.
     """
     profile = work.owner.home / PROFILE
     text = profile.read_text(encoding="utf-8") if profile.exists() else ""
+    wanted = _autostart_block(work.owner)
     if AUTOSTART_OPENS in text:
+        if _the_block_in(text) == wanted.strip("\n"):
+            return
+        was = text
+        work.owner.write(profile, _without_the_block(text) + wanted)
+        work.undoes(lambda: work.owner.write(profile, was))
         return
 
-    work.owner.write(profile, text + _autostart_block(work.owner))
+    work.owner.write(profile, text + wanted)
     work.undoes(lambda: _without_autostart(profile))
+
+
+def _the_block_in(text):
+    """@returns str - The fenced block as it stands, markers and all, or ""."""
+    opens = text.find(AUTOSTART_OPENS)
+    closes = text.find(AUTOSTART_CLOSES)
+    if opens == -1 or closes == -1:
+        return ""
+    return text[opens:closes + len(AUTOSTART_CLOSES)]
+
+
+def _without_the_block(text):
+    """@returns str - The same text with the fenced block taken out.
+
+    The blank line in front of it goes too, because the block is written with
+    one and replacing it twice would otherwise gain a line each time.
+    """
+    kept = []
+    inside = False
+    for line in text.splitlines(keepends=True):
+        if line.strip() == AUTOSTART_OPENS:
+            inside = True
+            if kept and not kept[-1].strip():
+                kept.pop()
+        elif line.strip() == AUTOSTART_CLOSES:
+            inside = False
+        elif not inside:
+            kept.append(line)
+    return "".join(kept)
 
 
 def _autostart_block(owner):
@@ -1153,21 +1193,10 @@ def _without_autostart(profile):
     file that gains one empty line per installation is not left as it was.
     """
     try:
-        lines = profile.read_text(encoding="utf-8").splitlines(keepends=True)
+        text = profile.read_text(encoding="utf-8")
     except OSError:
         return
-    kept = []
-    inside = False
-    for line in lines:
-        if line.strip() == AUTOSTART_OPENS:
-            inside = True
-            if kept and not kept[-1].strip():
-                kept.pop()
-        elif line.strip() == AUTOSTART_CLOSES:
-            inside = False
-        elif not inside:
-            kept.append(line)
-    profile.write_text("".join(kept), encoding="utf-8")
+    profile.write_text(_without_the_block(text), encoding="utf-8")
 
 
 def _start(work):
