@@ -313,3 +313,24 @@ def test_nothing_in_the_interface_writes_markup_from_a_string():
     }
 
     assert written == set(), written
+
+
+#: A view that scrolls, and what is in it. The kit's scroller takes its bar from
+#: one element, which is its first child unless something tells it otherwise.
+A_SCROLLER = re.compile(r"<nx-scroller[^>]*>(.*?)</nx-scroller>", re.S)
+
+
+def test_a_scroller_holding_more_than_one_view_is_told_which_one_to_measure():
+    """`nx-scroller` draws its bar from one element and takes the first child
+    where nobody says otherwise, which is what `drive` is for. A window holding
+    a room per kind of document therefore shows a bar for whichever room happens
+    to be first: notes in a window whose picture room is empty scrolled to the
+    wheel and showed no bar at all."""
+    markup = (INTERFACE / "index.html").read_text(encoding="utf-8")
+    page = page_source()
+
+    for inside in A_SCROLLER.findall(markup):
+        rooms = re.findall(r'\bid="([^"]+)"', inside)
+        if len(rooms) < 2:
+            continue
+        assert ".drive(" in page, rooms

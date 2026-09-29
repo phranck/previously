@@ -102,6 +102,14 @@ async function showInPreview(document_) {
   window_.rename(document_.name);
   window_.open();
 
+  /* The scroller takes its bar from one element, which is its first child
+     unless it is told otherwise, and this window has a room per kind of
+     document. Without this the bar measures whichever room happens to be
+     first: notes in a window whose picture room is empty scroll to the wheel
+     and show no bar at all, which is what they did. */
+  /** @type {any} */ (window_.querySelector("nx-scroller"))
+    .drive(document.getElementById(renderer.room));
+
   /** @type {any} */ (document.getElementById("preview-note")).textContent =
     await renderer.show(document_);
 }
