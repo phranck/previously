@@ -65,6 +65,36 @@ def test_the_newest_release_is_read_out_of_the_answer(answering):
     assert found["url"].startswith("https://github.com/phranck/previously/")
 
 
+def test_what_the_release_says_about_itself_is_kept(answering):
+    """It comes with the answer that is already being read, so a second request
+    for it would be a second answer to a question already answered."""
+    answering({**ANSWERED, "body": "## Installing it\n\nOne line."})
+
+    assert release.look()["notes"] == "## Installing it\n\nOne line."
+
+
+@pytest.mark.parametrize("body", [None, "", 42, {"text": "no"}])
+def test_a_release_that_says_nothing_about_itself_is_still_a_release(
+        answering, body):
+    """Notes are the one field allowed to be missing. Refusing the release for
+    want of them would take the update with them, and the window says there are
+    none rather than nothing at all."""
+    answering({**ANSWERED, "body": body})
+
+    assert release.look()["notes"] == ""
+
+
+def test_notes_longer_than_notes_are_cut_rather_than_refused(answering):
+    """What this bounds is a release whose description is not a description.
+    Cut, because notes that are too long are still notes."""
+    answering({**ANSWERED, "body": "x" * (release.LONGEST_NOTES + 500)})
+
+    found = release.look()
+
+    assert len(found["notes"]) == release.LONGEST_NOTES
+    assert found["version"] == "1.0.0"
+
+
 def test_the_v_of_a_tag_is_not_part_of_the_version(answering):
     """A tag is `v1.0.0` and dpkg knows the package as `1.0.0`, so a version
     carrying the v would compare as older than everything."""

@@ -18,6 +18,7 @@ export const fr = {
   "ask.delete.title": "Supprimer {name}",
   "ask.delete.loss": "L’image est retirée de la carte et ne revient pas.",
   "button.delete": "Supprimer",
+  "button.release-notes": "Notes de version",
   "menu.quit": "Quitter",
   "menu.quit.key": "q",
   "grab.take.key": "p",
@@ -200,6 +201,8 @@ export const fr = {
 
   /* --- the buttons ------------------------------------------------------ */
   "preview.empty": "Rien à montrer.",
+  "preview.notes.title": "Previously {version}",
+  "preview.no-notes": "Cette version ne dit rien d'elle-même.",
   "grab.take": "Prendre une image",
   "grab.idle": "Rien à photographier. La machine ne tourne pas.",
   "grab.failed": "L’écran n’a pas pu être lu.",

@@ -149,6 +149,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # spend them.
             asked = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self._json(self._update(check=asked.get("check") == ["1"]))
+        if route == "/api/update/notes":
+            return self._json(self._release_notes())
         if route == "/api/session":
             # How short a password may be travels with the answer, so the panel
             # that asks for one says the rule that will actually be applied
@@ -630,6 +632,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # update somebody pressed.
             "progress": (running if running
                          and running.get("do") == setup.UPDATE_TOOL else None),
+        }
+
+    def _release_notes(self):
+        """What the published release says about itself.
+
+        Its own address rather than a field of the answer above, because that
+        one is asked for every two seconds whilst the Raspberry Pi window is
+        open and this is asked when somebody presses a button. Notes are
+        thousands of characters and the rest of that answer is four short
+        values.
+
+        Nothing is fetched here either. The notes came with the release GitHub
+        described and are kept beside the version and the digest, so this route
+        has nothing to wait for and answers empty where nothing has been learnt
+        yet.
+
+        Markdown, which is what GitHub keeps them as, and the browser is what
+        renders them. Sent as the text it is rather than as markup, so there is
+        nothing in this answer a page could be talked into running.
+        """
+        newest = release.published()
+        return {
+            "version": newest["version"] if newest else None,
+            "notes": newest["notes"] if newest else "",
         }
 
     def _ask_to_update(self):

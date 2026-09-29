@@ -283,3 +283,33 @@ def test_no_window_shows_a_version_of_ours_with_its_build_on_it():
         at = page.index(reading)
         # As far as the end of that call, which is where the value it shows is.
         assert "released(" in page[at:page.index("\n", at) + 120], reading
+
+
+#: Which part of the window each of Preview's renderers fills.
+A_RENDERER_S_ROOM = re.compile(r'^\s*room: "([^"]+)",$', re.M)
+
+
+def test_every_renderer_fills_a_part_of_the_window_that_exists():
+    """Preview hands the room to whichever renderer takes the document it was
+    given, and it finds that room by a name the renderer carries rather than by
+    a literal the rest of these tests would see. A name that is not in the
+    markup answers nothing, and the window opens empty."""
+    preview = (INTERFACE / "app" / "preview.js").read_text(encoding="utf-8")
+    markup = (INTERFACE / "index.html").read_text(encoding="utf-8")
+    rooms = set(A_RENDERER_S_ROOM.findall(preview))
+
+    assert len(rooms) >= 2, rooms
+    assert rooms <= set(IN_MARKUP.findall(markup)), rooms
+
+
+def test_nothing_in_the_interface_writes_markup_from_a_string():
+    """Release notes arrive from GitHub as text somebody wrote, and they reach
+    a page. `markdown.js` turns them into elements one at a time, which is what
+    makes escaping structural rather than a thing to remember, and this is what
+    says nobody took the shorter road anywhere else either."""
+    written = {
+        path.name for path in sorted((INTERFACE / "app").glob("*.js"))
+        if "innerHTML" in path.read_text(encoding="utf-8")
+    }
+
+    assert written == set(), written

@@ -88,7 +88,14 @@
 
     <nx-row><label>Previously</label><nx-field id="pi-version">&mdash;</nx-field></nx-row>
 
-    <nx-row><label data-t="pi.newest"></label><nx-field id="pi-newest">&mdash;</nx-field></nx-row>
+    <nx-row>
+      <label data-t="pi.newest"></label>
+
+      <div class="beside">
+        <nx-field id="pi-newest">&mdash;</nx-field>
+        <button id="pi-notes" data-t="button.release-notes"></button>
+      </div>
+    </nx-row>
     <nx-row><label data-t="pi.emulator"></label><nx-field id="pi-emulator">&mdash;</nx-field></nx-row>
   </div>
 
@@ -326,8 +333,10 @@
 
 <nx-window name="preview" data-t-title="app.preview" drop
            x="640" y="120" w="576" h="480" min-w="320" min-h="240" closed>
+
   <nx-scroller>
     <div class="shot" id="preview-picture"></div>
+    <div class="document" id="preview-document" hidden></div>
   </nx-scroller>
   <p class="note" id="preview-note"></p>
 </nx-window>

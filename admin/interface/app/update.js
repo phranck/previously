@@ -13,6 +13,7 @@
 
 import { t } from "../strings.js";
 import { show } from "./page.js";
+import { showTheReleaseNotes } from "./preview.js";
 import { ask, tell } from "./service.js";
 import { released, say, sized } from "./words.js";
 
@@ -97,6 +98,10 @@ function drawTheUpdate(state) {
      reading says so rather than only the button at the foot of the window. */
   /** @type {any} */ (document.getElementById("pi-newest"))
     .toggleAttribute("newer", Boolean(state.newer));
+  /* What that release says about itself can be read whenever there is a release
+     to read about, whether it is newer than this one or not. */
+  /** @type {any} */ (document.getElementById("pi-notes")).disabled =
+    state.published === null;
   drawWhatIsHappening(state);
 }
 
@@ -255,6 +260,8 @@ function wireTheUpdate() {
 
   /** @type {any} */ (document.getElementById("pi-update"))
     .addEventListener("click", askForTheNewest);
+  /** @type {any} */ (document.getElementById("pi-notes"))
+    .addEventListener("click", showTheReleaseNotes);
 
   /* Opening it asks straight away, because a window that filled itself at the
      next poll would stand empty for a moment first, and this is also the one

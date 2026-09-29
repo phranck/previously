@@ -56,7 +56,7 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/change.py` | Changing the machine without leaving it unable to start |
 | `previously/kiosk.py` | Everything this tool does to the machine, in one file |
 | `previously/systems.py` | The six systems that can be put on this machine, and where each comes from |
-| `previously/release.py` | Which release of this tool is published, and where its package is |
+| `previously/release.py` | Which release of this tool is published, where its package is, and what it says about itself |
 | `previously/fetching.py` | Where a download may go, and where it may be sent on to |
 | `previously/discs.py` | The media that go beside the system, and what NeXTSTEP cannot read |
 | `previously/setup.py` | What root does on this tool's behalf, and the only thing root does |
@@ -134,6 +134,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `GET /api/setup` | Which systems there are, which are here, how much room is left, and what is being installed |
 | `POST /api/setup` | Asks the privileged helper to install, update, remove or fetch something |
 | `GET /api/update` | Which version of this tool is installed, which is published, and how a replacement of it is getting on |
+| `GET /api/update/notes` | What the published release says about itself, as the Markdown it was written in |
 | `POST /api/update` | Asks the privileged helper to replace this tool with the newest release |
 | `GET /api/terminal` | Becomes a WebSocket carrying a login on this machine |
 
@@ -388,6 +389,18 @@ The Raspberry Pi window says which version is here and which is published, and w
 **That is why the record is root's and not the service's.** The helper writes how far it has got into `/run/previously-setup`, which carries `RuntimeDirectoryPreserve=yes` and therefore outlives the service being replaced. The page reads the same run before and after: whilst there is no answer it says the tool is being put in place rather than claiming no contact, and when the new service answers it reads the finished record out of the same file and says which version is now talking to it. Nothing about the run is ever held in the browser.
 
 **A failure leaves the tool that is here running**, which is the safe direction, and nothing is reversed for the same reason `install.sh --update-admin` records no undo: taking a working tool away to answer for a replacement that never happened is worse than the failure. What the window says is which step stopped it and why, in this interface's own words.
+
+**What the release says about itself** is read in Preview, through the Release Notes button beside that line. The notes come with the answer GitHub already gave, so nothing is fetched for them, and they have an address of their own because the answer the window polls is asked every two seconds and these are thousands of characters asked for once.
+
+## Preview and its renderers
+
+Preview opens, takes the document's name as its title and hands the room to whichever renderer takes that kind of document. It does no fetching, no drawing and no clearing of its own. A renderer names the part of the window it fills and says how to fill it and how to empty it, so a third kind of document is an entry in one table rather than a branch through the window.
+
+That is `nx-viewer`'s shape as well, which is handed a path, contents and a shelf and knows nothing about machines. There are two renderers today: a picture, which is fetched because a refusal has to be answerable by asking for the password, and release notes, which arrive whole.
+
+**Markdown is turned into elements rather than into markup.** `markdown.js` creates each element and sets its text, so a line of notes carrying something that looks like markup arrives on the screen as the characters somebody typed. Nothing in the interface writes markup from a string at all, and `tests/test_page.py` holds every module to that rather than leaving it to be remembered.
+
+What it understands is what release notes use: headings three deep, paragraphs, fenced code, lists of both kinds, and inside a line a piece of code, something in bold and a link. Anything else stays the text it is. A link is followed only where it is `https`, and one that is not is shown as the characters it was written with. A Markdown library would understand more and would be a licence, a weight and a supply chain for a tool that ships to a Pi, in exchange for constructs these notes do not use.
 
 ## Its own configuration
 
