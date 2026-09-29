@@ -449,11 +449,16 @@ def test_the_installer_and_this_write_the_same_autostart():
     and the drift would be a console that behaves differently depending on
     which of the two set the machine up. This is what says so.
 
-    Compared as shell rather than as text. The installer writes its copy
-    inside a heredoc, so every `$` in it is escaped and every backslash
-    doubled, and it names paths by the variables it declared above. Both sides
-    are put back into what the console will actually read, and then they have
-    to be the same lines.
+    Character for character, comments included. Both sides replace a block that
+    no longer says what they write, so a comment wrapped differently in the two
+    is not cosmetic: it is the two rewriting each other every time a machine
+    sees both, which is what happened whilst this compared only the lines that
+    run.
+
+    Compared as shell rather than as text. The installer writes its copy inside
+    a heredoc, so every `$` in it is escaped and every backslash doubled, and it
+    names paths by the variables it declared above. Both sides are put back into
+    what the console will actually read, and then they have to be the same.
     """
     class Somebody:
         home = pathlib.Path("/home/next")
@@ -472,15 +477,11 @@ def test_the_installer_and_this_write_the_same_autostart():
                           text)
         return text
 
-    def shell(text):
-        return [line.strip() for line in text.splitlines()
-                if line.strip() and not line.strip().startswith("#")]
-
-    block = re.search(r"\$\{AUTOSTART_MARKER\}\n(.*?)\$\{AUTOSTART_END\}",
+    block = re.search(r"(\$\{AUTOSTART_MARKER\}\n.*?\$\{AUTOSTART_END\})",
                       installer, re.S)
     assert block, "no autostart block in install.sh"
-    theirs = shell(settled(block.group(1).replace("\\$", "$").replace("\\\\", "\\")))
-    ours = shell(setup._autostart_block(Somebody()))
+    theirs = settled(block.group(1).replace("\\$", "$").replace("\\\\", "\\"))
+    ours = setup._autostart_block(Somebody()).strip("\n")
 
     assert theirs == ours
 
