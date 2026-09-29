@@ -405,6 +405,7 @@ async function saveTheDraft() {
       text: [t("ask.rename.question")],
       icon: machineArt(drafted.machine.enclosure),
       confirm: t("button.save"),
+      dangerous: false,
     });
     if (name === null) return;
   }

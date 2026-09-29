@@ -117,6 +117,7 @@ async function renameConfiguration(machine) {
     text: [t("ask.rename.question")],
     icon: machineArt(machine.enclosure),
     confirm: t("button.rename"),
+    dangerous: false,
   });
   if (typed === null) return;
 
@@ -201,6 +202,7 @@ function notYet(name) {
        that only says something is answered by closing it, and a second button
        beside that one offers nothing to choose between. */
     cancel: null,
+    dangerous: false,
   });
 }
 

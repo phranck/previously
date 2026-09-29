@@ -69,6 +69,7 @@ export declare class NxAsk extends HTMLElement {
   ask(...args: any[]): any;
   askFor(...args: any[]): any;
   close(...args: any[]): any;
+  markTheReturnKey(...args: any[]): any;
   tell(...args: any[]): any;
   [held: string]: any;
 }
