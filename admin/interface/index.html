@@ -30,7 +30,13 @@
      distinct within one menu rather than across all of them. Raspberry Pi
      keeps its name in every language and still needs a letter of its own,
      because whichever letter Preferences takes cannot also be this one. -->
-<nx-menu name="menu" title="Cube" x="8" y="8">
+<nx-menu name="menu" title="Workspace" x="8" y="8">
+  <!-- What this tool is, which NeXTSTEP put first in every application's menu
+       and named Info. That word is taken here by the board's own readings, so
+       this one names the thing it is about. Three full stops rather than the
+       ellipsis character, because the original counts them. -->
+  <nx-menu-item name="about-previously" data-t-key="menu.about-previously.key"
+                data-t="menu.about-previously"></nx-menu-item>
   <!-- Info is about the machine this runs on, which is the Raspberry Pi. What
        the emulated machine is belongs to the entry below, and that one is not
        there at all whilst there is no emulated machine to be about. -->

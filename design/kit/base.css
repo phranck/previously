@@ -161,6 +161,9 @@
      where the icons came from, and ../../design/bootpicture.py where the two
      machines came from. */
   --Workspace: url("parts/Workspace.png");
+  /* This tool's own mark, which is the one picture here that NeXT did not
+     draw. It comes from the Previously website, where phranck made it. */
+  --Previously: url("parts/Previously.png");
   --defaultUnixIcon: url("parts/defaultUnixIcon.png");
   --defaultAppIcon: url("parts/defaultAppIcon.png");
   --defaultIcon: url("parts/defaultIcon.png");

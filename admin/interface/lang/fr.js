@@ -2,6 +2,8 @@
 
 NX_STRINGS.fr = {
   /* --- the menus ------------------------------------------------------- */
+  "menu.about-previously": "À propos de Previously...",
+  "menu.about-previously.key": "v",
   "menu.info.key": "i",
   "menu.about": "À propos de {machine}",
   "menu.about.key": "r",
@@ -207,6 +209,10 @@ NX_STRINGS.fr = {
   "button.change": "Changer",
   "button.use": "Valider",
   "button.fine": "Bien",
+  "about.version": "Version {version}",
+  "about.copyright": "Copyright © 2026 {holder}",
+  "about.holder": "LAYERED",
+  "about.ok": "OK",
   "button.close": "Fermer",
   "button.cancel": "Annuler",
   "button.ok": "Oui",

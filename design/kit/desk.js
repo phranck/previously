@@ -305,6 +305,52 @@ function restoreFront() {
   front?.raise();
 }
 
+
+/**
+ * Whether this browser had never been on this desk when the page loaded.
+ *
+ * The desk writes down where every window stands, so a store with nothing in
+ * it is somebody arriving for the first time. Asked once, at load, rather than
+ * whenever somebody wants to know: restoring the front window is itself
+ * something worth writing down, so by the time the page is up the answer has
+ * already changed.
+ *
+ * Read rather than kept as a flag of its own, because a second thing to write
+ * down is a second thing that can disagree with the first.
+ */
+const DESK_WAS_NEW = Object.keys(readState()).length === 0;
+
+/** @returns {boolean} Whether this is that browser's first visit. */
+function deskIsNew() {
+  return DESK_WAS_NEW;
+}
+
+/**
+ * Hands the desk itself the front, which is what a press on it means.
+ *
+ * Every window goes inactive and none is raised, so the main menu belongs to
+ * the workspace again. The event carries an empty name for the same reason:
+ * there is no window in front, and whoever draws the menu reads that as the
+ * workspace's own.
+ *
+ * NeXTSTEP activates an application when one of its windows is clicked, and
+ * the desk is the Workspace's own surface. Without this it is the one thing
+ * here that cannot be brought forward, and the way back to its menu is to
+ * close somebody else's window.
+ *
+ * On the way down rather than on the click, because that is when the original
+ * reorders windows, and a press that begins on the desk is the desk's however
+ * far it is dragged afterwards.
+ */
+addEventListener("pointerdown", (event) => {
+  if (event.target.closest("nx-window, nx-menu, nx-dock, nx-floor, nx-ask")) return;
+  for (const window_ of document.querySelectorAll("nx-window")) {
+    window_.setAttribute("inactive", "");
+  }
+  remember("desk", { front: "" });
+  document.dispatchEvent(new CustomEvent("nx-front", { detail: { name: "" } }));
+});
+
 /* --- pictures of things moving -------------------------------------------
 
    Two of them, and both are pictures rather than the things themselves: an

@@ -53,6 +53,12 @@ nx-ask .panel-body .icon { width: 48px; height: 48px; background-size: contain; 
 nx-ask .panel-body p { margin: 0 0 8px; }
 nx-ask .panel-body p:last-child { margin: 0; }
 
+/* A word in a line that leads somewhere off this machine. NeXTSTEP had no
+   such thing, so there is nothing to copy: it is drawn as text that is
+   underlined, which is what every browser since has meant by it, and it keeps
+   the colour of the sentence it stands in rather than taking one of its own. */
+nx-ask .panel-body a { color: inherit; }
+
 /* The line a panel takes an answer on, which is a name or a password. NeXT's
    text fields are white, sunken and one line tall, and this is the same field
    the readings use, made editable. */

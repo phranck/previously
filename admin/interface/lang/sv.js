@@ -2,6 +2,8 @@
 
 NX_STRINGS.sv = {
   /* --- the menus ------------------------------------------------------- */
+  "menu.about-previously": "Om Previously...",
+  "menu.about-previously.key": "v",
   "menu.info.key": "i",
   "menu.about": "Om {machine}",
   "menu.about.key": "o",
@@ -207,6 +209,10 @@ NX_STRINGS.sv = {
   "button.change": "Byt",
   "button.use": "Använd",
   "button.fine": "Bra",
+  "about.version": "Version {version}",
+  "about.copyright": "Copyright © 2026 {holder}",
+  "about.holder": "LAYERED",
+  "about.ok": "OK",
   "button.close": "Stäng",
   "button.cancel": "Avbryt",
   "button.ok": "Ja",
