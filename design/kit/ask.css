@@ -53,16 +53,21 @@ nx-ask .titlebar {
   background: linear-gradient(to bottom,
     var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
 }
-/* The row the panel names itself in, and the groove under it. Both come from
-   the chapter's own figure of an attention panel, at
-   https://www.nextop.de/NeXTstep_3.3_Developer_Documentation/UserInterface/05_Panel/Panel.htmld/F6.gif
-   where the line crosses the whole panel edge to edge rather than stopping at
-   the padding. It is therefore drawn as one edge on each of the two blocks
-   that meet at it, which is what makes it reach both sides.
+/* The row the panel names itself in, and the groove under it.
 
-   Dark above white is the groove the kit already states as --groove-sides,
-   and it is what the figure has: its row 87 is the dark grey and row 88 the
-   white. */
+   The Panels chapter says where the name goes and nothing about how it looks:
+   "The panel's name appears just to the right of the application icon". The
+   figure it points at then shows the rest, at
+   https://www.nextop.de/NeXTstep_3.3_Developer_Documentation/UserInterface/05_Panel/Panel.htmld/F6.gif
+   and F7.gif labels that row "bold, larger than usual type" in NeXT's own
+   hand.
+
+   The groove is only in the figure, where it crosses the whole panel edge to
+   edge rather than stopping at the padding. It is therefore drawn as one edge
+   on each of the two blocks that meet at it, which is what makes it reach both
+   sides. Dark above white is what the figure has, its row 87 being the dark
+   grey and row 88 the white, and it is the pair the kit already states as
+   --groove-sides. */
 nx-ask .naming {
   display: flex;
   align-items: center;
@@ -81,13 +86,20 @@ nx-ask .name {
   font-weight: bold;
 }
 
-/* Centred, as the message is in that figure: it sits 96 pixels from the left
-   edge and 98 from the right, which is centred to the pixel the panel's odd
-   width leaves over. */
+/* Ranged left, which nothing written down settles either way. Neither the
+   Panels chapter nor the Controls chapter says a word about how the text
+   inside a panel is aligned. The one thing the Panels chapter centres is the
+   panel itself, in "Attention panels come up centered in the upper part of the
+   screen", which nx-ask above does.
+
+   The figure does centre its message, at 96 pixels from the left edge and 98
+   from the right. That message is one line. Every message here runs to
+   several, and about those the original says nothing, so this follows what
+   reads rather than a rule stretched to cover a case the original never
+   shows. */
 nx-ask .pane {
   padding: 14px;
   border-top: 1px solid var(--white);
-  text-align: center;
 }
 nx-ask .lines p { margin: 0 0 8px; }
 nx-ask .lines p:last-child { margin: 0; }
