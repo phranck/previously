@@ -159,6 +159,8 @@ In the browser, `interface/terminal.js` is the view and `interface/app/shell.js`
 
 **The one library.** Everything else here is written from nothing, and a terminal is not: what arrives from a shell is a stream of escape sequences that move a cursor, switch to an alternate screen and scroll a region. `xterm.js` 5.5.0 and its fit addon 0.10.0 do that, both MIT, in `web/vendor/` with the licence beside them, and its stylesheet is in `interface/vendor/`. That is also why the terminal view is not part of the kit, which takes nothing from anybody.
 
+One line is taken off each of them as they are vendored: the `sourceMappingURL` at the foot, which names a map that is not here. Left on, every page load with the console open asks for it and is told 404 twice. Shipping the maps is the other answer and the worse one, because xterm's is about a megabyte, it is read only by somebody debugging a library they did not write, and this service is reached over a Pi's Wi-Fi. `tests/test_web.py` holds both files to that, so an upgrade that brings the line back is caught here rather than in a console.
+
 It is themed to what NeXT's Terminal was, black on white with a blinking block cursor. The sixteen ANSI colours stay, because a shell that paints its prompt is saying something with them, and the pale ones are darkened to be readable on white. The scroller NeXTSTEP put on the left of its own terminal is #107.
 
 ## Changing which machine it is
