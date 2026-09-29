@@ -83,7 +83,7 @@ function currentLocale() {
 /**
  * Looks a string up in the language in force.
  * @param {string} key - What the string is called, such as `info.processor`.
- * @param {object} [values] - What fills the `{name}` places in it.
+ * @param {any} [values] - What fills the `{name}` places in it.
  * @param {number} [count] - Where the string has one wording for one thing and
  *   another for several, the number of things. The browser knows each
  *   language's own rule for which is which, so `lang/fr.js` gets the singular
@@ -105,7 +105,7 @@ function t(key, values, count) {
 /**
  * Puts values into a string's `{name}` places.
  * @param {string} line
- * @param {object} [values]
+ * @param {any} [values]
  * @returns {string} A place nothing was given for keeps its braces, so a
  *   catalogue entry that names a value the caller does not send shows up
  *   rather than leaving a hole.
@@ -132,13 +132,19 @@ function fill(line, values) {
 function translate(root = document) {
   document.documentElement.lang = language;
 
-  for (const element of root.querySelectorAll("[data-t]")) {
+  /* Each of the three is an element of the page, carrying a dataset. What a
+     query answers with is an Element, which has none, so each says what it
+     found once rather than at every use of it. */
+  for (const found of root.querySelectorAll("[data-t]")) {
+    const element = /** @type {any} */ (found);
     writeWords(element, t(element.dataset.t));
   }
-  for (const element of root.querySelectorAll("[data-t-title]")) {
+  for (const found of root.querySelectorAll("[data-t-title]")) {
+    const element = /** @type {any} */ (found);
     writeTitle(element, t(element.dataset.tTitle));
   }
-  for (const element of root.querySelectorAll("[data-t-key]")) {
+  for (const found of root.querySelectorAll("[data-t-key]")) {
+    const element = /** @type {any} */ (found);
     writeKey(element, t(element.dataset.tKey));
   }
 }
@@ -159,10 +165,11 @@ function translate(root = document) {
  * inside the label and nothing on the right where every other entry has it.
  */
 function writeWords(element, text) {
-  const words = [...element.childNodes].find((node) => node.nodeType === Node.TEXT_NODE);
+  const words = /** @type {any} */ (
+    [...element.childNodes].find((node) => node.nodeType === Node.TEXT_NODE));
   if (words) return void (words.data = text);
 
-  const letter = element.querySelector(":scope > .key");
+  const letter = /** @type {any} */ (element.querySelector(":scope > .key"));
   const written = document.createTextNode(text);
   if (letter) element.insertBefore(written, letter);
   else element.append(written);
@@ -170,7 +177,8 @@ function writeWords(element, text) {
 
 /**
  * Puts text in the bar of a window or a menu.
- * @param {HTMLElement} element
+ * @param {any} element - Anything in the page, and for a title usually one of
+ *   the kit's windows, which carries a rename of its own.
  * @param {string} text
  *
  * Three ways, because there are three states to catch. A window that is built
@@ -179,7 +187,7 @@ function writeWords(element, text) {
  */
 function writeTitle(element, text) {
   if (element.rename) return element.rename(text);
-  const bar = element.querySelector(":scope > .title");
+  const bar = /** @type {any} */ (element.querySelector(":scope > .title"));
   if (bar) bar.textContent = text;
   else element.setAttribute("title", text);
 }
@@ -199,7 +207,7 @@ function writeTitle(element, text) {
  */
 function writeKey(element, letter) {
   element.setAttribute("key", letter);
-  const shown = element.querySelector(":scope > .key");
+  const shown = /** @type {any} */ (element.querySelector(":scope > .key"));
   if (shown) shown.textContent = letter;
 }
 

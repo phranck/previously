@@ -38,8 +38,23 @@ function showState(id, well, words) {
     .replaceChildren(lamp, document.createTextNode(" " + words));
 }
 
+/**
+ * The window of that name, or nothing where none is in the page.
+ * @param {string} name - What the markup calls it.
+ * @returns {any} The window, carrying open, close, raise and rename.
+ *
+ * A dozen places were building the same selector, and what comes back from
+ * one the checker did not write is an Element, which has none of a window's
+ * own doings on it. Asked here, both the selector and that answer are in one
+ * place.
+ */
+function theWindow(name) {
+  return document.querySelector(`nx-window[name="${name}"]`);
+}
+
 export {
   show,
   explain,
   showState,
+  theWindow,
 };

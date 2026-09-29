@@ -42,7 +42,7 @@ const KIND_NOTES = {
  * @param {string} group - The group's name in the catalogue, such as `clock`.
  * @param {string|number} value - What is chosen there, which is the last part
  *   of the key.
- * @param {object} [values] - What fills the sentence's places.
+ * @param {any} [values] - What fills the sentence's places.
  * @returns {string}
  *
  * Built from the value rather than written out per value, so a clock or a size

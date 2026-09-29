@@ -45,13 +45,13 @@ async function operateBoard(route, working) {
 
 /** Wires the board's own two buttons. */
 function wireBoard() {
-  document.getElementById("pi-reboot").addEventListener("click", async () => {
+  /** @type {any} */ (document.getElementById("pi-reboot")).addEventListener("click", async () => {
     if (await warnAboutTheBoard(t("button.restart"), "ask.board.reboot")) {
       operateBoard(Board.Reboot, t("busy.board-restart"));
     }
   });
 
-  document.getElementById("pi-poweroff").addEventListener("click", async () => {
+  /** @type {any} */ (document.getElementById("pi-poweroff")).addEventListener("click", async () => {
     if (await warnAboutTheBoard(t("button.power-off"), "ask.board.poweroff")) {
       operateBoard(Board.PowerOff, t("busy.board-poweroff"));
     }

@@ -3,7 +3,7 @@
 import { t, writeWords } from "../strings.js";
 import { backUpTheDisk, bootFromDisk, putTheCopyBack, useTheDisc } from "./disks.js";
 import { editConfiguration } from "./editor.js";
-import { show } from "./page.js";
+import { show, theWindow } from "./page.js";
 import { askPanel, askPanelFor } from "./panels.js";
 import { openPictureMenu } from "./preview.js";
 import { Saved, tell } from "./service.js";
@@ -24,10 +24,10 @@ function showMachineInfo(where) {
   const machine = catalogue.find((entry) => entry.path === where);
   if (!machine) return;
 
-  const window_ = document.querySelector('nx-window[name="machine-info"]');
+  const window_ = theWindow("machine-info");
   window_.rename(machine.name);
   show("mi-caption", machine.name);
-  document.getElementById("mi-icon").style.backgroundImage =
+  /** @type {any} */ (document.getElementById("mi-icon")).style.backgroundImage =
     `var(--${machineArt(machine.enclosure)})`;
 
   show("mi-cpu", cpuOf(machine));
@@ -92,7 +92,7 @@ async function changeTo(identifier) {
 
 /**
  * Says what came of a change to the machine, and draws everything again.
- * @param {object|null} answer - What the service said, or null on no contact.
+ * @param {any} answer - What the service said, or null on no contact.
  *
  * The tree as well as the status, because what it says about a disk or a disc
  * comes out of the same file that has just been written.
@@ -106,7 +106,7 @@ function reportAboutTheMachine(answer) {
 
 /**
  * Gives a saved configuration another name.
- * @param {object} machine - Its entry in the tree.
+ * @param {any} machine - Its entry in the tree.
  *
  * Only a configuration somebody saved has a name to change. The eleven are the
  * set to go back to, and the menu does not offer this for them at all.
@@ -126,7 +126,7 @@ async function renameConfiguration(machine) {
 
 /**
  * Takes a saved configuration out of the list, after asking.
- * @param {object} machine - Its entry in the tree.
+ * @param {any} machine - Its entry in the tree.
  *
  * Asked first, because there is no wastebasket here to fish one out of again.
  * What this does not touch is the running machine: previous.cfg is the
@@ -147,7 +147,7 @@ async function removeConfiguration(machine) {
 
 /**
  * Says what came of a change to the saved configurations, and draws them again.
- * @param {object|null} answer - What the service said, or null on no contact.
+ * @param {any} answer - What the service said, or null on no contact.
  *
  * The line under the viewer, because that is the window this happened in. The
  * status is asked for again as well: the machine in force may be the one that
@@ -224,19 +224,19 @@ function openMachineMenu(thing, x, y) {
   const onShelf = Boolean(thing.closest(".keep"));
   if (!machine && !disk && !copy && !disc && !onShelf) return false;
 
-  const menu = document.querySelector('nx-menu[name="machine-menu"]');
+  const menu = /** @type {any} */ (document.querySelector('nx-menu[name="machine-menu"]'));
   /* Which machine this is about. The menu appears over whatever was clicked
      and then goes away, so without a name it is an orphan. */
   menu.querySelector(".title").textContent = thing.getAttribute("label");
-  const info = menu.querySelector('nx-menu-item[name="info"]');
-  const activate = menu.querySelector('nx-menu-item[name="activate"]');
-  const edit = menu.querySelector('nx-menu-item[name="edit"]');
-  const rename = menu.querySelector('nx-menu-item[name="rename"]');
-  const remove = menu.querySelector('nx-menu-item[name="remove"]');
-  const backup = menu.querySelector('nx-menu-item[name="backup"]');
-  const restore = menu.querySelector('nx-menu-item[name="restore"]');
-  const media = menu.querySelector('nx-menu-item[name="disc"]');
-  const shelf = menu.querySelector('nx-menu-item[name="shelf"]');
+  const info = /** @type {any} */ (menu.querySelector('nx-menu-item[name="info"]'));
+  const activate = /** @type {any} */ (menu.querySelector('nx-menu-item[name="activate"]'));
+  const edit = /** @type {any} */ (menu.querySelector('nx-menu-item[name="edit"]'));
+  const rename = /** @type {any} */ (menu.querySelector('nx-menu-item[name="rename"]'));
+  const remove = /** @type {any} */ (menu.querySelector('nx-menu-item[name="remove"]'));
+  const backup = /** @type {any} */ (menu.querySelector('nx-menu-item[name="backup"]'));
+  const restore = /** @type {any} */ (menu.querySelector('nx-menu-item[name="restore"]'));
+  const media = /** @type {any} */ (menu.querySelector('nx-menu-item[name="disc"]'));
+  const shelf = /** @type {any} */ (menu.querySelector('nx-menu-item[name="shelf"]'));
 
   /* Three of the entries are about a machine, so a folder on the shelf shows
      only the one that applies to it. Activating is the exception: a disk is
@@ -333,7 +333,7 @@ function wireMachines() {
 
   /* A right click anywhere on a machine, rather than on the shelf, so the menu
      is always about something. */
-  document.getElementById("file-viewer").addEventListener("contextmenu", (event) => {
+  /** @type {any} */ (document.getElementById("file-viewer")).addEventListener("contextmenu", (/** @type {any} */ event) => {
     const thing = event.target.closest("nx-thing");
     if (!thing) return;
     event.preventDefault();
@@ -348,7 +348,7 @@ function wireMachines() {
      follows from what was chosen. */
   /* The thing that was chosen is where an application's icon starts its
      journey to the floor of the screen, so it travels with the choice. */
-  document.addEventListener("nx-choose", (event) => {
+  document.addEventListener("nx-choose", (/** @type {any} */ event) => {
     /* Carried into the Config Editor, which means edit that machine rather than
        start it. Anything else dropped there is ignored: the editor has nothing to
        do with a folder or a picture. */
@@ -361,16 +361,16 @@ function wireMachines() {
   });
 
   /* A step of the path was clicked, so go back to it. */
-  document.addEventListener("nx-path", (event) => goTo(event.detail.index));
+  document.addEventListener("nx-path", (/** @type {any} */ event) => goTo(event.detail.index));
 
   /* One click on the shelf, which is the one place a single click acts. */
   document.addEventListener("nx-visit",
-    (event) => visitFromTheShelf(event.detail.value, event.target));
+    (/** @type {any} */ event) => visitFromTheShelf(event.detail.value, event.target));
 
   /* Carried onto the viewer's own shelf, which means keep this one to hand
      rather than start it. */
   document.addEventListener("nx-keep",
-    (event) => keepOnShelf(event.detail.value, true));
+    (/** @type {any} */ event) => keepOnShelf(event.detail.value, true));
 }
 
 export {

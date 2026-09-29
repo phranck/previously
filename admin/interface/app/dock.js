@@ -1,10 +1,11 @@
 /* Which applications are running, and their icons on the floor. */
 
+import { theWindow } from "./page.js";
 import { find, root } from "./viewer.js";
 
 /**
  * Every application this tool holds, as the tree gives them.
- * @returns {object[]} Each with its path, its picture and the window it opens.
+ * @returns {any[]} Each with its path, its picture and the window it opens.
  */
 function applications() {
   const apps = find(root, "/Apps");
@@ -13,7 +14,7 @@ function applications() {
 
 /**
  * Whether an application is running, which here is its window being open.
- * @param {object} application - An entry of the Apps folder.
+ * @param {any} application - An entry of the Apps folder.
  * @returns {boolean}
  *
  * In NeXTSTEP an application outlives its windows. Here it does not: the
@@ -21,7 +22,7 @@ function applications() {
  * would be a light that means nothing.
  */
 function isRunning(application) {
-  const window_ = document.querySelector(`nx-window[name="${application.opens}"]`);
+  const window_ = theWindow(application.opens);
   return Boolean(window_) && !window_.hidden;
 }
 
@@ -50,7 +51,7 @@ function drawWhatIsRunning(arriving) {
     /* The order they were started in, which is the order they arrived in the
        list this keeps. */
     .sort((one, other) => started.indexOf(one.path) - started.indexOf(other.path));
-  document.getElementById("floor")?.show(standing, arriving);
+  /** @type {any} */ (document.getElementById("floor"))?.show(standing, arriving);
 }
 
 /**
@@ -72,7 +73,8 @@ function noticeTheApplications(event) {
     if (!running && known) started = started.filter((path) => path !== application.path);
   }
 
-  const opened = event?.type === "nx-open" ? event.target.getAttribute?.("name") : null;
+  const reached = /** @type {any} */ (event?.target);
+  const opened = event?.type === "nx-open" ? reached.getAttribute?.("name") : null;
   const arriving = applications().find((entry) => entry.opens === opened);
   drawWhatIsRunning(arriving && event.detail?.from
     ? { opens: arriving.opens, from: event.detail.from }

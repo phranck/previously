@@ -9,15 +9,15 @@ import { Art } from "./words.js";
 
 /**
  * Shows one kept picture in Preview.
- * @param {object} entry - What the tree says about it.
+ * @param {any} entry - What the tree says about it.
  *
  * Fetched rather than pointed at, for the same reason Grab fetches its own: a
  * refusal is answered by asking for the password. The window is titled with the
  * picture's name, the way a document window is.
  */
 async function showInPreview(entry) {
-  const window_ = document.querySelector('nx-window[name="preview"]');
-  const note = document.getElementById("preview-note");
+  const window_ = /** @type {any} */ (document.querySelector('nx-window[name="preview"]'));
+  const note = /** @type {any} */ (document.getElementById("preview-note"));
   if (!window_) return;
 
   window_.rename(entry.name);
@@ -79,7 +79,7 @@ function openPictureMenu(thing, x, y) {
   const entry = find(root, where);
   if (entry?.kind !== "picture") return false;
 
-  const menu = document.querySelector('nx-menu[name="picture-menu"]');
+  const menu = /** @type {any} */ (document.querySelector('nx-menu[name="picture-menu"]'));
   menu.querySelector('nx-menu-item[name="delete"]').onclick = async () => {
     menu.close();
     await deleteThePicture(entry.name);

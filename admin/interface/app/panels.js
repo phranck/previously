@@ -6,8 +6,8 @@ import { Art } from "./words.js";
 
 /**
  * The words every panel needs, put in front of what the caller says.
- * @param {object} question - As the kit's ask takes it.
- * @returns {object} The same, with the two buttons named.
+ * @param {any} question - As the kit's ask takes it.
+ * @returns {any} The same, with the two buttons named.
  *
  * The kit holds no words of its own, so they are named here and nowhere else.
  * A caller that has a better word for the acting button says so and keeps the
@@ -19,20 +19,20 @@ function worded(question) {
 
 /**
  * Puts a question.
- * @param {object} question
+ * @param {any} question
  * @returns {Promise<boolean>} Whether the acting button was pressed.
  */
 function askPanel(question) {
-  return document.getElementById("ask").ask(worded(question));
+  return /** @type {any} */ (document.getElementById("ask")).ask(worded(question));
 }
 
 /**
  * Puts a question that needs something typed.
- * @param {object} question
+ * @param {any} question
  * @returns {Promise<string|null>} What was typed, or null.
  */
 function askPanelFor(question) {
-  return document.getElementById("ask").askFor(worded(question));
+  return /** @type {any} */ (document.getElementById("ask")).askFor(worded(question));
 }
 
 /**
@@ -84,9 +84,11 @@ async function signIn(why) {
 
 /**
  * Asks for a password to set, until one is accepted or the panel is dismissed.
- * @param {string} [why] - A first line saying what prompted it.
+ * @param {string} why - A first line saying what prompted it, which is
+ *   empty rather than absent where there is none. Not optional, because two
+ *   required parameters follow it.
  * @param {string} what - Which sentence explains the question, by its key.
- * @param {object} state - What /api/session answered, which says how short a
+ * @param {any} state - What /api/session answered, which says how short a
  *   password may be. Read from the service rather than stated here, so the
  *   rule lives where it is enforced.
  * @returns {Promise<boolean>} Whether one was set.

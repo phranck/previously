@@ -7,13 +7,14 @@
 
 PYTHON ?= python3
 ESLINT ?= node_modules/.bin/eslint
+TSC ?= node_modules/.bin/tsc
 
-.PHONY: help run test lint lint-service lint-interface check kit web clean
+.PHONY: help run test lint lint-service lint-interface types check kit web clean
 
 help:
 	@echo 'run    start the service in the foreground'
 	@echo 'test   run the test suite'
-	@echo 'lint   check both halves: flake8 on the service, eslint on the interface'
+	@echo 'lint   check both halves: flake8 on the service, eslint and tsc on the interface'
 	@echo 'check  lint and test, which is what a commit needs'
 	@echo 'kit    put interface/nextstep.css and interface/nextstep.js back together'
 	@echo 'web    build what the browser gets, out of interface/'
@@ -36,7 +37,7 @@ run:
 test:
 	$(PYTHON) -m pytest tests -q
 
-lint: lint-service lint-interface
+lint: lint-service lint-interface types
 
 lint-service:
 	$(PYTHON) -m flake8 --max-line-length=100 previously tests build_web.py
@@ -47,6 +48,12 @@ lint-service:
 # that needs it. `npm install eslint` puts it here.
 lint-interface:
 	$(ESLINT) interface --no-warn-ignored
+
+# And what the documentation comments say, read as types. The interface stays
+# JavaScript: this compiles nothing and writes nothing, it only reads what is
+# already written down beside each function and holds the code to it.
+types:
+	$(TSC) -p tsconfig.json
 
 check: lint test
 

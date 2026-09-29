@@ -3,6 +3,7 @@
 import { showWhatThisIs } from "./about.js";
 import { applications } from "./dock.js";
 import { saveThePicture, shownPictures, takeAPicture } from "./grab.js";
+import { theWindow } from "./page.js";
 import { deleteThePicture } from "./preview.js";
 import { appName } from "./viewer.js";
 
@@ -12,10 +13,10 @@ import { appName } from "./viewer.js";
  *   out, whichever window is in front now is asked.
  */
 function drawTheMenu(front) {
-  const menu = document.querySelector('nx-menu[name="menu"]');
+  const menu = /** @type {any} */ (document.querySelector('nx-menu[name="menu"]'));
   if (!menu?.showFor) return;
 
-  const name = front ?? document.querySelector("nx-window:not([inactive]):not([hidden])")?.name;
+  const name = front ?? /** @type {any} */ (document.querySelector("nx-window:not([inactive]):not([hidden])"))?.name;
   const application = applications().find((entry) => entry.opens === name);
   menu.showFor(application ? name : "",
                application ? appName(application) : WORKSPACE);
@@ -31,7 +32,7 @@ const WORKSPACE = "Workspace";
     language. */
 /** Follows the front window, and the windows that open and close with it. */
 function watchTheFrontWindow() {
-  document.addEventListener("nx-front", (event) => drawTheMenu(event.detail?.name));
+  document.addEventListener("nx-front", (/** @type {any} */ event) => drawTheMenu(event.detail?.name));
   /* A window closing leaves something else in front, and nothing says which
      until the next raise, so the menu is asked to work it out again. */
   document.addEventListener("nx-close", () => drawTheMenu());
@@ -43,7 +44,7 @@ function watchTheFrontWindow() {
   for (const entry of document.querySelectorAll('nx-menu-item[name="quit"]')) {
     entry.addEventListener("click", () => {
       const owner = entry.getAttribute("for");
-      document.querySelector(`nx-window[name="${owner}"]`)?.close();
+      theWindow(owner)?.close();
     });
   }
   document.querySelector('nx-menu-item[name="about-previously"]')
@@ -61,7 +62,7 @@ function watchTheFrontWindow() {
       /* The window goes with the picture, because a window showing something
          that is no longer there is worse than no window. */
       if (await deleteThePicture(showing.name)) {
-        document.querySelector('nx-window[name="preview"]')?.close();
+        theWindow("preview")?.close();
       }
     });
 

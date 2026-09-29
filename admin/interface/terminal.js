@@ -164,7 +164,7 @@ class NxTerminal extends HTMLElement {
     this.terminal?.focus();
   }
 
-  /** @returns {object} How large it is now, in rows and columns. */
+  /** @returns {any} How large it is now, in rows and columns. */
   get size() {
     return this.terminal
       ? { rows: this.terminal.rows, columns: this.terminal.cols }

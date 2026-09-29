@@ -92,6 +92,15 @@ EXPORTED = re.compile(
     r"^export\s+(?:async\s+)?(?:function|class|const|let)\s+([A-Za-z_$][\w$]*)",
     re.M)
 
+#: One element's class body, found from a marked name to the line its closing
+#: brace stands on its own. Every class here is written at the top level, so
+#: that brace is the first one in the first column after it.
+CLASS_BODY = re.compile(r"class \w+\x00[^{]*\{(.*?)\n\}", re.S)
+
+#: What that body offers: a method at the class's own indentation, which is
+#: two spaces, and not a getter or a field.
+METHOD = re.compile(r"^  (?:async )?([A-Za-z_$][\w$]*)\s*\(", re.M)
+
 
 def source(name, kind):
     """@returns the text of one part, or "" where it has none of that kind."""
@@ -164,6 +173,68 @@ def exported(blocks):
         already.update(EXPORTED.findall(block))
     offered = sorted(names - already)
     return "export {\n%s\n};\n" % "".join("  %s,\n" % name for name in offered).rstrip("\n")
+
+
+def declarations(blocks):
+    """What the kit is, for the type checker.
+
+    @param blocks - The sources it was built from, so that what it offers is
+      read out of them rather than listed here.
+    @returns str, a TypeScript declaration file.
+
+    The interface is JavaScript and stays JavaScript. What this gives the
+    checker is the one thing it cannot work out for itself: that
+    `querySelector("nx-window")` answers a window, which has `open` and
+    `close` and `rename` on it, rather than an Element, which has none of
+    them. Without it every call to one of those reads as a mistake.
+
+    A declaration file standing beside a module is what the checker reads
+    instead of that module, so everything the kit offers has to be in here and
+    not only its elements.
+
+    Nothing is given a real type. What the kit takes and answers with is
+    written in the documentation comment on each function, and turning those
+    into types is a job of its own; this is here to stop a name being unknown,
+    not to describe it.
+    """
+    lines = ["// %s" % WRITTEN_BY, ""]
+    tags = []
+    classes = set()
+    for name, elements, _ in KIT_PARTS:
+        text = source(name, "js")
+        for tag, cls in elements:
+            found = CLASS_BODY.search(text.replace("class %s " % cls, "class %s\x00" % cls))
+            body = found.group(1) if found else ""
+            methods = sorted(set(METHOD.findall(body)) - {"connectedCallback"})
+            lines.append("export declare class %s extends HTMLElement {" % cls)
+            lines.extend("  %s(...args: any[]): any;" % method for method in methods)
+            # What it keeps whilst it runs, which each of them writes onto
+            # itself in its own methods. Named rather than listed, because
+            # what those are is the element's business and this file is here
+            # to stop a name being unknown rather than to describe one.
+            lines.append("  [held: string]: any;")
+            lines.append("}")
+            lines.append("")
+            tags.append((tag, cls))
+            classes.add(cls)
+
+    names = set()
+    for block in blocks:
+        names.update(DECLARED.findall(block))
+        names.update(EXPORTED.findall(block))
+    # Everything the kit declares, and the one thing `script` adds to it at
+    # the foot rather than writing in a part.
+    for name in sorted(names - classes | {"defineTheKit"}):
+        lines.append("export declare const %s: any;" % name)
+    lines.append("")
+
+    lines.append("declare global {")
+    lines.append("  interface HTMLElementTagNameMap {")
+    lines.extend('    "%s": %s;' % pair for pair in tags)
+    lines.append("  }")
+    lines.append("}")
+    lines.append("")
+    return "\n".join(lines)
 
 
 def overview():
@@ -246,6 +317,7 @@ def between(text, marks, block, what):
 def main():
     css = stylesheet()
     js = script()
+    types = declarations([source(name, "js") for name, _, _ in KIT_PARTS])
 
     html = MOCKUP.read_text()
     html = between(html, MARKS["css"], faces(css), MOCKUP.name)
@@ -260,6 +332,7 @@ def main():
     # three as they were rather than two of them half done.
     (INTERFACE / "nextstep.css").write_text(css)
     (INTERFACE / "nextstep.js").write_text(js)
+    (INTERFACE / "nextstep.d.ts").write_text(types)
     MOCKUP.write_text(html)
 
     print("wrote %d lines of stylesheet and %d of script from %d parts, "

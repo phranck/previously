@@ -40,7 +40,7 @@ const MACHINE_ART = {
 
 /**
  * What the service just said, as a sentence.
- * @param {object|null} told - Its answer, carrying `reason` and whatever fills
+ * @param {any} told - Its answer, carrying `reason` and whatever fills
  *   it.
  * @returns {string} The sentence in the language the interface speaks, or the
  *   bare name where no catalogue knows it, because a name on the screen is
@@ -72,7 +72,7 @@ function say(told) {
 
 /**
  * What a machine is called, from the facts the service sent.
- * @param {object} machine - A configuration or a catalogue entry.
+ * @param {any} machine - A configuration or a catalogue entry.
  * @returns {string} The model's own name with what is fitted to it.
  *
  * The model is a product name and arrives as it is. What gets added to it is
@@ -85,7 +85,7 @@ function nameOf(machine) {
 
 /**
  * What the machine is called, and nothing about the boards in it.
- * @param {object} machine - A configuration or a catalogue entry.
+ * @param {any} machine - A configuration or a catalogue entry.
  * @returns {string} The model's own name, with Turbo where that is part of it.
  *
  * For the one place a whole sentence does not fit: a menu entry is a line in a
@@ -99,7 +99,7 @@ function modelOf(machine) {
 }
 
 /**
- * @param {object} machine - A configuration or a catalogue entry.
+ * @param {any} machine - A configuration or a catalogue entry.
  * @returns {string} The processor and its clock.
  */
 function cpuOf(machine) {
@@ -107,7 +107,7 @@ function cpuOf(machine) {
 }
 
 /**
- * @param {object} machine - A configuration or a catalogue entry.
+ * @param {any} machine - A configuration or a catalogue entry.
  * @returns {string} What the screen shows, which is where colour is decided.
  *
  * A cube has no colour of its own: Previous forces the flag off for that
@@ -119,7 +119,7 @@ function screenOf(machine) {
 }
 
 /**
- * @param {object} machine - A configuration or a catalogue entry.
+ * @param {any} machine - A configuration or a catalogue entry.
  * @returns {string} The three chips that decide whether it runs at all.
  */
 function chipsOf(machine) {
@@ -171,7 +171,7 @@ function when(seconds) {
 
 /**
  * When the configuration file was last written.
- * @param {object|undefined} file - What the service says about previous.cfg.
+ * @param {any} file - What the service says about previous.cfg.
  * @returns {string} The moment, and a note where the running machine is older
  *   than the file. Previous reads the file once at its start, so anything
  *   written afterwards is a machine nobody has tried.
@@ -184,7 +184,7 @@ function changedLine(file) {
 
 /**
  * Who wrote the configuration file last.
- * @param {object|undefined} file - What the service says about previous.cfg.
+ * @param {any} file - What the service says about previous.cfg.
  * @returns {string} One of two sentences. Previously leaves a note of what it
  *   wrote, so a file that no longer matches that note came from somewhere
  *   else, and the two candidates are the emulator's own settings dialogue and
@@ -240,13 +240,13 @@ function named(names) {
 /**
  * How large something is, in the words a person uses.
  * @param {number} bytes
+ * @param {boolean} [fine] - Whether to keep a decimal below a gigabyte. A
+ *   figure that stands still says nothing about a download, so the counter
+ *   keeps one and the list, where the number never moves, does not.
  * @returns {string} Megabytes below a gigabyte and gigabytes above it, with the
  *   figure written the way the language being read writes one.
  */
 function sized(bytes, fine) {
-  /* @param fine - Whether to keep a decimal below a gigabyte. A figure that
-     stands still says nothing about a download, so the counter keeps one and
-     the list, where the number never moves, does not. */
   if (!bytes && bytes !== 0) return NOTHING;
   const gigabytes = bytes >= 1e9;
   const figure = new Intl.NumberFormat(currentLocale(),

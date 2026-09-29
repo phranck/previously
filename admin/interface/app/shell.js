@@ -24,7 +24,7 @@ let typedAtThePrompt = null;
  * told who is connecting before it connects at all.
  */
 function askAtTheTerminal(complaint) {
-  const view = document.getElementById("session");
+  const view = /** @type {any} */ (document.getElementById("session"));
   if (!view.write) return;
 
   typedAtThePrompt = "";
@@ -42,7 +42,7 @@ function askAtTheTerminal(complaint) {
  * echoes nothing itself.
  */
 function typeAtThePrompt(data) {
-  const view = document.getElementById("session");
+  const view = /** @type {any} */ (document.getElementById("session"));
   for (const character of data) {
     if (character === "\r" || character === "\n") {
       const said = typedAtThePrompt.trim();
@@ -76,7 +76,7 @@ function typeAtThePrompt(data) {
  * moment later.
  */
 function openShell(login) {
-  const view = document.getElementById("session");
+  const view = /** @type {any} */ (document.getElementById("session"));
   if (shell || !view.write) return;
 
   const where = location.origin.replace(/^http/, "ws") + TERMINAL;
@@ -92,7 +92,7 @@ function openShell(login) {
     opening.send(JSON.stringify({ login, size: [size.rows, size.columns] }));
     view.focus();
   };
-  opening.onmessage = (event) => view.write(new Uint8Array(event.data));
+  opening.onmessage = (/** @type {any} */ event) => view.write(new Uint8Array(event.data));
   opening.onclose = () => {
     const wasRunning = shell === opening;
     shell = null;
@@ -113,7 +113,7 @@ function closeShell() {
 
 /**
  * Tells the shell how large the window has become.
- * @param {object} size - `{rows, columns}`.
+ * @param {any} size - `{rows, columns}`.
  *
  * A text frame, which the service reads as being about the session. Anything
  * binary is what the shell itself sees.
@@ -125,24 +125,24 @@ function tellTheShellItsSize(size) {
 
 /** Wires the terminal window to the session behind it. */
 function wireTerminal() {
-  const window_ = document.querySelector('nx-window[name="terminal"]');
-  const view = document.getElementById("session");
+  const window_ = /** @type {any} */ (document.querySelector('nx-window[name="terminal"]'));
+  const view = /** @type {any} */ (document.getElementById("session"));
   if (!window_ || !view) return;
 
   /* Opening the window is not opening a session. The login is. */
   window_.addEventListener("nx-open", () => {
-    document.getElementById("session").clear();
+    /** @type {any} */ (document.getElementById("session")).clear();
     askAtTheTerminal();
   });
   window_.addEventListener("nx-close", closeShell);
 
-  view.addEventListener("nx-typed", (event) => {
+  view.addEventListener("nx-typed", (/** @type {any} */ event) => {
     if (typedAtThePrompt !== null) return typeAtThePrompt(event.detail.data);
     if (shell?.readyState === WebSocket.OPEN) {
       shell.send(new TextEncoder().encode(event.detail.data));
     }
   });
-  view.addEventListener("nx-sized", (event) => tellTheShellItsSize(event.detail));
+  view.addEventListener("nx-sized", (/** @type {any} */ event) => tellTheShellItsSize(event.detail));
 
   /* A browser that goes away without closing the window would otherwise leave
      the service holding a session nobody is looking at until the socket times
