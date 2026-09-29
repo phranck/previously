@@ -21,17 +21,19 @@ class NxAsk extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
+    /* Two blocks with a groove between them, which is how the chapter's own
+       figure of an attention panel is built: the application icon and the
+       panel's name above the line, and what the panel has to say below it. */
     this.innerHTML = `
       <div class="panel">
         <div class="titlebar"></div>
+        <div class="naming">
+          <i class="art icon raised"></i>
+          <div class="name"></div>
+        </div>
         <div class="pane">
-          <div class="panel-body">
-            <i class="art icon"></i>
-            <div class="words">
-              <div class="lines"></div>
-              <input class="entry" type="text" spellcheck="false" hidden>
-            </div>
-          </div>
+          <div class="lines"></div>
+          <input class="entry" type="text" spellcheck="false" hidden>
           <div class="buttons" style="padding-right:0">
             <button data-answer="no"></button>
             <button data-answer="yes"></button>
@@ -56,9 +58,11 @@ class NxAsk extends HTMLElement {
   /**
    * Puts the question and waits for an answer.
    * @param {object} question
-   * @param {(string|Node)[]} question.text - One paragraph per entry. The
-   *   first is the panel's own name, which stands beside the icon because an
-   *   attention panel's title bar is empty.
+   * @param {string} question.name - What the panel calls itself, after the
+   *   command that brought it up. It stands beside the icon above the groove,
+   *   because an attention panel's title bar is empty.
+   * @param {(string|Node)[]} question.text - One paragraph per entry, below
+   *   the groove.
    * @param {string} [question.icon] - Which picture, by the name showArt knows.
    * @param {string} question.confirm - The wording on the acting button. The
    *   kit holds no words of its own, in any language, so both buttons are
@@ -69,7 +73,8 @@ class NxAsk extends HTMLElement {
    *   what is typed into it is not read over the typist's shoulder.
    * @returns {Promise<boolean>} True where the acting button was pressed.
    */
-  ask({ text, icon, confirm, cancel, field = false, secret = false }) {
+  ask({ name, text, icon, confirm, cancel, field = false, secret = false }) {
+    this.querySelector(".name").textContent = name;
     this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {
         /* A line is a sentence, or an element where the caller had to build
@@ -113,10 +118,10 @@ class NxAsk extends HTMLElement {
   /**
    * Says something and waits for it to be read.
    * @param {object} panel
+   * @param {string} panel.name - What the panel calls itself.
    * @param {(string|Node)[]} panel.text - One paragraph per entry, as a
    *   sentence or as an element where the caller had to build the line
-   *   itself. The first is the panel's own name, which in an attention panel
-   *   stands beside the icon rather than in the title bar.
+   *   itself.
    * @param {string} [panel.icon] - Which picture, by the name showArt knows.
    * @param {string} panel.confirm - The wording on the one button. The kit
    *   holds no words of its own, in any language.
@@ -127,8 +132,8 @@ class NxAsk extends HTMLElement {
    * something has one answer and offering a second would be a button that does
    * what the first does.
    */
-  tell({ text, icon, confirm }) {
-    return this.ask({ text, icon, confirm, cancel: null });
+  tell({ name, text, icon, confirm }) {
+    return this.ask({ name, text, icon, confirm, cancel: null });
   }
 
   /**

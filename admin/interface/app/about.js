@@ -25,8 +25,8 @@ async function showWhatThisIs() {
   const version = (await ask("/api/pi"))?.version;
   await /** @type {any} */ (document.getElementById("ask")).tell({
     icon: "Previously",
+    name: PRODUCT,
     text: [
-      PRODUCT,
       t("about.version", { version: version ?? NOTHING }),
       copyrightLine(),
     ],

@@ -70,8 +70,8 @@ async function changeTo(identifier) {
      will be written over is the difference between a change and a loss. */
   const own = Boolean(lastStatus?.configuration) && !lastStatus.configuration.catalogue;
   const agreed = await askPanel({
+    name: t("ask.change.title"),
     text: [
-      t("ask.change.title"),
       t("ask.change.question", { machine: name }),
       own && t("ask.change.own"),
       t("ask.change.how"),
@@ -113,8 +113,8 @@ function reportAboutTheMachine(answer) {
  */
 async function renameConfiguration(machine) {
   const typed = await askPanelFor({
-    text: [t("ask.rename.title", { name: machine.name }),
-           t("ask.rename.question")],
+    name: t("ask.rename.title", { name: machine.name }),
+    text: [t("ask.rename.question")],
     icon: machineArt(machine.enclosure),
     confirm: t("button.rename"),
   });
@@ -135,8 +135,8 @@ async function renameConfiguration(machine) {
  */
 async function removeConfiguration(machine) {
   const sure = await askPanel({
-    text: [t("ask.remove.title", { name: machine.name }),
-           t("ask.remove.loss")],
+    name: t("ask.remove.title", { name: machine.name }),
+    text: [t("ask.remove.loss")],
     icon: machineArt(machine.enclosure),
     confirm: t("button.remove"),
   });
@@ -193,6 +193,7 @@ function editOnWhatIsRunning(asker) {
  */
 function notYet(name) {
   return askPanel({
+    name,
     text: [t("ask.not-yet.missing", { name }), t("ask.not-yet.plan")],
     icon: Art.Editor,
     confirm: t("button.close"),

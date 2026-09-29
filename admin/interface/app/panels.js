@@ -68,8 +68,8 @@ async function signIn(why) {
 
   for (;;) {
     const typed = await askPanelFor({
-      text: [t("ask.password.title"), complaint, t("ask.password.sign-in")]
-        .filter(Boolean),
+      name: t("ask.password.title"),
+      text: [complaint, t("ask.password.sign-in")].filter(Boolean),
       icon: Art.Computer,
       confirm: t("button.use"),
       secret: true,
@@ -101,7 +101,8 @@ async function chooseThePassword(why, what, state) {
 
   for (;;) {
     const typed = await askPanelFor({
-      text: [t("ask.password.title"), complaint, t(what),
+      name: t("ask.password.title"),
+      text: [complaint, t(what),
              t("ask.password.length", { least: state.smallest })].filter(Boolean),
       icon: Art.Computer,
       confirm: t("button.use"),
