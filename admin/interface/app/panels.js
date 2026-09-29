@@ -117,10 +117,7 @@ async function chooseThePassword(why, what, state) {
 }
 
 export {
-  worded,
   askPanel,
   askPanelFor,
   askForPassword,
-  signIn,
-  chooseThePassword,
 };

@@ -74,9 +74,6 @@ function greetTheFirstVisit() {
 }
 
 export {
-  PRODUCT,
-  HOLDER_SITE,
   showWhatThisIs,
-  copyrightLine,
   greetTheFirstVisit,
 };

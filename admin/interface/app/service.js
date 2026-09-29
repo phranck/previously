@@ -132,7 +132,6 @@ export {
   Kiosk,
   Board,
   Saved,
-  OPERATION_TIMEOUT_MS,
   ask,
   send,
   tell,

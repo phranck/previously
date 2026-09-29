@@ -89,9 +89,6 @@ function watchTheApplications() {
 
 export {
   applications,
-  isRunning,
-  started,
-  drawWhatIsRunning,
   noticeTheApplications,
   watchTheApplications,
 };

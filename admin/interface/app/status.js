@@ -265,19 +265,10 @@ async function refresh() {
 }
 
 export {
-  ACTIONS,
   allowActions,
   drawStatus,
-  offeredTheInstaller,
-  offerTheInstaller,
-  drawWhatThisMachineIs,
-  aboutIsThere,
-  runningArt,
   lastStatus,
-  JUST_WRITTEN,
-  noteState,
   setBusy,
-  warn,
   wireButtons,
   refresh,
 };

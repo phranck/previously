@@ -72,9 +72,6 @@ function drawSizes() {
 }
 
 export {
-  SIZES,
-  SIZE_AT_FIRST,
-  SIZE_KEY,
   chosenSize,
   drawAtSize,
   drawSizes,

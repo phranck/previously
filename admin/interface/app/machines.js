@@ -374,14 +374,9 @@ function wireMachines() {
 }
 
 export {
-  showMachineInfo,
   changeTo,
   reportAboutTheMachine,
-  renameConfiguration,
-  removeConfiguration,
-  reportAboutTheSaved,
   editOnWhatIsRunning,
   notYet,
-  openMachineMenu,
   wireMachines,
 };

@@ -59,7 +59,5 @@ function wireBoard() {
 }
 
 export {
-  warnAboutTheBoard,
-  operateBoard,
   wireBoard,
 };

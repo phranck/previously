@@ -26,6 +26,13 @@ sudo apt install python3-pytest python3-flake8       # Debian, the Pi included
 brew install flake8 pytest                           # macOS
 ```
 
+The interface is checked by `eslint`, which comes from `package.json` beside it, and is built by `esbuild`. Neither ever reaches the Pi: what ships is the built interface, and that is committed.
+
+```bash
+npm install                                          # eslint, into admin/node_modules
+brew install esbuild                                 # or npm install --global esbuild
+```
+
 Homebrew's are their own programs rather than modules of the system Python, which the Makefile calls as `$(PYTHON) -m`. So on a Mac it is a virtual environment that works with it:
 
 ```bash
@@ -58,8 +65,10 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/server.py` | Which addresses exist and what answers them |
 | `previously/password.py` | The one secret, who is signed in, and what a request may do without it |
 | `previously/answers.py` | How the service names what happened, so the browser can say it |
-| `interface/` | Where the interface is written, including one catalogue of words per language |
-| `build_web.py` | What puts that into the three files a browser is given |
+| `interface/app.js` | Where the page starts, and the order everything in it is woken in |
+| `interface/app/` | One module per subject, which is what the interface is made of |
+| `interface/lang/` | One catalogue of words per language |
+| `build_web.py` | What bundles that into the three files a browser is given |
 | `web/` | What the browser gets, and nothing in it is written by hand |
 | `web/vendor/` | The one library this interface takes, with its licence |
 | `packaging/` | The unit and the default configuration |
@@ -142,7 +151,7 @@ The SSH client is told not to check the host key and not to write one down, beca
 
 `websocket.py` is the protocol, out of the standard library: the handshake from `hashlib`, the frames from `struct`. `terminal.py` is the session and the two directions it is pumped in.
 
-In the browser, `interface/terminal.js` is the view and `interface/app.js` holds the socket and the login prompt. The view draws what it is given, says what was typed into it and says how large it has become; what is on the other end is the page's business.
+In the browser, `interface/terminal.js` is the view and `interface/app/shell.js` holds the socket and the login prompt. The view draws what it is given, says what was typed into it and says how large it has become; what is on the other end is the page's business.
 
 **The one library.** Everything else here is written from nothing, and a terminal is not: what arrives from a shell is a stream of escape sequences that move a cursor, switch to an alternate screen and scroll a region. `xterm.js` 5.5.0 and its fit addon 0.10.0 do that, both MIT, in `web/vendor/` with the licence beside them, and its stylesheet is in `interface/vendor/`. That is also why the terminal view is not part of the kit, which takes nothing from anybody.
 
@@ -422,7 +431,7 @@ A thing with a `value` can be lifted and carried, and a window with `drop` takes
 
 ## What is written and what ships
 
-`interface/` is where the interface is written: one file per subject, with the comments that say why each of them is the way it is. `web/` is what a browser is given, and nothing in it is written by hand.
+`interface/` is where the interface is written. `app.js` is the entry, which puts the words on the page, defines the elements and then wires them, and `app/` beside it holds one module per subject, each saying at its head what it is for. A module offers what somebody asks it for and keeps the rest, and every import names where it comes from: nothing here shares one scope any more, which is what makes it possible to see what depends on what. `web/` is what a browser is given, and nothing in it is written by hand.
 
 `make web` runs `build_web.py`, which puts the sources together in the order the page loads them, hands them to esbuild and writes three files: `web/index.html` with its comments gone and three tags where fourteen stood, `web/previously.js` with everything of ours inside one function and every name in it shortened, and `web/previously.css` with the vendor stylesheet, the kit and this application's own. `tests/test_web.py` builds them again and fails when what is committed is not what the sources say, so a source edited without `make web` is caught rather than shipped.
 

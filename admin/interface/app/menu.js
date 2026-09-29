@@ -6,13 +6,6 @@ import { saveThePicture, shownPictures, takeAPicture } from "./grab.js";
 import { deleteThePicture } from "./preview.js";
 import { appName } from "./viewer.js";
 
-/** Which windows are an application's, and therefore carry a menu of their
- *  own. Read from the tree rather than listed here, so an application added
- *  to the Apps folder is one this follows without being told twice. */
-function applicationWindows() {
-  return new Set(applications().map((entry) => entry.opens).filter(Boolean));
-}
-
 /**
  * Puts the menu of whatever is in front into the one menu there is.
  * @param {string} [front] - The name of the window that came forward. Left
@@ -76,8 +69,6 @@ function watchTheFrontWindow() {
 }
 
 export {
-  applicationWindows,
   drawTheMenu,
-  WORKSPACE,
   watchTheFrontWindow,
 };

@@ -264,12 +264,9 @@ function fillWithChoices(id, cells) {
 
 export {
   drawTheDimensionBoards,
-  drawOneBoardsMemory,
-  dimensionsWith,
   fillWithScale,
   fillWithFittings,
   fillWithBanks,
   isAbsent,
-  bankMovedOn,
   fillWithChoices,
 };

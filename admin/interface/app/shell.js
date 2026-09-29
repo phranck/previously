@@ -164,12 +164,5 @@ function wireTerminal() {
    open, and what a person wants is to look now. */
 
 export {
-  shell,
-  typedAtThePrompt,
-  askAtTheTerminal,
-  typeAtThePrompt,
-  openShell,
-  closeShell,
-  tellTheShellItsSize,
   wireTerminal,
 };

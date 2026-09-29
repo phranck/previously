@@ -134,7 +134,6 @@ function wireGrab() {
 
 export {
   takeAPicture,
-  showTheScreen,
   drawPicture,
   shownPictures,
   saveThePicture,

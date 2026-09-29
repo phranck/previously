@@ -111,5 +111,4 @@ export {
   noteFor,
   switchNote,
   bankNotes,
-  listed,
 };

@@ -179,9 +179,6 @@ async function askTheInstallerToCopy(route, body) {
 export {
   bootFromDisk,
   useTheDisc,
-  putTheDiscIn,
-  takeTheDiscOut,
   backUpTheDisk,
   putTheCopyBack,
-  askTheInstallerToCopy,
 };

@@ -114,8 +114,5 @@ function speak(code) {
 
 export {
   drawLanguages,
-  MODULES,
-  showModule,
   wirePreferences,
-  speak,
 };

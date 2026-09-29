@@ -142,7 +142,6 @@ function activateTheSystem() {
 
 export {
   installTheEmulator,
-  whichSystemToInstallWith,
   updateTheEmulator,
   removeTheEmulator,
   fetchTheSystem,
