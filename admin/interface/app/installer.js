@@ -3,7 +3,7 @@
 import { t } from "../strings.js";
 import { fillWithChoices } from "./fittings.js";
 import { activateTheSystem, fetchTheSystem, forgetTheSystem, installTheEmulator, removeTheEmulator, updateTheEmulator } from "./jobs.js";
-import { explain, show } from "./page.js";
+import { explain, show, theWindow } from "./page.js";
 import { ask, tell } from "./service.js";
 import { say, sized } from "./words.js";
 
@@ -87,7 +87,7 @@ async function refreshTheInstaller() {
 
 /**
  * Draws the whole window.
- * @param {object|null} state - What /api/setup answered, or null on no contact.
+ * @param {any} state - What /api/setup answered, or null on no contact.
  */
 function drawTheInstaller(state) {
   if (state === null) {
@@ -136,7 +136,7 @@ function drawTheTabs() {
 
 /**
  * What the readings say about the emulator.
- * @param {object} emulator - What the service says: whether it is here, which
+ * @param {any} emulator - What the service says: whether it is here, which
  *   version, and what the archive offers.
  * @returns {string} The version where there is one, because that is the fact
  *   somebody wants, and the bare word where there is not.
@@ -150,7 +150,7 @@ function emulatorLine(emulator) {
 
 /**
  * A line per button, so that what each one does is read rather than guessed.
- * @param {object} emulator - What the service says about it.
+ * @param {any} emulator - What the service says about it.
  * @returns {string} The lines, one per button that is there, parted by
  *   newlines, which the stylesheet keeps.
  *
@@ -174,11 +174,11 @@ function whatTheButtonsDo(emulator) {
 
 /**
  * Draws the six systems, with the one chosen marked.
- * @param {object[]} systems - What the service offers, each saying what it
+ * @param {any[]} systems - What the service offers, each saying what it
  *   costs and whether it is already here.
  */
 function drawTheSystems(systems) {
-  document.getElementById("installer-systems").replaceChildren(
+  /** @type {any} */ (document.getElementById("installer-systems")).replaceChildren(
     ...systems.map((system) => {
       const row = document.createElement("div");
       row.className = "system";
@@ -212,7 +212,7 @@ function drawTheSystems(systems) {
 
 /**
  * Says what is being installed, how far it has got, and how it went.
- * @param {object|null} progress - What the privileged helper wrote, or null
+ * @param {any} progress - What the privileged helper wrote, or null
  *   where it has never run on this machine since it last started.
  *
  * The step is named in words out of the catalogue, because the helper sends a
@@ -221,7 +221,7 @@ function drawTheSystems(systems) {
  * empty gauge is a window claiming to be busy.
  */
 function drawWhatIsBeingInstalled(progress) {
-  const gauge = document.getElementById("installer-gauge");
+  const gauge = /** @type {any} */ (document.getElementById("installer-gauge"));
 
   /* Anything the Pi is still showing from before the request is the run
      before this one, so the window keeps saying it was asked rather than
@@ -275,7 +275,7 @@ function drawWhatIsBeingInstalled(progress) {
     const through = progress.part?.of
       ? progress.part.done / progress.part.of : 0;
     const done = (progress.done - 1 + Math.min(1, through)) / progress.of;
-    document.getElementById("installer-fill").style.width =
+    /** @type {any} */ (document.getElementById("installer-fill")).style.width =
       `${Math.round(done * 100)}%`;
     return;
   }
@@ -308,7 +308,7 @@ function drawWhatIsBeingInstalled(progress) {
 
 /**
  * Why an installation stopped, as a sentence.
- * @param {object|null} failed - What the helper said, as `answers.told` shapes
+ * @param {any} failed - What the helper said, as `answers.told` shapes
  *   it, with the step it happened in beside it.
  * @returns {string}
  *
@@ -336,22 +336,22 @@ function allowInstalling(allowed) {
   const here = Boolean(state?.emulator?.here);
   const chosen = state?.systems.find((system) => system.identifier === chosenSystem);
 
-  document.getElementById("installer-install").disabled = !allowed || here;
-  document.getElementById("installer-remove").disabled = !allowed || !here;
+  /** @type {any} */ (document.getElementById("installer-install")).disabled = !allowed || here;
+  /** @type {any} */ (document.getElementById("installer-remove")).disabled = !allowed || !here;
   /* Not there at all where the archive has nothing newer, because a button
      that would bring the version that is already here is a button that does
      nothing. */
-  const update = document.getElementById("installer-update");
+  const update = /** @type {any} */ (document.getElementById("installer-update"));
   update.hidden = !state?.emulator?.newer;
   update.disabled = !allowed || !here;
 
-  document.getElementById("installer-fetch").disabled =
+  /** @type {any} */ (document.getElementById("installer-fetch")).disabled =
     !allowed || !chosen || chosen.here;
-  document.getElementById("installer-forget").disabled =
+  /** @type {any} */ (document.getElementById("installer-forget")).disabled =
     !allowed || !chosen || !chosen.here;
   /* A system that is not on the card cannot be started, and neither can the
      one the machine is already running. */
-  document.getElementById("installer-activate").disabled =
+  /** @type {any} */ (document.getElementById("installer-activate")).disabled =
     !allowed || !chosen || !chosen.here || Boolean(chosen.booting);
 }
 
@@ -388,7 +388,7 @@ async function askTheInstaller(job, system) {
 
 /** Wires the Installer's six buttons and the look it takes on its own. */
 function wireTheInstaller() {
-  const window_ = document.querySelector('nx-window[name="installer"]');
+  const window_ = theWindow("installer");
   if (!window_) return;
 
   document.getElementById("installer-install")

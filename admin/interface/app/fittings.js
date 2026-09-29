@@ -7,7 +7,7 @@ import { explain } from "./page.js";
 
 /**
  * Draws the three NeXTdimension slots and the memory of each board there is.
- * @param {object} offers - The service's answer, which says which slots this
+ * @param {any} offers - The service's answer, which says which slots this
  *   machine has and how much memory a board takes.
  *
  * A slot is a cell that puts a board in and takes it out again, and a board
@@ -26,7 +26,7 @@ function drawTheDimensionBoards(offers) {
         board, drafting.dimensions[board] ? 0 : DIMENSION_DEFAULT_MEMORY),
     }),
   })));
-  document.getElementById("editor-dimension-group").hidden =
+  /** @type {any} */ (document.getElementById("editor-dimension-group")).hidden =
     !offers.dimension_slots.length;
 
   /* The console follows the first board there is, so the sentence names that
@@ -43,7 +43,7 @@ function drawTheDimensionBoards(offers) {
      after that the second board that is in would be counted as the second
      slot, and a cube with boards in slots 2 and 6 would draw and change the
      memory of slot 4. */
-  const memories = document.getElementById("editor-dimension-memory");
+  const memories = /** @type {any} */ (document.getElementById("editor-dimension-memory"));
   memories.replaceChildren(...offers.dimension_slots
     .map((slot, board) => [slot, board])
     .filter(([, board]) => drafting.dimensions[board] > 0)
@@ -54,7 +54,7 @@ function drawTheDimensionBoards(offers) {
  * One board's memory, as a group of its own.
  * @param {number} slot - Which slot it answers from, for the heading.
  * @param {number} board - Which of the three it is, from 0.
- * @param {object} offers - The service's answer.
+ * @param {any} offers - The service's answer.
  * @returns {HTMLElement} The group, ready to go in.
  */
 function drawOneBoardsMemory(slot, board, offers) {
@@ -76,7 +76,7 @@ function drawOneBoardsMemory(slot, board, offers) {
   slider.says = t("editor.unit.mb");
   slider.value = drafting.dimensions[board];
   slider.addEventListener("nx-slide",
-    (event) => change({ dimensions: dimensionsWith(board, event.detail.value) }));
+    (/** @type {any} */ event) => change({ dimensions: dimensionsWith(board, event.detail.value) }));
 
   /* The same sentence under the cells the groups in the markup carry, put here
      because this group is built rather than written. */
@@ -106,7 +106,7 @@ function dimensionsWith(board, memory) {
  * @param {string} id - The slider's own id.
  * @param {string} unit - What the figures are counted in, said once beside
  *   the scale rather than on every tick.
- * @param {Array<object>} steps - `{value, label}` in the order they sit on the
+ * @param {any[]} steps - `{value, label}` in the order they sit on the
  *   scale, smallest first.
  * @param {*} value - Which of them the machine is on. One that is not a step
  *   leaves the knob at the start, which is what a total made by hand out of the
@@ -123,13 +123,13 @@ function dimensionsWith(board, memory) {
  * change.
  */
 function fillWithScale(id, unit, steps, value, choose) {
-  const slider = document.getElementById(id);
+  const slider = /** @type {any} */ (document.getElementById(id));
   slider.says = unit;
   slider.onSlide = choose;
   if (!slider.listening) {
     slider.listening = true;
     slider.addEventListener("nx-slide",
-      (event) => slider.onSlide(event.detail.value));
+      (/** @type {any} */ event) => slider.onSlide(event.detail.value));
   }
   slider.options = steps;
   slider.value = value;
@@ -138,7 +138,7 @@ function fillWithScale(id, unit, steps, value, choose) {
 /**
  * Puts one group of things a machine either has or has not in place.
  * @param {string} id - The row they go in.
- * @param {object} offers - The service's answer, which says which of them this
+ * @param {any} offers - The service's answer, which says which of them this
  *   machine can have at all.
  * @param {Array<Array>} fittings - `[name, label]` for each.
  * @returns {string[]} The names of the ones this machine was offered, so the
@@ -246,7 +246,7 @@ function bankMovedOn(bank, sizes) {
 /**
  * Puts one group's cells in place.
  * @param {string} id - The row they go in.
- * @param {Array<object>} cells - `{label, chosen, choose}` for each.
+ * @param {any[]} cells - `{label, chosen, choose}` for each.
  *
  * The same raised cell the Preferences window offers a choice with, because
  * this interface gives anything that can be chosen one shape.

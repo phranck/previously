@@ -47,7 +47,7 @@ function drawAtSize(scale) {
  * reads the same in every language, and 100% says which one is the original.
  */
 function drawSizes() {
-  const row = document.getElementById("size-choices");
+  const row = /** @type {any} */ (document.getElementById("size-choices"));
   if (!row) return;
   row.replaceChildren(...SIZES.map((scale) => {
     const choice = document.createElement("div");

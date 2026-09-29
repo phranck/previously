@@ -4,7 +4,7 @@ import { t, writeWords } from "../strings.js";
 import { drawTheDimensionBoards, fillWithBanks, fillWithChoices, fillWithFittings, fillWithScale } from "./fittings.js";
 import { editOnWhatIsRunning } from "./machines.js";
 import { DSP_WORDS, KIND_NOTES, SOCKET_WORDS, bankNotes, noteFor, switchNote } from "./notes.js";
-import { explain, show } from "./page.js";
+import { explain, show, theWindow } from "./page.js";
 import { askPanelFor } from "./panels.js";
 import { Saved, ask, tell } from "./service.js";
 import { refresh } from "./status.js";
@@ -64,7 +64,7 @@ let asking = 0;
 
 /**
  * Opens the editor on a machine.
- * @param {object} machine - An entry of the tree, or what /api/status says is
+ * @param {any} machine - An entry of the tree, or what /api/status says is
  *   configured now. Both carry the same facts, because one function describes
  *   them.
  * @param {HTMLElement} [asker] - What was used to open it, so its icon can
@@ -88,15 +88,15 @@ function editConfiguration(machine, asker) {
   drafted = null;
 
   drawTheTitle();
-  document.querySelector(`nx-window[name="${EDITOR}"]`).open(asker);
+  theWindow(EDITOR).open(asker);
   drawTheDraft();
 }
 
 /**
  * As much of a machine as a description holds.
- * @param {object} machine - What /api/status says is configured now, which is a
+ * @param {any} machine - What /api/status says is configured now, which is a
  *   description rather than a configuration.
- * @returns {object} A draft of what can be read off it.
+ * @returns {any} A draft of what can be read off it.
  *
  * For the machine that is running whilst being none of the ones this tool
  * knows. What a description does not carry is left out rather than guessed, so
@@ -118,7 +118,7 @@ function whatTheDescriptionSays(machine) {
  *  way the Preview window is titled with the picture's. One that has no name yet
  *  is titled with the application's, because what is being made is new. */
 function drawTheTitle() {
-  document.querySelector(`nx-window[name="${EDITOR}"]`)
+  theWindow(EDITOR)
     ?.rename(replacing ?? t("app.config-editor"));
 }
 
@@ -191,10 +191,10 @@ function redrawTheEditor() {
 /**
  * Draws what the drafted machine is, in the words the rest of the interface
  * uses for a machine.
- * @param {object} machine - The facts, as config.describe answers them.
+ * @param {any} machine - The facts, as config.describe answers them.
  */
 function drawTheMachineInTheEditor(machine) {
-  document.getElementById("editor-icon").style.backgroundImage =
+  /** @type {any} */ (document.getElementById("editor-icon")).style.backgroundImage =
     `var(--${machineArt(machine.enclosure)})`;
   show("editor-caption", nameOf(machine));
   show("editor-cpu", cpuOf(machine));
@@ -207,7 +207,7 @@ function drawTheMachineInTheEditor(machine) {
 /**
  * Draws the cells of every group from what the service says may be chosen, and
  * under each group the sentence about what is chosen there.
- * @param {object} offers - Its answer: the machine types, which boards may be
+ * @param {any} offers - Its answer: the machine types, which boards may be
  *   seated, which clocks there are and which totals of memory.
  *
  * A group with nothing to offer is taken away rather than shown empty, which is
@@ -241,7 +241,7 @@ function drawTheChoices(offers) {
        taking it out again. */
     choose: () => changeTheMachine({ [which]: !drafting[which] }),
   })));
-  document.getElementById("editor-boards-group").hidden = !boards.length;
+  /** @type {any} */ (document.getElementById("editor-boards-group")).hidden = !boards.length;
   explain("editor-boards-note",
     ...boards.map(([which]) => switchNote(which)),
     t("editor.boards.note.resets"));
@@ -287,7 +287,7 @@ function drawTheChoices(offers) {
     chosen: kb === drafting.dsp_memory,
     choose: () => change({ dsp_memory: kb }),
   })));
-  document.getElementById("editor-dsp-memory-group").hidden =
+  /** @type {any} */ (document.getElementById("editor-dsp-memory-group")).hidden =
     !offers.dsp_memory.length;
   explain("editor-dsp-memory-note", noteFor("dsp-memory", drafting.dsp_memory));
 
@@ -311,7 +311,7 @@ function drawTheChoices(offers) {
     chosen: socket === drafting.socket,
     choose: () => change({ socket }),
   })));
-  document.getElementById("editor-socket-group").hidden = !offers.sockets.length;
+  /** @type {any} */ (document.getElementById("editor-socket-group")).hidden = !offers.sockets.length;
   explain("editor-sockets-note", noteFor("socket", drafting.socket));
 
   drawTheDimensionBoards(offers);
@@ -355,7 +355,7 @@ function showSubject(subject) {
 
 /**
  * Changes one control and asks what that machine is now.
- * @param {object} what - The one that moved.
+ * @param {any} what - The one that moved.
  */
 function change(what) {
   drafting = { ...drafting, ...what };
@@ -365,7 +365,7 @@ function change(what) {
 /**
  * Changes what the machine itself is, and lets what follows from it follow
  * again.
- * @param {object} what - The machine type or the board that moved.
+ * @param {any} what - The machine type or the board that moved.
  *
  * Previous writes every one of FOLLOWS_THE_MACHINE afresh whenever one of those
  * two changes in its own dialogue, and the service does the same. Sending the
@@ -380,7 +380,7 @@ function changeTheMachine(what) {
 
 /** Says what the button will do, and puts that on the button. */
 function drawWhatSavingWillDo() {
-  const button = document.getElementById("editor-save");
+  const button = /** @type {any} */ (document.getElementById("editor-save"));
   button.dataset.t = replacing ? "button.save" : "button.save-as";
   writeWords(button, t(button.dataset.t));
   show("editor-note", replacing
@@ -437,7 +437,7 @@ function wireEditor() {
      is shown only once something has decided which machine it holds, and that is
      what this and the Apps folder both go through. */
   document.querySelector('nx-tile[name="editor"]')
-    ?.addEventListener("dblclick", (event) => editOnWhatIsRunning(event.target));
+    ?.addEventListener("dblclick", (/** @type {any} */ event) => editOnWhatIsRunning(event.target));
 }
 
 /**
@@ -449,7 +449,7 @@ function wireEditor() {
  * that is set and whether that is one of the saved ones.
  */
 function fillTheEditorIfItCameBackOpen() {
-  const window_ = document.querySelector(`nx-window[name="${EDITOR}"]`);
+  const window_ = theWindow(EDITOR);
   if (window_ && !window_.hidden) editOnWhatIsRunning();
 }
 

@@ -74,8 +74,8 @@ async function drawMachines() {
 
 /**
  * Every machine anywhere in the tree.
- * @param {object} folder - Where to look.
- * @returns {object[]} The machines, in the order they are met.
+ * @param {any} folder - Where to look.
+ * @returns {any[]} The machines, in the order they are met.
  *
  * The info window says what a machine is without caring where it sits, so it
  * reads from this rather than from wherever the viewer happens to be.
@@ -87,7 +87,7 @@ function allMachines(folder) {
 
 /** Draws whatever place the viewer is in, with the way there above it. */
 function drawPlace() {
-  const viewer = document.getElementById("file-viewer");
+  const viewer = /** @type {any} */ (document.getElementById("file-viewer"));
   const here = at[at.length - 1];
   viewer.show({
     path: at.map(entryFor),
@@ -103,7 +103,7 @@ function drawPlace() {
 
 /**
  * The line under the shelf.
- * @param {object} folder - The place being shown.
+ * @param {any} folder - The place being shown.
  * @returns {string} Which place, what is in it, and what cannot be done to it.
  *
  * It names the place because of where it sits: directly under the shelf, which
@@ -121,8 +121,8 @@ function saying(folder) {
 
 /**
  * One entry as the viewer wants it.
- * @param {object} entry - A folder, an application or a machine.
- * @returns {object} `{label, icon, value}`. The value is the entry's path,
+ * @param {any} entry - A folder, an application or a machine.
+ * @returns {any} `{label, icon, value}`. The value is the entry's path,
  *   which is what a drop, a double click and the menu all hand over, so there
  *   is one place a thing's name lives.
  */
@@ -139,7 +139,7 @@ function entryFor(entry) {
 
 /**
  * What one entry of the tree is called, here, now.
- * @param {object} entry - A folder, an application or a machine.
+ * @param {any} entry - A folder, an application or a machine.
  * @returns {string} The words for it in the language being read, or its own
  *   name where it has one that belongs to it.
  *
@@ -157,7 +157,7 @@ function nameFor(entry) {
 }
 
 /**
- * @param {object} entry - An application.
+ * @param {any} entry - An application.
  * @returns {string} What it is called in words, without the suffix its file
  *   name carries.
  *
@@ -191,7 +191,7 @@ function open(path, asker) {
     /* An application this tool has is a window it already holds. One it does
        not have yet says so, which is the honest thing to do with an icon that
        is there because the place it sits in is being built around it. */
-    const window_ = document.querySelector(`nx-window[name="${entry.opens}"]`);
+    const window_ = /** @type {any} */ (document.querySelector(`nx-window[name="${entry.opens}"]`));
     return window_ ? window_.open(asker) : notYet(appName(entry));
   }
   if (entry.kind === "picture") return showInPreview(entry);
@@ -219,7 +219,7 @@ function open(path, asker) {
  * place simply changes.
  */
 async function openFolder(asker) {
-  const band = document.querySelector("#file-viewer nx-scroller:last-child");
+  const band = /** @type {any} */ (document.querySelector("#file-viewer nx-scroller:last-child"));
   /* Only from the band below. The original draws this nowhere else: what is
      opened from the shelf flies to the path instead, and a step of the path
      is a way back rather than something being opened. */
@@ -255,7 +255,7 @@ async function visitFromTheShelf(where, thing) {
   drawPlace();
 
   const steps = document.querySelectorAll("#file-viewer .path nx-thing");
-  const landing = steps[steps.length - 1];
+  const landing = /** @type {any} */ (steps[steps.length - 1]);
   if (!from || !landing) return;
 
   landing.style.visibility = "hidden";
@@ -266,7 +266,7 @@ async function visitFromTheShelf(where, thing) {
 /**
  * The way from the root to a place, as the steps themselves.
  * @param {string} where - A path such as "/Machines/System".
- * @returns {object[]} The root first, that place last.
+ * @returns {any[]} The root first, that place last.
  */
 function chainTo(where) {
   const steps = [root];
@@ -290,9 +290,9 @@ function goTo(index) {
 }
 
 /**
- * @param {object} folder - Where to look.
+ * @param {any} folder - Where to look.
  * @param {string} path - What to look for.
- * @returns {object|null} The entry with that path, anywhere below.
+ * @returns {any} The entry with that path, anywhere below.
  */
 function find(folder, path) {
   if (folder.path === path) return folder;
@@ -355,7 +355,7 @@ function markCurrent(identifier, untried) {
 
 /** Fills a window the moment it opens, rather than at the next poll. */
 function wireOpening() {
-  document.addEventListener("nx-open", (event) => {
+  document.addEventListener("nx-open", (/** @type {any} */ event) => {
     if (event.target.getAttribute("name") === "pi") refresh();
   });
 }

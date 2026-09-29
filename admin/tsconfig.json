@@ -1,0 +1,30 @@
+{
+  "//": [
+    "What checks the interface without changing the language it is written in.",
+    "Every exported function here already says in its documentation comment what",
+    "it takes and what it answers with, and this is what reads those as types.",
+    "Nothing is compiled: noEmit, because what ships is built by esbuild out of",
+    "the same sources.",
+    "",
+    "strict is off for now. The interface talks to a service whose answers are",
+    "read as objects, and turning it on would mean a type for every one of those",
+    "before a single real mistake is caught. What is on is the part that finds",
+    "mistakes in code that is already written: a name that does not exist on a",
+    "thing, a call with the wrong number of arguments, a function that returns",
+    "nothing where something is expected."
+  ],
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true
+  },
+  "include": ["interface/**/*.js", "interface/**/*.d.ts"],
+  "exclude": ["interface/vendor", "interface/nextstep.js"]
+}

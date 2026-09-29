@@ -16,7 +16,7 @@ import { drawPlace } from "./viewer.js";
  * the catalogue's own, so it does not move about as the interface changes.
  */
 function drawLanguages() {
-  const list = document.getElementById("languages");
+  const list = /** @type {any} */ (document.getElementById("languages"));
   list.replaceChildren(...Object.entries(LANGUAGE_NAMES).map(([code, name]) => {
     const option = document.createElement("div");
     option.className = "option";
@@ -70,10 +70,10 @@ function showModule(which) {
 
 /** Wires the row of modules, and draws the one that starts up chosen. */
 function wirePreferences() {
-  const row = document.querySelector("nx-window[name='preferences'] .modules");
+  const row = /** @type {any} */ (document.querySelector("nx-window[name='preferences'] .modules"));
   if (!row) return;
 
-  row.addEventListener("click", (event) => {
+  row.addEventListener("click", (/** @type {any} */ event) => {
     const cell = event.target.closest(".module");
     if (cell) showModule(cell.getAttribute("value"));
   });

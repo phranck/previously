@@ -55,6 +55,7 @@ jobs:
           npm install --silent
           python3 -m flake8 --max-line-length=100 previously tests build_web.py
           node_modules/.bin/eslint interface --no-warn-ignored
+          node_modules/.bin/tsc -p tsconfig.json
           # Named and timed, because a test that waits here and not on a laptop
           # is waiting for something this machine does not have, and a suite
           # that stops without saying which test it stopped in says nothing at

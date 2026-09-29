@@ -1,9 +1,10 @@
 /* What this tool is, and what a browser sees the first time it arrives. */
 
-import { deskIsNew } from "../nextstep.js";
-import { t } from "../strings.js";
+import { theWindow } from "./page.js";
 import { ask } from "./service.js";
 import { NOTHING } from "./words.js";
+import { deskIsNew } from "../nextstep.js";
+import { t } from "../strings.js";
 
 const PRODUCT = "Previously";
 
@@ -22,7 +23,7 @@ const HOLDER_SITE = "https://layered.work";
  */
 async function showWhatThisIs() {
   const version = (await ask("/api/pi"))?.version;
-  await document.getElementById("ask").tell({
+  await /** @type {any} */ (document.getElementById("ask")).tell({
     icon: "Previously",
     text: [
       PRODUCT,
@@ -69,7 +70,7 @@ function copyrightLine() {
  */
 function greetTheFirstVisit() {
   if (!deskIsNew()) return;
-  document.querySelector('nx-window[name="files"]')?.open();
+  theWindow("files")?.open();
   showWhatThisIs();
 }
 

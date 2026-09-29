@@ -11,7 +11,7 @@ const REFRESH_MS = 5000;
 
 /**
  * Draws what the board underneath is doing.
- * @param {object|null} pi - What /api/pi answered, or null.
+ * @param {any} pi - What /api/pi answered, or null.
  */
 function drawPi(pi) {
   if (pi === null) {

@@ -21,17 +21,17 @@ const ACTIONS = [
  */
 function allowActions(reachable) {
   for (const id of ACTIONS) {
-    const button = document.getElementById(id);
+    const button = /** @type {any} */ (document.getElementById(id));
     if (button) button.disabled = !reachable;
   }
 }
 
 /**
  * Draws the state of the machine into the info window.
- * @param {object|null} status - What /api/status answered, or null.
+ * @param {any} status - What /api/status answered, or null.
  */
 function drawStatus(status) {
-  const state = document.getElementById("info-state");
+  const state = /** @type {any} */ (document.getElementById("info-state"));
   lastStatus = status;
   drawWhatThisMachineIs(status);
 
@@ -82,9 +82,9 @@ function drawStatus(status) {
     noteState = null;
   }
 
-  document.getElementById("kiosk-start").disabled = status.running || isNew;
-  document.getElementById("kiosk-stop").disabled = !status.running;
-  document.getElementById("kiosk-restart").disabled = !status.running;
+  /** @type {any} */ (document.getElementById("kiosk-start")).disabled = status.running || isNew;
+  /** @type {any} */ (document.getElementById("kiosk-stop")).disabled = !status.running;
+  /** @type {any} */ (document.getElementById("kiosk-restart")).disabled = !status.running;
 
   /* A machine with nothing on it says so and is offered the one thing that can
      be done with it. Before the console, because that one is also missing on a
@@ -123,7 +123,7 @@ function drawStatus(status) {
      plays no part in it: a NeXTstation Color stands in the same case as a grey
      one, and the line above says which tube is in it. */
   runningArt = machineArt(machine.enclosure);
-  document.getElementById("info-icon").style.backgroundImage = `var(--${runningArt})`;
+  /** @type {any} */ (document.getElementById("info-icon")).style.backgroundImage = `var(--${runningArt})`;
 }
 
 /** Whether the Installer has been put in front of somebody in this visit. Once
@@ -143,13 +143,13 @@ let offeredTheInstaller = false;
 function offerTheInstaller() {
   if (offeredTheInstaller) return;
   offeredTheInstaller = true;
-  document.querySelector('nx-window[name="installer"]')?.open();
+  /** @type {any} */ (document.querySelector('nx-window[name="installer"]'))?.open();
 }
 
 /**
  * Draws the menu entry that says what the emulated machine is, or takes it
  * away.
- * @param {object|null} status - What /api/status answered, or null.
+ * @param {any} status - What /api/status answered, or null.
  *
  * It carries the machine's own name, so its words are written here rather than
  * taken from the catalogue: `About NeXTcube Turbo`. On a Pi with nothing
@@ -158,7 +158,7 @@ function offerTheInstaller() {
  * all.
  */
 function drawWhatThisMachineIs(status) {
-  const entry = document.querySelector('nx-menu-item[name="about"]');
+  const entry = /** @type {any} */ (document.querySelector('nx-menu-item[name="about"]'));
   if (!entry) return;
 
   const machine = status?.ready?.set_up ? status.configuration : null;
@@ -168,7 +168,7 @@ function drawWhatThisMachineIs(status) {
        concerned. */
     const words = t("menu.about", { machine: modelOf(machine) });
     writeWords(entry, words);
-    const window_ = document.querySelector('nx-window[name="info"]');
+    const window_ = /** @type {any} */ (document.querySelector('nx-window[name="info"]'));
     if (window_) writeTitle(window_, words);
   }
 
@@ -214,7 +214,7 @@ let noteState = null;
  */
 function setBusy(busy, note) {
   for (const id of ["kiosk-start", "kiosk-stop", "kiosk-restart"]) {
-    document.getElementById(id).disabled = busy;
+    /** @type {any} */ (document.getElementById(id)).disabled = busy;
   }
   show("kiosk-note", note);
   noteState = note ? JUST_WRITTEN : null;
@@ -243,14 +243,14 @@ function wireButtons() {
   document.querySelector('nx-menu-item[name="password"]')
     ?.addEventListener("click", () => askForPassword());
 
-  document.getElementById("kiosk-start").addEventListener("click",
+  /** @type {any} */ (document.getElementById("kiosk-start")).addEventListener("click",
     () => operate(Kiosk.Start, t("busy.starting")));
 
-  document.getElementById("kiosk-stop").addEventListener("click", async () => {
+  /** @type {any} */ (document.getElementById("kiosk-stop")).addEventListener("click", async () => {
     if (await warn(t("button.power-off"))) operate(Kiosk.Stop, t("busy.stopping"));
   });
 
-  document.getElementById("kiosk-restart").addEventListener("click", async () => {
+  /** @type {any} */ (document.getElementById("kiosk-restart")).addEventListener("click", async () => {
     if (await warn(t("button.restart"))) operate(Kiosk.Restart, t("busy.restarting"));
   });
 }
@@ -260,7 +260,7 @@ function wireButtons() {
 async function refresh() {
   drawStatus(await ask("/api/status"));
 
-  const window_ = document.querySelector('nx-window[name="pi"]');
+  const window_ = /** @type {any} */ (document.querySelector('nx-window[name="pi"]'));
   if (window_ && !window_.hidden) drawPi(await ask("/api/pi"));
 }
 

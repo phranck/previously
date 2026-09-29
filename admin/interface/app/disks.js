@@ -3,7 +3,7 @@
 import { t } from "../strings.js";
 import { SETUP, refreshTheInstaller } from "./installer.js";
 import { reportAboutTheMachine } from "./machines.js";
-import { show } from "./page.js";
+import { show, theWindow } from "./page.js";
 import { askPanel } from "./panels.js";
 import { ask, tell } from "./service.js";
 import { setBusy } from "./status.js";
@@ -11,7 +11,7 @@ import { Art, say, sized } from "./words.js";
 
 /**
  * Asks about a disk and makes the machine boot it when the answer is yes.
- * @param {object} disk - Its entry in the tree.
+ * @param {any} disk - Its entry in the tree.
  *
  * Nothing is fetched and nothing is copied. Each system is one file, the guest
  * writes into that file, and pointing the machine elsewhere leaves the first
@@ -48,7 +48,7 @@ async function bootFromDisk(disk) {
 
 /**
  * Puts a disc into the machine, or takes it out again.
- * @param {object} disc - Its entry in the tree, which says which slot it is on
+ * @param {any} disc - Its entry in the tree, which says which slot it is on
  *   where it is in the machine at all.
  *
  * One gesture for both, because it is one thing: the disc is either in the
@@ -62,7 +62,7 @@ function useTheDisc(disc) {
 
 /**
  * Asks about a disc, and puts it in the machine when the answer is yes.
- * @param {object} disc - Its entry in the tree.
+ * @param {any} disc - Its entry in the tree.
  *
  * It goes beside the disk the machine boots rather than instead of it, on a
  * free slot of the bus, and it is read only there because that is what a disc
@@ -93,7 +93,7 @@ async function putTheDiscIn(disc) {
 /**
  * Asks about a disc that is in the machine, and takes it out when the answer
  * is yes.
- * @param {object} disc - Its entry in the tree.
+ * @param {any} disc - Its entry in the tree.
  */
 async function takeTheDiscOut(disc) {
   const agreed = await askPanel({
@@ -111,7 +111,7 @@ async function takeTheDiscOut(disc) {
 
 /**
  * Asks about a copy of a disk, and has one made when the answer is yes.
- * @param {object} disk - Its entry in the tree.
+ * @param {any} disk - Its entry in the tree.
  *
  * Two gigabytes, so what it costs and what would be left are in the question
  * rather than in a failure afterwards. The figures are fetched at the moment
@@ -139,7 +139,7 @@ async function backUpTheDisk(disk) {
 
 /**
  * Asks about a copy, and writes it back over its disk when the answer is yes.
- * @param {object} copy - Its entry in the tree.
+ * @param {any} copy - Its entry in the tree.
  *
  * The one thing that can be done with a copy, and the one that cannot be
  * undone: what is on the disk now is written over. So the question says that
@@ -161,7 +161,7 @@ async function putTheCopyBack(copy) {
 /**
  * Leaves a request for a copy and shows the window that watches it.
  * @param {string} route - Which of the two.
- * @param {object} body - What to send.
+ * @param {any} body - What to send.
  *
  * The Installer is opened, because it is the window that says what the Pi is
  * doing and this takes minutes. Starting a five minute job from a viewer and
@@ -172,7 +172,7 @@ async function askTheInstallerToCopy(route, body) {
   show("machine-note", answer === null ? t("note.no-service") : say(answer));
   if (!answer?.ok) return;
 
-  document.querySelector('nx-window[name="installer"]')?.open();
+  theWindow("installer")?.open();
   refreshTheInstaller();
 }
 

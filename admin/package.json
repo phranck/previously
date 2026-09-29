@@ -7,6 +7,7 @@
     "lint": "eslint interface --no-warn-ignored"
   },
   "devDependencies": {
-    "eslint": "^9.36.0"
+    "eslint": "^9.36.0",
+    "typescript": "^7.0.2"
   }
 }

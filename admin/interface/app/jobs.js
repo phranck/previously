@@ -35,7 +35,7 @@ async function installTheEmulator() {
 
 /**
  * Which system the emulator is installed with.
- * @returns {object|undefined} The one chosen in the list, or the one the
+ * @returns {any} The one chosen in the list, or the one the
  *   service says comes by default, or nothing at all where that one is already
  *   here.
  */

@@ -50,7 +50,7 @@ const OPERATION_TIMEOUT_MS = 150000;
 /**
  * Fetches one of the service's answers.
  * @param {string} route - The path, such as "/api/status".
- * @returns {Promise<object|null>} The parsed answer, or null when the service
+ * @returns {Promise<any>} The parsed answer, or null when the service
  *   cannot be reached, because a page that throws tells the reader less than
  *   one that says it has lost contact.
  */
@@ -66,7 +66,7 @@ async function ask(route) {
 /**
  * Sends something to the service and reads its answer.
  * @param {string} route - The path.
- * @param {object} [body] - What to send, where the route takes something.
+ * @param {any} [body] - What to send, where the route takes something.
  * @returns {Promise<Response|null>} The answer, or null when the service
  *   cannot be reached.
  *
@@ -90,8 +90,8 @@ async function send(route, body) {
 /**
  * Asks the service to do something to the emulator.
  * @param {string} route - Where to send it.
- * @param {object} [body] - What to send, where the route takes something.
- * @returns {Promise<object|null>} What it answered, or null on no contact.
+ * @param {any} [body] - What to send, where the route takes something.
+ * @returns {Promise<any>} What it answered, or null on no contact.
  */
 async function tell(route, body) {
   let answer = await send(route, body);

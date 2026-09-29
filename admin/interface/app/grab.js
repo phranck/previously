@@ -1,10 +1,11 @@
 /* Grab, which takes a picture of the emulated screen. */
 
-import { t } from "../strings.js";
+import { theWindow } from "./page.js";
 import { askForPassword } from "./panels.js";
 import { KEPT_HEADER } from "./service.js";
 import { lastStatus } from "./status.js";
 import { drawMachines } from "./viewer.js";
+import { t } from "../strings.js";
 
 /**
  * Takes a picture of the emulated screen and puts it in the window.
@@ -15,8 +16,8 @@ import { drawMachines } from "./viewer.js";
  * one picture rather than all of them.
  */
 async function takeAPicture() {
-  const view = document.getElementById("shot");
-  const button = document.getElementById("shot-take");
+  const view = /** @type {any} */ (document.getElementById("shot"));
+  const button = /** @type {any} */ (document.getElementById("shot-take"));
   if (!view) return;
 
   button.disabled = true;
@@ -43,7 +44,7 @@ async function takeAPicture() {
  */
 function showTheScreen(picture, name) {
   drawPicture("shot", picture, name);
-  document.getElementById("shot-note").textContent = picture
+  /** @type {any} */ (document.getElementById("shot-note")).textContent = picture
     ? ""
     : t(lastStatus?.running === false ? "grab.idle" : "grab.failed");
 }
@@ -60,7 +61,7 @@ function showTheScreen(picture, name) {
  * remember the last one per view.
  */
 function drawPicture(id, picture, name) {
-  const view = document.getElementById(id);
+  const view = /** @type {any} */ (document.getElementById(id));
   if (!view) return;
 
   if (shownPictures[id]) URL.revokeObjectURL(shownPictures[id].url);
@@ -108,8 +109,8 @@ function saveThePicture(id) {
 
 /** Wires the window that shows the emulated screen. */
 function wireGrab() {
-  const window_ = document.querySelector('nx-window[name="grab"]');
-  const button = document.getElementById("shot-take");
+  const window_ = theWindow("grab");
+  const button = /** @type {any} */ (document.getElementById("shot-take"));
   if (!window_ || !button) return;
 
   button.addEventListener("click", takeAPicture);
