@@ -425,7 +425,7 @@ export const en = {
   "button.update": "Update",
   "button.fetch": "Fetch",
   "ask.install.title": "Install Previous",
-  "ask.install.what": "The emulator, the compositor it runs in, the console that logs in by itself, the silenced startup, and the start on the first console so that SSH stays the way back in. The machine starts when it is done.",
+  "ask.install.what": "The emulator is installed, with all its components and everything it depends on.",
   "ask.install.system": "{name} comes with it: {size} to fetch and {unpacked} on the card.",
   "ask.install.time": "It takes minutes rather than seconds. The window can be left open, and what is happening is read from the Pi.",
   "ask.update.title": "Update Previous",
