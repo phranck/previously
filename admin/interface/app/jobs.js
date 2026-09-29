@@ -100,6 +100,7 @@ async function fetchTheSystem() {
     ],
     icon: Art.Installer,
     confirm: t("button.fetch"),
+    dangerous: false,
   });
   if (agreed) askTheInstaller(Install.Fetch, system.identifier);
 }

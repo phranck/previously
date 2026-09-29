@@ -42,17 +42,28 @@ class NxAsk extends HTMLElement {
       </div>`;
 
     this.settle = null;
+    this.returns = true;
     for (const button of this.querySelectorAll("button")) {
       button.addEventListener("click", () => this.close(button.dataset.answer === "yes"));
     }
 
     /* Escape is the safe answer, which is the one a panel like this must have:
-       somebody who wants out of a question should not have to aim at a button. */
+       somebody who wants out of a question should not have to aim at a button.
+
+       Return presses the acting button, and only that one: "No button except
+       for the default button should be operable by the Return key." Where the
+       panel said its default is dangerous, Return presses nothing at all and
+       the answer has to be clicked. */
     this.keys = (event) => {
       if (event.key === "Escape") this.close(false);
-      const entry = this.querySelector(".entry");
-      if (event.key === "Enter" && !entry.hidden) this.close(true);
+      if (event.key === "Enter" && this.returns) this.close(true);
     };
+
+    /* The mark says Return will press the button, so it has to stop saying so
+       the moment Return would not. In a browser that is the document losing
+       focus, which is this desk's version of the panel not being the key
+       window. */
+    this.focusChanged = () => this.markTheReturnKey();
   }
 
   /**
@@ -71,9 +82,17 @@ class NxAsk extends HTMLElement {
    * @param {boolean} [question.field] - Show a line to type into.
    * @param {boolean} [question.secret] - Draw that line as a password field, so
    *   what is typed into it is not read over the typist's shoulder.
+   * @param {boolean} [question.dangerous] - Whether the acting button costs
+   *   something that does not come back. Such a button takes no Return and
+   *   carries no Return-key symbol, so it has to be clicked. The chapter puts
+   *   it the other way round, in "The default button in an attention panel
+   *   should normally be operable by pressing the Return key... However, if
+   *   the button has dangerous side effects, it's acceptable to require that
+   *   the user press the button", so normal here is that Return presses.
    * @returns {Promise<boolean>} True where the acting button was pressed.
    */
-  ask({ name, text, icon, confirm, cancel, field = false, secret = false }) {
+  ask({ name, text, icon, confirm, cancel, field = false, secret = false,
+        dangerous = false }) {
     this.querySelector(".name").textContent = name;
     this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {
@@ -102,17 +121,22 @@ class NxAsk extends HTMLElement {
     entry.type = secret ? "password" : "text";
     entry.value = "";
 
-    /* The Return-key symbol says Return presses this button, so it goes on
-       only where Return does. A panel carrying a line to type into commits it
-       that way. One that only asks is answered by clicking, which is what the
-       chapter asks for wherever the answer costs something. */
-    acting.classList.toggle("returns", field);
+    this.returns = !dangerous;
+    this.markTheReturnKey();
 
     this.toggleAttribute("data-open", true);
     addEventListener("keydown", this.keys);
+    addEventListener("focus", this.focusChanged);
+    addEventListener("blur", this.focusChanged);
     (field ? entry : (cancel ? safe : acting)).focus();
 
     return new Promise((settle) => { this.settle = settle; });
+  }
+
+  /** Puts the Return-key symbol on the acting button, or takes it off. */
+  markTheReturnKey() {
+    this.querySelector('[data-answer="yes"]')
+      .classList.toggle("returns", this.returns && document.hasFocus());
   }
 
   /**
@@ -156,6 +180,8 @@ class NxAsk extends HTMLElement {
   close(answer) {
     this.toggleAttribute("data-open", false);
     removeEventListener("keydown", this.keys);
+    removeEventListener("focus", this.focusChanged);
+    removeEventListener("blur", this.focusChanged);
     this.settle?.(answer);
     this.settle = null;
   }

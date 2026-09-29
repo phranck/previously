@@ -5,9 +5,11 @@ import { ask, send } from "./service.js";
 import { Art } from "./words.js";
 
 /**
- * The one word every panel needs, put in front of what the caller says.
+ * The one word and the one assumption every panel needs, put in front of what
+ * the caller says.
  * @param {any} question - As the kit's ask takes it.
- * @returns {any} The same, with the safe button named.
+ * @returns {any} The same, with the safe button named and the acting one
+ *   treated as dangerous until the caller says otherwise.
  *
  * The kit holds no words of its own, so they are named here and nowhere else.
  * Only the safe button has a word that fits everywhere, because Cancel says
@@ -15,9 +17,17 @@ import { Art } from "./words.js";
  * is the verb naming what it will do, so every caller names it and there is no
  * default to fall back to. A panel whose acting button said Yes would be one
  * whose text has to be read before it can be answered.
+ *
+ * Dangerous by default, which turns the kit's own default round, and the kit
+ * is the one following the chapter. The reason is what these panels are for:
+ * of the twenty, fourteen stop a running machine or take something away that
+ * does not come back, and a panel is put up here precisely because something
+ * is about to be lost. Written the other way round, a panel added later and
+ * not thought about would answer the Return key, and the failure would be
+ * silent and irreversible. This way it costs a click that was not needed.
  */
 function worded(question) {
-  return { cancel: t("button.cancel"), ...question };
+  return { cancel: t("button.cancel"), dangerous: true, ...question };
 }
 
 /**
@@ -73,6 +83,7 @@ async function signIn(why) {
       icon: Art.Computer,
       confirm: t("button.use"),
       secret: true,
+      dangerous: false,
     });
     if (typed === null) return false;
 
@@ -107,6 +118,7 @@ async function chooseThePassword(why, what, state) {
       icon: Art.Computer,
       confirm: t("button.use"),
       secret: true,
+      dangerous: false,
     });
     if (typed === null) return false;
 
