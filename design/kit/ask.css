@@ -1,19 +1,31 @@
 /* --- the panel that asks before it changes anything --------------------- */
 
-/* Every selector here begins at nx-ask, and the element itself is what dims
-   the desk rather than a class written onto it.
+/* Every selector here begins at nx-ask, and the element itself is the layer
+   the panel sits on rather than a class written onto it.
 
    A kit is read into somebody else's document, so a plain name at the top
    level of one is a name taken from them. This panel is 430 wide because
    NeXTSTEP's attention panel was, and an application with a panel of its own
    was handed those 430 pixels without anything saying so: its own rule is
-   still there, and this one simply also sets a width. */
+   still there, and this one simply also sets a width.
+
+   Centred across, and in the upper part of the desk rather than the middle of
+   it, which is where the Panels chapter puts an attention panel. The chapter
+   gives no distance, so a tenth of the desk's height is a choice.
+
+   The desk is drawn at a size the reader picks, and at twice the size on a
+   short screen the longest panel is taller than the room left under that
+   tenth. Scrolling rather than clipping, because a panel whose buttons are off
+   the bottom cannot be answered at all. Nothing scrolls at any size that
+   fits. */
 nx-ask {
   position: fixed;
   inset: 0;
   z-index: 90;
   display: none;
-  place-items: center;
+  place-items: start center;
+  padding: 10vh 0 14px;
+  overflow-y: auto;
 }
 nx-ask[data-open] { display: grid; }
 
@@ -41,7 +53,6 @@ nx-ask .titlebar {
   background: linear-gradient(to bottom,
     var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
 }
-nx-ask .title { flex: 1; text-align: center; font-weight: bold; }
 nx-ask .pane { padding: 14px; }
 nx-ask .panel-body {
   display: grid;
@@ -73,4 +84,10 @@ nx-ask .entry {
   padding: 3px 5px;
 }
 nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
+
+/* The button Return presses carries the Return-key symbol, and it carries it
+   only whilst Return will press it, which here is whilst the line above is
+   shown. NeXTSTEP drew that symbol as a bitmap this project does not have, so
+   the character the standard names RETURN SYMBOL stands in for it. */
+nx-ask button.returns::after { content: "\23CE"; margin-left: 7px; }
 

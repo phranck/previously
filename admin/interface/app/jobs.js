@@ -17,8 +17,8 @@ import { Art, sized } from "./words.js";
 async function installTheEmulator() {
   const system = whichSystemToInstallWith();
   const agreed = await askPanel({
-    title: t("ask.install.title"),
     text: [
+      t("ask.install.title"),
       t("ask.install.what"),
       system ? t("ask.install.system", {
         name: system.name,
@@ -50,8 +50,7 @@ function whichSystemToInstallWith() {
 /** Asks before the newest Previous is put in place, and does it if so. */
 async function updateTheEmulator() {
   const agreed = await askPanel({
-    title: t("ask.update.title"),
-    text: [t("ask.update.what")],
+    text: [t("ask.update.title"), t("ask.update.what")],
     icon: Art.Installer,
     confirm: t("button.update"),
   });
@@ -61,8 +60,8 @@ async function updateTheEmulator() {
 /** Asks before the emulator goes, and takes it away if so. */
 async function removeTheEmulator() {
   const agreed = await askPanel({
-    title: t("ask.remove-emulator.title"),
-    text: [t("ask.remove-emulator.loss"), t("ask.remove-emulator.disks")],
+    text: [t("ask.remove-emulator.title"), t("ask.remove-emulator.loss"),
+           t("ask.remove-emulator.disks")],
     icon: Art.Installer,
     confirm: t("button.remove"),
   });
@@ -82,8 +81,8 @@ async function fetchTheSystem() {
   if (!system) return;
 
   const agreed = await askPanel({
-    title: t("ask.fetch.title", { name: system.name }),
     text: [
+      t("ask.fetch.title", { name: system.name }),
       t("ask.fetch.cost", {
         name: system.name,
         size: sized(system.size),
@@ -111,8 +110,8 @@ async function forgetTheSystem() {
   if (!system) return;
 
   const agreed = await askPanel({
-    title: t("ask.forget.title", { name: system.name }),
-    text: [t("ask.forget.loss"), t("ask.forget.again")],
+    text: [t("ask.forget.title", { name: system.name }),
+           t("ask.forget.loss"), t("ask.forget.again")],
     icon: Art.Installer,
     confirm: t("button.remove"),
   });

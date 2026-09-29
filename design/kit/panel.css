@@ -74,7 +74,6 @@ button:active {
   box-shadow: inset 1px 1px 0 var(--black);
   padding: 4px 13px 2px 15px;
 }
-button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weight: bold; }
 
 /* One that cannot be pressed, dimmed rather than taken away. The same grey a
    disabled menu entry wears, because it is the same statement: this is here,
@@ -82,19 +81,27 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
    like one that does, which is the whole of what a person reads a button by. */
 button:disabled { color: var(--dark); cursor: default; }
 
-/* The ring round the default button is a promise that the return key presses
-   it, and a button that cannot be pressed is not making that promise. The
-   weight stays, because taking it away would move every button beside it each
-   time one is switched off. */
-button.default:disabled { outline: none; }
+/* Where the keyboard is, in this desk's own black rather than the browser's
+   blue, which is the same ring the text field wears for the same reason.
+   focus-visible rather than focus, so a button that was clicked does not keep
+   a ring round it: the browser draws one on a click too, and on a panel whose
+   only other marking is position that ring reads as naming the default. */
+button:focus-visible { outline: 1px solid var(--black); outline-offset: 1px; }
 
+/* The button carrying a block's purpose is the last one in the row and is
+   marked by standing there, which is the only marking the Panels chapter gives
+   it. A ring or a heavier weight is not, and the Return-key symbol belongs
+   only on a button Return will actually press, which nx-ask decides for
+   itself.
+
+   The 19 comes from nowhere in the chapters, which state no spacing at all. It
+   is what the row already stood at, as a 10 pixel margin and a 9 pixel padding
+   either side of a rule that is no longer drawn. */
 .buttons {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 10px;
-  padding-top: 9px;
-  border-top: 1px solid var(--dark);
+  margin-top: 19px;
   flex: 0 0 auto;
 }
 

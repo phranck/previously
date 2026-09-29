@@ -30,14 +30,14 @@ export const en = {
   "menu.quit.key": "q",
   "grab.take.key": "t",
   "menu.files": "Files",
-  "menu.password": "Password…",
+  "menu.password": "Password...",
   "menu.machine": "Machine",
-  "menu.machine-info": "Info…",
+  "menu.machine-info": "Info",
   "menu.activate": "Activate configuration",
-  "menu.edit": "Edit configuration…",
+  "menu.edit": "Edit configuration",
   "menu.keep": "Put on the shelf",
   "menu.unkeep": "Take off the shelf",
-  "menu.rename": "Rename…",
+  "menu.rename": "Rename...",
   "menu.remove": "Remove",
 
   /* --- the windows ----------------------------------------------------- */
@@ -138,7 +138,7 @@ export const en = {
   "editor.over-this-one": "{name} is a configuration of your own. Save writes your changes back into it.",
   "ask.name.title": "Save configuration",
   "button.save": "Save",
-  "button.save-as": "Save as…",
+  "button.save-as": "Save as...",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Config Editor",
@@ -220,14 +220,12 @@ export const en = {
   "button.power-on": "Power on",
   "button.change": "Change",
   "button.use": "Use",
-  "button.fine": "Good",
   "about.version": "Version {version}",
   "about.copyright": "Copyright © 2026 {holder}",
   "about.holder": "LAYERED",
   "about.ok": "OK",
   "button.close": "Close",
   "button.cancel": "Cancel",
-  "button.ok": "OK",
 
   /* --- what is happening now -------------------------------------------- */
   "busy.starting": "switching on",

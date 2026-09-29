@@ -907,20 +907,32 @@ nx-thing[lifting] { opacity: .45; }
 
 /* --- the panel that asks before it changes anything --------------------- */
 
-/* Every selector here begins at nx-ask, and the element itself is what dims
-   the desk rather than a class written onto it.
+/* Every selector here begins at nx-ask, and the element itself is the layer
+   the panel sits on rather than a class written onto it.
 
    A kit is read into somebody else's document, so a plain name at the top
    level of one is a name taken from them. This panel is 430 wide because
    NeXTSTEP's attention panel was, and an application with a panel of its own
    was handed those 430 pixels without anything saying so: its own rule is
-   still there, and this one simply also sets a width. */
+   still there, and this one simply also sets a width.
+
+   Centred across, and in the upper part of the desk rather than the middle of
+   it, which is where the Panels chapter puts an attention panel. The chapter
+   gives no distance, so a tenth of the desk's height is a choice.
+
+   The desk is drawn at a size the reader picks, and at twice the size on a
+   short screen the longest panel is taller than the room left under that
+   tenth. Scrolling rather than clipping, because a panel whose buttons are off
+   the bottom cannot be answered at all. Nothing scrolls at any size that
+   fits. */
 nx-ask {
   position: fixed;
   inset: 0;
   z-index: 90;
   display: none;
-  place-items: center;
+  place-items: start center;
+  padding: 10vh 0 14px;
+  overflow-y: auto;
 }
 nx-ask[data-open] { display: grid; }
 
@@ -948,7 +960,6 @@ nx-ask .titlebar {
   background: linear-gradient(to bottom,
     var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
 }
-nx-ask .title { flex: 1; text-align: center; font-weight: bold; }
 nx-ask .pane { padding: 14px; }
 nx-ask .panel-body {
   display: grid;
@@ -980,6 +991,12 @@ nx-ask .entry {
   padding: 3px 5px;
 }
 nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
+
+/* The button Return presses carries the Return-key symbol, and it carries it
+   only whilst Return will press it, which here is whilst the line above is
+   shown. NeXTSTEP drew that symbol as a bitmap this project does not have, so
+   the character the standard names RETURN SYMBOL stands in for it. */
+nx-ask button.returns::after { content: "\23CE"; margin-left: 7px; }
 
 /* --- nx-viewer ---------------------------------------------------------- */
 
@@ -1128,7 +1145,6 @@ button:active {
   box-shadow: inset 1px 1px 0 var(--black);
   padding: 4px 13px 2px 15px;
 }
-button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weight: bold; }
 
 /* One that cannot be pressed, dimmed rather than taken away. The same grey a
    disabled menu entry wears, because it is the same statement: this is here,
@@ -1136,19 +1152,27 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
    like one that does, which is the whole of what a person reads a button by. */
 button:disabled { color: var(--dark); cursor: default; }
 
-/* The ring round the default button is a promise that the return key presses
-   it, and a button that cannot be pressed is not making that promise. The
-   weight stays, because taking it away would move every button beside it each
-   time one is switched off. */
-button.default:disabled { outline: none; }
+/* Where the keyboard is, in this desk's own black rather than the browser's
+   blue, which is the same ring the text field wears for the same reason.
+   focus-visible rather than focus, so a button that was clicked does not keep
+   a ring round it: the browser draws one on a click too, and on a panel whose
+   only other marking is position that ring reads as naming the default. */
+button:focus-visible { outline: 1px solid var(--black); outline-offset: 1px; }
 
+/* The button carrying a block's purpose is the last one in the row and is
+   marked by standing there, which is the only marking the Panels chapter gives
+   it. A ring or a heavier weight is not, and the Return-key symbol belongs
+   only on a button Return will actually press, which nx-ask decides for
+   itself.
+
+   The 19 comes from nowhere in the chapters, which state no spacing at all. It
+   is what the row already stood at, as a 10 pixel margin and a 9 pixel padding
+   either side of a rule that is no longer drawn. */
 .buttons {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 10px;
-  padding-top: 9px;
-  border-top: 1px solid var(--dark);
+  margin-top: 19px;
   flex: 0 0 auto;
 }
 

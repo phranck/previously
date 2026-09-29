@@ -5,16 +5,19 @@ import { ask, send } from "./service.js";
 import { Art } from "./words.js";
 
 /**
- * The words every panel needs, put in front of what the caller says.
+ * The one word every panel needs, put in front of what the caller says.
  * @param {any} question - As the kit's ask takes it.
- * @returns {any} The same, with the two buttons named.
+ * @returns {any} The same, with the safe button named.
  *
  * The kit holds no words of its own, so they are named here and nowhere else.
- * A caller that has a better word for the acting button says so and keeps the
- * safe one.
+ * Only the safe button has a word that fits everywhere, because Cancel says
+ * the same thing whatever was asked. The acting button never does: its label
+ * is the verb naming what it will do, so every caller names it and there is no
+ * default to fall back to. A panel whose acting button said Yes would be one
+ * whose text has to be read before it can be answered.
  */
 function worded(question) {
-  return { confirm: t("button.ok"), cancel: t("button.cancel"), ...question };
+  return { cancel: t("button.cancel"), ...question };
 }
 
 /**
@@ -65,8 +68,8 @@ async function signIn(why) {
 
   for (;;) {
     const typed = await askPanelFor({
-      title: t("ask.password.title"),
-      text: [complaint, t("ask.password.sign-in")].filter(Boolean),
+      text: [t("ask.password.title"), complaint, t("ask.password.sign-in")]
+        .filter(Boolean),
       icon: Art.Computer,
       confirm: t("button.use"),
       secret: true,
@@ -98,9 +101,8 @@ async function chooseThePassword(why, what, state) {
 
   for (;;) {
     const typed = await askPanelFor({
-      title: t("ask.password.title"),
-      text: [complaint, t(what), t("ask.password.length", { least: state.smallest })]
-        .filter(Boolean),
+      text: [t("ask.password.title"), complaint, t(what),
+             t("ask.password.length", { least: state.smallest })].filter(Boolean),
       icon: Art.Computer,
       confirm: t("button.use"),
       secret: true,

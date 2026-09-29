@@ -22,14 +22,14 @@ export const fr = {
   "menu.quit.key": "q",
   "grab.take.key": "p",
   "menu.files": "Fichiers",
-  "menu.password": "Mot de passe…",
+  "menu.password": "Mot de passe...",
   "menu.machine": "Machine",
-  "menu.machine-info": "Infos…",
+  "menu.machine-info": "Infos",
   "menu.activate": "Activer la configuration",
-  "menu.edit": "Modifier la configuration…",
+  "menu.edit": "Modifier la configuration",
   "menu.keep": "Poser sur l'étagère",
   "menu.unkeep": "Retirer de l'étagère",
-  "menu.rename": "Renommer…",
+  "menu.rename": "Renommer...",
   "menu.remove": "Retirer",
 
   /* --- the windows ----------------------------------------------------- */
@@ -126,7 +126,7 @@ export const fr = {
   "editor.over-this-one": "{name} est une configuration à vous. Enregistrer y réécrit vos changements.",
   "ask.name.title": "Enregistrer la configuration",
   "button.save": "Enregistrer",
-  "button.save-as": "Enregistrer sous…",
+  "button.save-as": "Enregistrer sous...",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Éditeur de configuration",
@@ -208,14 +208,12 @@ export const fr = {
   "button.power-on": "Allumer",
   "button.change": "Changer",
   "button.use": "Valider",
-  "button.fine": "Bien",
   "about.version": "Version {version}",
   "about.copyright": "Copyright © 2026 {holder}",
   "about.holder": "LAYERED",
   "about.ok": "OK",
   "button.close": "Fermer",
   "button.cancel": "Annuler",
-  "button.ok": "Oui",
 
   /* --- what is happening now -------------------------------------------- */
   "busy.starting": "allumage en cours",

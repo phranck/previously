@@ -890,20 +890,32 @@ nx-thing[lifting] { opacity: .45; }
 
 /* --- the panel that asks before it changes anything --------------------- */
 
-/* Every selector here begins at nx-ask, and the element itself is what dims
-   the desk rather than a class written onto it.
+/* Every selector here begins at nx-ask, and the element itself is the layer
+   the panel sits on rather than a class written onto it.
 
    A kit is read into somebody else's document, so a plain name at the top
    level of one is a name taken from them. This panel is 430 wide because
    NeXTSTEP's attention panel was, and an application with a panel of its own
    was handed those 430 pixels without anything saying so: its own rule is
-   still there, and this one simply also sets a width. */
+   still there, and this one simply also sets a width.
+
+   Centred across, and in the upper part of the desk rather than the middle of
+   it, which is where the Panels chapter puts an attention panel. The chapter
+   gives no distance, so a tenth of the desk's height is a choice.
+
+   The desk is drawn at a size the reader picks, and at twice the size on a
+   short screen the longest panel is taller than the room left under that
+   tenth. Scrolling rather than clipping, because a panel whose buttons are off
+   the bottom cannot be answered at all. Nothing scrolls at any size that
+   fits. */
 nx-ask {
   position: fixed;
   inset: 0;
   z-index: 90;
   display: none;
-  place-items: center;
+  place-items: start center;
+  padding: 10vh 0 14px;
+  overflow-y: auto;
 }
 nx-ask[data-open] { display: grid; }
 
@@ -931,7 +943,6 @@ nx-ask .titlebar {
   background: linear-gradient(to bottom,
     var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
 }
-nx-ask .title { flex: 1; text-align: center; font-weight: bold; }
 nx-ask .pane { padding: 14px; }
 nx-ask .panel-body {
   display: grid;
@@ -963,6 +974,12 @@ nx-ask .entry {
   padding: 3px 5px;
 }
 nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
+
+/* The button Return presses carries the Return-key symbol, and it carries it
+   only whilst Return will press it, which here is whilst the line above is
+   shown. NeXTSTEP drew that symbol as a bitmap this project does not have, so
+   the character the standard names RETURN SYMBOL stands in for it. */
+nx-ask button.returns::after { content: "\23CE"; margin-left: 7px; }
 
 /* --- nx-viewer ---------------------------------------------------------- */
 
@@ -1111,7 +1128,6 @@ button:active {
   box-shadow: inset 1px 1px 0 var(--black);
   padding: 4px 13px 2px 15px;
 }
-button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weight: bold; }
 
 /* One that cannot be pressed, dimmed rather than taken away. The same grey a
    disabled menu entry wears, because it is the same statement: this is here,
@@ -1119,19 +1135,27 @@ button.default { outline: 1px solid var(--black); outline-offset: 2px; font-weig
    like one that does, which is the whole of what a person reads a button by. */
 button:disabled { color: var(--dark); cursor: default; }
 
-/* The ring round the default button is a promise that the return key presses
-   it, and a button that cannot be pressed is not making that promise. The
-   weight stays, because taking it away would move every button beside it each
-   time one is switched off. */
-button.default:disabled { outline: none; }
+/* Where the keyboard is, in this desk's own black rather than the browser's
+   blue, which is the same ring the text field wears for the same reason.
+   focus-visible rather than focus, so a button that was clicked does not keep
+   a ring round it: the browser draws one on a click too, and on a panel whose
+   only other marking is position that ring reads as naming the default. */
+button:focus-visible { outline: 1px solid var(--black); outline-offset: 1px; }
 
+/* The button carrying a block's purpose is the last one in the row and is
+   marked by standing there, which is the only marking the Panels chapter gives
+   it. A ring or a heavier weight is not, and the Return-key symbol belongs
+   only on a button Return will actually press, which nx-ask decides for
+   itself.
+
+   The 19 comes from nowhere in the chapters, which state no spacing at all. It
+   is what the row already stood at, as a 10 pixel margin and a 9 pixel padding
+   either side of a rule that is no longer drawn. */
 .buttons {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 10px;
-  padding-top: 9px;
-  border-top: 1px solid var(--dark);
+  margin-top: 19px;
   flex: 0 0 auto;
 }
 
@@ -2880,11 +2904,15 @@ class NxThing extends HTMLElement {
 /**
  * The panel that asks before anything changes.
  *
- * NeXTSTEP put an attention panel in the middle of the screen over a dimmed
- * desk, with the icon of whatever is about to happen, a sentence saying what
- * it is, and the safe answer on the left. This is that, and it is a component
- * rather than markup in the page because more than one thing needs to ask:
- * stopping the emulator does, and changing the machine will.
+ * NeXTSTEP's attention panel comes up in the upper part of the screen with the
+ * icon of whatever is about to happen, a sentence saying what it is, and the
+ * safe answer on the left. This is that, and it is a component rather than
+ * markup in the page because more than one thing needs to ask: stopping the
+ * emulator does, and changing the machine does.
+ *
+ * Its title bar is empty, which is what tells an attention panel from an
+ * ordinary one. The panel is named inside itself, beside the icon, after
+ * whatever brought it up, so the first line a caller gives is that name.
  *
  * It answers with a promise rather than a callback, so the caller reads as one
  * sequence: ask, then act on the answer.
@@ -2896,7 +2924,7 @@ class NxAsk extends HTMLElement {
 
     this.innerHTML = `
       <div class="panel">
-        <div class="titlebar"><div class="title"></div></div>
+        <div class="titlebar"></div>
         <div class="pane">
           <div class="panel-body">
             <i class="art icon"></i>
@@ -2907,7 +2935,7 @@ class NxAsk extends HTMLElement {
           </div>
           <div class="buttons" style="padding-right:0">
             <button data-answer="no"></button>
-            <button data-answer="yes" class="default"></button>
+            <button data-answer="yes"></button>
           </div>
         </div>
       </div>`;
@@ -2929,8 +2957,9 @@ class NxAsk extends HTMLElement {
   /**
    * Puts the question and waits for an answer.
    * @param {object} question
-   * @param {string} question.title - The panel's own title bar.
-   * @param {string[]} question.text - One paragraph per entry.
+   * @param {(string|Node)[]} question.text - One paragraph per entry. The
+   *   first is the panel's own name, which stands beside the icon because an
+   *   attention panel's title bar is empty.
    * @param {string} [question.icon] - Which picture, by the name showArt knows.
    * @param {string} question.confirm - The wording on the acting button. The
    *   kit holds no words of its own, in any language, so both buttons are
@@ -2941,8 +2970,7 @@ class NxAsk extends HTMLElement {
    *   what is typed into it is not read over the typist's shoulder.
    * @returns {Promise<boolean>} True where the acting button was pressed.
    */
-  ask({ title, text, icon, confirm, cancel, field = false, secret = false }) {
-    this.querySelector(".title").textContent = title;
+  ask({ text, icon, confirm, cancel, field = false, secret = false }) {
     this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {
         /* A line is a sentence, or an element where the caller had to build
@@ -2954,7 +2982,9 @@ class NxAsk extends HTMLElement {
         return paragraph;
       }));
     if (icon) showArt(this.querySelector(".icon"), icon);
-    this.querySelector('[data-answer="yes"]').textContent = confirm;
+
+    const acting = this.querySelector('[data-answer="yes"]');
+    acting.textContent = confirm;
 
     /* A panel that only says something has one button, and the safe answer is
        the same as the acting one. Left standing and empty it would be a second
@@ -2968,9 +2998,15 @@ class NxAsk extends HTMLElement {
     entry.type = secret ? "password" : "text";
     entry.value = "";
 
+    /* The Return-key symbol says Return presses this button, so it goes on
+       only where Return does. A panel carrying a line to type into commits it
+       that way. One that only asks is answered by clicking, which is what the
+       chapter asks for wherever the answer costs something. */
+    acting.classList.toggle("returns", field);
+
     this.toggleAttribute("data-open", true);
     addEventListener("keydown", this.keys);
-    (field ? entry : (cancel ? safe : this.querySelector('[data-answer="yes"]'))).focus();
+    (field ? entry : (cancel ? safe : acting)).focus();
 
     return new Promise((settle) => { this.settle = settle; });
   }
@@ -2988,11 +3024,12 @@ class NxAsk extends HTMLElement {
    * @returns {Promise<boolean>} Always true, so the caller can wait for it to
    *   be dismissed without reading the answer.
    *
-   * The title bar stays empty, which is what tells an attention panel from an
-   * ordinary one: it is named inside itself, after whatever brought it up.
+   * The whole of it is ask with no safe button, because a panel that only says
+   * something has one answer and offering a second would be a button that does
+   * what the first does.
    */
   tell({ text, icon, confirm }) {
-    return this.ask({ title: "", text, icon, confirm, cancel: null });
+    return this.ask({ text, icon, confirm, cancel: null });
   }
 
   /**

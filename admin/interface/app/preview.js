@@ -47,8 +47,7 @@ async function showInPreview(entry) {
  */
 async function deleteThePicture(name) {
   const sure = await askPanel({
-    title: t("ask.delete.title", { name }),
-    text: [t("ask.delete.loss")],
+    text: [t("ask.delete.title", { name }), t("ask.delete.loss")],
     icon: Art.Picture,
     confirm: t("button.delete"),
   });
