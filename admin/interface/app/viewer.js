@@ -2,8 +2,9 @@
 
 import { NEAR_FLIGHT_MS, deskRect, fly, zoom } from "../nextstep.js";
 import { t } from "../strings.js";
+import { bootFromDisk, putTheCopyBack, useTheDisc } from "./disks.js";
 import { noticeTheApplications } from "./dock.js";
-import { bootFromDisk, changeTo, editOnWhatIsRunning, notYet, putTheCopyBack, useTheDisc } from "./machines.js";
+import { changeTo, editOnWhatIsRunning, notYet } from "./machines.js";
 import { show } from "./page.js";
 import { showInPreview } from "./preview.js";
 import { ask } from "./service.js";
