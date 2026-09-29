@@ -674,9 +674,14 @@ nx-scroller .bar.across {
 /* The trough holds the knob and gives it the room it slides in. */
 nx-scroller .trough { flex: 1 1 auto; position: relative; min-height: 0; min-width: 0; }
 
+/* As wide as the trough holds, which is as wide as an arrow button below it.
+   The two are the same raised part of one bar and a reader sees them together,
+   so a knob inset by a pixel reads as the trough leaking down both its sides
+   and as a knob that missed its own bar. Inset it was: measured at 19 against
+   the button's 21.5 on a desk at 125 per cent. */
 nx-scroller .knob {
   position: absolute;
-  left: 1px; right: 1px;
+  left: 0; right: 0;
   top: 0;
   background: var(--light);
   border: 1px solid;
@@ -698,10 +703,11 @@ nx-scroller .knob::after {
 }
 
 /* A knob in the bar along the foot slides the other way, so what is pinned is
-   its height rather than its width. */
+   its height rather than its width. It fills that height for the same reason
+   the one above fills its width. */
 nx-scroller .bar.across .knob {
   left: 0; right: auto;
-  top: 1px; bottom: 1px;
+  top: 0; bottom: 0;
 }
 
 /* Both arrows sit at the far end of the bar, side by side, and they go away
