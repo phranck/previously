@@ -67,6 +67,10 @@ export default [
     },
     rules: {
       "no-undef": "error",
+      // An imported name cannot be assigned to, so a module that keeps a
+      // value has to be the one that changes it. This is what says so at the
+      // moment the import is written rather than when the page is built.
+      "no-import-assign": "error",
       "no-unused-vars": ["error", { args: "none" }],
       "no-fallthrough": "error",
       "no-dupe-keys": "error",
