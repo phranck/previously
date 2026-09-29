@@ -944,22 +944,50 @@ nx-ask .titlebar {
   background: linear-gradient(to bottom,
     var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
 }
-nx-ask .pane { padding: 14px; }
-nx-ask .panel-body {
-  display: grid;
-  grid-template-columns: auto 1fr;
+/* The row the panel names itself in, and the groove under it. Both come from
+   the chapter's own figure of an attention panel, at
+   https://www.nextop.de/NeXTstep_3.3_Developer_Documentation/UserInterface/05_Panel/Panel.htmld/F6.gif
+   where the line crosses the whole panel edge to edge rather than stopping at
+   the padding. It is therefore drawn as one edge on each of the two blocks
+   that meet at it, which is what makes it reach both sides.
+
+   Dark above white is the groove the kit already states as --groove-sides,
+   and it is what the figure has: its row 87 is the dark grey and row 88 the
+   white. */
+nx-ask .naming {
+  display: flex;
+  align-items: center;
   gap: 14px;
-  align-items: start;
+  padding: 14px;
+  border-bottom: 1px solid var(--dark);
 }
-nx-ask .panel-body .icon { width: 48px; height: 48px; background-size: contain; }
-nx-ask .panel-body p { margin: 0 0 8px; }
-nx-ask .panel-body p:last-child { margin: 0; }
+nx-ask .naming .icon { width: 48px; height: 48px; background-size: contain; }
+
+/* Bold, and larger than the sentences below it. The chapter states no size
+   anywhere, so this is the figure measured: the name's capitals are 14 pixels
+   tall in it and the message's are 11, and both are set in the same face, so
+   the one size follows from the other. */
+nx-ask .name {
+  font-size: calc(var(--text-size) * 14 / 11);
+  font-weight: bold;
+}
+
+/* Centred, as the message is in that figure: it sits 96 pixels from the left
+   edge and 98 from the right, which is centred to the pixel the panel's odd
+   width leaves over. */
+nx-ask .pane {
+  padding: 14px;
+  border-top: 1px solid var(--white);
+  text-align: center;
+}
+nx-ask .lines p { margin: 0 0 8px; }
+nx-ask .lines p:last-child { margin: 0; }
 
 /* A word in a line that leads somewhere off this machine. NeXTSTEP had no
    such thing, so there is nothing to copy: it is drawn as text that is
    underlined, which is what every browser since has meant by it, and it keeps
    the colour of the sentence it stands in rather than taking one of its own. */
-nx-ask .panel-body a { color: inherit; }
+nx-ask .lines a { color: inherit; }
 
 /* The line a panel takes an answer on, which is a name or a password. NeXT's
    text fields are white, sunken and one line tall, and this is the same field
@@ -2942,17 +2970,19 @@ class NxAsk extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
+    /* Two blocks with a groove between them, which is how the chapter's own
+       figure of an attention panel is built: the application icon and the
+       panel's name above the line, and what the panel has to say below it. */
     this.innerHTML = `
       <div class="panel">
         <div class="titlebar"></div>
+        <div class="naming">
+          <i class="art icon raised"></i>
+          <div class="name"></div>
+        </div>
         <div class="pane">
-          <div class="panel-body">
-            <i class="art icon"></i>
-            <div class="words">
-              <div class="lines"></div>
-              <input class="entry" type="text" spellcheck="false" hidden>
-            </div>
-          </div>
+          <div class="lines"></div>
+          <input class="entry" type="text" spellcheck="false" hidden>
           <div class="buttons" style="padding-right:0">
             <button data-answer="no"></button>
             <button data-answer="yes"></button>
@@ -2977,9 +3007,11 @@ class NxAsk extends HTMLElement {
   /**
    * Puts the question and waits for an answer.
    * @param {object} question
-   * @param {(string|Node)[]} question.text - One paragraph per entry. The
-   *   first is the panel's own name, which stands beside the icon because an
-   *   attention panel's title bar is empty.
+   * @param {string} question.name - What the panel calls itself, after the
+   *   command that brought it up. It stands beside the icon above the groove,
+   *   because an attention panel's title bar is empty.
+   * @param {(string|Node)[]} question.text - One paragraph per entry, below
+   *   the groove.
    * @param {string} [question.icon] - Which picture, by the name showArt knows.
    * @param {string} question.confirm - The wording on the acting button. The
    *   kit holds no words of its own, in any language, so both buttons are
@@ -2990,7 +3022,8 @@ class NxAsk extends HTMLElement {
    *   what is typed into it is not read over the typist's shoulder.
    * @returns {Promise<boolean>} True where the acting button was pressed.
    */
-  ask({ text, icon, confirm, cancel, field = false, secret = false }) {
+  ask({ name, text, icon, confirm, cancel, field = false, secret = false }) {
+    this.querySelector(".name").textContent = name;
     this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {
         /* A line is a sentence, or an element where the caller had to build
@@ -3034,10 +3067,10 @@ class NxAsk extends HTMLElement {
   /**
    * Says something and waits for it to be read.
    * @param {object} panel
+   * @param {string} panel.name - What the panel calls itself.
    * @param {(string|Node)[]} panel.text - One paragraph per entry, as a
    *   sentence or as an element where the caller had to build the line
-   *   itself. The first is the panel's own name, which in an attention panel
-   *   stands beside the icon rather than in the title bar.
+   *   itself.
    * @param {string} [panel.icon] - Which picture, by the name showArt knows.
    * @param {string} panel.confirm - The wording on the one button. The kit
    *   holds no words of its own, in any language.
@@ -3048,8 +3081,8 @@ class NxAsk extends HTMLElement {
    * something has one answer and offering a second would be a button that does
    * what the first does.
    */
-  tell({ text, icon, confirm }) {
-    return this.ask({ text, icon, confirm, cancel: null });
+  tell({ name, text, icon, confirm }) {
+    return this.ask({ name, text, icon, confirm, cancel: null });
   }
 
   /**

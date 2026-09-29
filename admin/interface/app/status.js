@@ -231,7 +231,8 @@ function setBusy(busy, note) {
  */
 function warn(what) {
   return askPanel({
-    text: [t("ask.stop.title"), t("ask.stop.how"), t("ask.stop.loss")],
+    name: t("ask.stop.title"),
+    text: [t("ask.stop.how"), t("ask.stop.loss")],
     icon: runningArt,
     confirm: what,
   });
