@@ -1,7 +1,9 @@
 /* The Config Editor: the machine somebody is building, until they save it. */
 
-import { currentLocale, t, writeWords } from "../strings.js";
+import { t, writeWords } from "../strings.js";
+import { drawTheDimensionBoards, fillWithBanks, fillWithChoices, fillWithFittings, fillWithScale } from "./fittings.js";
 import { editOnWhatIsRunning } from "./machines.js";
+import { DSP_WORDS, KIND_NOTES, SOCKET_WORDS, bankNotes, noteFor, switchNote } from "./notes.js";
 import { explain, show } from "./page.js";
 import { askPanelFor } from "./panels.js";
 import { Saved, ask, tell } from "./service.js";
@@ -21,39 +23,6 @@ let drafting = {};
  *  rather than at each cell, because a control this forgets to name is one that
  *  quietly carries a value from the machine that has been left behind. */
 const FOLLOWS_THE_MACHINE = ["mhz", "dsp", "dsp_memory", "banks"];
-
-/** What each DSP is called. The service answers the three by name, because the
- *  numbers Previous writes are not in the order a person would read them in, and
- *  these are this page's words for those names. Written out one by one rather
- *  than built from the name, so that a key nothing answers is caught by the
- *  strings test instead of appearing as an empty cell. */
-const DSP_WORDS = {
-  none: "editor.dsp.none",
-  plain: "editor.dsp.plain",
-  "with-rom": "editor.dsp.with-rom",
-};
-
-/** What each ethernet socket is called, written out for the same reason. */
-const SOCKET_WORDS = {
-  "thin-wire": "editor.thin-wire",
-  "twisted-pair": "editor.twisted-pair",
-};
-
-/** What the sentence about each machine type is called, by the number Previous
- *  gives the type. Written out rather than built from the number, because a
- *  sentence keyed by a name can be found in the catalogue and one keyed by 1
- *  cannot. The strings test holds these numbers to the types the service
- *  offers. */
-const KIND_NOTES = {
-  0: "editor.machine.note.next-computer",
-  1: "editor.machine.note.nextcube",
-  2: "editor.machine.note.nextstation",
-};
-
-/** The least the first memory bank may hold for the machine to boot, in
- *  megabytes. Previous says so on its own memory dialogue and does not raise a
- *  smaller bank itself, so the note under the banks is the one place somebody
- *  is told before the machine fails to come up. */
 
 /** How much memory a NeXTdimension board gets when it is first put in, which is
  *  what the emulator's own file holds for one. Changed from there in its own
@@ -349,73 +318,6 @@ function drawTheChoices(offers) {
 }
 
 /**
- * The sentence about one value of a group.
- * @param {string} group - The group's name in the catalogue, such as `clock`.
- * @param {string|number} value - What is chosen there, which is the last part
- *   of the key.
- * @param {object} [values] - What fills the sentence's places.
- * @returns {string}
- *
- * Built from the value rather than written out per value, so a clock or a size
- * the service starts to offer arrives with its sentence or fails the strings
- * test, which derives every key this can build from the service.
- */
-function noteFor(group, value, values) {
-  return t(`editor.${group}.note.${value}`, values);
-}
-
-/**
- * The sentence about a switch, for the state it is in.
- * @param {string} which - The switch, such as `turbo` or `floppy`, which is
- *   both the control's name in the draft and its name in the catalogue.
- * @returns {string}
- */
-function switchNote(which) {
-  return noteFor(which, drafting[which] ? "in" : "out");
-}
-
-/**
- * What the four memory banks have to say about themselves.
- * @param {Array<Array<number>>} banks - What each bank accepts, as the service
- *   offers them, with an empty bank as the first size of each.
- * @returns {string[]} The sentences that apply, and nothing for those that do
- *   not.
- *
- * Which modules the machine takes is read off the first bank, because every
- * bank that is there takes the same ones. A bank that is not there offers an
- * empty one and nothing else, which is how the reachable banks are counted here
- * without the page holding the rule that decides them.
- */
-function bankNotes(banks) {
-  /* Read off a bank that is not the first, since that one is offered neither an
-     empty socket nor the smallest module and would name a shorter list than the
-     machine actually takes. */
-  const ordinary = banks.find((sizes, bank) => bank > 0 && !isAbsent(sizes));
-  const modules = (ordinary ?? banks[0]).filter((size) => size > 0);
-  const reachable = banks.filter((sizes) => !isAbsent(sizes)).length;
-  return [
-    t("editor.banks.note.press"),
-    t("editor.banks.note.first", { sizes: listed(banks[0]) }),
-    t("editor.banks.note.modules", { sizes: listed(modules) }),
-    reachable < banks.length
-      ? t("editor.banks.note.reach", { count: reachable }) : "",
-  ];
-}
-
-/**
- * Several values in one phrase, joined the way the language being read joins
- * them.
- * @param {Array<number|string>} values
- * @returns {string} "1, 4 or 16" in English and "1, 4 oder 16" in German. The
- *   browser knows each language's word before the last one, so no catalogue
- *   has to say it.
- */
-function listed(values) {
-  return new Intl.ListFormat(currentLocale(), { type: "disjunction" })
-    .format(values.map(String));
-}
-
-/**
  * Draws the row of subjects and shows the one that is chosen.
  *
  * Eleven groups in one column is taller than the desk, so the window shows one
@@ -449,263 +351,6 @@ function drawTheSubjects() {
 function showSubject(subject) {
   showing = subject;
   drawTheSubjects();
-}
-
-/**
- * Draws the three NeXTdimension slots and the memory of each board there is.
- * @param {object} offers - The service's answer, which says which slots this
- *   machine has and how much memory a board takes.
- *
- * A slot is a cell that puts a board in and takes it out again, and a board
- * that is in gets a group of its own for its memory. One group per board rather
- * than one for all of them, because Previous gives each its own and a cube with
- * two boards of different sizes is a machine it will run.
- */
-function drawTheDimensionBoards(offers) {
-  fillWithChoices("editor-dimensions", offers.dimension_slots.map((slot, board) => ({
-    label: t("editor.slot", { slot }),
-    chosen: drafting.dimensions[board] > 0,
-    /* Put in with the memory Previous's own file gives a board, and taken out
-       by setting that back to nothing. */
-    choose: () => change({
-      dimensions: dimensionsWith(
-        board, drafting.dimensions[board] ? 0 : DIMENSION_DEFAULT_MEMORY),
-    }),
-  })));
-  document.getElementById("editor-dimension-group").hidden =
-    !offers.dimension_slots.length;
-
-  /* The console follows the first board there is, so the sentence names that
-     board's slot, and says how many boards there are because each gets a
-     group of its own below. */
-  const seated = offers.dimension_slots
-    .filter((slot, board) => drafting.dimensions[board] > 0);
-  explain("editor-dimensions-note", seated.length
-    ? t("editor.dimension.note.some",
-        { count: seated.length, slot: seated[0] }, seated.length)
-    : t("editor.dimension.note.none"));
-
-  /* The board's index is taken before the empty slots are dropped, because
-     after that the second board that is in would be counted as the second
-     slot, and a cube with boards in slots 2 and 6 would draw and change the
-     memory of slot 4. */
-  const memories = document.getElementById("editor-dimension-memory");
-  memories.replaceChildren(...offers.dimension_slots
-    .map((slot, board) => [slot, board])
-    .filter(([, board]) => drafting.dimensions[board] > 0)
-    .map(([slot, board]) => drawOneBoardsMemory(slot, board, offers)));
-}
-
-/**
- * One board's memory, as a group of its own.
- * @param {number} slot - Which slot it answers from, for the heading.
- * @param {number} board - Which of the three it is, from 0.
- * @param {object} offers - The service's answer.
- * @returns {HTMLElement} The group, ready to go in.
- */
-function drawOneBoardsMemory(slot, board, offers) {
-  const group = document.createElement("fieldset");
-  group.className = "group";
-
-  const heading = document.createElement("legend");
-  heading.textContent = t("editor.dimension-memory", { slot });
-  group.append(heading);
-
-  /* A scale like the machine's own memory, so it is a knob in a trough. Built
-     rather than written, so it is wired here rather than through
-     fillWithScale, which reaches for a slider the markup already holds. */
-  const slider = document.createElement("nx-slider");
-  group.append(slider);
-  slider.options = offers.dimension_memory.map((mb) => ({
-    value: mb, label: t("editor.megabytes", { mb }), tick: String(mb),
-  }));
-  slider.says = t("editor.unit.mb");
-  slider.value = drafting.dimensions[board];
-  slider.addEventListener("nx-slide",
-    (event) => change({ dimensions: dimensionsWith(board, event.detail.value) }));
-
-  /* The same sentence under the cells the groups in the markup carry, put here
-     because this group is built rather than written. */
-  const note = document.createElement("p");
-  note.className = "note";
-  note.textContent = noteFor("dimension-memory", drafting.dimensions[board]);
-  group.append(note);
-
-  return group;
-}
-
-/**
- * The three boards with one of them changed.
- * @param {number} board - Which of them, from 0.
- * @param {number} memory - How much memory it has now, and zero for taking it
- *   out altogether.
- * @returns {Array<number>} All three, for the service to settle.
- */
-function dimensionsWith(board, memory) {
-  const boards = [...drafting.dimensions];
-  boards[board] = memory;
-  return boards;
-}
-
-/**
- * Puts a scale in place, as a knob in a trough.
- * @param {string} id - The slider's own id.
- * @param {string} unit - What the figures are counted in, said once beside
- *   the scale rather than on every tick.
- * @param {Array<object>} steps - `{value, label}` in the order they sit on the
- *   scale, smallest first.
- * @param {*} value - Which of them the machine is on. One that is not a step
- *   leaves the knob at the start, which is what a total made by hand out of the
- *   banks does.
- * @param {Function} choose - Given the value landed on.
- *
- * For a group whose values have an order, where a row of cells would say they
- * have none. The groups that are not a scale keep their cells: a machine type,
- * a board, a DSP, a socket, a drive and a port are all one of several rather
- * than more or less of one thing.
- *
- * The listener is put on once and reads the action off the element, because the
- * action closes over what the machine is now and this runs again on every
- * change.
- */
-function fillWithScale(id, unit, steps, value, choose) {
-  const slider = document.getElementById(id);
-  slider.says = unit;
-  slider.onSlide = choose;
-  if (!slider.listening) {
-    slider.listening = true;
-    slider.addEventListener("nx-slide",
-      (event) => slider.onSlide(event.detail.value));
-  }
-  slider.options = steps;
-  slider.value = value;
-}
-
-/**
- * Puts one group of things a machine either has or has not in place.
- * @param {string} id - The row they go in.
- * @param {object} offers - The service's answer, which says which of them this
- *   machine can have at all.
- * @param {Array<Array>} fittings - `[name, label]` for each.
- * @returns {string[]} The names of the ones this machine was offered, so the
- *   caller can say what each is doing in the state it is in.
- *
- * One press puts it in and the next takes it out, which is the boards group's
- * cell. A machine that cannot have one is not offered it rather than being
- * offered it and refused.
- */
-function fillWithFittings(id, offers, fittings) {
-  const offered = fittings.filter(([which]) => offers[which]);
-  fillWithChoices(id, offered.map(([which, label]) => ({
-    label,
-    chosen: drafting[which],
-    choose: () => change({ [which]: !drafting[which] }),
-  })));
-  return offered.map(([which]) => which);
-}
-
-/**
- * Puts the four memory banks in place, as the sockets they are.
- * @param {string} id - The row they go in.
- * @param {Array<Array<number>>} offered - What each bank accepts, from the
- *   service, smallest first and with an empty bank as the first of them.
- *
- * A bank is a socket on the board rather than one choice among several, so it
- * is drawn as one: a sunken field with a raised module in it where something is
- * seated. Those two edges are what this whole interface is built from, so this
- * needs no picture of a memory module, and there is none to use.
- *
- * A bank the machine cannot reach accepts nothing but an empty bank, and it is
- * drawn flat, because a socket that is not there is not a socket to fill.
- */
-function fillWithBanks(id, offered) {
-  document.getElementById(id).replaceChildren(...offered.map((sizes, bank) => {
-    const size = drafting.banks[bank];
-
-    const row = document.createElement("div");
-    row.className = "bank-row";
-
-    const name = document.createElement("span");
-    name.className = "bank-name";
-    name.textContent = t("editor.bank", { bank });
-    row.append(name);
-
-    const socket = document.createElement("div");
-    socket.className = "bank";
-    socket.toggleAttribute("absent", isAbsent(sizes));
-    /* A bank offered one size and no empty one cannot move, which is the first
-       bank of a colour station: it takes an 8 MB module and nothing else. */
-    if (sizes.length > 1) {
-      socket.addEventListener("click", () => change({
-        banks: bankMovedOn(bank, sizes),
-        memory: undefined,
-      }));
-    }
-
-    const module_ = document.createElement("div");
-    module_.className = "bank-module";
-    module_.toggleAttribute("empty", !size);
-    module_.textContent = size
-      ? t("editor.megabytes", { mb: size })
-      : t("editor.bank-empty");
-    socket.append(module_);
-
-    row.append(socket);
-    return row;
-  }));
-}
-
-/**
- * Whether a bank is one this machine does not have.
- * @param {Array<number>} sizes - What it accepts, from the service.
- * @returns {boolean}
- *
- * The service answers such a bank with an empty one and nothing else, which is
- * a choice of one rather than an absence, so there are four banks to draw
- * either way.
- */
-function isAbsent(sizes) {
-  return sizes.length === 1 && sizes[0] === 0;
-}
-
-/**
- * The four memory banks with one of them moved on to the next size it takes.
- * @param {number} bank - Which one was pressed, from 0.
- * @param {Array<number>} sizes - What that bank accepts, smallest first, with
- *   an empty bank as the first of them.
- * @returns {Array<number>} All four, in megabytes, for the service to settle.
- *
- * A bank holds one module rather than a choice between several, so its cell
- * fits the next size up and comes back to an empty bank after the largest. It
- * is the same gesture as taking a board out and putting it back, which is the
- * one this window already has for a cell that is not one of a row of choices.
- *
- * A bank holding a size the machine no longer takes starts again at the
- * smallest, because indexOf answers -1 for it.
- */
-function bankMovedOn(bank, sizes) {
-  const banks = [...drafting.banks];
-  banks[bank] = sizes[(sizes.indexOf(banks[bank]) + 1) % sizes.length];
-  return banks;
-}
-
-/**
- * Puts one group's cells in place.
- * @param {string} id - The row they go in.
- * @param {Array<object>} cells - `{label, chosen, choose}` for each.
- *
- * The same raised cell the Preferences window offers a choice with, because
- * this interface gives anything that can be chosen one shape.
- */
-function fillWithChoices(id, cells) {
-  document.getElementById(id).replaceChildren(...cells.map((cell) => {
-    const choice = document.createElement("div");
-    choice.className = "choice";
-    choice.textContent = cell.label;
-    choice.toggleAttribute("chosen", cell.chosen);
-    choice.addEventListener("click", cell.choose);
-    return choice;
-  }));
 }
 
 /**
@@ -811,9 +456,6 @@ function fillTheEditorIfItCameBackOpen() {
 export {
   drafting,
   FOLLOWS_THE_MACHINE,
-  DSP_WORDS,
-  SOCKET_WORDS,
-  KIND_NOTES,
   DIMENSION_DEFAULT_MEMORY,
   SUBJECTS,
   showing,
@@ -827,21 +469,8 @@ export {
   redrawTheEditor,
   drawTheMachineInTheEditor,
   drawTheChoices,
-  noteFor,
-  switchNote,
-  bankNotes,
-  listed,
   drawTheSubjects,
   showSubject,
-  drawTheDimensionBoards,
-  drawOneBoardsMemory,
-  dimensionsWith,
-  fillWithScale,
-  fillWithFittings,
-  fillWithBanks,
-  isAbsent,
-  bankMovedOn,
-  fillWithChoices,
   change,
   changeTheMachine,
   drawWhatSavingWillDo,

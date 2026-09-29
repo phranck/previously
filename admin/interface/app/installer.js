@@ -1,7 +1,7 @@
 /* The Installer: what is on this Pi, and what can be put on it. */
 
 import { t } from "../strings.js";
-import { fillWithChoices } from "./editor.js";
+import { fillWithChoices } from "./fittings.js";
 import { bootFromDisk } from "./machines.js";
 import { explain, show } from "./page.js";
 import { askPanel } from "./panels.js";
