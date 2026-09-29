@@ -31,13 +31,11 @@ HERE = pathlib.Path(__file__).resolve().parent
 SOURCE = HERE / "interface"
 SERVED = HERE / "web"
 
-#: The scripts, in the order a browser runs them. The words first, so every
-#: element is built around text it already has; then the kit, which defines the
-#: elements; then this application. `translate()` stands between the catalogues
-#: and the kit, where the markup used to carry it inline.
-SCRIPTS = ("strings.js", "lang/en.js", "lang/de.js", "lang/fr.js",
-           "lang/it.js", "lang/es.js", "lang/sv.js", "translate();",
-           "nextstep.js", "terminal.js", "app.js")
+#: Where the interface starts. Everything else it is made of, the kit, the
+#: catalogues and this application's own modules, is reached from here through
+#: imports, so the order a browser runs them in is written in the code that
+#: needs them rather than in a list over here that has to agree with it.
+ENTRY = "app.js"
 
 #: The stylesheets, in the order they cascade.
 STYLES = ("vendor/xterm.css", "nextstep.css", "app.css")
@@ -76,20 +74,23 @@ def minified(text, loader):
 
 
 def script():
-    """@returns str, every script of ours as one, private and minified.
+    """@returns str, the interface bundled from its one entry, minified.
 
-    Wrapped in a function, so that nothing in it is a global and esbuild can
-    shorten every name in it. Nothing outside needs any of them: the elements
-    register themselves, the listeners are added in code, and the markup
-    carries no handler of its own.
+    esbuild follows the imports, so the order the browser runs things in is
+    the order the modules ask for each other rather than a list kept here.
+    What comes out is one function with nothing in it reaching the page:
+    nothing outside needs any of these names, because the elements define
+    themselves, the listeners are added in code, and the markup carries no
+    handler of its own.
     """
-    written = []
-    for name in SCRIPTS:
-        if name.endswith(";"):
-            written.append(name)
-            continue
-        written.append((SOURCE / name).read_text(encoding="utf-8"))
-    return minified("(() => {\n%s\n})();\n" % "\n".join(written), "js")
+    if shutil.which("esbuild") is None:
+        raise SystemExit("esbuild is not here: brew install esbuild, or "
+                         "npm install --global esbuild")
+    answer = subprocess.run(
+        ["esbuild", str(SOURCE / ENTRY), "--bundle", "--minify",
+         "--format=iife", "--legal-comments=eof", "--charset=utf8"],
+        capture_output=True, text=True, check=True)
+    return answer.stdout
 
 
 def stylesheet():

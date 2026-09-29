@@ -11,7 +11,7 @@ import re
 
 import pytest
 
-from conftest import INTERFACE
+from conftest import INTERFACE, page_source
 
 #: How the page reaches an element. getElementById is the plain way, and the rest
 #: are this page's own helpers, which take an id and write into it.
@@ -40,7 +40,7 @@ THE_SUBJECTS = re.compile(r'^  (\w+): "editor\.subject\.\w+",$', re.M)
 
 @pytest.fixture(scope="module")
 def page():
-    return (INTERFACE / "app.js").read_text(encoding="utf-8")
+    return page_source()
 
 
 @pytest.fixture(scope="module")

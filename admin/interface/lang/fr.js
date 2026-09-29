@@ -1,6 +1,6 @@
 /* French. */
 
-NX_STRINGS.fr = {
+export const fr = {
   /* --- the menus ------------------------------------------------------- */
   "menu.about-previously": "À propos de Previously...",
   "menu.about-previously.key": "v",

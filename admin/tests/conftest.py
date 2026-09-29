@@ -18,6 +18,20 @@ from previously.settings import DEFAULTS, Settings
 INTERFACE = pathlib.Path(__file__).resolve().parent.parent / "interface"
 
 
+def page_source():
+    """Everything this application's own code is written in, as one text.
+
+    @returns str
+
+    The interface is one module per subject under `interface/app/`, and a test
+    that asked only `app.js` would read the twenty lines that start the page
+    and none of what it starts.
+    """
+    modules = sorted((INTERFACE / "app").glob("*.js"))
+    return "\n".join(path.read_text(encoding="utf-8")
+                     for path in [INTERFACE / "app.js", *modules])
+
+
 def settings_for(tmp_path, **overrides):
     """Settings for a test, bound to a port the system picks.
 

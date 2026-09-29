@@ -1,0 +1,12 @@
+{
+  "name": "previously-interface",
+  "private": true,
+  "description": "What checking and building the interface needs. Nothing here runs on the Pi: the service is the standard library alone, and what ships is the built interface, which is committed.",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint interface --no-warn-ignored"
+  },
+  "devDependencies": {
+    "eslint": "^9.36.0"
+  }
+}

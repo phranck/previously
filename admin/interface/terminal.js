@@ -177,4 +177,13 @@ class NxTerminal extends HTMLElement {
   }
 }
 
-customElements.define("nx-terminal", NxTerminal);
+/**
+ * Defines the terminal element.
+ *
+ * A call rather than something this module does when it is imported, so that
+ * every element on this page is built at the same moment, which is after the
+ * words are on it.
+ */
+export function defineTheTerminal() {
+  customElements.define("nx-terminal", NxTerminal);
+}

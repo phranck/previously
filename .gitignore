@@ -14,3 +14,13 @@ admin/packaging/build/
 # An index one editing assistant keeps of this tree. It is rebuilt from the
 # source on demand and says nothing about the project.
 .serena/
+
+# What the linter is installed from. Nothing here is deployed either: the Pi
+# runs the built interface, and esbuild and eslint are what a person building
+# it needs on their own machine.
+admin/node_modules/
+admin/package-lock.json
+
+# Where the browser automation leaves its snapshots whilst a page is being
+# looked at.
+.playwright-mcp/

@@ -5,7 +5,7 @@
  * what it says. Everything in braces is filled in by the page.
  */
 
-NX_STRINGS.en = {
+export const en = {
   /* --- the menus ------------------------------------------------------- */
   /* The letter beside each main-menu entry, which is a letter of the
      word that entry shows. Distinct within the language, because the page

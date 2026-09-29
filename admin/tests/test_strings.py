@@ -13,7 +13,7 @@ import re
 
 import pytest
 
-from conftest import INTERFACE
+from conftest import INTERFACE, page_source
 
 #: Where the catalogues live, English first because it is the one the others
 #: are measured against.
@@ -100,7 +100,7 @@ def test_the_page_asks_for_strings_that_exist(english):
     """Every string the page looks up by name. Plurals are asked for without
     their ending, which the browser chooses, so both endings count as the key
     being there."""
-    page = (INTERFACE / "app.js").read_text(encoding="utf-8")
+    page = page_source()
     plurals = {key.rsplit(".", 1)[0] for key in english if key.endswith((".one", ".other"))}
 
     missing = [
@@ -129,7 +129,7 @@ def test_every_answer_built_from_a_value_is_built_in_the_page(english):
     """A name the page looks up whole, where the catalogue only holds it with
     something on the end, reaches the screen as `told.setup.asked`. That is
     what somebody saw the first time an installation was asked for."""
-    page = (INTERFACE / "app.js").read_text(encoding="utf-8")
+    page = page_source()
     said = page[page.index("function say("):page.index("\n}", page.index("function say("))]
 
     for reason in BUILT_FROM_A_VALUE:
@@ -160,7 +160,7 @@ def test_every_setting_the_editor_offers_has_a_sentence(english):
     from previously import machines
 
     offered = machines.offers(machines.find("nextcube"))
-    page = (INTERFACE / "app.js").read_text(encoding="utf-8")
+    page = page_source()
     kinds = {int(kind): key for kind, key in KIND_NOTES.findall(page)}
 
     assert set(kinds) == {entry["kind"] for entry in offered["kinds"]}
