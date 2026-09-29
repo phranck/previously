@@ -96,7 +96,7 @@ async function fetchTheSystem() {
       /* The same sentence the other question ends on, because it says the same
          thing: this takes minutes and the window can be left. Two copies of it
          would part company the first time one was rewritten. */
-      t("ask.install.time"),
+      t("ask.job.time"),
     ],
     icon: Art.Installer,
     confirm: t("button.fetch"),

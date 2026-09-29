@@ -129,7 +129,7 @@ async function backUpTheDisk(disk) {
         left: sized(Math.max(0, state.room - disk.bytes)),
       }) : "",
       t("ask.backup.off"),
-      t("ask.install.time"),
+      t("ask.job.time"),
     ].filter(Boolean),
     icon: Art.Disk,
     confirm: t("button.copy"),
@@ -148,7 +148,7 @@ async function backUpTheDisk(disk) {
 async function putTheCopyBack(copy) {
   const agreed = await askPanel({
     name: t("ask.restore.title", { name: copy.name }),
-    text: [t("ask.restore.loss"), t("ask.backup.off"), t("ask.install.time")],
+    text: [t("ask.restore.loss"), t("ask.backup.off"), t("ask.job.time")],
     icon: Art.Disk,
     confirm: t("button.put-back"),
   });
