@@ -173,6 +173,15 @@
   --folder: url("parts/folder.png");
   --Grab: url("parts/Grab.png");
   --home: url("parts/home.png");
+  /* The mark on the button Return presses. It is no file in NeXTSTEP: the
+     whole 3.3 filesystem holds nothing named after the return key, and the
+     Application Kit's own Resources carry no such picture, so the Kit drew it
+     in PostScript at runtime as it drew the window buttons and the submenu
+     arrow. This is therefore cut out of a screenshot at its own pixel bounds,
+     the way ../../design/extract.py takes those two, and the screenshot is
+     NeXT's own figure of an attention panel in chapter 5 of the user
+     interface documentation. */
+  --return-key: url("parts/return-key.png");
   --Installer: url("parts/Installer.png");
   --Localization: url("parts/Localization.png");
   --Monitor: url("parts/Monitor.png");

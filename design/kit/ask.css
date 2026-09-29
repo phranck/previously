@@ -85,9 +85,28 @@ nx-ask .entry {
 }
 nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
 
-/* The button Return presses carries the Return-key symbol, and it carries it
-   only whilst Return will press it, which here is whilst the line above is
-   shown. NeXTSTEP drew that symbol as a bitmap this project does not have, so
-   the character the standard names RETURN SYMBOL stands in for it. */
-nx-ask button.returns::after { content: "\23CE"; margin-left: 7px; }
+/* The button Return presses carries the Return-key symbol, to the right of its
+   label, and it carries it only whilst Return will press it, which here is
+   whilst the line above is shown.
+
+   The symbol is the original's own 15 by 10 bitmap, cut out of the figure the
+   Panels chapter draws its attention panel with, at
+   https://www.nextop.de/NeXTstep_3.3_Developer_Documentation/UserInterface/05_Panel/Panel.htmld/F6.gif
+   with the button's own grey taken out of it. So the black edge along its top
+   and the white one along its foot are NeXT's, and what shows between them is
+   whatever the button is standing on.
+
+   The one pixel is what puts the arrow's middle against the middle of the
+   label's capitals rather than against the middle of its line box, which is
+   taller than the letters and leaves the arrow sitting high. It was settled by
+   putting this button beside the Save button in that same figure. */
+nx-ask button.returns::after {
+  content: "";
+  display: inline-block;
+  width: 15px;
+  height: 10px;
+  margin-left: 7px;
+  transform: translateY(1px);
+  background: var(--return-key) no-repeat;
+}
 
