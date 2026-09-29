@@ -26,6 +26,7 @@ export const en = {
   "ask.delete.title": "Delete {name}",
   "ask.delete.loss": "It is taken off the card and does not come back.",
   "button.delete": "Delete",
+  "button.release-notes": "Release Notes",
   "menu.quit": "Quit",
   "menu.quit.key": "q",
   "grab.take.key": "t",
@@ -212,6 +213,8 @@ export const en = {
 
   /* --- the buttons ------------------------------------------------------ */
   "preview.empty": "Nothing to show.",
+  "preview.notes.title": "Previously {version}",
+  "preview.no-notes": "That release says nothing about itself.",
   "grab.take": "Take a Picture",
   "grab.idle": "Nothing to photograph. The machine is not running.",
   "grab.failed": "The screen could not be read.",

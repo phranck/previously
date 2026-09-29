@@ -137,7 +137,16 @@
          because that one says what is answering and this one says what could
          be, and the two come from different places: dpkg for what is on the
          card, and GitHub for what has been released. -->
-    <nx-row><label data-t="pi.newest"></label><nx-field id="pi-newest">&mdash;</nx-field></nx-row>
+    <nx-row>
+      <label data-t="pi.newest"></label>
+      <!-- The field and what can be done with it, because a row is a label and
+           one thing beside it and this row has two. What the release says about
+           itself is read in Preview, which is what shows a document here. -->
+      <div class="beside">
+        <nx-field id="pi-newest">&mdash;</nx-field>
+        <button id="pi-notes" data-t="button.release-notes"></button>
+      </div>
+    </nx-row>
     <nx-row><label data-t="pi.emulator"></label><nx-field id="pi-emulator">&mdash;</nx-field></nx-row>
   </div>
   <!-- How far a replacement of this tool has got. The trough is there only
@@ -472,8 +481,12 @@
      window is titled. -->
 <nx-window name="preview" data-t-title="app.preview" drop
            x="640" y="120" w="576" h="480" min-w="320" min-h="240" closed>
+  <!-- One room per kind of document, and the window shows whichever the
+       renderer for what it was handed owns. A window that knew both kinds
+       would have three special cases by the third one. -->
   <nx-scroller>
     <div class="shot" id="preview-picture"></div>
+    <div class="document" id="preview-document" hidden></div>
   </nx-scroller>
   <p class="note" id="preview-note"></p>
 </nx-window>

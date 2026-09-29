@@ -489,3 +489,68 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    as well as by the Update button appearing, because the button is at the foot
    of the window and this is the line somebody is reading. */
 #pi-newest[newer] { background: var(--newer); }
+
+/* A row whose one cell holds a reading and something to do with it. The field
+   takes the room and what stands beside it takes what it needs, which is how
+   the button keeps its own width whatever is in the field. */
+nx-row .beside {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+nx-row .beside nx-field { flex: 1 1 auto; min-width: 0; }
+
+
+/* --- a document in preview ------------------------------------------------ */
+
+/* Release notes, rendered from the Markdown they were written in. The window
+   already draws NeXT's white page under a picture, and this is the same page
+   with text on it rather than a second kind of surface. */
+.document {
+  background: var(--white);
+  padding: 12px 16px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+/* Headings are the page's own face one step up and in bold, because NeXTSTEP
+   set a document in one family and said the rest with weight and size. Three
+   deep, which is as far as the renderer goes. */
+.document h1,
+.document h2,
+.document h3 {
+  font-weight: bold;
+  margin: 16px 0 6px;
+}
+
+.document h1 { font-size: 18px; }
+.document h2 { font-size: 15px; }
+.document h3 { font-size: 13px; }
+.document > :first-child { margin-top: 0; }
+
+.document p { margin: 0 0 10px; line-height: 1.45; }
+.document ul,
+.document ol { margin: 0 0 10px; padding-left: 22px; }
+.document li { margin: 0 0 3px; line-height: 1.45; }
+
+/* Code is set in the face the Terminal is set in, which is the one face on this
+   desk that was drawn for reading characters one at a time. */
+.document code,
+.document pre { font-family: var(--terminal-font); }
+.document code { font-size: 12px; }
+
+/* A block keeps its own line breaks and its own indentation, which is what a
+   fence is for, and it scrolls sideways rather than wrapping: a wrapped command
+   is one somebody would copy wrongly. */
+.document pre {
+  font-size: 12px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--sunken-sides);
+  overflow-x: auto;
+}
+
+.document a { color: inherit; }

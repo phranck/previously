@@ -107,6 +107,8 @@ The package owns `/usr/bin` and `/usr/share/previous`. The disk image and the co
 
 Opening the window is what asks GitHub, at most three times a minute. So a release published whilst you are looking at the window turns up when you close it and open it again, and leaving the window open does not spend the sixty requests an hour an address is allowed.
 
+**Release Notes**, beside that line, opens the published release's own notes in Preview. It is there whenever there is a release to read about, whether it is newer than the one you are running or not.
+
 The window then says which step it is on and how much of the package has come down. Half way through, the tool is stopped and the new one started, so for a few seconds there is nothing for the page to talk to; it says so rather than going blank, and when the new tool answers it says which version is now talking to it. Nothing needs reloading and nothing needs stopping, and NeXTSTEP keeps running throughout.
 
 An update that fails leaves the tool that is here running, and the window says which step stopped it and why. A board that cannot reach GitHub offers no update and says that it does not know what is published.

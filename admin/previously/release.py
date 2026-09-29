@@ -71,6 +71,13 @@ LARGEST_ANSWER = 1024 * 1024
 #: download are sized from.
 LARGEST_PACKAGE = 64 * 1024 * 1024
 
+#: The most of a release's notes to keep. They are written to be read in one
+#: sitting, and this is several times the longest that have been, so what it
+#: bounds is a release whose notes are not notes. Anything past it is cut rather
+#: than refused, because notes that are too long are still notes and refusing
+#: them would take the update with them.
+LONGEST_NOTES = 64 * 1024
+
 #: The least time between two lookups, whoever asks for one. Three a minute,
 #: which is what opening the Raspberry Pi window is allowed to cost.
 #:
@@ -136,9 +143,10 @@ def published(check=False, now=None):
 def look():
     """Asks GitHub what the newest release is.
 
-    @returns dict with `version`, `url`, `size`, `digest` and `asked_at`. The
-      digest is the hex alone, because the algorithm is in the name of the field
-      it is checked with.
+    @returns dict with `version`, `notes`, `url`, `size`, `digest` and
+      `asked_at`. The digest is the hex alone, because the algorithm is in the
+      name of the field it is checked with, and the notes are the release's own
+      description as Markdown, which is what GitHub keeps them as.
     @raises Unreachable where GitHub could not be asked or answered with
       something this does not understand.
 
@@ -174,14 +182,18 @@ def _understood(said):
     """What a release means, or a refusal.
 
     @param said - What GitHub answered, parsed.
-    @returns dict with `version`, `url`, `size` and `digest`.
-    @raises Unreachable where any of the four is missing or is not what it has
-      to be.
+    @returns dict with `version`, `notes`, `url`, `size` and `digest`.
+    @raises Unreachable where any of the four that matter is missing or is not
+      what it has to be.
 
     Every field is somebody else's value, and the one that matters most is the
     address: it reaches a fetch, so it is checked against the same hosts that
     fetch is allowed rather than trusted for having come from an answer this
     asked for.
+
+    The notes are the one field that is allowed to be missing, because a release
+    published without any is a release, and the window says so rather than
+    refusing to offer the update.
     """
     if not isinstance(said, dict):
         raise Unreachable("not a release")
@@ -190,9 +202,13 @@ def _understood(said):
     if not tag:
         raise Unreachable("no version in the tag")
 
+    body = said.get("body")
+    notes = body[:LONGEST_NOTES] if isinstance(body, str) else ""
+
     for asset in said.get("assets") or []:
         if isinstance(asset, dict) and asset.get("name") == ASSET:
-            return {"version": tag.group(1), **_the_package(asset)}
+            return {"version": tag.group(1), "notes": notes,
+                    **_the_package(asset)}
     raise Unreachable("no %s on that release" % ASSET)
 
 

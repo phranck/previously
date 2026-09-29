@@ -18,6 +18,7 @@ export const sv = {
   "ask.delete.title": "Radera {name}",
   "ask.delete.loss": "Bilden tas bort från kortet och kommer inte tillbaka.",
   "button.delete": "Radera",
+  "button.release-notes": "Versionsanteckningar",
   "menu.quit": "Avsluta",
   "menu.quit.key": "v",
   "grab.take.key": "t",
@@ -200,6 +201,8 @@ export const sv = {
 
   /* --- the buttons ------------------------------------------------------ */
   "preview.empty": "Ingenting att visa.",
+  "preview.notes.title": "Previously {version}",
+  "preview.no-notes": "Den här versionen säger ingenting om sig själv.",
   "grab.take": "Ta en bild",
   "grab.idle": "Ingenting att fotografera. Maskinen körs inte.",
   "grab.failed": "Skärmen kunde inte läsas.",

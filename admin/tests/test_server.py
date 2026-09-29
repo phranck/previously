@@ -1798,6 +1798,46 @@ def test_a_run_about_something_else_is_not_shown_as_this_one(
     assert json.loads(body)["progress"] is None
 
 
+def test_what_a_release_says_about_itself_has_its_own_address(
+        service, monkeypatch):
+    """Rather than riding along with the answer the window polls. That one is
+    asked every two seconds and these are thousands of characters asked for
+    when somebody presses a button."""
+    monkeypatch.setattr(server.release, "published",
+                        lambda check=False: {"version": "1.0.2",
+                                             "notes": "## Installing it"})
+
+    status, _, body = fetch(service + "/api/update/notes")
+    said = json.loads(body)
+
+    assert status == 200
+    assert said == {"version": "1.0.2", "notes": "## Installing it"}
+
+
+def test_the_notes_are_sent_as_the_markdown_they_are(service, monkeypatch):
+    """The browser renders them. Sent as markup instead, this answer would be
+    a page handing another page something to run."""
+    monkeypatch.setattr(server.release, "published",
+                        lambda check=False: {"version": "1.0.2",
+                                             "notes": "<script>x</script>"})
+
+    _, _, body = fetch(service + "/api/update/notes")
+
+    assert json.loads(body)["notes"] == "<script>x</script>"
+
+
+def test_a_board_that_knows_of_no_release_says_so_rather_than_failing(
+        service, monkeypatch):
+    """Which is the state of the first seconds after this service starts, and
+    of a machine with no internet."""
+    monkeypatch.setattr(server.release, "published", lambda check=False: None)
+
+    status, _, body = fetch(service + "/api/update/notes")
+
+    assert status == 200
+    assert json.loads(body) == {"version": None, "notes": ""}
+
+
 def test_asking_for_a_replacement_needs_a_session(service, tmp_path):
     """It replaces the program answering this request, which is as far from a
     reading as anything this tool does."""

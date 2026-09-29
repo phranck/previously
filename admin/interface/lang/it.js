@@ -18,6 +18,7 @@ export const it = {
   "ask.delete.title": "Eliminare {name}",
   "ask.delete.loss": "L’immagine viene rimossa dalla scheda e non torna.",
   "button.delete": "Elimina",
+  "button.release-notes": "Note di rilascio",
   "menu.quit": "Esci",
   "menu.quit.key": "e",
   "grab.take.key": "s",
@@ -200,6 +201,8 @@ export const it = {
 
   /* --- the buttons ------------------------------------------------------ */
   "preview.empty": "Niente da mostrare.",
+  "preview.notes.title": "Previously {version}",
+  "preview.no-notes": "Questa versione non dice niente di sé.",
   "grab.take": "Scatta un’immagine",
   "grab.idle": "Niente da fotografare. La macchina non è in funzione.",
   "grab.failed": "Non è stato possibile leggere lo schermo.",
