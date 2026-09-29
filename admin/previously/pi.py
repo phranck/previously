@@ -52,10 +52,19 @@ SOUND_CARDS = pathlib.Path("/proc/asound")
 #: somewhere else, the way it can with the sound cards above.
 MEMINFO = pathlib.Path("/proc/meminfo")
 
+#: What the console writes down when the emulator ends badly, inside the
+#: service's own runtime directory. One line each, and the whole file is gone
+#: at every boot because that directory is a tmpfs. `setup.py` writes the line
+#: that writes it, and `install.sh` carries the same lines.
+CRASHES = "crashes"
 
-def readings():
+
+def readings(runtime_directory=None):
     """Everything this window shows, in one answer.
 
+    @param runtime_directory - pathlib.Path of the service's own, where the
+      console writes down an emulator that ended badly. None leaves that one
+      reading out, which is what a test that is asking about the board wants.
     @returns dict. Any reading that could not be had is None, and the page
       leaves that line empty rather than saying something untrue.
     """
@@ -65,10 +74,46 @@ def readings():
         "temperature_c": _temperature(),
         "throttling": _throttling(),
         "emulator": _emulator(),
+        "crashes": crashes(runtime_directory),
         "sound": _sound(),
         "disk": _disk(),
         "memory": memory(),
     }
+
+
+def crashes(runtime_directory):
+    """How often the emulator has ended badly since the board came up.
+
+    @param runtime_directory - pathlib.Path of the service's own, or None.
+    @returns dict with `count` and `last`, the second being when the last one
+      was in seconds since the epoch. None where nothing is recorded, which is
+      the ordinary state of a machine that is behaving.
+
+    The console writes one line per crash, and that file lives on a tmpfs, so
+    a board that has just started has none: what is in it is what happened
+    since. Nothing here works out a date, which is the whole point of putting
+    it there.
+
+    Core dumps are the other answer to this question and this project takes
+    neither. Debian sets the soft core limit to 0 for every user, so nothing
+    is written; nine dumps of 37 MB each once sat in the home for two days and
+    nobody read one. What somebody wants to know is that it crashed.
+    """
+    if runtime_directory is None:
+        return None
+    try:
+        written = (runtime_directory / CRASHES).read_text().splitlines()
+    except OSError:
+        return None
+
+    when = []
+    for line in written:
+        said = line.split()
+        if said and said[0].isdigit():
+            when.append(int(said[0]))
+    if not when:
+        return None
+    return {"count": len(when), "last": max(when)}
 
 
 def _model():

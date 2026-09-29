@@ -3,7 +3,7 @@
 import { t } from "../strings.js";
 import { show, showState } from "./page.js";
 import { allowActions } from "./status.js";
-import { NOTHING, duration, named } from "./words.js";
+import { NOTHING, duration, named, when } from "./words.js";
 
 /** How often the status is fetched. A machine whose job is to sit there does
  *  not repay a faster poll than this. */
@@ -59,6 +59,13 @@ function drawPi(pi) {
   showState("pi-sound", Boolean(pi.sound?.playing), pi.sound
     ? t(pi.sound.playing ? "pi.sound.playing" : "pi.sound.silent", { card: pi.sound.card })
     : t("pi.sound.none"));
+
+  /* Whether the emulator has ended badly since this board came up. A machine
+     that has crashed four times in a morning looks exactly like one that has
+     not, from a screen that shows NeXTSTEP either way. */
+  showState("pi-crashes", !pi.crashes, pi.crashes
+    ? t("pi.crashes.since", { count: pi.crashes.count, at: when(pi.crashes.last) })
+    : t("pi.crashes.none"));
 
   show("pi-memory", pi.memory
     ? t("pi.memory.free",

@@ -120,6 +120,11 @@
     <nx-row><label data-t="pi.temperature"></label><div class="state" id="pi-temp">&mdash;</div></nx-row>
     <nx-row><label data-t="pi.power"></label><div class="state" id="pi-power">&mdash;</div></nx-row>
     <nx-row><label data-t="pi.sound"></label><div class="state" id="pi-sound">&mdash;</div></nx-row>
+    <!-- Whether the emulator has ended badly since this board came up. The
+         console writes one line per crash into the service's runtime
+         directory, which is a tmpfs, so the file says what happened since the
+         boot and nothing here has to work out when. -->
+    <nx-row><label data-t="pi.crashes"></label><div class="state" id="pi-crashes">&mdash;</div></nx-row>
     <nx-row><label data-t="pi.memory"></label><nx-field id="pi-memory">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="pi.card"></label><nx-field id="pi-disk">&mdash;</nx-field></nx-row>
     <!-- Which version of this tool is answering. A name rather than a

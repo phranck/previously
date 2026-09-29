@@ -131,9 +131,24 @@ AUTOSTART_CLOSES = "# <<< nextstep-rpi <<<"
 #: one place and to nothing else.
 WORK_DIRECTORY = ".cache/previously"
 
+#: The service's own runtime directory, which is a tmpfs the unit makes.
+RUNTIME = "/run/previously"
+
 #: The file the tool creates to hold the emulator down, which the autostart
 #: below waits on.
-HOLD = "/run/previously/hold"
+HOLD = RUNTIME + "/hold"
+
+#: Where the console writes down an emulator that ended badly, one line each.
+#: In the runtime directory because it is a tmpfs: the file is gone at every
+#: boot, so what is in it is what happened since this board came up, and the
+#: window reading it has nothing to work out.
+#:
+#: Core dumps are a different answer to the same question and this project
+#: takes neither: Debian's own `/etc/security/limits.d/10-coredump-debian.conf`
+#: sets the soft limit to 0 for every user, so nothing is written. Nine of
+#: them, 340 MB, sat in the home for two days and nobody ever read one. A line
+#: saying a crash happened is what a person actually wants.
+CRASHES = RUNTIME + "/crashes"
 
 #: What a speaker is set to the first time it is seen. WirePlumber ships 0.064,
 #: which is inaudible once NeXTSTEP's own sounds are played through it. This is
@@ -1081,7 +1096,11 @@ def _autostart(work):
 
 
 def _autostart_block(owner):
-    """@returns str - What is added to the profile, markers and all."""
+    """@returns str - What is added to the profile, markers and all.
+
+    `install.sh` writes the same lines, because it is the way in on a machine
+    that has no admin tool yet. `tests/test_setup.py` holds the two together.
+    """
     return (
         "\n%s\n"
         "# Hand the first console to Previous. XDG_VTNR carries the number of\n"
@@ -1097,16 +1116,28 @@ def _autostart_block(owner):
         "#\n"
         "# The directory it runs in is where it writes a screen grab, and the\n"
         "# admin tool reads those and removes them.\n"
+        "#\n"
+        "# An emulator that ends badly says so in one line, which the Raspberry\n"
+        "# Pi window reads. It goes in the runtime directory because that is a\n"
+        "# tmpfs: the file is gone at every boot, so whatever is in it happened\n"
+        "# since this board came up and nothing has to work out when. The exit\n"
+        "# runs the session down exactly as exec did, so the console never falls\n"
+        "# through to a prompt.\n"
         'if [ "$XDG_VTNR" = 1 ] && [ -z "$WAYLAND_DISPLAY" ]; then\n'
         "  clear\n"
         "  while [ -f %s ]; do sleep 2; done\n"
         "  mkdir -p %s\n"
         "  cd %s\n"
-        "  exec cage -- /usr/bin/previous\n"
+        "  cage -- /usr/bin/previous\n"
+        "  status=$?\n"
+        '  if [ "$status" -ne 0 ] && [ -d %s ]; then\n'
+        '    printf "%%s %%s\\n" "$(date +%%s)" "$status" >> %s\n'
+        "  fi\n"
+        '  exit "$status"\n'
         "fi\n"
         "%s\n" % (AUTOSTART_OPENS, HOLD, HOLD,
                   owner.home / WORK_DIRECTORY, owner.home / WORK_DIRECTORY,
-                  AUTOSTART_CLOSES))
+                  RUNTIME, CRASHES, AUTOSTART_CLOSES))
 
 
 def _no_autostart(work):

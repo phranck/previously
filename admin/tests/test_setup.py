@@ -13,6 +13,8 @@ list for everything root would have done.
 
 import json
 import os
+import pathlib
+import re
 
 import pytest
 
@@ -385,7 +387,7 @@ def test_the_autostart_is_fenced_so_it_can_be_taken_out_again(tmp_path, commands
 
     setup.STEPS["autostart"](work)
 
-    assert "exec cage -- /usr/bin/previous" in profile.read_text()
+    assert "cage -- /usr/bin/previous" in profile.read_text()
 
     setup.STEPS["no-autostart"](work)
 
@@ -402,6 +404,48 @@ def test_an_autostart_that_is_already_there_is_not_written_twice(tmp_path, comma
     setup.STEPS["autostart"](work)
 
     assert profile.read_text() == once
+
+
+def test_the_installer_and_this_write_the_same_autostart():
+    """`install.sh` carries its own copy of these lines, because it is the way
+    in on a machine that has no admin tool yet. Two copies of one thing drift,
+    and the drift would be a console that behaves differently depending on
+    which of the two set the machine up. This is what says so.
+
+    Compared as shell rather than as text. The installer writes its copy
+    inside a heredoc, so every `$` in it is escaped and every backslash
+    doubled, and it names paths by the variables it declared above. Both sides
+    are put back into what the console will actually read, and then they have
+    to be the same lines.
+    """
+    class Somebody:
+        home = pathlib.Path("/home/next")
+
+    installer = (pathlib.Path(__file__).resolve().parent.parent.parent
+                 / "install.sh").read_text(encoding="utf-8")
+    values = dict(re.findall(r'^readonly (\w+)="([^"]*)"$', installer, re.M))
+    values["HOME"] = str(Somebody.home)
+
+    def settled(text):
+        """One variable at a time, until none is left: they are written in
+        terms of each other, so HOLD_FILE is RUNTIME_DIR and a slash."""
+        for _ in range(4):
+            text = re.sub(r"\$\{(\w+)\}",
+                          lambda found: values.get(found.group(1), found.group(0)),
+                          text)
+        return text
+
+    def shell(text):
+        return [line.strip() for line in text.splitlines()
+                if line.strip() and not line.strip().startswith("#")]
+
+    block = re.search(r"\$\{AUTOSTART_MARKER\}\n(.*?)\$\{AUTOSTART_END\}",
+                      installer, re.S)
+    assert block, "no autostart block in install.sh"
+    theirs = shell(settled(block.group(1).replace("\\$", "$").replace("\\\\", "\\")))
+    ours = shell(setup._autostart_block(Somebody()))
+
+    assert theirs == ours
 
 
 def test_an_installation_ends_with_the_machine_running(tmp_path, commands, monkeypatch):
