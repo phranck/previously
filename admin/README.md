@@ -113,7 +113,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/kiosk/start` | Lets the emulated machine come back |
 | `POST /api/kiosk/stop` | Shuts it down properly and keeps it down |
 | `POST /api/kiosk/restart` | Both, in that order |
-| `GET /api/pi` | Temperature, power, sound, disk, what the emulator costs, and which version of this tool is answering |
+| `GET /api/pi` | Temperature, power, sound, disk, what the emulator costs, whether it has crashed since the boot, and which version of this tool is answering |
 | `GET /api/activity` | What every core is doing, the load averages, memory, and what the emulator costs |
 | `GET /api/files` | Everything this tool holds, as a place with places in it |
 | `POST /api/machine` | Makes the emulated machine the one named, from either set |
@@ -293,10 +293,19 @@ A sudoers rule was the other way to do this, and it cannot work here: the servic
 
 ```sh
 while [ -f /run/previously/hold ]; do sleep 2; done
-exec cage -- /usr/bin/previous
+cage -- /usr/bin/previous
+status=$?
+if [ "$status" -ne 0 ] && [ -d /run/previously ]; then
+  printf "%s %s\n" "$(date +%s)" "$status" >> /run/previously/crashes
+fi
+exit "$status"
 ```
 
 That path is a tmpfs and is empty at every boot, which is what makes restarting the board work: the machine comes back and starts its emulator whoever switched it off before the last shutdown. On the card it would leave a board that reboots waiting for a file nobody is going to remove.
+
+**An emulator that ends badly says so in one line**, and the Raspberry Pi window reads it. The file is on that same tmpfs, so what is in it happened since this board came up and nothing has to work out when. The `exit` runs the session down exactly as `exec` did, so the console never falls through to a shell prompt.
+
+**No core dumps.** Debian sets the soft core limit to 0 for every user in `/etc/security/limits.d/10-coredump-debian.conf`, and this project leaves that as it is rather than writing a limit of its own, because the platform already answers the question. It is also the right answer here: a machine that boots into an emulator and is looked after through a browser has nobody to read a 37 MB dump, and nine of them once sat in the home for two days without anybody opening one. What a person wants is to know that it crashed, which is the line above.
 
 Stopping writes that file, presses F10 and waits for the guest to go. Starting removes the file, and the waiting console notices within two seconds. Nothing is killed, nothing races, and the service never needs a privilege it could misuse.
 

@@ -154,5 +154,38 @@ def test_every_reading_is_answered_even_where_none_can_be_had(monkeypatch):
 
     assert set(answer) == {
         "model", "uptime_seconds", "temperature_c", "throttling",
-        "emulator", "sound", "disk", "memory",
+        "emulator", "crashes", "sound", "disk", "memory",
     }
+
+
+def test_a_board_that_has_not_crashed_says_nothing_about_crashing(tmp_path):
+    """The file is on a tmpfs and is made by the console when it has something
+    to write, so a board that has just come up has none."""
+    assert pi.crashes(tmp_path) is None
+
+
+def test_every_crash_since_the_board_came_up_is_counted(tmp_path):
+    """One line each, and the last of them is when it happened. Nothing works
+    out a date: the file itself is gone at every boot, so what is in it is
+    what happened since."""
+    (tmp_path / pi.CRASHES).write_text(
+        "1790654464 139\n1790657571 134\n", encoding="utf-8")
+
+    said = pi.crashes(tmp_path)
+
+    assert said == {"count": 2, "last": 1790657571}
+
+
+def test_a_line_that_is_not_a_crash_is_not_counted(tmp_path):
+    """Whatever else ends up in that file is not one. The count is what the
+    window says, so a stray line would be a crash somebody goes looking for."""
+    (tmp_path / pi.CRASHES).write_text(
+        "1790654464 139\nnothing to see here\n\n", encoding="utf-8")
+
+    assert pi.crashes(tmp_path) == {"count": 1, "last": 1790654464}
+
+
+def test_a_crash_file_that_cannot_be_read_is_not_invented(tmp_path):
+    (tmp_path / pi.CRASHES).mkdir()
+
+    assert pi.crashes(tmp_path) is None

@@ -124,7 +124,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # somebody looks to find out what they are looking at. It comes
             # from here rather than from pi.py, which reads the board itself
             # and nothing else.
-            return self._json({"version": VERSION, **pi.readings()})
+            return self._json({
+                "version": VERSION,
+                **pi.readings(self.settings.runtime_directory)})
         if route == "/api/activity":
             # Its own route rather than more of the one above, because this one
             # is asked once a second whilst a monitor is open and that one
