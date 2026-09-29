@@ -68,13 +68,23 @@ class NxAsk extends HTMLElement {
     this.querySelector(".title").textContent = title;
     this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {
+        /* A line is a sentence, or an element where the caller had to build
+           it: a copyright carrying a link is still one line, and the kit has
+           no business knowing which word in it leads where. */
+        if (line instanceof Node) return line;
         const paragraph = document.createElement("p");
         paragraph.textContent = line;
         return paragraph;
       }));
     if (icon) showArt(this.querySelector(".icon"), icon);
     this.querySelector('[data-answer="yes"]').textContent = confirm;
-    this.querySelector('[data-answer="no"]').textContent = cancel;
+
+    /* A panel that only says something has one button, and the safe answer is
+       the same as the acting one. Left standing and empty it would be a second
+       button offering nothing, which is worse than none. */
+    const safe = this.querySelector('[data-answer="no"]');
+    safe.hidden = !cancel;
+    safe.textContent = cancel ?? "";
 
     const entry = this.querySelector(".entry");
     entry.hidden = !field;
@@ -83,9 +93,29 @@ class NxAsk extends HTMLElement {
 
     this.toggleAttribute("data-open", true);
     addEventListener("keydown", this.keys);
-    (field ? entry : this.querySelector('[data-answer="no"]')).focus();
+    (field ? entry : (cancel ? safe : this.querySelector('[data-answer="yes"]'))).focus();
 
     return new Promise((settle) => { this.settle = settle; });
+  }
+
+  /**
+   * Says something and waits for it to be read.
+   * @param {object} panel
+   * @param {(string|Node)[]} panel.text - One paragraph per entry, as a
+   *   sentence or as an element where the caller had to build the line
+   *   itself. The first is the panel's own name, which in an attention panel
+   *   stands beside the icon rather than in the title bar.
+   * @param {string} [panel.icon] - Which picture, by the name showArt knows.
+   * @param {string} panel.confirm - The wording on the one button. The kit
+   *   holds no words of its own, in any language.
+   * @returns {Promise<boolean>} Always true, so the caller can wait for it to
+   *   be dismissed without reading the answer.
+   *
+   * The title bar stays empty, which is what tells an attention panel from an
+   * ordinary one: it is named inside itself, after whatever brought it up.
+   */
+  tell({ text, icon, confirm }) {
+    return this.ask({ title: "", text, icon, confirm, cancel: null });
   }
 
   /**

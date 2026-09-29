@@ -10,6 +10,8 @@ NX_STRINGS.en = {
   /* The letter beside each main-menu entry, which is a letter of the
      word that entry shows. Distinct within the language, because the page
      acts on the first entry whose letter matches. */
+  "menu.about-previously": "About Previously...",
+  "menu.about-previously.key": "v",
   "menu.info.key": "i",
   "menu.about": "About {machine}",
   "menu.about.key": "a",
@@ -219,6 +221,10 @@ NX_STRINGS.en = {
   "button.change": "Change",
   "button.use": "Use",
   "button.fine": "Good",
+  "about.version": "Version {version}",
+  "about.copyright": "Copyright © 2026 {holder}",
+  "about.holder": "LAYERED",
+  "about.ok": "OK",
   "button.close": "Close",
   "button.cancel": "Cancel",
   "button.ok": "OK",

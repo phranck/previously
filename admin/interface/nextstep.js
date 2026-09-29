@@ -329,6 +329,52 @@ function restoreFront() {
   front?.raise();
 }
 
+
+/**
+ * Whether this browser had never been on this desk when the page loaded.
+ *
+ * The desk writes down where every window stands, so a store with nothing in
+ * it is somebody arriving for the first time. Asked once, at load, rather than
+ * whenever somebody wants to know: restoring the front window is itself
+ * something worth writing down, so by the time the page is up the answer has
+ * already changed.
+ *
+ * Read rather than kept as a flag of its own, because a second thing to write
+ * down is a second thing that can disagree with the first.
+ */
+const DESK_WAS_NEW = Object.keys(readState()).length === 0;
+
+/** @returns {boolean} Whether this is that browser's first visit. */
+function deskIsNew() {
+  return DESK_WAS_NEW;
+}
+
+/**
+ * Hands the desk itself the front, which is what a press on it means.
+ *
+ * Every window goes inactive and none is raised, so the main menu belongs to
+ * the workspace again. The event carries an empty name for the same reason:
+ * there is no window in front, and whoever draws the menu reads that as the
+ * workspace's own.
+ *
+ * NeXTSTEP activates an application when one of its windows is clicked, and
+ * the desk is the Workspace's own surface. Without this it is the one thing
+ * here that cannot be brought forward, and the way back to its menu is to
+ * close somebody else's window.
+ *
+ * On the way down rather than on the click, because that is when the original
+ * reorders windows, and a press that begins on the desk is the desk's however
+ * far it is dragged afterwards.
+ */
+addEventListener("pointerdown", (event) => {
+  if (event.target.closest("nx-window, nx-menu, nx-dock, nx-floor, nx-ask")) return;
+  for (const window_ of document.querySelectorAll("nx-window")) {
+    window_.setAttribute("inactive", "");
+  }
+  remember("desk", { front: "" });
+  document.dispatchEvent(new CustomEvent("nx-front", { detail: { name: "" } }));
+});
+
 /* --- pictures of things moving -------------------------------------------
 
    Two of them, and both are pictures rather than the things themselves: an
@@ -1496,13 +1542,23 @@ class NxAsk extends HTMLElement {
     this.querySelector(".title").textContent = title;
     this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {
+        /* A line is a sentence, or an element where the caller had to build
+           it: a copyright carrying a link is still one line, and the kit has
+           no business knowing which word in it leads where. */
+        if (line instanceof Node) return line;
         const paragraph = document.createElement("p");
         paragraph.textContent = line;
         return paragraph;
       }));
     if (icon) showArt(this.querySelector(".icon"), icon);
     this.querySelector('[data-answer="yes"]').textContent = confirm;
-    this.querySelector('[data-answer="no"]').textContent = cancel;
+
+    /* A panel that only says something has one button, and the safe answer is
+       the same as the acting one. Left standing and empty it would be a second
+       button offering nothing, which is worse than none. */
+    const safe = this.querySelector('[data-answer="no"]');
+    safe.hidden = !cancel;
+    safe.textContent = cancel ?? "";
 
     const entry = this.querySelector(".entry");
     entry.hidden = !field;
@@ -1511,9 +1567,29 @@ class NxAsk extends HTMLElement {
 
     this.toggleAttribute("data-open", true);
     addEventListener("keydown", this.keys);
-    (field ? entry : this.querySelector('[data-answer="no"]')).focus();
+    (field ? entry : (cancel ? safe : this.querySelector('[data-answer="yes"]'))).focus();
 
     return new Promise((settle) => { this.settle = settle; });
+  }
+
+  /**
+   * Says something and waits for it to be read.
+   * @param {object} panel
+   * @param {(string|Node)[]} panel.text - One paragraph per entry, as a
+   *   sentence or as an element where the caller had to build the line
+   *   itself. The first is the panel's own name, which in an attention panel
+   *   stands beside the icon rather than in the title bar.
+   * @param {string} [panel.icon] - Which picture, by the name showArt knows.
+   * @param {string} panel.confirm - The wording on the one button. The kit
+   *   holds no words of its own, in any language.
+   * @returns {Promise<boolean>} Always true, so the caller can wait for it to
+   *   be dismissed without reading the answer.
+   *
+   * The title bar stays empty, which is what tells an attention panel from an
+   * ordinary one: it is named inside itself, after whatever brought it up.
+   */
+  tell({ text, icon, confirm }) {
+    return this.ask({ title: "", text, icon, confirm, cancel: null });
   }
 
   /**
