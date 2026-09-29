@@ -19,11 +19,19 @@ import collections
 import os
 import urllib.parse
 
+from . import fetching
+
 #: Where the archives are kept, and the one host anything here is fetched from.
-#: `ARCHIVE_HOSTS` is what a redirect may lead to, because archive.org answers a
-#: download with a redirect to whichever node holds the item.
+#: `ARCHIVE_HOSTS` is what a fetch may reach, as `fetching.allowed` takes it, so
+#: the one name also covers whichever node holds the item: archive.org answers a
+#: download with a redirect to one of those.
 ARCHIVE = "https://archive.org/download"
-ARCHIVE_HOSTS = ("archive.org", ".archive.org")
+ARCHIVE_HOSTS = ("archive.org",)
+
+#: What archive.org states about each item, and therefore what a fetch of one is
+#: checked with. Beside the table that holds those digests rather than at the
+#: place the check happens, because it is a fact about this archive.
+ALGORITHM = "sha1"
 
 #: What one of these disks comes to once it is unpacked. Measured on the
 #: reference machine: `NS33_2GB.dd` is 2,012,774,400 bytes. All six are two
@@ -121,23 +129,17 @@ def address(system):
                          urllib.parse.quote(system.file))
 
 
-def from_our_archive(url):
-    """Whether an address leads to where these come from.
+def expected(system):
+    """What a fetch of this system has to turn out to be.
 
-    @param url - What to check, which is either one of ours or a redirect a
-      fetch was handed.
-    @returns bool
+    @param system - A System.
+    @returns fetching.Expecting
 
-    A download from archive.org answers with a redirect to whichever node holds
-    the item, so following redirects is not optional. What is optional is
-    following one anywhere, and this is what stops that: every hop is checked
-    again, so a redirect leading off the archive ends the fetch.
+    Built here rather than at the fetch, so that the algorithm those digests are
+    in stays beside the table holding them.
     """
-    parsed = urllib.parse.urlparse(url)
-    if parsed.scheme != "https":
-        return False
-    host = parsed.hostname or ""
-    return host == ARCHIVE_HOSTS[0] or host.endswith(ARCHIVE_HOSTS[1])
+    return fetching.Expecting(system.name, system.size, system.digest,
+                              ALGORITHM)
 
 
 def disk_name(system):

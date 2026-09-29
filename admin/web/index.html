@@ -87,12 +87,22 @@
     <nx-row><label data-t="pi.card"></label><nx-field id="pi-disk">&mdash;</nx-field></nx-row>
 
     <nx-row><label>Previously</label><nx-field id="pi-version">&mdash;</nx-field></nx-row>
+
+    <nx-row><label data-t="pi.newest"></label><nx-field id="pi-newest">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="pi.emulator"></label><nx-field id="pi-emulator">&mdash;</nx-field></nx-row>
   </div>
+
+  <div class="gauge" id="pi-update-gauge" hidden>
+    <div class="gauge-fill" id="pi-update-fill"></div>
+  </div>
+
+  <p class="note" id="pi-update-note"></p>
   <p class="note" id="pi-note"></p>
   <div class="buttons">
     <button id="pi-poweroff" data-t="button.power-off"></button>
     <button id="pi-reboot" data-t="button.restart"></button>
+
+    <button id="pi-update" data-t="button.update" hidden></button>
   </div>
 </nx-window>
 

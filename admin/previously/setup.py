@@ -41,16 +41,20 @@ import sys
 import tempfile
 import time
 import urllib.error
-import urllib.parse
-import urllib.request
 
-from . import files, machines, systems
+from . import fetching, files, machines, release, systems
 from .answers import told
 from .settings import Settings
 
 #: What the tool calls the request, inside its own runtime directory.
 #: `previously-setup.path` watches for this name and starts this program.
 REQUEST = "setup"
+
+#: What the job that replaces this tool with the newest release is called. Named
+#: here because two halves ask about it, the helper that carries it out and the
+#: route the browser watches it from, and a string written into both is one that
+#: can be written differently in one of them.
+UPDATE_TOOL = "update-tool"
 
 #: The most a request may be. Everything one can say is four names, so anything
 #: past this is not the tool talking.
@@ -163,6 +167,12 @@ VOLUME = "0.614"
 CHUNK_BYTES = 256 * 1024
 SAY_EVERY_SECONDS = 0.5
 
+#: How long to wait for a download to answer at all. Generous, because the two
+#: places this fetches from are both somebody else's and a Pi is often on Wi-Fi,
+#: and bounded, because a fetch that hangs holds a progress bar that says
+#: nothing.
+FETCH_SECONDS = 60
+
 #: How much of a disk to copy at a time. Larger than a download's chunk,
 #: because this is a card reading and writing itself and there is no network in
 #: the way.
@@ -175,7 +185,9 @@ COPY_BYTES = 4 * 1024 * 1024
 FETCHING = "fetching"
 UNPACKING = "unpacking"
 COPYING = "copying"
-DOINGS = (FETCHING, UNPACKING, COPYING)
+CHECKING = "checking"
+INSTALLING = "installing"
+DOINGS = (FETCHING, UNPACKING, COPYING, CHECKING, INSTALLING)
 
 #: How long to wait for one command. An unpack of two gigabytes on a Pi is the
 #: long one, and a step that hangs is worse than one that fails because nothing
@@ -225,6 +237,11 @@ JOBS = {
                 "configuration", "autologin", "quiet", "autostart", "sound",
                 "start"),
     "update": ("archive", "newest-emulator"),
+    # This tool replacing itself. Two steps because the second one is where the
+    # service running the browser somebody is watching is stopped and started
+    # underneath them, and a bar that covered both would sit still through the
+    # only part they cannot see for themselves.
+    UPDATE_TOOL: ("tool-package", "newest-tool"),
     "remove": ("no-autostart", "loud", "no-autologin", "no-emulator"),
     "fetch": ("host", "tools", "system"),
     "forget": ("no-system",),
@@ -458,6 +475,11 @@ class Work:
         #: this one is matched against that folder's listing rather than joined
         #: onto a path.
         self.backup = backup
+        #: Where this run put the package it downloaded of this tool itself, or
+        #: None. Made by the step that fetches and removed by the step that
+        #: installs, and on the record of what to undo as well, so a run that
+        #: fails between the two leaves nothing behind either.
+        self.tool = None
         self.into = into
         self.done = 0
         self.step = None
@@ -667,7 +689,7 @@ def _archive(work):
     if not REPOSITORY_KEY.exists():
         REPOSITORY_KEY.parent.mkdir(parents=True, exist_ok=True)
         _fetched("%s/%s.asc" % (REPOSITORY_URL, REPOSITORY_HOST),
-                 REPOSITORY_KEY, work, hosts=(REPOSITORY_HOST,))
+                 REPOSITORY_KEY, work, (REPOSITORY_HOST,))
         REPOSITORY_KEY.chmod(0o644)
         work.undoes(lambda: REPOSITORY_KEY.unlink(missing_ok=True))
 
@@ -717,6 +739,106 @@ def _newest_emulator(work):
     run(["apt-get", "install", "-y", "-qq", "--only-upgrade", EMULATOR_PACKAGE])
 
 
+def _tool_package(work):
+    """Fetches the newest release of this tool, and refuses anything else.
+
+    Nothing about the machine changes here. What this leaves is one file in a
+    directory of root's own making, checked three ways, and the step after it is
+    the one that acts on it.
+
+    The check is the point of the step. `apt-get` is about to be pointed at this
+    file as root, so what it is has to be settled first: the size and the digest
+    GitHub states for that asset, and then the package's own control file, which
+    has to say this is `previously` at the version somebody was offered. A digest
+    alone proves the bytes are the bytes GitHub served, and those last two are
+    what prove that what GitHub served is this tool at that version.
+    """
+    newest = _the_newest_tool()
+    here = version_of(release.PACKAGE)
+    if not newer_than(here, newest["version"]):
+        raise Refused("setup.tool-is-current", version=here or "?")
+
+    work.tool = pathlib.Path(tempfile.mkdtemp(prefix="previously-update."))
+    work.undoes(lambda where=work.tool: shutil.rmtree(str(where),
+                                                      ignore_errors=True))
+
+    package = work.tool / release.ASSET
+    _fetched(newest["url"], package, work, release.HOSTS,
+             fetching.Expecting(release.ASSET, newest["size"],
+                                newest["digest"], release.ALGORITHM))
+
+    # The whole of it, because it is all here by now: what changes is what is
+    # being done to it, and a bar that fell back to nothing to say so would read
+    # as a download starting again.
+    work.through(newest["size"], newest["size"], CHECKING)
+    _the_package_asked_for(package, newest["version"])
+
+
+def _newest_tool(work):
+    """Installs the package the step before fetched, replacing this tool.
+
+    This is where the service the browser is talking to is stopped and started
+    again, because the package's own maintainer scripts do that. The request
+    that asked for this was answered long before, and the page is watching the
+    file this run writes rather than waiting for a reply.
+
+    Nothing is recorded to undo. Going back would mean holding a copy of the
+    package that is here now, and a failure leaves that one installed and
+    running, which is the safe direction and the one `install.sh --update-admin`
+    takes for the same reason.
+
+    The directory goes whichever way this ends, and the reversal record holds
+    the same removal, so nothing is left on the card by a run that stopped
+    between the two steps.
+    """
+    if work.tool is None:
+        raise Refused("setup.no-package-to-install")
+
+    package = work.tool / release.ASSET
+    work.through(0, 0, INSTALLING)
+    try:
+        run(["apt-get", "install", "-y", "-qq", str(package)])
+    finally:
+        shutil.rmtree(str(work.tool), ignore_errors=True)
+    work.did()
+
+
+def _the_newest_tool():
+    """@returns dict as `release.look` describes it.
+
+    @raises Refused where GitHub could not be asked or said something this does
+      not understand. Asked here rather than taken from the service, because the
+      service is what a browser talks to and this is the half that has to be
+      sure: an address it was handed would be an address somebody else chose.
+    """
+    try:
+        return release.look()
+    except release.Unreachable as error:
+        raise Refused("setup.cannot-ask-about-releases") from error
+
+
+def _the_package_asked_for(package, version):
+    """Refuses a package that is not this tool at the version that was offered.
+
+    @param package - pathlib.Path of the file that was downloaded.
+    @param version - What the release is tagged as.
+    @raises Refused where the control file says anything else.
+
+    Read with `dpkg-deb`, so the answer comes out of the file rather than out of
+    its name. A release that carried somebody else's package under the name this
+    looks for would otherwise be installed on the strength of the digest that
+    same release stated for it.
+    """
+    named = run(["dpkg-deb", "-f", str(package), "Package"], TIMEOUT_SECONDS)
+    if named != release.PACKAGE:
+        raise Refused("setup.not-our-package", found=named or "?")
+
+    carries = run(["dpkg-deb", "-f", str(package), "Version"], TIMEOUT_SECONDS)
+    if carries != version:
+        raise Refused("setup.not-that-version", found=carries or "?",
+                      wanted=version)
+
+
 def _no_emulator(work):
     """Takes Previous away, along with what it brought, and its source with it.
 
@@ -759,7 +881,7 @@ def _system(work):
     try:
         archive = scratch / work.system.file
         _fetched(systems.address(work.system), archive, work,
-                 expecting=work.system)
+                 systems.ARCHIVE_HOSTS, systems.expected(work.system))
         _unpacked(archive, scratch, work)
         shutil.move(str(_disk_among(scratch, work.system)), str(unpacked))
     finally:
@@ -1242,6 +1364,8 @@ STEPS = {
     "emulator": _emulator,
     "newest-emulator": _newest_emulator,
     "no-emulator": _no_emulator,
+    "tool-package": _tool_package,
+    "newest-tool": _newest_tool,
     "system": _system,
     "no-system": _no_system,
     "configuration": _configuration,
@@ -1261,28 +1385,30 @@ STEPS = {
 # -- fetching ----------------------------------------------------------------
 
 
-def _fetched(url, into, work, expecting=None, hosts=None):
+def _fetched(url, into, work, hosts, expecting=None):
     """Downloads one file, saying how far it has got.
 
-    @param url - Where from. One of ours, never anything from a request.
+    @param url - Where from.
     @param into - pathlib.Path to write.
     @param work - The run, which is told how far through this is.
-    @param expecting - A System whose size and digest this has to match, or
-      None where the file is small enough that there is nothing to check.
-    @param hosts - Which hosts a redirect may lead to, as suffixes. Left out,
-      only the archive the systems come from is allowed.
+    @param hosts - Which hosts this may reach, as `fetching.allowed` takes them.
+      Checked on the address itself as well as on every redirect.
+    @param expecting - A `fetching.Expecting` saying what the file has to turn
+      out to be, or None where it is small enough that there is nothing to
+      check.
     @raises Refused where it could not be fetched or is not what was expected.
 
-    Redirects are followed and checked at every hop, because archive.org answers
-    a download by sending the caller to whichever node holds the item, and a
-    redirect that leads anywhere else ends the fetch.
+    Redirects are followed and checked at every hop, because both places this
+    fetches from answer a download by sending the caller somewhere else:
+    archive.org to whichever node holds the item, and GitHub to the host its
+    release assets are served from.
     """
-    opener = urllib.request.build_opener(_OnlyOurArchive(hosts))
     size = expecting.size if expecting else 0
+    algorithm = expecting.algorithm if expecting else None
     digest = None
     try:
-        with opener.open(url, timeout=60) as answer:
-            digest = _copied(answer, into, work, size)
+        with fetching.opened(url, hosts, FETCH_SECONDS) as answer:
+            digest = _copied(answer, into, work, size, algorithm)
     except (urllib.error.URLError, OSError) as error:
         raise Refused("setup.cannot-fetch",
                       name=expecting.name if expecting else url) from error
@@ -1293,9 +1419,20 @@ def _fetched(url, into, work, expecting=None, hosts=None):
         raise Refused("setup.not-what-was-expected", name=expecting.name)
 
 
-def _copied(answer, into, work, size):
-    """Writes what a fetch is answering with, and answers with its digest."""
-    running = hashlib.sha1()
+def _copied(answer, into, work, size, algorithm=None):
+    """Writes what a fetch is answering with, and answers with its digest.
+
+    @param answer - The open answer to read.
+    @param into - pathlib.Path to write.
+    @param work - The run, which is told how far through this is.
+    @param size - How many bytes are expected, or 0 where nobody knows, in which
+      case nothing is reported: a bar with no end is worse than no bar.
+    @param algorithm - Which digest to take, because the two places this fetches
+      from state different ones. None where the caller has nothing to check the
+      file against, and then none is taken.
+    @returns str, the digest as hex, or None where none was asked for.
+    """
+    running = hashlib.new(algorithm) if algorithm else None
     done = 0
     with open(into, "wb") as file:
         while True:
@@ -1303,41 +1440,12 @@ def _copied(answer, into, work, size):
             if not chunk:
                 break
             file.write(chunk)
-            running.update(chunk)
+            if running is not None:
+                running.update(chunk)
             done += len(chunk)
             if size:
                 work.through(done, size, FETCHING)
-    return running.hexdigest()
-
-
-class _OnlyOurArchive(urllib.request.HTTPRedirectHandler):
-    """Refuses a redirect that leads off the archive.
-
-    @param hosts - Host suffixes a redirect may lead to. None means the archive
-      the systems come from, which `systems.from_our_archive` decides.
-
-    The destination is checked again at every hop rather than once at the
-    start, because whoever answers the first request chooses where the second
-    one goes.
-    """
-
-    def __init__(self, hosts=None):
-        self.hosts = hosts
-
-    def redirect_request(self, request, fp, code, message, headers, newurl):
-        if not self._allows(newurl):
-            raise urllib.error.HTTPError(
-                newurl, code, "redirected off the archive", headers, fp)
-        return super().redirect_request(request, fp, code, message, headers,
-                                        newurl)
-
-    def _allows(self, url):
-        if self.hosts is None:
-            return systems.from_our_archive(url)
-        host = urllib.parse.urlparse(url).hostname or ""
-        return (urllib.parse.urlparse(url).scheme == "https"
-                and any(host == name or host.endswith("." + name)
-                        for name in self.hosts))
+    return running.hexdigest() if running is not None else None
 
 
 def _unpacked(archive, into, work):

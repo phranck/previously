@@ -1661,6 +1661,178 @@ def test_what_the_helper_is_doing_is_readable_while_it_runs(service, tmp_path):
     assert said["part"]["of"] == 60508875
 
 
+# -- this tool replacing itself -------------------------------------------
+
+
+@pytest.fixture
+def a_published_release(monkeypatch):
+    """Makes the newest release known, without anything reaching GitHub.
+
+    @returns a function taking the version to publish and the version dpkg has.
+    """
+    def published(newest, here):
+        monkeypatch.setattr(server.release, "published",
+                            lambda: {"version": newest, "asked_at": 0.0,
+                                     "url": "https://github.com/x",
+                                     "size": 269770, "digest": "0" * 64})
+        monkeypatch.setattr(server.setup, "version_of", lambda package: here)
+    return published
+
+
+def test_which_version_is_here_and_which_is_published_is_open(
+        service, a_published_release):
+    """Which version a machine on this network runs is not anybody's private
+    business, and it is the same fact the About panel already shows."""
+    a_published_release("1.0.1", "1.0.0")
+
+    status, _, body = fetch(service + "/api/update")
+    said = json.loads(body)
+
+    assert status == 200
+    assert said["installed"] == "1.0.0"
+    assert said["published"] == "1.0.1"
+    assert said["newer"] is True
+    assert said["progress"] is None
+
+
+def test_nothing_newer_is_answered_as_nothing_newer(service, a_published_release):
+    """Which is what takes the button out of the window, so it is decided here
+    rather than by comparing two strings in a browser."""
+    a_published_release("1.0.1", "1.0.1")
+
+    _, _, body = fetch(service + "/api/update")
+
+    assert json.loads(body)["newer"] is False
+
+
+def test_a_build_ahead_of_the_release_is_not_offered_an_update(
+        service, a_published_release):
+    """A package built between two releases carries the release and the commit,
+    and `+` sorts above the release, so a checkout that has been installed is
+    newer than what is published. Asked of dpkg, because a string comparison
+    would call this a downgrade and offer it."""
+    a_published_release("1.0.0", "1.0.0+7.g2f250d5")
+
+    _, _, body = fetch(service + "/api/update")
+
+    assert json.loads(body)["newer"] is False
+
+
+def test_a_board_that_has_not_reached_github_says_so_rather_than_waiting(
+        service, monkeypatch):
+    """The window asks every five seconds, so a reading that waited for a
+    connection to fail would hold the whole window up."""
+    monkeypatch.setattr(server.release, "published", lambda: None)
+
+    status, _, body = fetch(service + "/api/update")
+    said = json.loads(body)
+
+    assert status == 200
+    assert said["published"] is None
+    assert said["newer"] is False
+
+
+def test_how_far_a_replacement_has_got_is_readable_while_it_runs(
+        service, tmp_path, a_published_release):
+    """The whole reason the work is the helper's: this record is written into
+    root's own runtime directory, so it outlives the service being stopped and
+    started and the page reads the same run before and after."""
+    a_published_release("1.0.1", "1.0.0")
+    progress = tmp_path / "setup-progress"
+    progress.mkdir()
+    (progress / "progress.json").write_text(json.dumps({
+        "do": "update-tool", "step": "tool-package", "done": 1, "of": 2,
+        "part": {"done": 1024, "of": 269770, "doing": "fetching"},
+        "finished_at": None,
+    }), encoding="utf-8")
+
+    _, _, body = fetch(service + "/api/update")
+    said = json.loads(body)["progress"]
+
+    assert said["step"] == "tool-package"
+    assert said["part"]["of"] == 269770
+
+
+def test_a_run_about_something_else_is_not_shown_as_this_one(
+        service, tmp_path, a_published_release):
+    """The helper takes one job at a time and writes them all into the same
+    record, so without this the window would draw a two gigabyte unpack as
+    though it were the replacement somebody pressed."""
+    a_published_release("1.0.1", "1.0.0")
+    progress = tmp_path / "setup-progress"
+    progress.mkdir()
+    (progress / "progress.json").write_text(json.dumps({
+        "do": "fetch", "step": "system", "done": 3, "of": 3,
+        "finished_at": None,
+    }), encoding="utf-8")
+
+    _, _, body = fetch(service + "/api/update")
+
+    assert json.loads(body)["progress"] is None
+
+
+def test_asking_for_a_replacement_needs_a_session(service, tmp_path):
+    """It replaces the program answering this request, which is as far from a
+    reading as anything this tool does."""
+    request = urllib.request.Request(service + "/api/update", data=b"{}",
+                                     method="POST")
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        urllib.request.urlopen(request, timeout=5)
+
+    assert refused.value.code == 403
+    assert not (tmp_path / "setup").exists(), "refused and asked anyway"
+
+
+def test_a_replacement_is_asked_for_by_leaving_a_request(service, tmp_path,
+                                                         a_published_release):
+    """Nothing is fetched here and no privilege is held. The name of one job goes
+    into a file that a path unit watches for, and the request carries nothing
+    else at all."""
+    a_published_release("1.0.1", "1.0.0")
+
+    with tell(service, "/api/update", {}) as answer:
+        said = json.loads(answer.read())
+
+    assert said["ok"] is True
+    assert said["reason"] == "setup.asked"
+    assert said["job"] == "update-tool"
+    assert json.loads((tmp_path / "setup").read_text()) == {
+        "do": "update-tool", "system": None, "machine": None, "backup": None}
+
+
+def test_the_answer_says_what_the_window_shows(service, a_published_release):
+    """So the window that asked has the new state without asking again, and it
+    has to: the answer goes out before anything is replaced, because a reply
+    written afterwards would be written by a process that is gone."""
+    a_published_release("1.0.1", "1.0.0")
+
+    with tell(service, "/api/update", {}) as answer:
+        said = json.loads(answer.read())
+
+    assert said["published"] == "1.0.1"
+    assert said["installed"] == "1.0.0"
+
+
+def test_one_replacement_at_a_time(service, tmp_path, a_published_release):
+    """The helper takes one job at a time, so a second request is refused rather
+    than queued, and refusing it here means saying so rather than leaving a
+    request that a run in progress would ignore."""
+    a_published_release("1.0.1", "1.0.0")
+    progress = tmp_path / "setup-progress"
+    progress.mkdir()
+    (progress / "progress.json").write_text(json.dumps({
+        "do": "update-tool", "step": "tool-package", "finished_at": None,
+    }), encoding="utf-8")
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/update", {})
+
+    assert refused.value.code == 409
+    assert json.loads(refused.value.read())["reason"] == "setup.one-at-a-time"
+    assert not (tmp_path / "setup").exists()
+
+
 def test_the_1988_machine_is_a_68030_everywhere(service):
     """It is written as processor level 3, which is what Previous calls a
     68030."""

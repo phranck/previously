@@ -160,6 +160,36 @@ def test_the_helper_writes_where_the_service_reads(build):
 # -- which build a package is --------------------------------------------
 
 
+def test_the_package_is_called_what_the_update_looks_for(build):
+    """Two places name it: the build, which writes it into the control file, and
+    the module that asks dpkg what is installed and hands `apt-get` a file. They
+    cannot be derived from one another, because one runs on a laptop and the other
+    on the Pi, so this is what holds them together. A disagreement would leave the
+    Raspberry Pi window asking about a package that is not there, finding no
+    version, and offering no update to anybody, for ever and without a word."""
+    from previously import release
+
+    assert build.NAME == release.PACKAGE
+
+
+def test_the_asset_a_release_carries_is_the_one_the_update_fetches(build):
+    """The workflow renames the versioned package the build writes to one fixed
+    name, so that a single address is always the newest one. Three places name
+    it, and a fourth would be one too many: the workflow that attaches it, the
+    script that installs onto a fresh machine, and the module the tool's own
+    update fetches it with."""
+    from previously import release
+
+    repository = PACKAGING.parent.parent
+    workflow = (repository / ".github" / "workflows"
+                / "release.yml").read_text(encoding="utf-8")
+    script = (repository / "install.sh").read_text(encoding="utf-8")
+
+    assert release.ASSET == "%s_%s.deb" % (build.NAME, build.ARCHITECTURE)
+    assert release.ASSET in workflow
+    assert release.ASSET in script
+
+
 def test_the_release_is_read_off_the_service(build):
     """One place holds it, and the package is numbered from there rather than
     from a second copy that would drift."""

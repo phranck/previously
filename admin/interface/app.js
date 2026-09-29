@@ -25,6 +25,7 @@ import { wirePreview } from "./app/preview.js";
 import { wireTerminal } from "./app/shell.js";
 import { chosenSize, drawAtSize } from "./app/size.js";
 import { refresh, wireButtons } from "./app/status.js";
+import { wireTheUpdate } from "./app/update.js";
 import { drawMachines, wireOpening } from "./app/viewer.js";
 
 /* The words first, so every element is built around text it already has.
@@ -45,6 +46,7 @@ wireGrab();
 wirePreview();
 wireEditor();
 wireTheInstaller();
+wireTheUpdate();
 watchTheFrontWindow();
 greetTheFirstVisit();
 watchTheApplications();
