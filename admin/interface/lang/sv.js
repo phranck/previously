@@ -22,14 +22,14 @@ export const sv = {
   "menu.quit.key": "v",
   "grab.take.key": "t",
   "menu.files": "Filer",
-  "menu.password": "Lösenord…",
+  "menu.password": "Lösenord...",
   "menu.machine": "Maskin",
-  "menu.machine-info": "Info…",
+  "menu.machine-info": "Info",
   "menu.activate": "Aktivera konfigurationen",
-  "menu.edit": "Redigera konfigurationen…",
+  "menu.edit": "Redigera konfigurationen",
   "menu.keep": "Lägg på hyllan",
   "menu.unkeep": "Ta bort från hyllan",
-  "menu.rename": "Byt namn…",
+  "menu.rename": "Byt namn...",
   "menu.remove": "Ta bort",
 
   /* --- the windows ----------------------------------------------------- */
@@ -126,7 +126,7 @@ export const sv = {
   "editor.over-this-one": "{name} är en egen konfiguration. Spara skriver tillbaka dina ändringar i den.",
   "ask.name.title": "Spara konfigurationen",
   "button.save": "Spara",
-  "button.save-as": "Spara som…",
+  "button.save-as": "Spara som...",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Konfigurationsredigerare",
@@ -208,14 +208,12 @@ export const sv = {
   "button.power-on": "Slå på",
   "button.change": "Byt",
   "button.use": "Använd",
-  "button.fine": "Bra",
   "about.version": "Version {version}",
   "about.copyright": "Copyright © 2026 {holder}",
   "about.holder": "LAYERED",
   "about.ok": "OK",
   "button.close": "Stäng",
   "button.cancel": "Avbryt",
-  "button.ok": "Ja",
 
   /* --- what is happening now -------------------------------------------- */
   "busy.starting": "slås på",

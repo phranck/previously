@@ -16,8 +16,8 @@ import { Art, say } from "./words.js";
  */
 function warnAboutTheBoard(what, question) {
   return askPanel({
-    title: "Raspberry Pi",
-    text: [t(question), t("ask.board.order"), t("ask.board.loss")],
+    text: ["Raspberry Pi", t(question), t("ask.board.order"),
+           t("ask.board.loss")],
     icon: Art.Computer,
     confirm: what,
   });

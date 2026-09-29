@@ -22,14 +22,14 @@ export const it = {
   "menu.quit.key": "e",
   "grab.take.key": "s",
   "menu.files": "File",
-  "menu.password": "Password…",
+  "menu.password": "Password...",
   "menu.machine": "Macchina",
-  "menu.machine-info": "Info…",
+  "menu.machine-info": "Info",
   "menu.activate": "Attiva la configurazione",
-  "menu.edit": "Modifica la configurazione…",
+  "menu.edit": "Modifica la configurazione",
   "menu.keep": "Metti sulla mensola",
   "menu.unkeep": "Togli dalla mensola",
-  "menu.rename": "Rinomina…",
+  "menu.rename": "Rinomina...",
   "menu.remove": "Rimuovi",
 
   /* --- the windows ----------------------------------------------------- */
@@ -126,7 +126,7 @@ export const it = {
   "editor.over-this-one": "{name} è una configurazione tua. Salva ci scrive dentro le tue modifiche.",
   "ask.name.title": "Salva la configurazione",
   "button.save": "Salva",
-  "button.save-as": "Salva come…",
+  "button.save-as": "Salva come...",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Editor di configurazione",
@@ -208,14 +208,12 @@ export const it = {
   "button.power-on": "Accendi",
   "button.change": "Cambia",
   "button.use": "Conferma",
-  "button.fine": "Bene",
   "about.version": "Versione {version}",
   "about.copyright": "Copyright © 2026 {holder}",
   "about.holder": "LAYERED",
   "about.ok": "OK",
   "button.close": "Chiudi",
   "button.cancel": "Annulla",
-  "button.ok": "Sì",
 
   /* --- what is happening now -------------------------------------------- */
   "busy.starting": "accensione in corso",

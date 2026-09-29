@@ -3,11 +3,15 @@
 /**
  * The panel that asks before anything changes.
  *
- * NeXTSTEP put an attention panel in the middle of the screen over a dimmed
- * desk, with the icon of whatever is about to happen, a sentence saying what
- * it is, and the safe answer on the left. This is that, and it is a component
- * rather than markup in the page because more than one thing needs to ask:
- * stopping the emulator does, and changing the machine will.
+ * NeXTSTEP's attention panel comes up in the upper part of the screen with the
+ * icon of whatever is about to happen, a sentence saying what it is, and the
+ * safe answer on the left. This is that, and it is a component rather than
+ * markup in the page because more than one thing needs to ask: stopping the
+ * emulator does, and changing the machine does.
+ *
+ * Its title bar is empty, which is what tells an attention panel from an
+ * ordinary one. The panel is named inside itself, beside the icon, after
+ * whatever brought it up, so the first line a caller gives is that name.
  *
  * It answers with a promise rather than a callback, so the caller reads as one
  * sequence: ask, then act on the answer.
@@ -19,7 +23,7 @@ class NxAsk extends HTMLElement {
 
     this.innerHTML = `
       <div class="panel">
-        <div class="titlebar"><div class="title"></div></div>
+        <div class="titlebar"></div>
         <div class="pane">
           <div class="panel-body">
             <i class="art icon"></i>
@@ -30,7 +34,7 @@ class NxAsk extends HTMLElement {
           </div>
           <div class="buttons" style="padding-right:0">
             <button data-answer="no"></button>
-            <button data-answer="yes" class="default"></button>
+            <button data-answer="yes"></button>
           </div>
         </div>
       </div>`;
@@ -52,8 +56,9 @@ class NxAsk extends HTMLElement {
   /**
    * Puts the question and waits for an answer.
    * @param {object} question
-   * @param {string} question.title - The panel's own title bar.
-   * @param {string[]} question.text - One paragraph per entry.
+   * @param {(string|Node)[]} question.text - One paragraph per entry. The
+   *   first is the panel's own name, which stands beside the icon because an
+   *   attention panel's title bar is empty.
    * @param {string} [question.icon] - Which picture, by the name showArt knows.
    * @param {string} question.confirm - The wording on the acting button. The
    *   kit holds no words of its own, in any language, so both buttons are
@@ -64,8 +69,7 @@ class NxAsk extends HTMLElement {
    *   what is typed into it is not read over the typist's shoulder.
    * @returns {Promise<boolean>} True where the acting button was pressed.
    */
-  ask({ title, text, icon, confirm, cancel, field = false, secret = false }) {
-    this.querySelector(".title").textContent = title;
+  ask({ text, icon, confirm, cancel, field = false, secret = false }) {
     this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {
         /* A line is a sentence, or an element where the caller had to build
@@ -77,7 +81,9 @@ class NxAsk extends HTMLElement {
         return paragraph;
       }));
     if (icon) showArt(this.querySelector(".icon"), icon);
-    this.querySelector('[data-answer="yes"]').textContent = confirm;
+
+    const acting = this.querySelector('[data-answer="yes"]');
+    acting.textContent = confirm;
 
     /* A panel that only says something has one button, and the safe answer is
        the same as the acting one. Left standing and empty it would be a second
@@ -91,9 +97,15 @@ class NxAsk extends HTMLElement {
     entry.type = secret ? "password" : "text";
     entry.value = "";
 
+    /* The Return-key symbol says Return presses this button, so it goes on
+       only where Return does. A panel carrying a line to type into commits it
+       that way. One that only asks is answered by clicking, which is what the
+       chapter asks for wherever the answer costs something. */
+    acting.classList.toggle("returns", field);
+
     this.toggleAttribute("data-open", true);
     addEventListener("keydown", this.keys);
-    (field ? entry : (cancel ? safe : this.querySelector('[data-answer="yes"]'))).focus();
+    (field ? entry : (cancel ? safe : acting)).focus();
 
     return new Promise((settle) => { this.settle = settle; });
   }
@@ -111,11 +123,12 @@ class NxAsk extends HTMLElement {
    * @returns {Promise<boolean>} Always true, so the caller can wait for it to
    *   be dismissed without reading the answer.
    *
-   * The title bar stays empty, which is what tells an attention panel from an
-   * ordinary one: it is named inside itself, after whatever brought it up.
+   * The whole of it is ask with no safe button, because a panel that only says
+   * something has one answer and offering a second would be a button that does
+   * what the first does.
    */
   tell({ text, icon, confirm }) {
-    return this.ask({ title: "", text, icon, confirm, cancel: null });
+    return this.ask({ text, icon, confirm, cancel: null });
   }
 
   /**

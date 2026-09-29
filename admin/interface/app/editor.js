@@ -401,8 +401,7 @@ async function saveTheDraft() {
   let name = replacing;
   if (name === null) {
     name = await askPanelFor({
-      title: t("ask.name.title"),
-      text: [t("ask.rename.question")],
+      text: [t("ask.name.title"), t("ask.rename.question")],
       icon: machineArt(drafted.machine.enclosure),
       confirm: t("button.save"),
     });

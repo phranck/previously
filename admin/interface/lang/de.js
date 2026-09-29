@@ -22,14 +22,14 @@ export const de = {
   "menu.quit.key": "v",
   "grab.take.key": "a",
   "menu.files": "Dateien",
-  "menu.password": "Passwort…",
+  "menu.password": "Passwort...",
   "menu.machine": "Maschine",
-  "menu.machine-info": "Info…",
+  "menu.machine-info": "Info",
   "menu.activate": "Konfiguration aktivieren",
-  "menu.edit": "Konfiguration bearbeiten…",
+  "menu.edit": "Konfiguration bearbeiten",
   "menu.keep": "Auf die Ablage legen",
   "menu.unkeep": "Von der Ablage nehmen",
-  "menu.rename": "Umbenennen…",
+  "menu.rename": "Umbenennen...",
   "menu.remove": "Entfernen",
 
   /* --- the windows ----------------------------------------------------- */
@@ -122,11 +122,11 @@ export const de = {
   "editor.printer.note.out": "Am Druckerport hängt nichts.",
   "editor.socket.note.thin-wire": "Thin Wire, die Koaxbuchse, die jeder NeXT hat.",
   "editor.socket.note.twisted-pair": "Twisted Pair, die jede Maschine ausser der von 1988 hat.",
-  "editor.into-a-new-one": "Das ist eine der Maschinen, die Previously mitbringt, und die lassen sich nicht ändern. „Sichern unter…“ legt deine Änderungen als eigene Konfiguration ab, unter einem Namen, den du wählst.",
+  "editor.into-a-new-one": "Das ist eine der Maschinen, die Previously mitbringt, und die lassen sich nicht ändern. „Sichern unter...“ legt deine Änderungen als eigene Konfiguration ab, unter einem Namen, den du wählst.",
   "editor.over-this-one": "{name} ist eine eigene Konfiguration. „Sichern“ schreibt deine Änderungen hinein zurück.",
   "ask.name.title": "Konfiguration sichern",
   "button.save": "Sichern",
-  "button.save-as": "Sichern unter…",
+  "button.save-as": "Sichern unter...",
 
   /* --- the applications, as they are called in words ------------------ */
   "app.config-editor": "Konfigurationseditor",
@@ -208,14 +208,12 @@ export const de = {
   "button.power-on": "Einschalten",
   "button.change": "Wechseln",
   "button.use": "Übernehmen",
-  "button.fine": "Gut",
   "about.version": "Version {version}",
   "about.copyright": "Copyright © 2026 {holder}",
   "about.holder": "LAYERED",
   "about.ok": "OK",
   "button.close": "Schliessen",
   "button.cancel": "Abbrechen",
-  "button.ok": "Ja",
 
   /* --- what is happening now -------------------------------------------- */
   "busy.starting": "wird eingeschaltet",

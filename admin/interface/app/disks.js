@@ -23,8 +23,8 @@ async function bootFromDisk(disk) {
   if (disk.booting) return;
 
   const agreed = await askPanel({
-    title: t("ask.disk.title"),
     text: [
+      t("ask.disk.title"),
       t("ask.disk.question", { name: disk.name }),
       t("ask.disk.size", { name: disk.name, size: sized(disk.bytes) }),
       t("ask.disk.freeze"),
@@ -70,8 +70,8 @@ function useTheDisc(disc) {
  */
 async function putTheDiscIn(disc) {
   const agreed = await askPanel({
-    title: t("ask.disc.title", { name: disc.name }),
     text: [
+      t("ask.disc.title", { name: disc.name }),
       t("ask.disc.beside"),
       /* NeXT's own CDs carry a variation of 4.3BSD FFS, so an image that says
          ISO 9660 mounts nowhere however good it is. Said before somebody waits
@@ -97,8 +97,8 @@ async function putTheDiscIn(disc) {
  */
 async function takeTheDiscOut(disc) {
   const agreed = await askPanel({
-    title: t("ask.disc.eject-title", { name: disc.name }),
-    text: [t("ask.disc.eject-question"), t("ask.change.how")],
+    text: [t("ask.disc.eject-title", { name: disc.name }),
+           t("ask.disc.eject-question"), t("ask.change.how")],
     icon: Art.Disc,
     confirm: t("button.eject"),
   });
@@ -121,8 +121,8 @@ async function takeTheDiscOut(disc) {
 async function backUpTheDisk(disk) {
   const state = await ask(SETUP);
   const agreed = await askPanel({
-    title: t("ask.backup.title", { name: disk.name }),
     text: [
+      t("ask.backup.title", { name: disk.name }),
       t("ask.backup.cost", { name: disk.name, size: sized(disk.bytes) }),
       state ? t("ask.fetch.left", {
         free: sized(state.room),
@@ -147,8 +147,8 @@ async function backUpTheDisk(disk) {
  */
 async function putTheCopyBack(copy) {
   const agreed = await askPanel({
-    title: t("ask.restore.title", { name: copy.name }),
-    text: [t("ask.restore.loss"), t("ask.backup.off"), t("ask.install.time")],
+    text: [t("ask.restore.title", { name: copy.name }),
+           t("ask.restore.loss"), t("ask.backup.off"), t("ask.install.time")],
     icon: Art.Disk,
     confirm: t("button.put-back"),
   });
