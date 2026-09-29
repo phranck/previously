@@ -412,7 +412,7 @@ export const fr = {
   "button.update": "Mettre à jour",
   "button.fetch": "Télécharger",
   "ask.install.title": "Installer Previous",
-  "ask.install.what": "L'émulateur, le compositeur dans lequel il tourne, la console qui se connecte toute seule, le démarrage silencieux, et le lancement sur la première console pour que SSH reste le chemin du retour. À la fin, la machine démarre.",
+  "ask.install.what": "L'émulateur est installé, avec tous ses composants et tout ce dont il dépend.",
   "ask.install.system": "{name} vient avec : {size} à télécharger et {unpacked} sur la carte.",
   "ask.install.time": "Cela prend des minutes et non des secondes. La fenêtre peut rester ouverte, et ce qui se passe est lu sur le Pi.",
   "ask.update.title": "Mettre Previous à jour",

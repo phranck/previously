@@ -412,7 +412,7 @@ export const es = {
   "button.update": "Actualizar",
   "button.fetch": "Descargar",
   "ask.install.title": "Instalar Previous",
-  "ask.install.what": "El emulador, el compositor en el que corre, la consola que entra sola, el arranque en silencio y el inicio en la primera consola, para que SSH siga siendo el camino de vuelta. Al final, la máquina arranca.",
+  "ask.install.what": "Se instala el emulador, con todos sus componentes y todo lo que necesita.",
   "ask.install.system": "{name} viene con él: {size} de descarga y {unpacked} en la tarjeta.",
   "ask.install.time": "Tarda minutos y no segundos. La ventana puede quedarse abierta, y lo que está pasando se lee del Pi.",
   "ask.update.title": "Actualizar Previous",

@@ -412,7 +412,7 @@ export const sv = {
   "button.update": "Uppdatera",
   "button.fetch": "Hämta",
   "ask.install.title": "Installera Previous",
-  "ask.install.what": "Emulatorn, kompositorn den körs i, konsolen som loggar in av sig själv, den tysta uppstarten och starten på första konsolen, så att SSH är kvar som vägen tillbaka. Till sist startar maskinen.",
+  "ask.install.what": "Emulatorn installeras, med alla sina komponenter och allt den behöver.",
   "ask.install.system": "{name} följer med: {size} att hämta och {unpacked} på kortet.",
   "ask.install.time": "Det tar minuter och inte sekunder. Fönstret kan stå öppet, och vad som händer läses från Pi:n.",
   "ask.update.title": "Uppdatera Previous",
