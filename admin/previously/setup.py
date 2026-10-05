@@ -74,10 +74,10 @@ LONGEST_NAME = 255
 OUR_DIRECTORY = pathlib.Path("/run/previously-setup")
 PROGRESS = "progress.json"
 
-#: Where the unit that decides who owns the emulator lives. The user is read
-#: from there rather than named again here, because that unit is where it is
-#: decided and a second copy would be a second answer.
-SERVICE_UNIT = pathlib.Path("/lib/systemd/system/previously.service")
+#: Where it is written down who owns the emulator: the drop-in the package
+#: writes beside the tool's unit on install. The user is read from there rather
+#: than named again here, because a second copy would be a second answer.
+OWNER_FILE = pathlib.Path("/etc/systemd/system/previously.service.d/owner.conf")
 
 #: What the machine has to be for the emulator's package to fit. Raspberry Pi
 #: OS before trixie carries no SDL3, and Previous is built against it.
@@ -395,9 +395,9 @@ def _said(command):
 class Owner:
     """Whoever owns the emulator, which is the user the tool runs as.
 
-    Read from the tool's own unit, because that is where it is decided. Nothing
-    here is written by this program under root's name: a file in that person's
-    home belongs to them.
+    Read from the owner file the package writes beside the tool's unit, because
+    that is where it is decided. Nothing here is written by this program under
+    root's name: a file in that person's home belongs to them.
     """
 
     def __init__(self, name):
@@ -409,8 +409,12 @@ class Owner:
         self.home = pathlib.Path(entry.pw_dir)
 
     @classmethod
-    def from_unit(cls, unit=SERVICE_UNIT):
-        """@returns Owner. @raises Refused where the unit cannot be read."""
+    def from_unit(cls, unit=OWNER_FILE):
+        """@returns Owner. @raises Refused where the owner file cannot be read.
+
+        @param unit - The drop-in that names the user, as the package writes
+          it beside the tool's unit.
+        """
         try:
             found = re.search(r"^User=(.+)$", unit.read_text(encoding="utf-8"),
                               re.M)

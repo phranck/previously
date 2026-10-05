@@ -91,6 +91,45 @@ UNIT_FILES = (SERVICE,
               NAME + "-reboot.path", NAME + "-reboot.service",
               NAME + "-setup.path", NAME + "-setup.service")
 
+#: Who the tool runs as, written by postinst as a drop-in beside the unit. The
+#: user is whoever the card was made with, so it is decided on the machine
+#: rather than in the package, and the unit names nobody. `setup.OWNER_FILE` is
+#: the same path as the helper reads it.
+OWNER_FILE = "etc/systemd/system/" + SERVICE + ".d/owner.conf"
+
+#: The places in that person's home the service may write, which ProtectHome
+#: otherwise forbids, each as a path under the home.
+#:
+#: Previous keeps its configuration in the first, and this tool's job is to
+#: change it: the directory rather than the file, because the copy made before
+#: every write is a second file beside the first.
+#:
+#: The second holds the configurations somebody saved, which are theirs rather
+#: than this service's and therefore live in their home: a purge takes the
+#: state directory with it and must not take their machines. postinst creates
+#: it, because systemd skips an entry whose path is absent, which would leave
+#: the first save refusing.
+#:
+#: The third is where the emulator runs, so it is where a screen grab lands,
+#: which this service reads and removes again.
+#:
+#: The fourth is the real part of the Previously tree, which the File Viewer
+#: shows as Documents/Pictures. Grab writes a screenshot there and Preview
+#: reads it back.
+WRITABLE_IN_HOME = (".config/previous", ".config/previously",
+                    ".cache/previously", "Previously")
+
+#: Finds who the tool runs as: the user in an owner file already there, so an
+#: upgrade keeps it; otherwise next, which every machine set up before there
+#: was an owner file ran as; otherwise the user with UID 1000, which is the one
+#: Raspberry Pi Imager creates. One statement, filled into preinst and postinst
+#: alike, so the two cannot answer differently.
+FIND_OWNER = (
+    "    owner=$(sed -n 's/^User=//p' /%s 2>/dev/null || true)\n"
+    "    if [ -z \"$owner\" ] && getent passwd next >/dev/null; then owner=next; fi\n"
+    "    if [ -z \"$owner\" ]; then owner=$(getent passwd 1000 | cut -d: -f1); fi\n"
+    % OWNER_FILE)
+
 #: Which of those are switched on when the package is installed. A path unit
 #: costs nothing whilst nothing is asked of it: it watches for one file and
 #: starts its service when that file appears.
@@ -194,31 +233,54 @@ def control(size):
     ])
 
 
-#: Run after the files are in place. Only what dpkg does not do itself:
-#: systemd has to be told the units exist, the one directory the service cannot
-#: create for itself is made, and the service is started so that installing it is
-#: enough to have it.
+#: Run before the files are unpacked, to refuse a machine the tool cannot run
+#: on at all.
+PREINST = """#!/bin/sh
+set -e
+
+# Refuses a machine with nobody to run as, before anything is unpacked, so a
+# refusal leaves nothing half configured. The question is the one postinst
+# answers.
+if [ "$1" = install ] || [ "$1" = upgrade ]; then
+%(find_owner)s
+    if [ -z "$owner" ]; then
+        echo "Previously runs as the user Raspberry Pi Imager created," >&2
+        echo "and this machine has no such user." >&2
+        exit 1
+    fi
+fi
+"""
+
+#: Run after the files are in place. Only what dpkg does not do itself: who
+#: the tool runs as is written down, systemd has to be told the units exist,
+#: the one directory the service cannot create for itself is made, and the
+#: service is started so that installing it is enough to have it.
 POSTINST = """#!/bin/sh
 set -e
 
 if [ "$1" = configure ]; then
-    # Where the configurations somebody saves are kept, in the home of whoever
-    # owns the emulator. ProtectHome leaves the rest of that home read only, and
-    # systemd skips a ReadWritePaths entry whose path is absent, so this has to
-    # exist before the service starts or the first save refuses. The user and the
-    # group are read out of the unit rather than named again here, because the
-    # unit is where they are decided.
+    # Who the tool runs as, as a drop-in beside its unit, with the places in
+    # that home it may write. preinst has already refused a machine where this
+    # finds nobody.
+%(find_owner)s
+    group=$(id -gn "$owner")
+    home=$(getent passwd "$owner" | cut -d: -f6)
+    mkdir -p %(owner_dir)s
+    {
+        echo "[Service]"
+        echo "User=$owner"
+        echo "Group=$group"
+%(writable)s    } > /%(owner_file)s
+
+    # Where the configurations somebody saves are kept, in that home. systemd
+    # skips a ReadWritePaths entry whose path is absent, so this has to exist
+    # before the service starts or the first save refuses.
     #
     # It does not fail the installation. A directory that cannot be made leaves a
     # service that runs and refuses to save, saying why, which is a better state
     # to hand somebody than a package dpkg has left half configured.
-    user=$(sed -n 's/^User=//p' /%(units)s/%(service)s)
-    group=$(sed -n 's/^Group=//p' /%(units)s/%(service)s)
-    if [ -n "$user" ] && [ -n "$group" ]; then
-        home=$(getent passwd "$user" | cut -d: -f6)
-        if [ -n "$home" ] && [ -d "$home" ]; then
-            install -d -o "$user" -g "$group" -m 0700 "$home/.config/%(name)s" || true
-        fi
+    if [ -n "$home" ] && [ -d "$home" ]; then
+        install -d -o "$owner" -g "$group" -m 0700 "$home/.config/%(name)s" || true
     fi
 
     # systemd's own x11.conf is what makes the X server's socket directory, at
@@ -272,7 +334,7 @@ if [ "$1" = remove ] || [ "$1" = purge ]; then
 fi
 
 if [ "$1" = purge ]; then
-    rm -rf /var/lib/%(name)s /etc/%(name)s
+    rm -rf /var/lib/%(name)s /etc/%(name)s %(owner_dir)s
 fi
 """
 
@@ -313,7 +375,7 @@ def lay_out(into):
 
 
 def scripts():
-    """The three maintainer scripts, filled in.
+    """The four maintainer scripts, filled in.
 
     @returns dict of name to what goes into DEBIAN.
 
@@ -322,13 +384,18 @@ def scripts():
     second time and agreeing with themselves.
     """
     words = {"name": NAME, "service": SERVICE, "units": UNITS,
-             "watchers": " ".join(WATCHERS), "x11": X11_SOCKETS}
-    return {"postinst": POSTINST % words, "prerm": PRERM % words,
-            "postrm": POSTRM % words}
+             "watchers": " ".join(WATCHERS), "x11": X11_SOCKETS,
+             "find_owner": FIND_OWNER.rstrip("\n"),
+             "owner_file": OWNER_FILE,
+             "owner_dir": "/" + str(pathlib.PurePosixPath(OWNER_FILE).parent),
+             "writable": "".join('        echo "ReadWritePaths=-$home/%s"\n' % place
+                                 for place in WRITABLE_IN_HOME)}
+    return {"preinst": PREINST % words, "postinst": POSTINST % words,
+            "prerm": PRERM % words, "postrm": POSTRM % words}
 
 
 def write_control(into):
-    """Writes DEBIAN/control and the three scripts, and makes them runnable."""
+    """Writes DEBIAN/control and the four scripts, and makes them runnable."""
     debian = into / "DEBIAN"
     debian.mkdir(parents=True, exist_ok=True)
 
