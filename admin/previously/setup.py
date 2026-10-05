@@ -40,6 +40,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 
@@ -256,12 +257,16 @@ JOBS = {
 # -- the machine this is running on ------------------------------------------
 
 
-def run(command, seconds=COMMAND_SECONDS):
+def run(command, seconds=COMMAND_SECONDS, heard=None):
     """Runs one command and answers what it said.
 
     @param command - The argument list. Never a string and never a shell, so
       there is nothing here that could be talked into running something else.
     @param seconds - How long to wait before giving up.
+    @param heard - Called with each percentage apt reports on its status
+      lines, as the command runs, or None for a command that is only waited
+      for. The command has to be told to write those lines to its standard
+      output, which `_apt_install` does.
     @returns str, its output with the whitespace taken off.
     @raises Refused where it failed, timed out or is not installed at all.
 
@@ -270,18 +275,79 @@ def run(command, seconds=COMMAND_SECONDS):
     """
     environment = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
     try:
-        answer = subprocess.run(command, capture_output=True, text=True,
-                                timeout=seconds, env=environment, check=False)
+        if heard is None:
+            answer = subprocess.run(command, capture_output=True, text=True,
+                                    timeout=seconds, env=environment, check=False)
+            code, said = answer.returncode, answer.stdout
+        else:
+            code, said = _streamed(command, seconds, environment, heard)
     except subprocess.TimeoutExpired as error:
         raise Refused("setup.took-too-long", command=command[0],
                       seconds=seconds) from error
     except OSError as error:
         raise Refused("setup.no-such-command", command=command[0]) from error
 
-    if answer.returncode != 0:
-        raise Refused("setup.command-failed", command=command[0],
-                      code=answer.returncode)
-    return answer.stdout.strip()
+    if code != 0:
+        raise Refused("setup.command-failed", command=command[0], code=code)
+    return said.strip()
+
+
+def _streamed(command, seconds, environment, heard):
+    """Runs a command whose output is read as it comes, line by line.
+
+    @param command - The argument list.
+    @param seconds - How long it may take in all.
+    @param environment - What it runs with.
+    @param heard - Called with each percentage on an apt status line.
+    @returns (int, str), its exit status and everything it wrote.
+    @raises subprocess.TimeoutExpired where it took longer than `seconds`.
+
+    The clock is a timer that ends the command, because a command that stops
+    writing is exactly the one a wait on its next line would never see end.
+    What it writes on its error stream is dropped, so that stream cannot fill
+    and stop it whilst this reads the other.
+    """
+    process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                               stderr=subprocess.DEVNULL, text=True,
+                               env=environment)
+    ended = []
+
+    def end():
+        ended.append(True)
+        process.kill()
+
+    timer = threading.Timer(seconds, end)
+    timer.start()
+    said = []
+    try:
+        for line in process.stdout:
+            said.append(line)
+            percent = _apt_percent(line)
+            if percent is not None:
+                heard(percent)
+        process.wait()
+    finally:
+        timer.cancel()
+    if ended:
+        raise subprocess.TimeoutExpired(command, seconds)
+    return process.returncode, "".join(said)
+
+
+def _apt_percent(line):
+    """@returns float, how far dpkg has got by one apt status line, or None.
+
+    @param line - One line apt wrote to its status descriptor. dpkg's own
+      lines are `pmstatus:package:percent:what it is doing`; the download's
+      lines start with `dlstatus` and are left out, because fetching is quick
+      beside unpacking and a bar that ran to the end twice would say neither.
+    """
+    fields = line.split(":", 3)
+    if len(fields) < 3 or fields[0] != "pmstatus":
+        return None
+    try:
+        return float(fields[2])
+    except ValueError:
+        return None
 
 
 def installed(package):
@@ -685,8 +751,24 @@ def _packages(work, wanted):
     if not missing:
         return
     run(["apt-get", "update", "-qq"])
-    run(["apt-get", "install", "-y", "-qq", *missing])
+    _apt_install(work, missing)
     work.undoes(lambda: run(["apt-get", "remove", "-y", "-qq", *missing]))
+
+
+def _apt_install(work, arguments):
+    """Installs with apt, and says how far dpkg has got whilst it does.
+
+    @param work - The run, whose progress carries the percentage.
+    @param arguments - What follows `apt-get install -y -qq`: package names,
+      and any option that goes with them.
+
+    A step that installs a hundred packages takes minutes, and without this
+    the window and the one-liner show a step that looks stuck. apt writes its
+    status lines to the descriptor it is given, and standard output is the one
+    this reads.
+    """
+    run(["apt-get", "-o", "APT::Status-Fd=1", "install", "-y", "-qq", *arguments],
+        heard=lambda percent: work.through(round(percent), 100, INSTALLING))
 
 
 def _archive(work):
@@ -729,7 +811,7 @@ def _emulator(work):
     if installed(EMULATOR_PACKAGE):
         return
     run(["apt-get", "update", "-qq"])
-    run(["apt-get", "install", "-y", "-qq", EMULATOR_PACKAGE])
+    _apt_install(work, [EMULATOR_PACKAGE])
     work.undoes(lambda: run(["apt-get", "remove", "-y", "-qq",
                              EMULATOR_PACKAGE]))
 
@@ -741,7 +823,7 @@ def _newest_emulator(work):
     mean holding a copy of it, and apt has no idea where the old one went.
     """
     run(["apt-get", "update", "-qq"])
-    run(["apt-get", "install", "-y", "-qq", "--only-upgrade", EMULATOR_PACKAGE])
+    _apt_install(work, ["--only-upgrade", EMULATOR_PACKAGE])
 
 
 def _tool_package(work):

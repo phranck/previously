@@ -51,7 +51,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd -P
 readonly SCRIPT_DIR
 
 # Every apt call in this script, so the frontend is stated once and reaches
-# the command that needs it.
+# the command that needs it. In English, because what it says about its
+# progress is shown beside this script's own English lines.
 #
 # Exporting it into this shell does nothing: sudo runs with `Defaults
 # env_reset`, so it builds a fresh environment and whatever this shell set is
@@ -60,7 +61,7 @@ readonly SCRIPT_DIR
 # Given to the sudo it survives, because sudo puts an assignment in front of
 # the command into the environment it builds.
 apt_get() {
-  sudo DEBIAN_FRONTEND=noninteractive apt-get "$@"
+  sudo DEBIAN_FRONTEND=noninteractive LC_ALL=C.UTF-8 apt-get "$@"
 }
 
 # The admin tool, for a run that has no checkout beside it. The name carries no
@@ -180,6 +181,33 @@ quietly() {
   local pid=$!
   while kill -0 "$pid" 2>/dev/null; do
     spin "$label"
+    sleep 0.1
+  done
+  wait "$pid"
+}
+
+# Runs apt with its output in the log, and shows how far it has got beside the
+# spinner. apt writes a status line for every move it makes when it is given a
+# descriptor for them, `dlstatus` whilst it downloads and `pmstatus` whilst
+# dpkg unpacks and configures, each with a percentage and what it is doing;
+# standard output is that descriptor here, so the lines land in the log and
+# the newest one since this call began is the one shown.
+#
+# $1 is what to show, and the rest goes to apt-get. Answers with apt's status.
+apt_quietly() {
+  local label="$1" before line percent what
+  shift
+  before="$(wc -l < "$LOG")"
+  apt_get -o APT::Status-Fd=1 "$@" >>"$LOG" 2>&1 &
+  local pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    line="$(tail -n +"$((before + 1))" "$LOG" | grep -E '^(dl|pm)status:' | tail -n 1 || true)"
+    if [[ -n "$line" ]]; then
+      IFS=: read -r _ _ percent what <<< "$line"
+      spin "${label}  ${DIM}${percent%.*}%  ${what}${RESET}"
+    else
+      spin "$label"
+    fi
     sleep 0.1
   done
   wait "$pid"
@@ -339,9 +367,9 @@ install_admin() {
 
   # apt rather than dpkg, so the dependencies it declares are resolved. The
   # package enables and starts the service and the units that act for it.
-  quietly "Installing the admin tool" apt_get update -qq \
+  apt_quietly "Installing the admin tool" update -qq \
     || abort "apt could not read its package lists."
-  quietly "Installing the admin tool" apt_get install -y -qq "$ADMIN_PACKAGE" \
+  apt_quietly "Installing the admin tool" install -y -qq "$ADMIN_PACKAGE" \
     || abort "Could not install the admin tool."
   undo "remove the admin tool" "apt_get purge -y -qq previously"
 
@@ -365,8 +393,8 @@ update_admin() {
   # the same build in place again, which is what a rebuild of one commit is,
   # and --allow-downgrades is for going back to a release from a checkout that
   # ran ahead of it.
-  quietly "Updating the admin tool" \
-    apt_get install -y -qq --reinstall --allow-downgrades "$ADMIN_PACKAGE" \
+  apt_quietly "Updating the admin tool" \
+    install -y -qq --reinstall --allow-downgrades "$ADMIN_PACKAGE" \
     || abort "Could not install the admin tool."
 
   local after
@@ -470,6 +498,7 @@ print("\x1f".join(str(field) for field in (
     part.get("doing") or "",
     size(part.get("done")),
     size(part.get("of")),
+    int(part["done"] * 100 / part["of"]) if part.get("of") else "",
     ",".join(record.get("changed") or []),
     failed.get("reason") or "",
     ",".join(record.get("undone") or []),
@@ -478,10 +507,14 @@ print("\x1f".join(str(field) for field in (
 }
 
 # The line beside the spinner for one step: its name, and what it is doing
-# inside itself where it says.
+# inside itself where it says. A sentence that names no sizes, such as the one
+# for installing packages, is followed by the percentage instead.
 running_label() {
-  local step="$1" doing="$2" done_size="$3" of_size="$4" words
+  local step="$1" doing="$2" done_size="$3" of_size="$4" percent="$5" words
   words="$(doing_label "$doing")"
+  if [[ -n "$words" && "$words" != *"{done}"* && -n "$percent" ]]; then
+    words="${words} ${percent}%"
+  fi
   words="${words//\{done\}/$done_size}"
   words="${words//\{of\}/$of_size}"
   if [[ -n "$words" ]]; then
@@ -535,11 +568,11 @@ set_up_the_machine() {
   mv -f "${REQUEST}.writing" "$REQUEST"
   HANDED_OVER=true
 
-  local line started finished ok step doing done_size of_size changed reason undone
+  local line started finished ok step doing done_size of_size percent changed reason undone
   local waited=0 index
   while true; do
     line="$(read_progress 2>/dev/null || true)"
-    IFS=$'\x1f' read -r started finished ok step doing done_size of_size changed reason undone <<< "$line"
+    IFS=$'\x1f' read -r started finished ok step doing done_size of_size percent changed reason undone <<< "$line"
 
     # A record from before this request is the last run, not this one.
     if [[ -z "$line" || "${started%.*}" -lt "$asked_at" ]]; then
@@ -572,7 +605,7 @@ set_up_the_machine() {
       exit 1
     fi
 
-    spin "$(running_label "$step" "$doing" "$done_size" "$of_size")"
+    spin "$(running_label "$step" "$doing" "$done_size" "$of_size" "$percent")"
     sleep 0.1
   done
 }
