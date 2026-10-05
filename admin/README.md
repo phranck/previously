@@ -7,6 +7,7 @@ A small service on the Pi that shows what the emulator is set to, from a browser
 ```bash
 make run          # in the foreground, on port 8810
 make check        # lint and tests, which is what a commit needs
+make browser      # what only a browser can show, in Safari Technology Preview
 ```
 
 ## What it needs installed
@@ -38,8 +39,15 @@ brew install esbuild                                 # or npm install --global e
 Homebrew's are their own programs rather than modules of the system Python, which the Makefile calls as `$(PYTHON) -m`. So on a Mac it is a virtual environment that works with it:
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install flake8 pytest
+python3 -m venv .venv && .venv/bin/pip install flake8 pytest selenium
 make check PYTHON=.venv/bin/python
+```
+
+**`make browser` runs what only a browser laying out the page can show**, such as whether a scroller's knob matches what there is to scroll. It starts the service in a temporary home on a free port and drives Safari Technology Preview through that browser's own `safaridriver`. So it needs Safari Technology Preview with remote automation allowed, and Selenium in the virtual environment. The suite skips where either is missing, and `make check` does not run it.
+
+```bash
+"/Applications/Safari Technology Preview.app/Contents/MacOS/safaridriver" --enable   # once, allows remote automation
+make browser PYTHON=.venv/bin/python
 ```
 
 Nothing is fetched at runtime. The service itself uses only the standard library, so it starts on a machine with no network and inside a package build.
