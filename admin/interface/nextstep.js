@@ -1505,7 +1505,10 @@ class NxAsk extends HTMLElement {
         <div class="titlebar"></div>
         <div class="naming">
           <i class="art icon raised"></i>
-          <div class="name"></div>
+          <div class="heading">
+            <div class="name"></div>
+            <p class="subtitle" hidden></p>
+          </div>
         </div>
         <div class="pane">
           <div class="lines"></div>
@@ -1548,6 +1551,8 @@ class NxAsk extends HTMLElement {
    * @param {string} question.name - What the panel calls itself, after the
    *   command that brought it up. It stands beside the icon above the groove,
    *   because an attention panel's title bar is empty.
+   * @param {string} [question.subtitle] - A line under the name, above the
+   *   groove, in the panel's ordinary type. Left out, the name stands alone.
    * @param {(string|Node)[]} question.text - One paragraph per entry, below
    *   the groove.
    * @param {string} [question.icon] - Which picture, by the name showArt knows.
@@ -1567,9 +1572,12 @@ class NxAsk extends HTMLElement {
    *   the user press the button", so normal here is that Return presses.
    * @returns {Promise<boolean>} True where the acting button was pressed.
    */
-  ask({ name, text, icon, confirm, cancel, field = false, secret = false,
-        dangerous = false }) {
+  ask({ name, subtitle, text, icon, confirm, cancel, field = false,
+        secret = false, dangerous = false }) {
     this.querySelector(".name").textContent = name;
+    const under = this.querySelector(".subtitle");
+    under.hidden = !subtitle;
+    under.textContent = subtitle ?? "";
     this.querySelector(".lines").replaceChildren(
       ...text.map((line) => {
         /* A line is a sentence, or an element where the caller had to build
@@ -1619,6 +1627,7 @@ class NxAsk extends HTMLElement {
    * Says something and waits for it to be read.
    * @param {object} panel
    * @param {string} panel.name - What the panel calls itself.
+   * @param {string} [panel.subtitle] - A line under the name, as ask takes it.
    * @param {(string|Node)[]} panel.text - One paragraph per entry, as a
    *   sentence or as an element where the caller had to build the line
    *   itself.
@@ -1632,8 +1641,8 @@ class NxAsk extends HTMLElement {
    * something has one answer and offering a second would be a button that does
    * what the first does.
    */
-  tell({ name, text, icon, confirm }) {
-    return this.ask({ name, text, icon, confirm, cancel: null });
+  tell({ name, subtitle, text, icon, confirm }) {
+    return this.ask({ name, subtitle, text, icon, confirm, cancel: null });
   }
 
   /**

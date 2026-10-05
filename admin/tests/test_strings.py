@@ -203,17 +203,18 @@ def test_every_application_can_be_named_in_words(english):
 
 @pytest.mark.parametrize("language", LANGUAGES)
 def test_the_about_panel_says_what_the_licence_says(language):
-    """Who holds the copyright and from which year is stated in `LICENSE`, and
-    a browser cannot read that file. So the sentence is in the catalogues, and
-    this is what stops the two drifting apart: the year passes, one of them is
-    corrected, and nothing else would ever say the other is now wrong."""
+    """Who holds the copyright is stated in `LICENSE`, and a browser cannot
+    read that file. So the name is in the catalogues, and this is what stops
+    the two drifting apart. The year is the current one, which the panel fills
+    in when it opens, so every language has to leave a place for it."""
     licence = (INTERFACE.parent.parent / "LICENSE").read_text(encoding="utf-8")
     holder = re.search(r"^Copyright \(c\) (\d{4}) (.+)$", licence, re.M)
 
     assert holder, "LICENSE does not say who holds it"
     words = catalogue(language)
 
-    assert holder.group(1) in words["about.copyright"], language
+    assert "{year}" in words["about.copyright"], language
+    assert "{holder}" in words["about.copyright"], language
     # The name alone, because the panel sets it as the mark is set and the
     # licence sets it as a legal document does.
     assert holder.group(2).strip().lower() == words["about.holder"].lower(), language

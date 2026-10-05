@@ -979,6 +979,17 @@ nx-ask .name {
   font-weight: bold;
 }
 
+/* A line under the name, in the panel's ordinary type, for a panel that says
+   what something is before it says anything else. The figure has none, so its
+   place and its air are a choice: it belongs to the name, so it stands above
+   the groove with the name, close under it. */
+nx-ask .heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+nx-ask .subtitle { margin: 0; }
+
 /* Ranged left, which nothing written down settles either way. Neither the
    Panels chapter nor the Controls chapter says a word about how the text
    inside a panel is aligned. The one thing the Panels chapter centres is the
