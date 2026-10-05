@@ -157,6 +157,54 @@ def test_the_helper_writes_where_the_service_reads(build):
     assert named != DEFAULTS["runtime_directory"]
 
 
+# -- the X server's socket directory -------------------------------------
+
+
+def test_the_package_names_the_socket_directory_the_service_reads(build):
+    """The build names it for the cleanup and for the postinst, and the service
+    looks for the display there. They are apart because the build does not
+    import the service, so this is what holds them together."""
+    from previously import screen
+
+    assert build.X11_SOCKETS == screen.X11_SOCKETS
+
+
+def test_a_missing_socket_directory_does_not_stop_the_service(unit):
+    """The unit binds the X server's socket directory into its private /tmp,
+    and a bind whose source is absent is a service that never starts: systemd
+    refuses it with 226/NAMESPACE before Python runs. Optional, a missing one
+    leaves a service that answers, and only pressing the emulator's keys
+    fails."""
+    from previously import screen
+
+    bound = re.findall(r"^BindReadOnlyPaths=(\S+)", unit, re.M)
+
+    assert "-" + screen.X11_SOCKETS in bound, bound
+
+
+def test_the_cleanup_of_tmp_leaves_the_socket_directory_alone(build, tmp_path):
+    """Trixie ages /tmp after ten days and takes this directory with it once
+    its timestamps look that old, which a Pi without a clock battery reaches by
+    booting at the time it was switched off. Excluded, it is never taken."""
+    build.lay_out(tmp_path / "tree")
+
+    entries = (tmp_path / "tree" / build.TMPFILES).read_text(encoding="utf-8")
+
+    assert "x " + build.X11_SOCKETS in entries.splitlines()
+
+
+def test_the_package_puts_the_socket_directory_back_before_starting(build):
+    """Where the cleanup took it before this package arrived. systemd's own
+    x11.conf says how it is made, so that is applied rather than a second
+    statement of it, and it is done before the service is started."""
+    postinst = build.scripts()["postinst"]
+
+    created = postinst.index(
+        "systemd-tmpfiles --create --boot --prefix=" + build.X11_SOCKETS)
+
+    assert created < postinst.index("systemctl enable --now")
+
+
 # -- which build a package is --------------------------------------------
 
 
