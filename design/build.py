@@ -283,7 +283,7 @@ def properties():
 def faces(css):
     """@returns the stylesheet carrying the Terminal's face rather than naming it.
 
-    The admin serves the four files out of web/fonts and the stylesheet points
+    The admin serves the two files out of web/fonts and the stylesheet points
     at them. The mockup is one document that opens from anywhere, with nothing
     beside it to point at, so there they travel inside it as the pictures do.
 

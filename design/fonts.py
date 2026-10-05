@@ -1,89 +1,103 @@
 #!/usr/bin/env python3
-"""Fetches Ohlfs and writes the four faces the Terminal is set in.
+"""Fetches Inconsolata and writes the two faces the Terminal is set in.
 
-Keith Ohlfs drew this face for NeXTSTEP as bitmaps, and Terminal.app was set in
-its 12 pixel strike. jasonwoodland/ohlfs-font-extras decodes the original
-Ohlfs.font bundle and writes each strike out as TrueType, with the Extra
-variants carrying glyphs the original never had. This takes the four Screen 12
-Extra faces from a commit named below, checks them against their sums, and
-writes them into admin/web/fonts as WOFF2.
+Inconsolata is a monospaced outline face under the SIL Open Font License, and
+its release carries hinting, so it is drawn sharp at whatever size the desk is
+drawn at. This takes the Regular and the Bold out of the release named below,
+checks each against its sum, and writes them into admin/web/fonts as WOFF2,
+with the licence beside them.
 
-The two changes it makes on the way are in metrics rather than in outlines, and
-line() says why each one is needed.
+The one change it makes on the way is in metrics rather than in outlines, and
+line() says why it is needed.
 
     python3 fonts.py
 """
 
 import hashlib
+import io
 import pathlib
 import urllib.request
+import zipfile
 
 from fontTools.ttLib import TTFont
 
 HERE = pathlib.Path(__file__).parent
 SERVED = HERE.parent / "admin" / "web" / "fonts"
 
-#: The commit the faces are taken from. A branch would make this script answer
-#: differently on different days, and the sums below would then be the thing
-#: that broke rather than the thing that checked.
-UPSTREAM = "a937af36e051d2d713e560c9b6003af08d00e8ec"
-SOURCE = ("https://raw.githubusercontent.com/jasonwoodland/ohlfs-font-extras/"
-          + UPSTREAM + "/dist/ttf/%s.ttf")
+#: The release the faces are taken from. Its archive holds every width and
+#: weight as a static file, and the static files are the ones that are hinted.
+RELEASE = "https://github.com/googlefonts/Inconsolata/releases/download/v3.000/"
+ARCHIVE = RELEASE + "fonts_ttf.zip"
 
 #: What each file has to be. A face arriving over the network is a file from a
-#: machine nobody here owns, and these are the four that were read and measured.
+#: machine nobody here owns, and these are the two that were read and measured.
+#: The sums are of the faces rather than of the archive, because the faces are
+#: what is shipped.
 FACES = {
-    "Ohlfs-Screen-12-Extra":
-        "b2e0c194e10f53e207dc97e8e5e45885d003a8feeffdcc5a0349dfca9b525604",
-    "Ohlfs-Screen-12-Extra-Bold":
-        "cd9588595a399f94e514c16da083580367ea520edd1d48493c52f1237ad6dfc5",
-    "Ohlfs-Screen-12-Extra-Italic":
-        "8bee79cb7c1334a8a174d76eaf10a8267d5075ec41c203aa13d9a4582bab6bf5",
-    "Ohlfs-Screen-12-Extra-Bold-Italic":
-        "e5152f0d15d94ad7551a58d5acea33c5e417dd2a0fc2039e3e15715eb2f98589",
+    "Inconsolata-Regular":
+        "127875d255d4c5973ca57267a43bb9d1c04397e6c7d236984a595b6cdcb12b7c",
+    "Inconsolata-Bold":
+        "263faa57f6c00c43a04e77df7abd5cb5cd4aae9f93507002c1217e02641fc7e6",
 }
 
-#: The line the face itself asks for, in font units, and the em it is drawn on.
-#: Both are read off the upstream files: the ascent is 1300 units and the
-#: descent 300, which is 16 px once the em of 1500 is set at 15 px.
-ASCENT = 1300
-DESCENT = 300
+#: The licence, which goes wherever the faces go: the OFL allows them to be
+#: bundled with software on the condition that it travels with them.
+LICENCE = "OFL.txt"
+LICENCE_SUM = "5d362a6f8690517fd9a5573128a081d8bbbb2f92714cf00556e08fbbe9600426"
+
+#: The line the faces are given, in font units on an em of 1000. One em, so
+#: at the Terminal's 16 px a row is 16 px, the --line the rest of the
+#: interface is built on. The descent is the face's own and the ascent is the
+#: rest of the em.
+ASCENT = 810
+DESCENT = 190
 
 
-def fetch(name):
-    """Downloads one face and checks it.
+def download(url, expected):
+    """Downloads one file and checks it.
 
-    @param name - The file's stem, such as "Ohlfs-Screen-12-Extra".
-    @returns bytes of the TrueType file.
+    @param url - Where it is.
+    @param expected - Its SHA-256, as hex.
+    @returns bytes of the file.
     @raises SystemExit where what arrived is not what was measured.
     """
-    with urllib.request.urlopen(SOURCE % name) as answer:
+    with urllib.request.urlopen(url) as answer:
         body = answer.read()
-    got = hashlib.sha256(body).hexdigest()
-    if got != FACES[name]:
-        raise SystemExit("%s is not the file this was written against:\n"
-                         "  expected %s\n  got      %s" % (name, FACES[name], got))
+    checked(url, body, expected)
     return body
+
+
+def checked(name, body, expected):
+    """Holds one file to its sum.
+
+    @param name - What to call it in the complaint.
+    @param body - bytes of the file.
+    @param expected - Its SHA-256, as hex.
+    @raises SystemExit where the two differ.
+    """
+    got = hashlib.sha256(body).hexdigest()
+    if got != expected:
+        raise SystemExit("%s is not the file this was written against:\n"
+                         "  expected %s\n  got      %s" % (name, expected, got))
 
 
 def line(font):
     """Makes every table say the same height, so every browser draws the same.
 
     A font carries its line in three places, and a browser picks one of them by
-    platform rather than by anything the page can say. Ohlfs arrives with hhea
-    and the typographic metrics both at 1300 over 300, which is the 16 px a
-    line of the interface is, and with the Windows metrics at 1500 over 300,
-    which is 18. A browser reading the third one would draw a terminal two
-    pixels taller per row than the one beside it on the next machine.
+    platform rather than by anything the page can say. Inconsolata arrives with
+    hhea and the typographic metrics both at 859 over 190, which at the
+    Terminal's 16 px is a line of 16.8, and with the Windows metrics at 1004
+    over 454, which is 23.3. Neither is the 16 a row of this interface is, and
+    the two of them disagree.
 
-    So all three are set to what the face itself says, and the flag that tells
-    a browser to prefer the typographic pair is set with them. The outlines
-    reach from 1300 down to -200, so nothing is cut by the smaller box.
+    So all three are set to ASCENT over DESCENT. Every character of ASCII stays
+    inside that box, the tallest reaching 739 and the lowest -179. A few of
+    Latin-1 pass it, the cedilla furthest at 15 units below, which is a
+    quarter of a pixel and is drawn rather than cut.
 
-    That flag lives in a field whose meaning arrived with version 4 of the
-    table, and these faces carry version 3, where the same bit says nothing.
-    Both versions hold the same fields, so the number is raised and no value
-    moves.
+    The release already sets the flag that tells a browser to prefer the
+    typographic pair, in a table new enough to carry its meaning.
 
     @param font - TTFont, changed in place.
     """
@@ -91,27 +105,27 @@ def line(font):
     hhea.ascent, hhea.descent, hhea.lineGap = ASCENT, -DESCENT, 0
     os2.sTypoAscender, os2.sTypoDescender, os2.sTypoLineGap = ASCENT, -DESCENT, 0
     os2.usWinAscent, os2.usWinDescent = ASCENT, DESCENT
-    os2.version = max(os2.version, 4)
-    os2.fsSelection |= 1 << 7  # USE_TYPO_METRICS
 
 
 def main():
+    with urllib.request.urlopen(ARCHIVE) as answer:
+        archive = zipfile.ZipFile(io.BytesIO(answer.read()))
     SERVED.mkdir(parents=True, exist_ok=True)
-    written = 0
-    for name in FACES:
-        raw = HERE / (name + ".ttf")
-        raw.write_bytes(fetch(name))
-        font = TTFont(raw)
+    for name, expected in FACES.items():
+        body = archive.read("fonts/ttf/%s.ttf" % name)
+        checked(name, body, expected)
+        # The release's own date rather than today's, so a second run writes
+        # the same bytes and git sees nothing to commit.
+        font = TTFont(io.BytesIO(body), recalcTimestamp=False)
         line(font)
         # WOFF2, because these are served over a network to a browser and
-        # nothing else ever opens them. The four come to a quarter of what the
-        # TrueType files weigh.
+        # nothing else ever opens them. It keeps the hinting, which is a table
+        # like any other.
         font.flavor = "woff2"
         font.save(SERVED / (name + ".woff2"))
         font.close()
-        raw.unlink()
-        written += 1
-    print("wrote %d faces into %s" % (written, SERVED))
+    (SERVED / LICENCE).write_bytes(download(RELEASE + LICENCE, LICENCE_SUM))
+    print("wrote %d faces and their licence into %s" % (len(FACES), SERVED))
 
 
 if __name__ == "__main__":
