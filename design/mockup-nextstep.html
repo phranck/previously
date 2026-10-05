@@ -2749,13 +2749,29 @@ class NxScroller extends HTMLElement {
     this.onScroll ??= () => this.refresh();
     this.view.addEventListener("scroll", this.onScroll);
 
-    /* Two things change what there is to scroll, and they are seen by two
-       different observers: the view being resized, and its content being
-       replaced. Content that grows inside an unchanged box moves no edge, so
-       the resize observer alone would miss a shelf being redrawn. */
+    /* What there is to scroll is the content's size against the view's, so
+       both sizes are watched: the view's own, and that of every child it
+       holds. A child changes size for more reasons than being replaced: a
+       part inside it shown or hidden, as Preferences does when it changes
+       module, a word set on it that a rule matches, a face arriving. None of
+       those is a change to the list of children, and a knob drawn for the
+       module before stays standing over the one after.
+
+       The list of children is watched as well, because a child that is
+       replaced has to be watched in its place, and text that changes inside
+       a box of a fixed size moves no edge. */
     const sized = new ResizeObserver(() => this.refresh());
-    sized.observe(this.view);
-    const changed = new MutationObserver(() => this.refresh());
+    const watchTheContent = () => {
+      sized.disconnect();
+      sized.observe(this.view);
+      for (const child of this.view.children) sized.observe(child);
+    };
+    watchTheContent();
+    const changed = new MutationObserver((records) => {
+      if (records.some((record) => record.target === this.view
+                       && record.type === "childList")) watchTheContent();
+      this.refresh();
+    });
     changed.observe(this.view, { childList: true, subtree: true, characterData: true });
     this.watch = [sized, changed];
 
