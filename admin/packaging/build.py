@@ -5,9 +5,9 @@
 
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
-package copies Python, static files and seven unit files into place. Nothing is
-compiled, nothing is patched and nothing is generated at install time, so the
-debhelper machinery would be a build system around a copy.
+package copies Python, static files, seven unit files and one tmpfiles entry
+into place. Nothing is compiled, nothing is patched and nothing is generated at
+install time, so the debhelper machinery would be a build system around a copy.
 
 The release is `previously.server.RELEASE` and is read from there rather than
 written down again here. A package built between two releases carries that
@@ -59,6 +59,16 @@ RECOMMENDS = ["previous"]
 LIB = "usr/lib/" + NAME
 UNITS = "lib/systemd/system"
 CONFIG = "etc/" + NAME
+TMPFILES = "usr/lib/tmpfiles.d/" + NAME + ".conf"
+
+#: Where the kiosk's X server keeps its socket, which the service binds into
+#: its private /tmp to press the emulator's keys. Trixie ages /tmp after ten
+#: days and takes this directory with it once its timestamps look that old,
+#: which a Pi without a clock battery reaches by booting at the time it was
+#: switched off. The package excludes it from that cleanup and puts it back
+#: where it is already gone. `screen.X11_SOCKETS` is the same path as the
+#: service reads it; this script does not import the service.
+X11_SOCKETS = "/tmp/.X11-unix"
 
 #: What git adds to the description of a tree that has something uncommitted
 #: in it, and therefore what the version of such a build ends in. A package
@@ -211,6 +221,12 @@ if [ "$1" = configure ]; then
         fi
     fi
 
+    # systemd's own x11.conf is what makes the X server's socket directory, at
+    # boot. Applied here as well, because the /tmp cleanup may have taken it
+    # since, and the service binds it. Not fatal: without it the service still
+    # starts, and only pressing the emulator's keys fails.
+    systemd-tmpfiles --create --boot --prefix=%(x11)s || true
+
     systemctl daemon-reload
     systemctl enable --now %(service)s
     # These act for the service without it holding any privilege, so they are
@@ -290,6 +306,11 @@ def lay_out(into):
     (into / CONFIG).mkdir(parents=True, exist_ok=True)
     shutil.copy(HERE / "config.ini", into / CONFIG / "config.ini")
 
+    # Written from the constant rather than shipped as a file, so the path the
+    # cleanup leaves alone is the path the postinst puts back.
+    (into / TMPFILES).parent.mkdir(parents=True, exist_ok=True)
+    (into / TMPFILES).write_text("x %s\n" % X11_SOCKETS, encoding="utf-8")
+
 
 def scripts():
     """The three maintainer scripts, filled in.
@@ -301,7 +322,7 @@ def scripts():
     second time and agreeing with themselves.
     """
     words = {"name": NAME, "service": SERVICE, "units": UNITS,
-             "watchers": " ".join(WATCHERS)}
+             "watchers": " ".join(WATCHERS), "x11": X11_SOCKETS}
     return {"postinst": POSTINST % words, "prerm": PRERM % words,
             "postrm": POSTRM % words}
 

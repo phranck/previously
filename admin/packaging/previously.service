@@ -43,7 +43,13 @@ PrivateTmp=yes
 # The one hole in the private /tmp. The kiosk's X server keeps its socket there,
 # and pressing the emulated power button means reaching it. Read only, and one
 # directory rather than the whole of /tmp.
-BindReadOnlyPaths=/tmp/.X11-unix
+#
+# Optional, because a bind whose source is absent stops the service before it
+# starts, and this directory is the system's: systemd makes it at boot and the
+# /tmp cleanup can take it. The package keeps it out of that cleanup and puts it
+# back on install. Without it the service still starts, and only pressing the
+# emulator's keys fails.
+BindReadOnlyPaths=-/tmp/.X11-unix
 
 # The four places in the home this service may write, which ProtectHome below
 # otherwise forbids.
