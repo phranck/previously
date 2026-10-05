@@ -1039,13 +1039,14 @@ def test_the_emulator_comes_from_the_one_archive_it_comes_from():
 # -- who owns what it writes ----------------------------------------------
 
 
-def test_the_owner_is_read_out_of_the_service_unit(tmp_path, monkeypatch):
-    """Rather than named a second time here. The unit is where it is decided,
-    and a helper that disagreed with it would write into the wrong home."""
+def test_the_owner_is_read_out_of_the_owner_file(tmp_path, monkeypatch):
+    """Rather than named a second time here. The package writes it down when
+    it is installed, and a helper that disagreed with it would write into the
+    wrong home."""
     import pwd
 
     me = pwd.getpwuid(os.getuid()).pw_name
-    unit = tmp_path / "previously.service"
+    unit = tmp_path / "owner.conf"
     unit.write_text("[Service]\nUser=%s\nGroup=%s\n" % (me, me), encoding="utf-8")
 
     assert setup.Owner.from_unit(unit).name == me

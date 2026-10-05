@@ -61,13 +61,35 @@ def test_the_setting_points_into_the_home():
     assert not DEFAULTS["machines_file"].startswith("/var")
 
 
-def test_the_unit_opens_the_directory_they_live_in(unit):
+def test_the_unit_opens_the_directory_they_live_in(build):
     """ProtectHome leaves the home read only, so without this entry the first
     save fails and the file the service is configured with can never be written.
+    The entries are in the owner file, because the home is the owner's.
     """
-    opened = re.findall(r"^ReadWritePaths=-?(\S+)", unit, re.M)
+    postinst = build.scripts()["postinst"]
 
-    assert any(path.endswith("/" + where_they_live()) for path in opened), opened
+    assert where_they_live() in build.WRITABLE_IN_HOME
+    assert "ReadWritePaths=-$home/" + where_they_live() in postinst
+
+
+def test_the_owner_can_write_everywhere_the_service_writes(build):
+    """Four places in the home, each read off what decides it: the emulator's
+    configuration, the saved machines, the documents and the directory the
+    emulator runs in. One missing is a write that fails with a read only
+    filesystem on the day it is first tried."""
+    from previously import setup
+
+    def in_the_home(configured):
+        return str(pathlib.PurePosixPath(configured[2:]))
+
+    wanted = {
+        str(pathlib.PurePosixPath(in_the_home(DEFAULTS["previous_config"])).parent),
+        where_they_live(),
+        in_the_home(DEFAULTS["documents"]),
+        setup.WORK_DIRECTORY,
+    }
+
+    assert wanted == set(build.WRITABLE_IN_HOME)
 
 
 def test_the_package_creates_that_directory(build):
@@ -80,14 +102,82 @@ def test_the_package_creates_that_directory(build):
     assert where_they_live() in postinst
 
 
-def test_the_package_asks_the_unit_who_the_user_is(build):
-    """Rather than naming them a second time. The unit is where it is decided,
-    and a package that disagreed with it would create the directory in the wrong
-    home and leave the right one read only."""
+def test_the_package_runs_as_the_user_the_card_was_made_with(build):
+    """The Imager asks for a user name and creates that user first, so it is
+    the one with UID 1000. A machine that already has an owner file keeps the
+    user in it, and one that ran as next before keeps next, so an upgrade never
+    moves the tool into somebody else's home."""
     postinst = build.scripts()["postinst"]
 
-    assert "s/^User=//p" in postinst
-    assert "getent passwd" in postinst
+    kept = postinst.index("/" + build.OWNER_FILE)
+    before = postinst.index("getent passwd next")
+    first = postinst.index("getent passwd 1000")
+
+    assert kept < before < first
+    assert "User=$owner" in postinst
+    assert "Group=$group" in postinst
+
+
+def test_a_card_with_nobody_to_run_as_is_refused_before_anything_lands(build):
+    """Before the files are unpacked rather than after, so a refusal leaves
+    nothing half configured. The question is asked the same way in both
+    scripts, because they are filled from one statement of it."""
+    preinst = build.scripts()["preinst"]
+
+    assert build.FIND_OWNER in preinst
+    assert build.FIND_OWNER in build.scripts()["postinst"]
+    assert 'if [ -z "$owner" ]' in preinst
+    assert "exit 1" in preinst
+
+
+@pytest.mark.parametrize("written, users, expected", [
+    ("[Service]\nUser=kept\n", {"next": 1000}, "kept"),
+    ("", {"next": 1001, "pi": 1000}, "next"),
+    ("", {"pi": 1000}, "pi"),
+    ("", {}, ""),
+])
+def test_who_the_tool_runs_as(build, tmp_path, written, users, expected):
+    """The statement itself, run by a shell, with getent answering for the
+    users the case names and the owner file put somewhere a test can write."""
+    owner_file = tmp_path / "owner.conf"
+    if written:
+        owner_file.write_text(written, encoding="utf-8")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    lines = "".join('  %s|%s) echo "%s:x:%d:%d::/home/%s:/bin/sh" ;;\n'
+                    % (name, uid, name, uid, uid, name) for name, uid in users.items())
+    getent = bin_dir / "getent"
+    getent.write_text('#!/bin/sh\ncase "$2" in\n%s  *) exit 2 ;;\nesac\n' % lines,
+                      encoding="utf-8")
+    getent.chmod(0o755)
+
+    snippet = build.FIND_OWNER.replace("/" + build.OWNER_FILE, str(owner_file))
+    finished = subprocess.run(
+        ["sh", "-c", snippet + 'printf "%s" "$owner"'],
+        capture_output=True, text=True, check=True,
+        env={"PATH": "%s:/usr/bin:/bin" % bin_dir})
+
+    assert finished.stdout == expected
+
+
+def test_the_service_never_starts_without_its_owner(unit, build):
+    """The unit names nobody, so where the owner file is missing it would run
+    as root. It does not start at all instead."""
+    assert not re.search(r"^User=", unit, re.M)
+    assert "ConditionPathExists=/" + build.OWNER_FILE in unit
+
+
+def test_the_helper_reads_the_owner_where_the_package_writes_it(build):
+    from previously import setup
+
+    assert "/" + build.OWNER_FILE == str(setup.OWNER_FILE)
+
+
+def test_purging_removes_the_owner_file(build):
+    postrm = build.scripts()["postrm"]
+    purging = postrm[postrm.index('"$1" = purge'):]
+
+    assert str(pathlib.PurePosixPath("/" + build.OWNER_FILE).parent) in purging
 
 
 def test_purging_the_package_leaves_the_home_alone(build):

@@ -47,6 +47,13 @@ def test_the_progress_is_read_where_the_helper_writes_it():
     assert constant("PROGRESS") == str(setup.OUR_DIRECTORY / setup.PROGRESS)
 
 
+def test_the_owner_is_read_where_the_package_writes_it():
+    """The script checks it runs as the tool's user before it writes into
+    that user's runtime directory, and it reads who that is where the helper
+    does."""
+    assert constant("OWNER_FILE") == str(setup.OWNER_FILE)
+
+
 def test_a_fresh_machine_gets_the_system_the_installer_offers_first():
     assert constant("SYSTEM") == systems.DEFAULT
 

@@ -93,6 +93,10 @@ readonly REQUEST="${RUNTIME_DIR}/setup"
 # only reads.
 readonly PROGRESS="/run/previously-setup/progress.json"
 
+# Who the tool runs as, which its package wrote down on install. The request
+# goes into that user's runtime directory, so this has to run as them too.
+readonly OWNER_FILE="/etc/systemd/system/previously.service.d/owner.conf"
+
 # The admin tool holds the emulator down by creating this file, and the
 # console's autostart below waits on it. On a tmpfs, so a board that has just
 # started runs its emulator whoever switched it off before the last shutdown.
@@ -513,6 +517,15 @@ close_steps_before() {
 }
 
 set_up_the_machine() {
+  local owner
+  owner="$(sed -n 's/^User=//p' "$OWNER_FILE" 2>/dev/null || true)"
+  if [[ -n "$owner" && "$owner" != "$(id -un)" ]]; then
+    # The tool stays: it is installed for the right person, and this run was
+    # only started by the wrong one.
+    COMPLETED=true
+    abort "The admin tool runs as ${owner}. Log in as ${owner} and run this again."
+  fi
+
   [[ -d "$RUNTIME_DIR" ]] || abort "The admin tool is not running, so there is nobody to ask for the rest."
 
   local asked_at

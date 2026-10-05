@@ -4,13 +4,14 @@ Documentation=https://github.com/phranck/previously
 # The configuration it reads lives in the emulator owner's home, so there is
 # no point starting before that user's home is available.
 After=network.target
+# Runs as the user who owns the emulator, never as root. That user is whoever
+# the card was made with, so the package writes them into owner.conf beside
+# this unit on install, together with the places in their home it may write.
+# Without that file it would run as root, so it does not start at all.
+ConditionPathExists=/etc/systemd/system/previously.service.d/owner.conf
 
 [Service]
 Type=simple
-# Runs as the user who owns the emulator, never as root. Reading previous.cfg
-# as anybody else would need permissions this service should not have.
-User=next
-Group=next
 ExecStart=/usr/bin/python3 -m previously
 WorkingDirectory=/usr/lib/previously
 Environment=PYTHONPATH=/usr/lib/previously
@@ -51,32 +52,9 @@ PrivateTmp=yes
 # emulator's keys fails.
 BindReadOnlyPaths=-/tmp/.X11-unix
 
-# The four places in the home this service may write, which ProtectHome below
-# otherwise forbids.
-#
-# Previous keeps its configuration in the first and this tool's job is to
-# change it. The directory rather than the file, because the copy it makes
-# before every write is a second file beside the first.
-#
-# The second holds the configurations somebody saved, which are theirs rather
-# than this service's and therefore live in their home: a purge takes the state
-# directory above with it and must not take their machines. The package creates
-# this directory, because ProtectHome leaves the rest of the home read-only and
-# an entry here whose path is absent is one systemd skips, which would leave the
-# first save refusing.
-#
-# The third is where the emulator runs, so it is where a screen grab lands.
-# This service asks for one, reads it and removes it again, and without the
-# write it could ask and read but never tidy up. Where the emulator was started
-# somewhere else, it photographs the window instead and leaves nothing behind.
-#
-# The fourth is the real part of the Previously tree, which today is the folder
-# the File Viewer shows as Documents/Pictures. Grab writes a screenshot there
-# and Preview reads it back, and it is the only part of that tree on the card.
-ReadWritePaths=-/home/next/.config/previous
-ReadWritePaths=-/home/next/.config/previously
-ReadWritePaths=-/home/next/.cache/previously
-ReadWritePaths=-/home/next/Previously
+# The places in the home this service may write, which ProtectHome below
+# otherwise forbids, are in owner.conf with the user whose home it is.
+# packaging/build.py says what each one is for.
 ProtectSystem=strict
 ProtectHome=read-only
 ProtectKernelTunables=yes
