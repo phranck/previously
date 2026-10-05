@@ -174,9 +174,15 @@
 </nx-window>
 
 <!-- Everything this tool holds, arranged the way NeXTSTEP arranged things.
-     The name is the window's own, not the machines': what is in it is two
-     applications and two folders of machines. -->
-<nx-window name="files" title="Previously" x="180" y="330" w="470" h="460"
+     The name is the window's own, not the machines', because it holds far
+     more than machines.
+
+     Tall enough for two whole rows of icons in its last band. A row holds
+     three at this width, and the root of a machine that is set up holds four
+     or five folders. Two rows need 477. The three beyond that are there
+     because the name under each icon is 15.6 pixels high, and a browser that
+     rounds it up leaves the band one pixel short, which shows a knob. -->
+<nx-window name="files" title="Previously" x="180" y="330" w="470" h="480"
            min-w="340" min-h="340" closed>
   <nx-viewer id="file-viewer"></nx-viewer>
   <p class="note" id="machine-note"></p>
