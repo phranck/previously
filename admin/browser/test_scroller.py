@@ -18,8 +18,9 @@ return { over: view.scrollHeight - view.clientHeight,
 
 #: A Preferences window short enough that the list of six languages runs past
 #: its panel while the Monitor module's one group still fits. Measured in
-#: Safari Technology Preview: 24 over for the one, nothing for the other.
-SHORT = 250
+#: Safari Technology Preview: 15 over for the one, and the other fits down to
+#: 251, so neither is within a rounding of the line.
+SHORT = 260
 
 
 def choose(desk, module):
