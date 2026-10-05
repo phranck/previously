@@ -15,35 +15,41 @@ const HOLDER_SITE = "https://layered.work";
  * Says what this tool is, and waits until that has been read.
  * @returns {Promise<void>}
  *
- * NeXTSTEP's Info panel holds the name, the icon, the copyright and the
- * version, and nothing else at all. The version is the service's own answer
- * rather than a line written here, so what this panel says and what the
- * Raspberry Pi window says cannot drift apart. A machine that cannot be
- * reached leaves that line out rather than guessing at it.
+ * The name and the icon, what the tool is for under the name, then the
+ * version and the copyright, and where it was made. The version is the
+ * service's own answer rather than a line written here, so what this panel
+ * says and what the Raspberry Pi window says cannot drift apart. Where the
+ * machine cannot be reached, `released` gives no number rather than a guess.
  */
 async function showWhatThisIs() {
   const version = (await ask("/api/pi"))?.version;
   await /** @type {any} */ (document.getElementById("ask")).tell({
     icon: "Previously",
     name: PRODUCT,
+    subtitle: t("about.tagline"),
     text: [
-      t("about.version", { version: released(version) }),
-      copyrightLine(),
+      versionAndCopyright(t("about.version", { version: released(version) })),
+      t("about.made"),
     ],
     confirm: t("about.ok"),
   });
 }
 
 /**
- * The copyright, with whoever holds it leading to their own site.
+ * The version and, on the line under it, the copyright, with whoever holds it
+ * leading to their own site.
+ * @param {string} versionLine - The version, as a sentence already.
  * @returns {HTMLParagraphElement}
+ *
+ * One paragraph with a break in it, because the two belong together and the
+ * line about where the tool was made stands apart below them.
  *
  * Built here rather than handed over as a sentence, because one word in it is
  * a link and the catalogues hold words rather than markup. The name is its own
  * entry for the same reason: it is a name, so it is the same in every
  * language, and the sentence around it is not.
  */
-function copyrightLine() {
+function versionAndCopyright(versionLine) {
   const paragraph = document.createElement("p");
   const holder = document.createElement("a");
   holder.href = HOLDER_SITE;
@@ -54,8 +60,12 @@ function copyrightLine() {
   holder.rel = "noopener noreferrer";
   holder.textContent = t("about.holder");
 
-  const [before, after] = t("about.copyright").split("{holder}");
-  paragraph.append(before ?? "", holder, after ?? "");
+  /* This year rather than one written into the catalogues, so the line is
+     current whenever it is read. */
+  const copyright = t("about.copyright", { year: new Date().getFullYear() });
+  const [before, after] = copyright.split("{holder}");
+  paragraph.append(versionLine, document.createElement("br"),
+                   before ?? "", holder, after ?? "");
   return paragraph;
 }
 
