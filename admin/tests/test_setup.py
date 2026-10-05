@@ -36,11 +36,15 @@ def commands(monkeypatch):
         #: is the one, and its last argument is the field being asked for.
         answers = {}
 
-        def __call__(self, command, seconds=None):
+        def __call__(self, command, seconds=None, heard=None):
             self.append(command)
             if command[0] in self.refuse:
                 raise setup.Refused("setup.command-failed",
                                     command=command[0], code=1)
+            # A command that reports how far it has got reports it once, so a
+            # test can see where the report goes.
+            if heard is not None:
+                heard(42.0)
             return self.answers.get(command[-1], "")
 
     answer = Commands()
@@ -1097,3 +1101,50 @@ def test_nothing_is_run_through_a_shell(tmp_path):
         setup.run(["echo hello; touch %s" % (tmp_path / "escaped")])
 
     assert not (tmp_path / "escaped").exists()
+
+
+def test_a_command_that_reports_its_progress_is_heard_as_it_goes():
+    """dpkg's status lines carry a percentage, and every one is passed on.
+    The download's lines and anything else apt writes are not."""
+    import sys
+
+    said = ("pmstatus:cage:20:Unpacking cage\n"
+            "dlstatus:1:50:Retrieving file 1 of 2\n"
+            "Reading package lists...\n"
+            "pmstatus:cage:100:Installed cage\n")
+    heard = []
+
+    answer = setup.run([sys.executable, "-c", "print(%r, end='')" % said],
+                       heard=heard.append)
+
+    assert heard == [20.0, 100.0]
+    assert answer.endswith("Installed cage")
+
+
+def test_a_reporting_command_that_fails_is_said_so_with_its_code():
+    with pytest.raises(setup.Refused) as refused:
+        setup.run(["false"], heard=lambda percent: None)
+
+    assert refused.value.told["reason"] == "setup.command-failed"
+
+
+def test_a_reporting_command_that_stops_answering_is_ended():
+    """A command that stops writing is the one a wait for its next line would
+    never see end, so the clock ends it."""
+    with pytest.raises(setup.Refused) as refused:
+        setup.run(["sleep", "5"], seconds=1, heard=lambda percent: None)
+
+    assert refused.value.told["reason"] == "setup.took-too-long"
+
+
+def test_installing_packages_says_how_far_dpkg_has_got(tmp_path, commands):
+    """A step that installs a hundred packages takes minutes, so the window
+    and the one-liner are told the percentage as it comes."""
+    work = work_in(tmp_path)
+    work.at("tools", 1)
+
+    setup._packages(work, ["cage"])
+
+    installing = [command for command in commands if "install" in command]
+    assert "APT::Status-Fd=1" in installing[0]
+    assert work.part == {"done": 42, "of": 100, "doing": setup.INSTALLING}
