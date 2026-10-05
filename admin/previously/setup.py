@@ -14,16 +14,17 @@ job, a system and a machine, and all three are looked up in tables that live
 here and in `systems.py` and `machines.py`. A name that is not in the table
 refuses the whole request.
 
-The work itself is the nine steps `install.sh` takes, in the same order, each
-of them skipping what it finds already done, plus the sound that script does
-tenth and the start that leaves a fresh machine running rather than waiting for
-a reboot. Every step that changes something records how to undo exactly that,
-and a failure walks the record backwards, which is what that script does too.
+The work itself is one machine being set up: the tools, the archive, the
+emulator, a system's disk, the configuration, the console, the quiet boot, the
+sound, and the start that leaves a fresh machine running rather than waiting for
+a reboot. Each step skips what it finds already done. Every step that changes
+something records how to undo exactly that, and a failure walks the record
+backwards.
 
-`install.sh` keeps its own copy of those steps for now, because it is the way
-in on a machine that has no admin tool yet and therefore cannot ask for any of
-this. Making it ask, so that there is one implementation rather than two, waits
-until this one has set a real machine up.
+These steps are written here and nowhere else. `install.sh` installs this tool
+and asks for the `install` job, which is the job the Installer window asks for
+too. The one thing that script still writes itself is the console, under
+`--update-admin`, and `_autostart_block` says why.
 """
 
 import datetime
@@ -102,7 +103,7 @@ REPOSITORY_PINS = pathlib.Path("/etc/apt/preferences.d/wmlive")
 EMULATOR_PACKAGE = "previous"
 
 #: The machine a fresh configuration describes: the cube with the turbo board,
-#: which is what `install.sh` writes. Where the disks live, where that
+#: which is what the one-liner gets as well. Where the disks live, where that
 #: configuration goes and where a picture is filed all come from
 #: `/etc/previously/config.ini`, which is the same file the tool reads.
 DEFAULT_MACHINE = "nextcube-turbo"
@@ -226,12 +227,12 @@ class Refused(Exception):
 #: Every job, and the steps each one takes. A request naming anything else is
 #: refused before a single value in it is looked at.
 #:
-#: `install` is the whole of `install.sh`: the emulator with everything around
-#: it, a system to run on it where one was asked for, and a configuration
-#: pointing at that system. It ends by starting the machine, so what an
-#: installation leaves behind is a running NeXT rather than a machine that
-#: needs rebooting first. Every step skips what it finds already done, so
-#: asking for it twice changes nothing the second time.
+#: `install` is what the one-liner and the Installer window ask for: the
+#: emulator with everything around it, a system to run on it where one was
+#: asked for, and a configuration pointing at that system. It ends by starting
+#: the machine, so what an installation leaves behind is a running NeXT rather
+#: than a machine that needs rebooting first. Every step skips what it finds
+#: already done, so asking for it twice changes nothing the second time.
 JOBS = {
     "install": ("host", "tools", "archive", "emulator", "system",
                 "configuration", "autologin", "quiet", "autostart", "sound",
@@ -911,9 +912,10 @@ def _no_system(work):
         raise Refused("setup.system-in-use", name=work.system.name)
 
     if disk.parent != disks:
-        # The layout `install.sh` leaves: the disk inside a folder named after
-        # the archive, beside the ROM images and the Windows binary that came
-        # with it. All of it goes, because all of it came from that one archive.
+        # The layout of a disk unpacked straight from its archive: the disk
+        # inside a folder named after the archive, beside the ROM images and
+        # the Windows binary that came with it. All of it goes, because all of
+        # it came from that one archive.
         shutil.rmtree(disk.parent, ignore_errors=True)
     else:
         disk.unlink(missing_ok=True)
@@ -1260,9 +1262,10 @@ def _without_the_block(text):
 def _autostart_block(owner):
     """@returns str - What is added to the profile, markers and all.
 
-    Every line of this, comments included, is what `install.sh` writes.
-    That script is the way in on a machine with no admin tool yet, so
-    either of the two may have set a given machine up, and both replace a
+    Every line of this, comments included, is what `install.sh
+    --update-admin` writes, because replacing the tool from a shell brings the
+    console up to date without asking for anything else. Either of the two
+    may therefore have written a given machine's console, and both replace a
     block that no longer says what they write. A difference between them
     would therefore be the two rewriting each other for ever.
 

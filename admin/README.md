@@ -11,7 +11,7 @@ make check        # lint and tests, which is what a commit needs
 
 ## What it needs installed
 
-**To run, on the Pi**, five things beyond what Raspberry Pi OS already has. `install.sh` installs four of them, `cage`, `7zip`, `xdotool` and `imagemagick`, and the fifth is Previous itself out of the Window Maker Live archive.
+**To run, on the Pi**, five things beyond what Raspberry Pi OS already has: `cage`, `7zip`, `xdotool`, `imagemagick`, and Previous itself out of the Window Maker Live archive. The one-liner has the helper install all five.
 
 The rest is the system's own and is assumed rather than installed: `systemd` for `systemctl`, `procps` for `pgrep` and `ps`, `raspi-utils-core` for `vcgencmd`, and `python3`. A Pi without `vcgencmd` still runs this; the window shows one reading fewer, because every reading in `pi.py` answers with nothing rather than failing.
 
@@ -327,7 +327,7 @@ Somebody with a bare Raspberry Pi OS installs one package and does everything el
 
 **A request is three names.** A job, a system and a machine. Every one of them is looked up in a table that ships with this package, and a name that is not in its table refuses the whole request before anything is touched. So the disk image, which was the one free value in the whole of `install.sh`, stops being free: the helper is asked for one of six systems by name and holds the addresses itself.
 
-The jobs are `install`, which is the whole of `install.sh` and takes a system with it; `update` and `remove` for the emulator; `fetch` and `forget` for one system's disk; `back-up` and `restore` for a copy of one; and `update-tool`, which replaces this tool itself.
+The jobs are `install`, which is what the one-liner asks for and takes a system with it; `update` and `remove` for the emulator; `fetch` and `forget` for one system's disk; `back-up` and `restore` for a copy of one; and `update-tool`, which replaces this tool itself.
 
 **The request is read carefully, because the directory it sits in is not root's.** It is opened without following a link, checked for being an ordinary file and read no further than four kilobytes, and it is taken away before any of the work starts, so the unit watching for it cannot start the same run twice.
 
@@ -341,7 +341,7 @@ The jobs are `install`, which is the whole of `install.sh` and takes a system wi
 
 The Intel builds of OPENSTEP are not offered. Previous emulates 68k hardware, and one of those would download, unpack and never boot.
 
-**A disk is named after its system**, `nextstep-3.3.dd`, in `~/nextstep` beside whatever else is there. A machine set up by `install.sh` has its disk inside a folder named after the archive instead, and that is recognised rather than fetched a second time.
+**A disk is named after its system**, `nextstep-3.3.dd`, in `~/nextstep` beside whatever else is there. A disk unpacked straight from its archive sits inside a folder named after the archive instead, and that is recognised rather than fetched a second time.
 
 ### Installer.app
 
@@ -371,7 +371,7 @@ A line under the group says what each button does. Update is not there at all un
 
 **A machine with nothing on it opens into this window.** `GET /api/status` says whether the emulator is installed, whether a system is on the card and whether there is a configuration, and a machine missing any of the three is not set up. The Info window then says "not set up" rather than drawing a machine it cannot read, the buttons that would switch something on are off, and the Installer is put in front of whoever arrived. That answer comes from the service because it is the same question the installer's own steps ask before they decide what to skip, and because a Pi with nothing on it and a Pi that cannot be reached look identical to a page that has to guess.
 
-**`install.sh` still carries its own copy of these steps.** It is the way in on a machine that has no admin tool yet and therefore cannot ask for any of this. Making it ask, so that there is one implementation rather than two, waits until this one has set a real machine up.
+**The one-liner is this same job.** `install.sh` installs the tool, asks the helper for `install` with NeXTSTEP 3.3, and shows each step as the helper reports it, with a spinner beside the one that is running. What apt and dpkg print goes to a log file, which the script names only where something failed. A step that fails is put back by the helper, and the Installer window says why and can try again. `tests/test_install.py` holds the script's request, its paths and its words for each step to the helper and to the English catalogue.
 
 ### Replacing the tool itself
 
