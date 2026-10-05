@@ -18,7 +18,7 @@ Six tools do that work:
 | `nxtiff.py` | Decodes NeXT's TIFFs, which no current library reads: two bits per sample, alpha in its own plane, and a second copy of each picture at four bits per colour channel. |
 | `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `parts/`. |
 | `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
-| `fonts.py` | Fetches Ohlfs and writes the four faces the Terminal is set in, into `../admin/web/fonts/`. |
+| `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their licence, into `../admin/web/fonts/`. |
 | `build.py` | Puts the kit together, writes the two files the admin serves, and bakes `parts/` and those faces into the mockup as data URIs so it stays one file. |
 
 `parts/` is committed, so the draft works without running any of this. Run it again when a picture needs to change:
@@ -44,20 +44,18 @@ Nothing in it is fixed to one screenshot. The panel is found by its own grey, an
 
 ## The Terminal's face
 
-Keith Ohlfs drew Ohlfs for NeXTSTEP as bitmaps, and Terminal.app was set in its 12 pixel strike. [jasonwoodland/ohlfs-font-extras](https://github.com/jasonwoodland/ohlfs-font-extras) decodes the original `Ohlfs.font` bundle and writes each strike out as TrueType, with the Extra variants adding glyphs the original never had. `fonts.py` takes the four Screen 12 Extra faces from one named commit there, checks each against its sum, and writes them into `../admin/web/fonts/` as WOFF2.
+NeXT's Terminal was set in Ohlfs, a face Keith Ohlfs drew for NeXTSTEP and only ever as bitmaps. The Terminal here is set in [Inconsolata](https://github.com/googlefonts/Inconsolata), the outline face closest to it. At 16 pixels its cell is Ohlfs's 8 by 16, its capitals are Ohlfs's 10 pixels, and its zero is slashed as Ohlfs's is. It carries hinting, so it is drawn sharp at every size the desk is drawn at.
+
+`fonts.py` takes the Regular and the Bold from the 3.000 release, checks each against its sum, and writes them into `../admin/web/fonts/` as WOFF2. The licence goes beside them as `OFL.txt`, because the SIL Open Font License lets the faces travel with software only together with it.
 
 ```bash
 python3 fonts.py
 python3 build.py
 ```
 
-The four files are committed, so nothing has to run for the Terminal to be set in it. Run it again to move to a later commit upstream, which means changing `UPSTREAM` and the four sums together.
+The two files are committed, so nothing has to run for the Terminal to be set in them. Run it again to move to a later release, which means changing `RELEASE` and the sums together.
 
-It changes two things on the way, both in metrics rather than in outlines. A font states its line in three tables and a browser picks one of them by platform, so all three are set to what the face itself says, which is 16 pixels. The flag that tells a browser to prefer the typographic pair needs a table one version newer, so the version is raised as well. Without the first of those, the same terminal draws rows two pixels taller on one machine than on the next.
-
-What comes out of it is outlines and not bitmaps, which matters when reading the files: they carry no strike table, and their 288 glyphs are made of 7710 points, every one on a grid of 100 units and not one of them a curve. Each contour is a rectangle around one of the original's pixels.
-
-It behaves like a bitmap face all the same, and that is down to hinting rather than to format. An outline face is drawn sharp at any size because its hinting pulls each stem onto the pixel grid; this one carries none, so it is on the grid only where its own 100-unit step lands on a whole pixel. The em is 1500, so that is a type size of 15 and whole multiples of it, and the cell that follows is 8 across by 16 down. That is why `--terminal-size` is 15 and why nothing states the cell: whatever needs it reads it off the face as `1ch` and `1lh`. The pictures here are bitmaps outright, and both want a desk drawn at a whole step rather than at a quarter of one.
+It changes one thing on the way, in metrics rather than in outlines. A font states its line in three tables and a browser picks one of them by platform, and Inconsolata's three disagree: two give a line of 16.8 pixels at the Terminal's size and the third gives 23.3. All three are set to one em, which at 16 pixels is the 16 a row of this interface is. That is also why nothing states the cell: whatever needs it reads it off the face as `1ch` and `1lh`.
 
 ## The kit
 
@@ -107,8 +105,10 @@ An application that is running and is not in the dock puts its tile on the floor
 
 ## A note on the icons and the face
 
-The pictures in `parts/` are NeXT's, and NeXT's assets belong to Apple. They stay, and this repository can carry them: that was weighed and decided in #8 on 14 September 2026. Ohlfs is the same thing in another form, so the four faces in `../admin/web/fonts/` stand on that decision too. The repository they are built from states no licence of its own; what it holds is NeXT's bitmaps read out of NeXT's own font bundle, which is what the tools here do with the icons.
+The pictures in `parts/` are NeXT's, and NeXT's assets belong to Apple. They stay, and this repository can carry them: that was weighed and decided in #8 on 14 September 2026.
 
 Thirteen are read out of the Workspace Manager's own bundle in a NeXTSTEP 3.3 disk image, one out of Terminal.app and two out of Preferences.app in the same image. Three are cut from a screenshot of the running system, because NeXTSTEP drew its window buttons and dock marks in PostScript and they exist as no file at all. Two come from the boot ROM, through the emulator's own grab.
 
 The tools are ours and hold none of it. `extract.py`, `bootpicture.py`, `ufs.py` and `nxtiff.py` know how to read a NeXT filesystem, a NeXT TIFF and a NeXT screen, which is a description of formats rather than a copy of anything.
+
+The face is not NeXT's. Inconsolata is published under the SIL Open Font License 1.1, which is in `../admin/web/fonts/OFL.txt` beside the two files.

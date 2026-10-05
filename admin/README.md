@@ -75,6 +75,7 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `build_web.py` | What bundles that into the three files a browser is given |
 | `web/` | What the browser gets, and nothing in it is written by hand |
 | `web/vendor/` | The one library this interface takes, with its licence |
+| `web/fonts/` | The face the Terminal and the code in a document are set in, with its licence |
 | `packaging/` | The unit and the default configuration |
 
 `kiosk.py` is one module because it is the whole surface: reviewing what this tool may do to the machine means reading that one file.

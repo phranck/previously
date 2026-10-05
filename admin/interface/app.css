@@ -510,12 +510,8 @@ nx-row .beside nx-field { flex: 1 1 auto; min-width: 0; }
      rather than for paragraphs, so a document is set larger. NeXTSTEP's own
      documentation gives no figure for this, so it is chosen rather than
      measured: 14 is where a paragraph of this face stops being a control and
-     starts being prose, and the headings step up from it.
-
-     Code is smaller, because a monospaced face at the same size reads larger
-     than the one around it. */
+     starts being prose, and the headings step up from it. */
   --document-size: 14px;
-  --document-code-size: 13px;
 }
 
 /* Release notes, rendered from the Markdown they were written in. The window
@@ -547,21 +543,16 @@ nx-row .beside nx-field { flex: 1 1 auto; min-width: 0; }
 .document ol { margin: 0 0 11px; padding-left: 24px; }
 .document li { margin: 0 0 4px; line-height: 1.5; }
 
-/* The host's own monospaced face rather than Ohlfs, which the Terminal is set
-   in. Ohlfs carries no hinting and its em is 1500, so it is on the pixel grid
-   only at a type size of 15 and whole multiples of it, which the head of
-   nextstep.css says and the Terminal obeys. A document sets code at the size
-   the prose around it wants, and at 13 that face would be off the grid and
-   blurred, which is what reading these notes at 100 per cent showed. */
+/* Code is set in the Terminal's face and at the Terminal's size, so a command
+   in the notes looks as it will once it is typed there. At that size its
+   capitals are as tall as the prose's. */
 .document code,
-.document pre { font-family: var(--mono); }
-.document code { font-size: var(--document-code-size); }
+.document pre { font: var(--terminal-size)/1 var(--terminal-font); }
 
 /* A block keeps its own line breaks and its own indentation, which is what a
    fence is for, and it scrolls sideways rather than wrapping: a wrapped command
    is one somebody would copy wrongly. */
 .document pre {
-  font-size: var(--document-code-size);
   margin: 0 0 11px;
   padding: 9px 11px;
   background: var(--light);
