@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Turns a freshly imaged Raspberry Pi OS Lite (64 bit, Trixie) into a machine
-# that boots straight into NeXTSTEP under the Previous emulator.
+# that runs NeXTSTEP under the Previous emulator, and leaves it running.
 #
 #   curl -fsSL https://previous.li/install.sh | bash
 #
@@ -10,6 +10,12 @@
 # replacing by itself:
 #
 #   curl -fsSL https://previous.li/install.sh | bash -s -- --update-admin
+#
+# It installs the admin tool and asks the tool's privileged helper for the
+# rest, which is the job the Installer window runs from a browser: the
+# emulator, the system's disk, the configuration, the console, the quiet boot,
+# the sound, and finally the machine itself. So every step exists once, in
+# admin/previously/setup.py, and this shows them as they happen.
 #
 # Written to run straight off the network, so it carries everything it needs
 # and reads no file beside itself. Two details make that safe.
@@ -26,21 +32,9 @@
 # is not a concern, because it reads the password from the terminal device
 # rather than from stdin unless told otherwise with -S.
 #
-# Interrupting it is safe. Every step records how to undo exactly what it
-# changed, and Ctrl+C or a failure walks that record backwards. Untouched is
-# the one thing that cannot sensibly be reversed and does no harm: the package
-# lists that `apt-get update` refreshed.
-#
-# Safe to run more than once: every step checks whether it has already been
-# done and skips itself rather than duplicating its effect. A step that skips
-# records nothing, so a later interrupt never removes what it found in place.
-#
-# These steps exist a second time, in admin/previously/setup.py, which is what
-# the admin tool asks when somebody installs from a browser. Two copies of one
-# thing is one too many, and this is the copy that goes: the browser cannot be
-# the way in on a machine that has no admin tool yet, so this script stays
-# until the other one has set a real machine up, and then becomes the few lines
-# that install the package and ask for the rest.
+# Interrupted while the tool is being installed, it takes the tool off again.
+# Once the helper has the job, the Pi carries on by itself: an interruption
+# stops the watching and nothing else, and the Installer window shows the rest.
 
 set -euo pipefail
 
@@ -59,30 +53,15 @@ readonly SCRIPT_DIR
 # Every apt call in this script, so the frontend is stated once and reaches
 # the command that needs it.
 #
-# Exporting it into this shell does nothing, which is what it did until now:
-# sudo runs with `Defaults env_reset`, so it builds a fresh environment and
-# whatever this shell set is gone by the time apt-get starts. Measured on a Pi:
-# `export DEBIAN_FRONTEND=noninteractive; sudo printenv DEBIAN_FRONTEND` prints
-# nothing. Given to the sudo it survives, because sudo puts an assignment in
-# front of the command into the environment it builds.
-#
-# What it buys is a package that would ask a configuration question answering
-# itself instead. Without it debconf tries three frontends that need a
-# terminal, prints two lines about each, and only then falls back to the one
-# this asks for, which it reaches by luck rather than by being told.
+# Exporting it into this shell does nothing: sudo runs with `Defaults
+# env_reset`, so it builds a fresh environment and whatever this shell set is
+# gone by the time apt-get starts. Measured on a Pi: `export
+# DEBIAN_FRONTEND=noninteractive; sudo printenv DEBIAN_FRONTEND` prints nothing.
+# Given to the sudo it survives, because sudo puts an assignment in front of
+# the command into the environment it builds.
 apt_get() {
   sudo DEBIAN_FRONTEND=noninteractive apt-get "$@"
 }
-
-readonly REPO_HOST="wmlive.rumbero.org"
-readonly REPO_URL="https://${REPO_HOST}/repo"
-readonly REPO_SUITE="wmlive-trixie"
-readonly REPO_KEY="/etc/apt/keyrings/wmlive.asc"
-readonly REPO_SOURCE="/etc/apt/sources.list.d/wmlive.sources"
-readonly REPO_PREFS="/etc/apt/preferences.d/wmlive"
-
-readonly DISK_ARCHIVE="Nextstep 3.3 HD Image With Previous.7z"
-readonly DISK_ARCHIVE_URL="https://archive.org/download/nextstep-3.3-hd-image-with-previous.-7z/Nextstep%203.3%20HD%20Image%20With%20Previous.7z"
 
 # The admin tool, for a run that has no checkout beside it. The name carries no
 # version, so this address is the latest release whatever that is, and the
@@ -90,31 +69,29 @@ readonly DISK_ARCHIVE_URL="https://archive.org/download/nextstep-3.3-hd-image-wi
 readonly PACKAGE_FILE="previously_all.deb"
 readonly PACKAGE_URL="https://github.com/phranck/previously/releases/latest/download/${PACKAGE_FILE}"
 
-readonly NEXTSTEP_DIR="${HOME}/nextstep"
-readonly CONFIG_DIR="${HOME}/.config/previous"
-readonly CONFIG_FILE="${CONFIG_DIR}/previous.cfg"
+# The system a fresh machine gets, by the identifier the helper looks it up
+# under in admin/previously/systems.py.
+readonly SYSTEM="nextstep-3.3"
 
 # Where the emulator runs, and therefore where it writes what it is asked to
-# write. Previous puts a screen grab in its working directory under a name of
-# its own choosing, and the admin tool reads that picture and takes the file
-# away again, which it can only do somewhere it is allowed to write. Started in
-# the home directory instead, the grabs pile up there and nothing removes them.
+# write. The console below changes into it.
 readonly WORK_DIR="${HOME}/.cache/previously"
 
-# The real part of the Previously tree, which the admin tool shows as
-# /Documents. A screenshot is kept in Documents/Pictures under it. In the
-# emulator owner's home because that is the user the admin runs as, and it is
-# the only part of the tree that is on the card at all.
-readonly DOCUMENTS_DIR="${HOME}/Previously"
-readonly PICTURES_DIR="${DOCUMENTS_DIR}/Documents/Pictures"
 # ~/.profile and not ~/.bash_profile. Bash reads only the first of the login
 # files that exists, and on Raspberry Pi OS that is ~/.profile, which pulls in
 # ~/.bashrc. Creating ~/.bash_profile would switch both off, including for SSH
 # sessions, which are the way back into a machine whose screen is taken.
 readonly PROFILE="${HOME}/.profile"
 
-# The admin tool's own runtime directory, which its unit makes on a tmpfs.
+# The admin tool's own runtime directory, which its unit makes on a tmpfs. The
+# request for the helper goes in here, under the name previously-setup.path
+# watches for.
 readonly RUNTIME_DIR="/run/previously"
+readonly REQUEST="${RUNTIME_DIR}/setup"
+
+# Where the helper says what it is doing. Root's own directory, which this
+# only reads.
+readonly PROGRESS="/run/previously-setup/progress.json"
 
 # The admin tool holds the emulator down by creating this file, and the
 # console's autostart below waits on it. On a tmpfs, so a board that has just
@@ -124,52 +101,102 @@ readonly HOLD_FILE="${RUNTIME_DIR}/hold"
 # Where the console writes down an emulator that ended badly, one line each,
 # which the Raspberry Pi window reads. On the same tmpfs, so the file is gone
 # at every boot and what is in it is what happened since this board came up.
-#
-# Core dumps are the other answer to the same question, and this installer
-# writes none and turns none on. Debian sets the soft core limit to 0 for every
-# user in /etc/security/limits.d/10-coredump-debian.conf, so nothing is written
-# unless a program raises its own limit. That is the right default here: a
-# machine that boots into an emulator and is looked after through a browser has
-# nobody to read a 37 MB dump, and nine of them once sat in this home for two
-# days without anybody opening one. What a person wants is to know that it
-# crashed, which is the line below.
 readonly CRASHES_FILE="${RUNTIME_DIR}/crashes"
-
-# What login looks for before printing the message of the day.
-readonly HUSHLOGIN="${HOME}/.hushlogin"
-readonly CMDLINE="/boot/firmware/cmdline.txt"
-readonly CONFIG_TXT="/boot/firmware/config.txt"
-readonly AUTOLOGIN="/etc/systemd/system/getty@tty1.service.d/autologin.conf"
-readonly WIREPLUMBER_CONF="/etc/wireplumber/wireplumber.conf.d/50-nextstep.conf"
-# What a speaker is set to the first time it is seen. WirePlumber ships 0.064,
-# which is 40 per cent on a linear scale, and NeXTSTEP's own sounds peak at
-# about a third of full scale on top of that: together, inaudible. This is 85
-# per cent linear, cubed, because that is the scale the setting takes.
-readonly AUDIO_VOLUME="0.614"
 
 readonly AUTOSTART_MARKER="# >>> nextstep-rpi >>>"
 readonly AUTOSTART_END="# <<< nextstep-rpi <<<"
 
-# The smallest file in the archive that can still be a NeXTSTEP system. Anything
-# below this is a ROM file or the bundled Windows binary rather than the disk.
-readonly MIN_DISK_IMAGE_MB=512
+# How long the helper may take to answer a request before this gives up on
+# it. The path unit fires within a second; this is for a machine where it
+# never does.
+readonly ANSWER_SECONDS=60
 
-info()  { printf '\033[1m==>\033[0m %s\n' "$1"; }
-skip()  { printf '    %s\n' "$1"; }
-abort() { printf '\033[1;31m==>\033[0m %s\n' "$1" >&2; exit 1; }
+# ---------------------------------------------------------------------------
+# What the screen shows
+#
+# Only this script's own lines reach the terminal. What apt and dpkg print goes
+# to a log file, which a failure names. Color and the spinner are for a
+# terminal; piped into a file the same run writes plain lines, one per step.
+# NO_COLOR is honored, as https://no-color.org asks.
+# ---------------------------------------------------------------------------
+
+# Made by main, so a download cut short leaves no file behind.
+LOG=""
+
+if [[ -t 1 ]]; then TERMINAL=true; else TERMINAL=false; fi
+if [[ "$TERMINAL" == true && -z "${NO_COLOR:-}" ]]; then
+  BOLD=$'\033[1m'; DIM=$'\033[2m'; RED=$'\033[31m'; GREEN=$'\033[32m'
+  CYAN=$'\033[36m'; RESET=$'\033[0m'
+else
+  BOLD=""; DIM=""; RED=""; GREEN=""; CYAN=""; RESET=""
+fi
+readonly TERMINAL BOLD DIM RED GREEN CYAN RESET
+
+readonly SPINNER=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
+SPUN=0
+
+# Clears the line the spinner is on, where there is one.
+clear_line() {
+  [[ "$TERMINAL" == true ]] && printf '\r\033[K'
+  return 0
+}
+
+# One turn of the spinner beside what is happening now. Plain output has no
+# line to redraw, so it writes nothing and the finished line says it all.
+spin() {
+  [[ "$TERMINAL" == true ]] || return 0
+  printf '\r\033[K  %s%s%s %s' "$CYAN" "${SPINNER[SPUN % ${#SPINNER[@]}]}" "$RESET" "$1"
+  SPUN=$((SPUN + 1))
+}
+
+done_line()    { clear_line; printf '  %s✓%s %s\n' "$GREEN" "$RESET" "$1"; }
+already_line() { clear_line; printf '  %s✓ %s  already in place%s\n' "$DIM" "$1" "$RESET"; }
+failed_line()  { clear_line; printf '  %s✗%s %s\n' "$RED" "$RESET" "$1"; }
+detail()       { printf '    %s%s%s\n' "$DIM" "$1" "$RESET"; }
+
+abort() {
+  failed_line "$1"
+  [[ -s "$LOG" ]] && detail "What the tools said is in ${LOG}"
+  exit 1
+}
+
+banner() {
+  printf '\n  %sPreviously%s\n' "$BOLD" "$RESET"
+  printf '  %sYour fastest way to get NeXTSTEP on your Raspberry Pi up and running.%s\n\n' "$DIM" "$RESET"
+}
+
+# Runs a command with its output in the log and the spinner beside it.
+#
+# $1 is what to show whilst it runs, and the rest is the command. Answers with
+# the command's own status.
+quietly() {
+  local label="$1"
+  shift
+  "$@" >>"$LOG" 2>&1 &
+  local pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    spin "$label"
+    sleep 0.1
+  done
+  wait "$pid"
+}
 
 # ---------------------------------------------------------------------------
 # Undo record
 #
 # Two parallel arrays rather than one of "description|command", because a
 # command holding the separator would be cut in half. Commands are assembled
-# with printf %q so that a path with spaces, and the disk archive has several,
-# survives being stored as text and evaluated later.
+# with printf %q so that a path with spaces survives being stored as text and
+# evaluated later.
 # ---------------------------------------------------------------------------
 
 declare -a UNDO_WHAT=()
 declare -a UNDO_HOW=()
 COMPLETED=false
+
+# Set once the helper has the job. From there on the Pi carries on by itself,
+# so leaving early stops the watching and takes nothing away.
+HANDED_OVER=false
 
 undo() {
   UNDO_WHAT+=("$1")
@@ -177,31 +204,31 @@ undo() {
 }
 
 rollback() {
-  if [[ ${#UNDO_HOW[@]} -eq 0 ]]; then
-    info "Nothing had been changed yet"
-    return
-  fi
-
-  info "Undoing what this run changed"
+  [[ ${#UNDO_HOW[@]} -gt 0 ]] || return 0
+  printf '\n  %sPutting back what this run changed%s\n' "$BOLD" "$RESET"
   # Backwards, so each step is reversed in a world that still looks the way it
   # did when that step ran.
   local index
   for (( index = ${#UNDO_HOW[@]} - 1; index >= 0; index-- )); do
-    printf '    %s\n' "${UNDO_WHAT[index]}"
+    detail "${UNDO_WHAT[index]}"
     eval "${UNDO_HOW[index]}" > /dev/null 2>&1 || \
-      printf '\033[1;31m    failed, do this by hand:\033[0m %s\n' "${UNDO_HOW[index]}" >&2
+      printf '    %sfailed, do this by hand:%s %s\n' "$RED" "$RESET" "${UNDO_HOW[index]}" >&2
   done
 }
 
 on_exit() {
   local code=$?
   [[ "$COMPLETED" == true ]] && return 0
+  clear_line
 
-  printf '\n'
+  if [[ "$HANDED_OVER" == true ]]; then
+    printf '\n'
+    detail "The Pi carries on by itself. The Installer window at $(admin_address) shows how far it is."
+    exit "$code"
+  fi
+
   if [[ $code -eq 130 ]]; then
-    info "Interrupted"
-  else
-    info "Stopped after an error"
+    printf '\n  %sInterrupted%s\n' "$BOLD" "$RESET"
   fi
   rollback
   exit "$code"
@@ -227,13 +254,18 @@ remove_autostart_block() {
 trap on_exit EXIT
 trap on_interrupt INT TERM
 
+# The one thing somebody needs once this has finished. The name rather than the
+# address, because a Pi answers to <hostname>.local on the network it is on
+# and its address may not last.
+admin_address() {
+  printf 'http://%s.local:8810' "$(hostname)"
+}
+
 # ---------------------------------------------------------------------------
-# 1  Refuse to run anywhere the Previous package would not fit.
+# Refuse to run anywhere the Previous package would not fit.
 # ---------------------------------------------------------------------------
 
 check_host() {
-  info "Checking host"
-
   [[ $EUID -ne 0 ]] || abort "Run this as your normal user, not as root. It uses sudo where it needs to."
 
   local architecture
@@ -244,315 +276,31 @@ check_host() {
   codename="$(. /etc/os-release && echo "${VERSION_CODENAME:-}")"
   [[ "$codename" == "trixie" ]] || abort "This needs Raspberry Pi OS based on Debian trixie, found '${codename:-unknown}'. Older releases carry no SDL3."
 
-  skip "arm64, ${codename}"
+  done_line "Raspberry Pi OS, arm64, ${codename}"
+}
+
+# Asks for the sudo password once, on a line of its own, before any spinner
+# could draw over the prompt. A user the Imager created needs none.
+check_sudo() {
+  sudo -n true 2>/dev/null && return 0
+  printf '  %sThe next steps need sudo.%s\n' "$DIM" "$RESET"
+  sudo -v || abort "sudo did not let this run."
 }
 
 # ---------------------------------------------------------------------------
-# 2  Kiosk compositor, the unpacker for the disk archive, and the two tools the
-#    admin uses to reach the emulator: xdotool presses its keys and
-#    ImageMagick reads its screen, which is the only way to tell a machine that
-#    booted from one that did not.
-# ---------------------------------------------------------------------------
-
-install_packages() {
-  info "Installing cage, 7zip, xdotool and imagemagick"
-
-  local wanted=(cage 7zip xdotool imagemagick) missing=() package
-  for package in "${wanted[@]}"; do
-    dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "ok installed" || missing+=("$package")
-  done
-
-  if [[ ${#missing[@]} -eq 0 ]]; then
-    skip "already installed"
-    return
-  fi
-
-  apt_get update -qq
-  apt_get install -y -qq "${missing[@]}"
-  undo "remove ${missing[*]}" "apt_get remove -y -qq ${missing[*]}"
-}
-
-# ---------------------------------------------------------------------------
-# 3  The Window Maker Live archive, pinned so that only Previous comes from it.
-# ---------------------------------------------------------------------------
-
-add_repository() {
-  info "Adding the ${REPO_HOST} archive"
-
-  if [[ ! -f "$REPO_KEY" ]]; then
-    sudo install -m 0755 -d /etc/apt/keyrings
-    sudo wget -qO "$REPO_KEY" "${REPO_URL}/${REPO_HOST}.asc"
-    undo "remove the archive key" "sudo rm -f $(printf '%q' "$REPO_KEY")"
-  fi
-
-  if [[ ! -f "$REPO_SOURCE" ]]; then
-    sudo tee "$REPO_SOURCE" > /dev/null <<EOF
-Types: deb
-URIs: ${REPO_URL}
-Suites: ${REPO_SUITE}
-Components: main
-Signed-By: ${REPO_KEY}
-EOF
-    undo "remove the archive source" "sudo rm -f $(printf '%q' "$REPO_SOURCE")"
-  fi
-
-  if [[ ! -f "$REPO_PREFS" ]]; then
-    # The archive carries more than Previous, and without this it could replace
-    # packages that belong to Debian. -1 blocks everything, previous is let back
-    # in at the ordinary priority.
-    sudo tee "$REPO_PREFS" > /dev/null <<EOF
-Package: *
-Pin: origin ${REPO_HOST}
-Pin-Priority: -1
-
-Package: previous
-Pin: origin ${REPO_HOST}
-Pin-Priority: 500
-EOF
-    undo "remove the archive pin" "sudo rm -f $(printf '%q' "$REPO_PREFS")"
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# 4  Previous itself.
-# ---------------------------------------------------------------------------
-
-install_previous() {
-  info "Installing Previous"
-
-  if dpkg-query -W -f='${Status}' previous 2>/dev/null | grep -q "ok installed"; then
-    skip "already installed"
-    return
-  fi
-
-  apt_get update -qq
-  apt_get install -y previous
-  undo "remove previous" "apt_get remove -y -qq previous"
-}
-
-# ---------------------------------------------------------------------------
-# 5  The disk image. Skipped entirely when one is already present, which is
-#    what lets somebody install from the original media instead.
-# ---------------------------------------------------------------------------
-
-find_disk_image() {
-  find "$NEXTSTEP_DIR" -maxdepth 2 -type f \
-       \( -iname '*.img' -o -iname '*.dd' -o -iname '*.raw' \) \
-       -size +${MIN_DISK_IMAGE_MB}M \
-       -print 2>/dev/null | head -n 1 | grep . || return 1
-}
-
-fetch_disk_image() {
-  info "Providing the NeXTSTEP disk image"
-
-  if [[ ! -d "$NEXTSTEP_DIR" ]]; then
-    mkdir -p "$NEXTSTEP_DIR"
-    undo "remove ${NEXTSTEP_DIR}" "rmdir $(printf '%q' "$NEXTSTEP_DIR")"
-  fi
-
-  if find_disk_image > /dev/null; then
-    skip "found $(basename "$(find_disk_image)")"
-    return
-  fi
-
-  # What the archive adds is worked out by comparing the directory before and
-  # after, so the undo removes those files and nothing that was already here.
-  local before after
-  before="$(mktemp)"
-  after="$(mktemp)"
-  find "$NEXTSTEP_DIR" -maxdepth 1 -type f | sort > "$before"
-
-  local archive="${NEXTSTEP_DIR}/${DISK_ARCHIVE}"
-  [[ -f "$archive" ]] || wget -q --show-progress -O "$archive" "$DISK_ARCHIVE_URL"
-  7z x -y -o"$NEXTSTEP_DIR" "$archive" > /dev/null
-
-  find "$NEXTSTEP_DIR" -maxdepth 1 -type f | sort > "$after"
-
-  local added=() line
-  while IFS= read -r line; do
-    [[ -n "$line" ]] && added+=("$(printf '%q' "$line")")
-  done < <(comm -13 "$before" "$after")
-  rm -f "$before" "$after"
-
-  [[ ${#added[@]} -gt 0 ]] && undo "remove the fetched disk image" "rm -f ${added[*]}"
-
-  find_disk_image > /dev/null || abort "No disk image in the archive. Look inside ${NEXTSTEP_DIR} yourself."
-}
-
-# ---------------------------------------------------------------------------
-# 6  Configuration, with the image path filled in from this machine.
-# ---------------------------------------------------------------------------
-
-make_documents() {
-  info "Making ${PICTURES_DIR}"
-
-  if [[ -d "$PICTURES_DIR" ]]; then
-    skip "already present"
-    return
-  fi
-
-  mkdir -p "$PICTURES_DIR"
-  # Only the directories this run created, and rmdir rather than rm, so a
-  # folder somebody has put pictures in is left where it is.
-  undo "remove ${DOCUMENTS_DIR} if it is empty" \
-       "rmdir -p $(printf '%q' "$PICTURES_DIR") 2>/dev/null || true"
-}
-
-write_config() {
-  info "Writing ${CONFIG_FILE}"
-
-  if [[ -f "$CONFIG_FILE" ]]; then
-    skip "already present, left untouched"
-    return
-  fi
-
-  local image
-  image="$(find_disk_image)" || abort "No disk image to point the configuration at."
-
-  if [[ ! -d "$CONFIG_DIR" ]]; then
-    mkdir -p "$CONFIG_DIR"
-    undo "remove ${CONFIG_DIR}" "rmdir $(printf '%q' "$CONFIG_DIR")"
-  fi
-
-  # Only the keys that differ from what Previous writes by default. Everything
-  # else it fills in itself the first time it exits, including the path to the
-  # ROM of a Turbo Cube.
-  cat > "$CONFIG_FILE" <<EOF
-[ConfigDialog]
-bShowConfigDialogAtStartup = FALSE
-
-[Screen]
-bFullScreen = TRUE
-bShowStatusbar = FALSE
-bShowTitlebar = FALSE
-
-[Boot]
-nBootDevice = 1
-bVisible = FALSE
-
-[HardDisk]
-szImageName0 = ${image}
-nDeviceType0 = 1
-bDiskInserted0 = TRUE
-bWriteProtected0 = FALSE
-
-[System]
-nMachineType = 1
-nCpuLevel = 4
-bTurbo = TRUE
-nCpuFreq = 33
-EOF
-
-  undo "remove the Previous configuration" "rm -f $(printf '%q' "$CONFIG_FILE")"
-  skip "disk image: ${image}"
-}
-
-# ---------------------------------------------------------------------------
-# 7  Log in on the text console without being asked.
-# ---------------------------------------------------------------------------
-
-enable_autologin() {
-  info "Enabling console autologin"
-
-  if [[ -f "$AUTOLOGIN" ]]; then
-    skip "already enabled"
-    return
-  fi
-
-  local previous_target
-  previous_target="$(systemctl get-default)"
-
-  sudo raspi-config nonint do_boot_behaviour B2
-  undo "restore the previous boot behaviour" \
-       "sudo rm -f $(printf '%q' "$AUTOLOGIN"); sudo systemctl --quiet set-default $(printf '%q' "$previous_target")"
-}
-
-# ---------------------------------------------------------------------------
-# 8  Silence all five things that draw on the screen before NeXTSTEP does: the
-#    firmware splash, the kernel logo and its messages, systemd's status list,
-#    the blinking cursor of the text console, and the login banner.
+# The admin tool. It arrives as a package with the service, its configuration
+# and the units that act for it as root, so there is one place the tool comes
+# from and one command that takes it away again.
 #
-#    The banner is the one that outlasts the boot. Since the console waits for
-#    the emulator rather than exiting, nothing overwrites what login printed,
-#    so it stays on screen for as long as the machine is switched off.
-# ---------------------------------------------------------------------------
-
-quieten_boot() {
-  info "Silencing the boot"
-
-  if ! grep -q '^disable_splash=1' "$CONFIG_TXT"; then
-    sudo cp "$CONFIG_TXT" "${CONFIG_TXT}.nextstep-rpi.backup"
-    echo 'disable_splash=1' | sudo tee -a "$CONFIG_TXT" > /dev/null
-    undo "restore ${CONFIG_TXT}" \
-         "sudo mv -f $(printf '%q' "${CONFIG_TXT}.nextstep-rpi.backup") $(printf '%q' "$CONFIG_TXT")"
-  fi
-
-  if grep -q 'logo.nologo' "$CMDLINE"; then
-    skip "cmdline already set"
-    return
-  fi
-
-  sudo cp "$CMDLINE" "${CMDLINE}.nextstep-rpi.backup"
-  undo "restore ${CMDLINE}" \
-       "sudo mv -f $(printf '%q' "${CMDLINE}.nextstep-rpi.backup") $(printf '%q' "$CMDLINE")"
-
-  # The console is moved rather than added: two console= arguments would leave
-  # the kernel writing to tty1 as well, which is the one on screen.
-  if grep -q 'console=tty1' "$CMDLINE"; then
-    sudo sed -i 's/console=tty1/console=tty3/' "$CMDLINE"
-  elif ! grep -q 'console=tty' "$CMDLINE"; then
-    sudo sed -i '1s/^/console=tty3 /' "$CMDLINE"
-  fi
-
-  sudo sed -i '1s/$/ quiet loglevel=0 logo.nologo vt.global_cursor_default=0 systemd.show_status=false/' "$CMDLINE"
-
-  quieten_login
-}
-
-# /etc/issue and /etc/motd, which agetty and login print before ~/.profile ever
-# runs. Stopped at the source rather than cleared afterwards, so there is no
-# flash of text to erase.
-quieten_login() {
-  if [[ ! -f "$HUSHLOGIN" ]]; then
-    touch "$HUSHLOGIN"
-    undo "let login print the message of the day again" \
-         "rm -f $(printf '%q' "$HUSHLOGIN")"
-  fi
-
-  if [[ -f "$AUTOLOGIN" ]] && ! grep -q -- '--noissue' "$AUTOLOGIN"; then
-    sudo sed -i 's/agetty --autologin/agetty --noissue --autologin/' "$AUTOLOGIN"
-    sudo systemctl daemon-reload
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# 8b  Let the browser restart and switch off the Pi, without giving the admin
-#     tool any privileges.
-#
-#     Only root may power a machine down, and the admin tool runs as an
-#     ordinary user with NoNewPrivileges set, which is what stops sudo working
-#     there and is worth keeping. So the tool does not run the command. It
-#     leaves a file in its own runtime directory, and a systemd path unit
-#     running as root does the one thing that file means.
-#
-#     The name of the file is the whole of the request. Nothing is passed and
-#     there is no shell to pass it through, so these units cannot be talked
-#     into doing anything but the one command each names.
-#
-#     All of that arrives with the package: the service, its configuration and
-#     the four units. The steps here build that package out of the checkout and
-#     let apt install it, so there is one place the tool comes from and one
-#     command that takes it away again.
-#
-#     Two of them, because the tool outlives the installation. install_admin
-#     puts it on a machine that has none, and update_admin replaces the one a
-#     machine already has, which is what a person does whenever this repository
-#     has moved on and their Pi has not.
+# Two ways in, because this script arrives two ways. Run out of a checkout it
+# builds the package from what is already beside it, which always matches that
+# checkout. Run from the web there is nothing beside it and it takes the
+# package from the latest release.
 # ---------------------------------------------------------------------------
 
 # Where fetch_admin_package left the package. A variable rather than something
-# printed, because the two callers below also print as they go and a function
-# that answers through stdout could only do one or the other.
+# printed, because the callers also print as they go and a function that
+# answers through stdout could only do one or the other.
 ADMIN_PACKAGE=""
 
 # The version dpkg has, or nothing at all where the tool is absent.
@@ -564,53 +312,44 @@ admin_is_installed() {
   dpkg-query -W -f='${Status}' previously 2>/dev/null | grep -q "ok installed"
 }
 
-# Two ways in, because this script arrives two ways. Run out of a checkout it
-# builds the package from what is already beside it, which is a second and
-# always matches that checkout. Run from the web, through the line on the
-# Previously page, there is nothing beside it and it takes the package from the
-# latest release.
 fetch_admin_package() {
   local packaging="${SCRIPT_DIR}/admin/packaging"
   if [[ -f "${packaging}/build.py" ]]; then
-    ADMIN_PACKAGE="$(python3 "${packaging}/build.py" | awk '{print $2}')" \
+    ADMIN_PACKAGE="$(python3 "${packaging}/build.py" 2>>"$LOG" | awk '{print $2}')" \
       || abort "Could not build the admin package."
   else
     ADMIN_PACKAGE="$(mktemp -d)/${PACKAGE_FILE}"
-    curl -fsSL -o "$ADMIN_PACKAGE" "$PACKAGE_URL" \
+    quietly "Fetching the admin tool" curl -fsSL -o "$ADMIN_PACKAGE" "$PACKAGE_URL" \
       || abort "Could not fetch ${PACKAGE_URL}."
     undo "remove the downloaded package" "rm -f $(printf '%q' "$ADMIN_PACKAGE")"
   fi
 }
 
 install_admin() {
-  info "Installing the admin tool"
-
   if admin_is_installed; then
-    skip "already installed, $(admin_version). --update-admin replaces it."
+    already_line "The admin tool $(admin_version)"
     return
   fi
 
   fetch_admin_package
 
   # apt rather than dpkg, so the dependencies it declares are resolved. The
-  # package enables and starts the service and both path units itself.
-  apt_get install -y -qq "$ADMIN_PACKAGE" \
-    || abort "Could not install ${ADMIN_PACKAGE}."
-
+  # package enables and starts the service and the units that act for it.
+  quietly "Installing the admin tool" apt_get update -qq \
+    || abort "apt could not read its package lists."
+  quietly "Installing the admin tool" apt_get install -y -qq "$ADMIN_PACKAGE" \
+    || abort "Could not install the admin tool."
   undo "remove the admin tool" "apt_get purge -y -qq previously"
+
+  done_line "The admin tool $(admin_version)"
 }
 
 # The admin tool on its own, for a machine that already has everything else.
-# It is the one part that changes often enough to be worth replacing by itself,
-# and the only one a person watches through a browser, where a stale copy looks
-# exactly like a current one.
 #
 # Nothing here is written to the undo record. A run that fails half way leaves
 # the tool that was already installed, and rolling that back would take away a
 # working one to answer for a replacement that never happened.
 update_admin() {
-  info "Updating the admin tool"
-
   local before
   before="$(admin_version)"
   [[ -n "$before" ]] || abort "The admin tool is not installed. Run this without --update-admin."
@@ -622,22 +361,215 @@ update_admin() {
   # the same build in place again, which is what a rebuild of one commit is,
   # and --allow-downgrades is for going back to a release from a checkout that
   # ran ahead of it.
-  apt_get install -y -qq --reinstall --allow-downgrades "$ADMIN_PACKAGE" \
-    || abort "Could not install ${ADMIN_PACKAGE}."
+  quietly "Updating the admin tool" \
+    apt_get install -y -qq --reinstall --allow-downgrades "$ADMIN_PACKAGE" \
+    || abort "Could not install the admin tool."
 
   local after
   after="$(admin_version)"
   if [[ "$before" == "$after" ]]; then
-    skip "${after}, put in place again"
+    done_line "The admin tool ${after}, put in place again"
   else
-    skip "${before} replaced by ${after}"
+    done_line "The admin tool ${before} replaced by ${after}"
   fi
-  skip "The service is restarted by the package, so the browser has it on the next load."
 }
 
 # ---------------------------------------------------------------------------
-# 9  Start Previous on the first console only, so SSH stays usable as the way
-#    back into a machine whose screen now belongs to NeXTSTEP.
+# The rest of the machine, through the helper.
+#
+# The request is the one the Installer window sends: a job, a system and no
+# machine, which the helper reads as the one a fresh machine gets. It is
+# written under another name and moved into place, because the path unit fires
+# the moment the name appears and a file half written is a request half read.
+# ---------------------------------------------------------------------------
+
+# The steps of the install job, in the order the helper takes them. A step
+# that finds its work done is over in a few milliseconds, which is quicker than
+# this looks, so the record often names a later step than the last one shown,
+# and every step in between is closed from this list.
+readonly INSTALL_STEPS=(host tools archive emulator system configuration autologin quiet autostart sound start)
+
+# Where a step stands in that list, or -1.
+step_index() {
+  local index
+  for index in "${!INSTALL_STEPS[@]}"; do
+    if [[ "${INSTALL_STEPS[index]}" == "$1" ]]; then
+      echo "$index"
+      return
+    fi
+  done
+  echo -1
+}
+
+# What each step of the install job is called, in the words the Installer
+# window uses for it. tests/test_install.py holds these to the English
+# catalogue and to the steps the job takes.
+step_label() {
+  case "$1" in
+    host) echo "Checking the machine" ;;
+    tools) echo "The compositor and the tools" ;;
+    archive) echo "The archive Previous comes from" ;;
+    emulator) echo "The Previous emulator" ;;
+    system) echo "The system's disk" ;;
+    configuration) echo "The emulator's configuration" ;;
+    autologin) echo "Logging in on the console" ;;
+    quiet) echo "Silencing the startup" ;;
+    autostart) echo "Starting on the first console" ;;
+    sound) echo "Sound to a speaker" ;;
+    start) echo "Starting the machine" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+# What a long step is doing inside itself, in the same words. {done} and {of}
+# are filled with sizes.
+doing_label() {
+  case "$1" in
+    fetching) echo "Fetching {done} of {of}." ;;
+    unpacking) echo "Unpacking {done} of {of}." ;;
+    copying) echo "Copying {done} of {of}." ;;
+    checking) echo "Checking what arrived." ;;
+    installing) echo "Putting it in place." ;;
+    *) echo "" ;;
+  esac
+}
+
+# The helper's record, as one line of fields: when this run
+# started, whether it has finished and how, which step it is on, what that
+# step is doing and how far, which steps changed something, and why it failed.
+# Python because the record is JSON, and python3 is on every Raspberry Pi OS.
+# Parted by the unit separator rather than a tab, because read collapses a run
+# of tabs into one and an empty field would shift every field after it.
+read_progress() {
+  python3 -c '
+import json, sys
+
+def size(count):
+    count = float(count or 0)
+    for unit in ("bytes", "KB", "MB", "GB"):
+        if count < 1000 or unit == "GB":
+            return ("%d %s" if unit in ("bytes", "KB", "MB") else "%.1f %s") % (count, unit)
+        count /= 1000
+
+try:
+    with open(sys.argv[1], encoding="utf-8") as file:
+        record = json.load(file)
+except (OSError, ValueError):
+    sys.exit(1)
+part = record.get("part") or {}
+failed = record.get("failed") or {}
+print("\x1f".join(str(field) for field in (
+    record.get("started_at") or 0,
+    "" if record.get("finished_at") is None else "finished",
+    record.get("ok"),
+    record.get("step") or "",
+    part.get("doing") or "",
+    size(part.get("done")),
+    size(part.get("of")),
+    ",".join(record.get("changed") or []),
+    failed.get("reason") or "",
+    ",".join(record.get("undone") or []),
+)))
+' "$PROGRESS"
+}
+
+# The line beside the spinner for one step: its name, and what it is doing
+# inside itself where it says.
+running_label() {
+  local step="$1" doing="$2" done_size="$3" of_size="$4" words
+  words="$(doing_label "$doing")"
+  words="${words//\{done\}/$done_size}"
+  words="${words//\{of\}/$of_size}"
+  if [[ -n "$words" ]]; then
+    printf '%s  %s%s%s' "$(step_label "$step")" "$DIM" "$words" "$RESET"
+  else
+    step_label "$step"
+  fi
+}
+
+# Closes the line of a step that has ended.
+finish_step() {
+  local step="$1" changed="$2"
+  if [[ ",${changed}," == *",${step},"* ]]; then
+    done_line "$(step_label "$step")"
+  else
+    already_line "$(step_label "$step")"
+  fi
+}
+
+# The index of the first step whose line is not closed yet.
+OPEN_STEP=0
+
+# Whether the last step started the emulator, rather than finding it running.
+STARTED=false
+
+# Closes every step before the one at $1, which the helper has passed.
+close_steps_before() {
+  local until="$1" changed="$2"
+  while (( OPEN_STEP < until )); do
+    finish_step "${INSTALL_STEPS[OPEN_STEP]}" "$changed"
+    OPEN_STEP=$((OPEN_STEP + 1))
+  done
+}
+
+set_up_the_machine() {
+  [[ -d "$RUNTIME_DIR" ]] || abort "The admin tool is not running, so there is nobody to ask for the rest."
+
+  local asked_at
+  asked_at="$(date +%s)"
+  printf '{"do": "install", "system": "%s", "machine": null, "backup": null}' "$SYSTEM" \
+    > "${REQUEST}.writing"
+  mv -f "${REQUEST}.writing" "$REQUEST"
+  HANDED_OVER=true
+
+  local line started finished ok step doing done_size of_size changed reason undone
+  local waited=0 index
+  while true; do
+    line="$(read_progress 2>/dev/null || true)"
+    IFS=$'\x1f' read -r started finished ok step doing done_size of_size changed reason undone <<< "$line"
+
+    # A record from before this request is the last run, not this one.
+    if [[ -z "$line" || "${started%.*}" -lt "$asked_at" ]]; then
+      waited=$((waited + 1))
+      if (( waited >= ANSWER_SECONDS * 10 )); then
+        # The tool stays: it is installed and answering, and its Installer
+        # window can ask again. So nothing is put back on the way out.
+        COMPLETED=true
+        abort "The helper never answered. journalctl -u previously-setup says why."
+      fi
+      spin "Asking the Pi for the rest"
+      sleep 0.1
+      continue
+    fi
+
+    index="$(step_index "$step")"
+    (( index < 0 )) || close_steps_before "$index" "$changed"
+
+    if [[ -n "$finished" ]]; then
+      if [[ "$ok" == "True" ]]; then
+        close_steps_before "${#INSTALL_STEPS[@]}" "$changed"
+        [[ ",${changed}," == *",start,"* ]] && STARTED=true
+        return 0
+      fi
+      failed_line "$(step_label "${step:-host}")"
+      detail "It stopped here: ${reason:-no reason given}."
+      [[ -n "$undone" ]] && detail "Put back: ${undone//,/, }."
+      detail "The Installer window at $(admin_address) says it in words and can try again."
+      COMPLETED=true
+      exit 1
+    fi
+
+    spin "$(running_label "$step" "$doing" "$done_size" "$of_size")"
+    sleep 0.1
+  done
+}
+
+# ---------------------------------------------------------------------------
+# The console, under --update-admin. A full run has the helper write it; a
+# machine whose tool is replaced has its console brought up to what this
+# version writes, because it is what starts the emulator and what writes down
+# a crash, and a tool that has moved on with a console that has not is the
+# state this exists to prevent.
 # ---------------------------------------------------------------------------
 
 # What the autostart says, as one piece. Written out here rather than straight
@@ -694,124 +626,41 @@ autostart_in_profile() {
   sed -n "/${AUTOSTART_MARKER}/,/${AUTOSTART_END}/p" "$PROFILE"
 }
 
-# Puts the block in place.
-#
-# $1 is `add` on a full run, and `replace` under --update-admin, where a
-# machine that has never had a console must not be given one: that flag exists
-# to replace the admin tool and touch nothing else.
-set_autostart() {
+# Brings a console that is there up to what this version writes. A machine
+# that has never had a console is not given one: --update-admin exists to
+# replace the admin tool and touch nothing else.
+refresh_autostart() {
   local wanted there
   wanted="$(autostart_block)"
   there="$(autostart_in_profile)"
 
+  if [[ -z "$there" ]]; then
+    already_line "No console here, and --update-admin adds none"
+    return
+  fi
   if [[ "$there" == "$wanted" ]]; then
-    skip "already current"
+    already_line "The console"
     return
   fi
 
-  if [[ -n "$there" ]]; then
-    # The whole file is kept, rather than the block alone, so the undo puts
-    # back what was there instead of taking the console away altogether.
-    local was
-    was="$(mktemp)"
-    cp "$PROFILE" "$was"
-    remove_autostart_block "$PROFILE"
-    printf '\n%s\n' "$wanted" >> "$PROFILE"
-    undo "put ${PROFILE} back as it was" \
-         "mv -f $(printf '%q' "$was") $(printf '%q' "$PROFILE")"
-    skip "replaced, because it no longer said what this version writes"
-    return
-  fi
-
-  if [[ "$1" == replace ]]; then
-    skip "none here, and --update-admin adds none"
-    return
-  fi
-
+  # The whole file is kept, rather than the block alone, so the undo puts back
+  # what was there instead of taking the console away altogether.
+  local was
+  was="$(mktemp)"
+  cp "$PROFILE" "$was"
+  remove_autostart_block "$PROFILE"
   printf '\n%s\n' "$wanted" >> "$PROFILE"
-  undo "remove the autostart from ${PROFILE}" \
-       "remove_autostart_block $(printf '%q' "$PROFILE")"
-  skip "installed"
-}
-
-install_autostart() {
-  info "Installing the autostart"
-  set_autostart add
-}
-
-# Under --update-admin, where the console is as much a part of the tool as the
-# package is: it is what starts the emulator and what writes down a crash, and
-# a machine whose tool has moved on with a console that has not is the state
-# this exists to prevent.
-refresh_autostart() {
-  info "Checking the autostart"
-  set_autostart replace
-}
-
-# ---------------------------------------------------------------------------
-# 10  Send sound to a speaker rather than to HDMI.
-#
-#     Raspberry Pi OS sets no audio default, so ALSA falls back to card 0, and
-#     on a Pi that is the first HDMI output. Anything plugged into USB stays
-#     silent. The emulator picks its output device once, through SDL, when it
-#     starts, and never asks again: unplugging a speaker therefore silences it
-#     until the emulator is restarted, even after plugging it back in.
-#
-#     A sound server answers both at once. PipeWire connects a client to itself
-#     rather than to a card, so it can move a stream when a device appears or
-#     goes away, and WirePlumber ranks a USB card above HDMI on its own, at
-#     priority 1009 against 1000. The emulator needs no configuration for this:
-#     SDL3 here is built with a PipeWire backend and prefers it when a server is
-#     running.
-#
-#     What is left to set is the volume a speaker starts at, because the stock
-#     value is too quiet to hear NeXTSTEP's own sounds through.
-# ---------------------------------------------------------------------------
-
-install_audio() {
-  info "Sending sound to a speaker"
-
-  local wanted=(pipewire wireplumber pipewire-alsa) missing=() package
-  for package in "${wanted[@]}"; do
-    dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "ok installed" || missing+=("$package")
-  done
-
-  if [[ ${#missing[@]} -gt 0 ]]; then
-    apt_get install -y -qq "${missing[@]}"
-    undo "remove ${missing[*]}" "apt_get remove -y -qq ${missing[*]}"
-  else
-    skip "pipewire already installed"
-  fi
-
-  if [[ -f "$WIREPLUMBER_CONF" ]]; then
-    skip "volume already configured"
-    return
-  fi
-
-  sudo install -m 0755 -d "$(dirname "$WIREPLUMBER_CONF")"
-  sudo tee "$WIREPLUMBER_CONF" >/dev/null <<EOF
-# A speaker plugged into this machine starts loud enough to be heard.
-#
-# The stock value is 0.064, which is 40 per cent on a linear scale, and
-# NeXTSTEP's own sounds peak at about a third of full scale on top of that. The
-# two together are inaudible on a small speaker.
-#
-# This applies the first time a device is seen. After that the volume that was
-# set is remembered per device in ~/.local/state/wireplumber/default-routes.
-
-wireplumber.settings = {
-  device.routes.default-sink-volume = ${AUDIO_VOLUME}
-}
-EOF
-  undo "remove ${WIREPLUMBER_CONF}" "sudo rm -f $(printf '%q' "$WIREPLUMBER_CONF")"
+  undo "put ${PROFILE} back as it was" \
+       "mv -f $(printf '%q' "$was") $(printf '%q' "$PROFILE")"
+  done_line "The console, brought up to this version"
 }
 
 usage() {
   cat <<'EOF'
 Usage: install.sh [--update-admin]
 
-With no arguments it sets a Raspberry Pi up from nothing, and skips every step
-it finds already done.
+With no arguments it sets a Raspberry Pi up from nothing and starts NeXTSTEP,
+and skips every step it finds already done.
 
   --update-admin   Replace the admin tool with the newest one. Built from the
                    checkout this script sits in, or taken from the latest
@@ -825,10 +674,14 @@ EOF
 main() {
   case "${1:-}" in
     --update-admin)
+      LOG="$(mktemp -t previously-install.XXXXXX)"
+      banner
       check_host
+      check_sudo
       update_admin
       refresh_autostart
       COMPLETED=true
+      rm -f "$LOG"
       return
       ;;
     --help | -h)
@@ -840,39 +693,24 @@ main() {
     *) abort "Unknown option: ${1}. Try --help." ;;
   esac
 
+  LOG="$(mktemp -t previously-install.XXXXXX)"
+  banner
   check_host
-  install_packages
-  add_repository
-  install_previous
-  fetch_disk_image
-  make_documents
-  write_config
-  enable_autologin
-  quieten_boot
+  check_sudo
   install_admin
-  install_autostart
-  install_audio
+  set_up_the_machine
 
   COMPLETED=true
-  local image
-  image="$(find_disk_image || echo 'none')"
-
-  info "Done."
-  skip "disk image:   ${image}"
-  skip "config:       ${CONFIG_FILE}"
-  skip "cmdline saved as ${CMDLINE}.nextstep-rpi.backup"
-  skip "sound:        through PipeWire, to a USB speaker where one is plugged in"
-  skip ""
-  if dpkg-query -W -f='${Status}' previously 2>/dev/null | grep -q "ok installed"; then
-    # The one thing somebody needs after this finishes, and the reason they
-    # ran it. The name rather than the address, because a Pi answers to
-    # <hostname>.local on the network it is on and its address may not last.
-    info "The admin tool is at http://$(hostname).local:8810"
-    skip "Open it and choose a password. Nothing to read here, and nothing to copy."
-    skip ""
+  rm -f "$LOG"
+  if [[ "$STARTED" == true ]]; then
+    printf '\n  %sNeXTSTEP is starting on the Pi'"'"'s screen.%s\n' "$BOLD" "$RESET"
+  else
+    printf '\n  %sNeXTSTEP is running on the Pi'"'"'s screen.%s\n' "$BOLD" "$RESET"
   fi
-  skip "Log in at the Pi's own keyboard to check it before rebooting."
-  skip "NeXTSTEP account: me, no password."
+  printf '  The admin tool is at %s%s%s\n' "$CYAN" "$(admin_address)" "$RESET"
+  detail "The first browser to open it chooses the password."
+  detail "NeXTSTEP account: me, no password."
+  printf '\n'
 }
 
 main "$@"

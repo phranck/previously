@@ -48,8 +48,9 @@ DEFAULTS = {
     "documents": "~/Previously",
     # Where the disk images live, one per system that is on this machine. In
     # the same home, because a disk is the person's: purging this package must
-    # not take away two gigabytes they waited for. `install.sh` chose this
-    # folder, so a machine set up by it already has its disk here.
+    # not take away two gigabytes they waited for. It is also where a disk
+    # unpacked straight from its archive lands, so such a machine has its disk
+    # here already.
     "disks": "~/nextstep",
     "kiosk_unit": "getty@tty1.service",
     "state_directory": STATE_DIRECTORY,

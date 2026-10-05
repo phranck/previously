@@ -149,9 +149,9 @@ def test_every_name_in_a_request_is_looked_up():
     assert backup is None
 
 
-def test_a_request_with_no_machine_gets_the_one_install_sh_writes():
-    """The cube with the turbo board, so a machine set up through the browser
-    and one set up through the script are the same machine."""
+def test_a_request_with_no_machine_gets_the_cube_with_the_turbo_board():
+    """Neither the one-liner nor the Installer window names a machine, so both
+    end up with the same one."""
     machine = setup.asked_for({"do": "install"})[3]
 
     assert machine.identifier == setup.DEFAULT_MACHINE
@@ -448,10 +448,11 @@ def test_bringing_it_up_to_date_can_be_undone(tmp_path, commands):
 
 
 def test_the_installer_and_this_write_the_same_autostart():
-    """`install.sh` carries its own copy of these lines, because it is the way
-    in on a machine that has no admin tool yet. Two copies of one thing drift,
-    and the drift would be a console that behaves differently depending on
-    which of the two set the machine up. This is what says so.
+    """`install.sh` carries its own copy of these lines for `--update-admin`,
+    which brings a console up to date without asking the helper for anything
+    else. Two copies of one thing drift, and the drift would be a console that
+    behaves differently depending on which of the two set the machine up. This
+    is what says so.
 
     Character for character, comments included. Both sides replace a block that
     no longer says what they write, so a comment wrapped differently in the two
