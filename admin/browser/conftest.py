@@ -20,6 +20,8 @@ import urllib.request
 
 import pytest
 
+from previously import discs, systems
+
 webdriver = pytest.importorskip("selenium.webdriver")
 
 ADMIN = pathlib.Path(__file__).resolve().parent.parent
@@ -54,6 +56,13 @@ def service(tmp_path_factory):
     for place in (".config/previous", ".config/previously", "nextstep",
                   "Previously/Documents/Pictures"):
         (home / place).mkdir(parents=True, exist_ok=True)
+    # A disk and a disc, so the File Viewer holds what it holds on a machine
+    # that is set up. Disks and Discs are left out of it until something is
+    # in them, and an empty file is enough for the service to list either.
+    disks = home / "nextstep"
+    (disks / systems.disk_name(systems.find(systems.DEFAULT))).touch()
+    discs.folder(disks).mkdir()
+    (discs.folder(disks) / "tools.iso").touch()
     port = free_port()
     config = root / "config.ini"
     config.write_text("\n".join([
