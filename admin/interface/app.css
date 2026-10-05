@@ -10,8 +10,12 @@
    sizes of their own, and Localization.tiff is 52 by 49. */
 :root {
   /* One cell of the module row, read off the running system: 66 square, on a
-     68 grid once the line parting two cells is counted. */
+     68 grid once the line parting two cells is counted. The 66 is the room
+     inside the cell's edge, because that is where the picture goes and
+     Monitor's is 66 wide. The edge goes around it, one pixel on every side,
+     which makes the 68. */
   --module-cell: 66px;
+  --module-pitch: calc(var(--module-cell) + 2px);
 }
 
 
@@ -21,10 +25,10 @@
    the shape of the window rather than a count, and an empty trough is what
    the original shows wherever there is nothing to scroll. */
 nx-window[name="preferences"] .modules {
-  /* As tall as one cell and its scroller, rather than taking the room the
-     panel needs. */
+  /* As tall as one cell, its scroller and the sunken frame around both,
+     rather than taking the room the panel needs. */
   flex: 0 0 auto;
-  height: calc(var(--module-cell) + var(--scroller) + 2px);
+  height: calc(var(--module-pitch) + var(--scroller) + 2px);
 }
 
 nx-window[name="preferences"] .module-row {
@@ -39,8 +43,8 @@ nx-window[name="preferences"] .module-row {
    The row they sit in is sunken, which nx-scroller already draws. A raised
    row of cells in a sunken well is the whole of the effect. */
 .module {
-  width: var(--module-cell);
-  height: var(--module-cell);
+  width: var(--module-pitch);
+  height: var(--module-pitch);
   flex: 0 0 auto;
   display: grid;
   place-items: center;
