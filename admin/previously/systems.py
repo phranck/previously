@@ -42,8 +42,9 @@ UNPACKED_BYTES = 2_012_774_400
 #: is a refusal in front rather than a write stopping half way through.
 SPARE_BYTES = 500_000_000
 
-#: What has to be free before a system is fetched: the disk, the archive beside
-#: it while it unpacks, and that margin.
+#: What has to be free before a system is fetched: the disk and that margin.
+#: The archive sits beside the disk while it unpacks and comes out of the
+#: margin, which `tests/test_systems.py` holds to the largest of them.
 ROOM_BYTES = UNPACKED_BYTES + SPARE_BYTES
 
 #: The least a file in one of these archives can be and still be the disk. The

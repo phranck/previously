@@ -103,6 +103,15 @@ REPOSITORY_SOURCE = pathlib.Path("/etc/apt/sources.list.d/wmlive.sources")
 REPOSITORY_PINS = pathlib.Path("/etc/apt/preferences.d/wmlive")
 EMULATOR_PACKAGE = "previous"
 
+#: What the tools and the emulator put on the card, with their dependencies and
+#: with the packages apt-get downloads to install them, which it keeps in its
+#: cache. Read off Raspberry Pi OS Lite trixie on 6 October 2026 with `apt-get
+#: -s remove --autoremove` and `apt-cache show`: 120 packages come with the
+#: tools, and 40 more are there only for the emulator. A system is fetched after
+#: both, so it has whatever room they leave.
+TOOLS_BYTES = 657_787_942
+EMULATOR_BYTES = 112_699_328
+
 #: The machine a fresh configuration describes: the cube with the turbo board,
 #: which is what the one-liner gets as well. Where the disks live, where that
 #: configuration goes and where a picture is filed all come from
@@ -689,7 +698,15 @@ class Work:
 
 
 def _host(work):
-    """Refuses a machine the emulator's package would not fit."""
+    """Refuses a machine the emulator's package would not fit, and a card the
+    system asked for would not fit on.
+
+    The room is asked here as well as at the system step, because the steps
+    between the two put minutes of packages on the card and a refusal at the
+    system step takes all of them off again. This step changes nothing.
+    `install.sh` leaves its request without asking the service, so the service
+    refusing first is not enough on its own.
+    """
     architecture = run(["dpkg", "--print-architecture"])
     if architecture != ARCHITECTURE:
         raise Refused("setup.wrong-architecture", found=architecture,
@@ -698,6 +715,7 @@ def _host(work):
     if release != RELEASE:
         raise Refused("setup.wrong-release", found=release or "?",
                       wanted=RELEASE)
+    room_for(work.steps, work.system, work.settings.disks)
 
 
 def _release():
@@ -708,6 +726,51 @@ def _release():
         return ""
     found = re.search(r"^VERSION_CODENAME=(.+)$", text, re.M)
     return found.group(1).strip().strip('"') if found else ""
+
+
+def room_for(steps, system, disks):
+    """Refuses a run whose system will not fit on the card.
+
+    @param steps - The steps the run takes, as JOBS names them.
+    @param system - The System it puts on the machine, or None.
+    @param disks - pathlib.Path of the folder the disks live in.
+    @raises Refused with `setup.no-room` where the disk and its margin will not
+      fit once the steps in front of the system have put their packages on the
+      card.
+
+    The one answer to whether a run fits. The service asks it before it leaves
+    a request, the first step asks it, and the system step asks it again,
+    because what is free changes with everything else on the machine. A run
+    with no system step, with no system named, or with that system already
+    here needs no room at all.
+    """
+    if "system" not in steps or system is None:
+        return
+    if systems.disk_in(disks, system) is not None:
+        return
+    free = systems.room_beside(disks)
+    needed = systems.ROOM_BYTES + _packages_in_front(
+        steps[:steps.index("system")])
+    if free is not None and free < needed:
+        raise Refused("setup.no-room", free=free, needed=needed,
+                      name=system.name)
+
+
+def _packages_in_front(steps):
+    """What the packages these steps would still install take on the card.
+
+    @param steps - The steps that run before the system is fetched.
+    @returns int, bytes. Nothing for a step whose packages are all here,
+      because that step skips. A step with any of its packages missing counts
+      its whole share, since the share is measured with the dependencies apt
+      brings along and those are not known package by package.
+    """
+    needed = 0
+    if "tools" in steps and not all(installed(tool) for tool in TOOLS):
+        needed += TOOLS_BYTES
+    if "emulator" in steps and not installed(EMULATOR_PACKAGE):
+        needed += EMULATOR_BYTES
+    return needed
 
 
 def _tools(work):
@@ -955,10 +1018,7 @@ def _system(work):
     if systems.disk_in(disks, work.system) is not None:
         return
 
-    free = systems.room_beside(disks)
-    if free is not None and free < systems.ROOM_BYTES:
-        raise Refused("setup.no-room", free=free, needed=systems.ROOM_BYTES,
-                      name=work.system.name)
+    room_for(work.steps, work.system, disks)
 
     for made in work.owner.directory(disks):
         work.undoes(lambda place=made: place.rmdir())

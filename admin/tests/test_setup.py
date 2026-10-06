@@ -605,6 +605,81 @@ def test_a_card_with_no_room_is_said_so_before_anything_is_fetched(
     assert refused.value.told["free"] == 1024
 
 
+def test_a_card_too_small_for_the_system_is_refused_in_the_first_step(
+        tmp_path, commands, monkeypatch):
+    """The steps in front of the system put minutes of packages on the card,
+    and a refusal at the system step takes every one of them off again. The
+    first step changes nothing, so that is where a card that is too small is
+    refused. `install.sh` leaves its request without asking the service, so
+    the service refusing first does not cover it."""
+    taken = []
+    monkeypatch.setattr(setup, "STEPS", {
+        **setup.STEPS,
+        **{name: (lambda work, name=name: taken.append(name))
+           for name in setup.STEPS if name != "host"}})
+    monkeypatch.setattr(setup, "_release", lambda: setup.RELEASE)
+    commands.answers = {"--print-architecture": setup.ARCHITECTURE}
+    # Room for the disk and its margin, and none for the packages in front.
+    monkeypatch.setattr(systems, "room_beside", lambda where: systems.ROOM_BYTES)
+    work = work_in(tmp_path)
+
+    assert setup.carry_out(work) is False
+    said = work.reading()
+
+    assert taken == []
+    assert said["step"] == "host"
+    assert said["failed"]["reason"] == "setup.no-room"
+    assert said["undone"] == []
+
+
+@pytest.mark.parametrize("job,in_front", [
+    ("install", setup.TOOLS_BYTES + setup.EMULATOR_BYTES),
+    ("fetch", setup.TOOLS_BYTES),
+])
+def test_the_room_for_a_system_counts_the_packages_in_front_of_it(
+        tmp_path, commands, monkeypatch, job, in_front):
+    """A system is fetched after the tools, and in an installation after the
+    emulator as well, so what their packages take is gone from the card by
+    the time the disk is unpacked."""
+    monkeypatch.setattr(systems, "room_beside", lambda where: 1024)
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.room_for(setup.JOBS[job], systems.find("nextstep-3.3"), tmp_path)
+
+    assert refused.value.told["needed"] == systems.ROOM_BYTES + in_front
+    assert refused.value.told["free"] == 1024
+
+
+def test_packages_that_are_here_take_no_more_room(tmp_path, monkeypatch):
+    """Which is how the system step finds it, since the packages are in by
+    then."""
+    monkeypatch.setattr(setup, "installed", lambda package: True)
+    monkeypatch.setattr(systems, "room_beside", lambda where: systems.ROOM_BYTES)
+
+    setup.room_for(setup.JOBS["install"], systems.find("nextstep-3.3"), tmp_path)
+
+
+@pytest.mark.parametrize("job,system", [
+    ("forget", "nextstep-3.3"),
+    ("install", None),
+    ("update", None),
+])
+def test_a_run_that_fetches_no_system_needs_no_room(tmp_path, commands,
+                                                    monkeypatch, job, system):
+    monkeypatch.setattr(systems, "room_beside", lambda where: 0)
+
+    setup.room_for(setup.JOBS[job], systems.find(system) if system else None,
+                   tmp_path)
+
+
+def test_a_system_that_is_already_here_needs_no_room(tmp_path, commands,
+                                                     monkeypatch):
+    monkeypatch.setattr(systems, "room_beside", lambda where: 0)
+    (tmp_path / "nextstep-3.3.dd").write_bytes(b"x")
+
+    setup.room_for(setup.JOBS["install"], systems.find("nextstep-3.3"), tmp_path)
+
+
 def test_the_largest_file_in_an_archive_is_the_disk(tmp_path):
     """Those archives carry ROM images, a Windows binary and a text file
     besides."""

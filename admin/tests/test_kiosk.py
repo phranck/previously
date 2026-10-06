@@ -9,7 +9,7 @@ system check.
 
 import pytest
 
-from previously import kiosk, screen
+from previously import kiosk, screen, systems
 
 #: The genuine press, kept before any fixture replaces it. Two tests below are
 #: about what press_power itself does, so a fake one would test the fake.
@@ -444,12 +444,20 @@ def test_a_runtime_directory_that_is_not_there_is_not_an_exception(tmp_path):
 
 
 def ask(tmp_path, job="install", system=None, machine=None, backup=None):
-    """Leaves the request, with both directories in the test's own."""
+    """Leaves the request, with every directory in the test's own."""
     return kiosk.ask_to_set_up(tmp_path, tmp_path / "setup-progress",
-                               job, system, machine, backup)
+                               tmp_path / "nextstep", job, system, machine,
+                               backup)
 
 
-def test_the_request_carries_four_names_and_nothing_else(tmp_path):
+@pytest.fixture
+def roomy(monkeypatch):
+    """A card with room for any system and every package in front of it, so
+    what a test asks does not depend on the machine running the suite."""
+    monkeypatch.setattr(systems, "room_beside", lambda where: 1 << 40)
+
+
+def test_the_request_carries_four_names_and_nothing_else(tmp_path, roomy):
     """Installing is more than one exact command, so this is the one request
     that carries anything at all. Three of the four are looked up in a table by
     the privileged half, and the fourth is matched against the listing of one
@@ -499,6 +507,21 @@ def test_a_name_nobody_offers_leaves_no_request(tmp_path, job, system, machine, 
 
     assert taken is False
     assert told["reason"] == reason
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_system_the_card_has_no_room_for_leaves_no_request(tmp_path,
+                                                             monkeypatch):
+    """Answered at once, with the figures, rather than by a run that puts
+    minutes of packages on the card and takes them all off again."""
+    monkeypatch.setattr(systems, "room_beside", lambda where: 1024)
+
+    taken, told = ask(tmp_path, "install", "nextstep-3.3")
+
+    assert taken is False
+    assert told["reason"] == "setup.no-room"
+    assert told["free"] == 1024
+    assert told["name"] == "NeXTSTEP 3.3"
     assert list(tmp_path.iterdir()) == []
 
 

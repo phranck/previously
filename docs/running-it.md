@@ -22,7 +22,7 @@ curl -fsSL https://previous.li/install.sh | bash
 
 That fetches the admin tool, installs it and starts it. Open `http://<hostname>.local:8810`, choose a password, and the desk comes up with the Installer already open, because a Pi with nothing on it has nothing else to offer.
 
-**The Installer puts the rest there.** Previous with everything around it, and a system to run on it: NeXTSTEP 3.3 unless another of the six is chosen. It says what each costs to fetch and what would be left on the card before it starts, and while it runs it says which step it is on and how far through. A failure says which step failed and which of the earlier ones were put back.
+**The Installer puts the rest there.** Previous with everything around it, and a system to run on it: NeXTSTEP 3.3 unless another of the six is chosen. It says what each costs to fetch and what would be left on the card before it starts, and it refuses a system the card has no room for before anything is installed, saying what is needed and what is free. While it runs it says which step it is on and how far through. A failure says which step failed and which of the earlier ones were put back.
 
 **Nothing in the browser holds any privilege.** The tool writes a small file into its own runtime directory, and a systemd path unit starts a program that runs as root and reads it. That file carries four names: a job, a system, a machine and, for putting a copy back, the name of that copy. Three of the four are looked up in tables that ship with the package and the fourth is matched against the listing of one folder, so nothing that arrives from a browser is ever a path, a URL or a command. `admin/previously/setup.py` is the whole of what root does, and it is one file.
 
