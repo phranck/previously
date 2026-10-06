@@ -14,7 +14,7 @@ CONFIG_FILE = pathlib.Path("/etc/previously/config.ini")
 #: through StateDirectory=, and its hardening leaves everything else read-only.
 STATE_DIRECTORY = "/var/lib/previously"
 
-#: What it keeps only whilst the machine is up. A tmpfs, created by the unit
+#: What it keeps only while the machine is up. A tmpfs, created by the unit
 #: through RuntimeDirectory= and empty again at every boot, which is what the
 #: hold file needs: a machine that has just started should run its emulator,
 #: whoever switched it off before the last shutdown.

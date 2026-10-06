@@ -96,7 +96,7 @@ def test_the_board_readings_say_which_version_is_answering(service):
 
 
 def test_what_every_core_is_doing_is_open(service):
-    """A monitor asks once a second whilst its window is open, so this route
+    """A monitor asks once a second while its window is open, so this route
     reads `/proc` and forks nothing. It is a reading, so it needs no password,
     the way the board's own readings do not."""
     status, _, body = fetch(service + "/api/activity")
@@ -724,7 +724,7 @@ def test_a_machine_that_does_not_exist_is_refused(service):
 
 
 def a_station():
-    """The settings the editor will post, as a plain colour Turbo station."""
+    """The settings the editor will post, as a plain color Turbo station."""
     return {"kind": 2, "turbo": True, "colour": True, "banks": [32, 32, 32, 32]}
 
 
@@ -995,7 +995,7 @@ def test_what_the_machine_has_fitted_crosses_the_wire(service):
 
 
 def test_what_it_refuses_comes_back_refused(service):
-    """A cube in colour is a cube, so the interface cannot show colour on one
+    """A cube in color is a cube, so the interface cannot show color on one
     even for the moment between the click and the answer."""
     answer = settled(service, kind=1, colour=1, dimensions="32,0,0", memory=16)
 
@@ -1698,7 +1698,7 @@ def test_which_version_is_here_and_which_is_published_is_open(
 
 
 def test_a_poll_reads_what_is_known_and_does_not_reach_github(service, monkeypatch):
-    """The window redraws itself every two seconds whilst it is open, and an
+    """The window redraws itself every two seconds while it is open, and an
     address may ask GitHub sixty times an hour."""
     asked = []
     monkeypatch.setattr(server.release, "published",
@@ -1710,7 +1710,7 @@ def test_a_poll_reads_what_is_known_and_does_not_reach_github(service, monkeypat
 
 
 def test_opening_the_window_asks_github_again(service, monkeypatch):
-    """Which is the whole of what makes a release published whilst this runs
+    """Which is the whole of what makes a release published while this runs
     turn up at all. `release.py` puts the floor under how often that may
     happen, so the route only has to pass the asking on."""
     asked = []

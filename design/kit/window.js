@@ -163,7 +163,7 @@ class NxWindow extends HTMLElement {
    * Shows it, in front.
    * @param {HTMLElement} [asker] - What was used to open it, if anything was.
    *   It rides along as a rectangle, because an application whose icon has to
-   *   travel to the foot of the screen has to know where it is travelling
+   *   travel to the foot of the screen has to know where it is traveling
    *   from, and only whoever was clicked knows that.
    */
   open(asker) {
@@ -197,7 +197,7 @@ class NxWindow extends HTMLElement {
   }
 
   /**
-   * Takes what is dropped on it, and says so whilst something is over it.
+   * Takes what is dropped on it, and says so while something is over it.
    *
    * Raises the same `nx-choose` a double click does, because carrying a thing
    * here and double clicking it mean the same thing to whoever answers.

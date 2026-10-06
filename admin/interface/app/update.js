@@ -1,6 +1,6 @@
 /* Replacing this tool with the newest release, from the Raspberry Pi window.
  *
- * The one thing on this page that takes the page's own service away whilst it
+ * The one thing on this page that takes the page's own service away while it
  * runs. Everything else this interface asks for is done to the emulated machine
  * or to the board; this replaces the program answering the request, so half way
  * through there is nothing on the other end.
@@ -21,12 +21,12 @@ import { released, say, sized } from "./words.js";
  *  back from asking is what the window shows anyway. */
 const UPDATE = "/api/update";
 
-/** How often to look whilst something is happening. The download is a quarter
+/** How often to look while something is happening. The download is a quarter
  *  of a megabyte and the whole run is over in well under a minute, so the five
  *  second poll the rest of this window takes would show two frames of it. */
 const WATCHING_MS = 500;
 
-/** And how many of those to skip whilst nothing is. Every fourth, which is the
+/** And how many of those to skip while nothing is. Every fourth, which is the
  *  window's own two seconds. */
 const EVERY_FOURTH = 4;
 
@@ -57,7 +57,7 @@ let askedAt = 0;
  *
  *  What decides whether a finished run is reported at all. Whoever asked for it
  *  is owed the sentence saying it worked, and whoever opens this window tomorrow
- *  is owed what the state is now, whilst the record on the Pi says the same
+ *  is owed what the state is now, while the record on the Pi says the same
  *  thing to both until the next boot. Never put back, because the page is not
  *  reloaded by the replacement: the service goes and comes back underneath it.
  */
@@ -66,7 +66,7 @@ let weAskedForOne = false;
 /**
  * Asks what is installed, what is published and how a run is getting on.
  * @param {boolean} [check] - Whether to have the Pi ask GitHub again. True when
- *   somebody opens this window, and false for the poll that redraws it whilst
+ *   somebody opens this window, and false for the poll that redraws it while
  *   it is open: an address may ask GitHub sixty times an hour, and a loop
  *   would spend that in twenty minutes.
  */
@@ -80,7 +80,7 @@ async function refreshTheUpdate(check) {
  */
 function drawTheUpdate(state) {
   if (state === null) {
-    /* Whilst a replacement is running, no contact is what a replacement looks
+    /* While a replacement is running, no contact is what a replacement looks
        like from here rather than a failure: the service is stopped and started
        by the package being installed. So the last reading is kept and the
        sentence says what is happening, and the poll carries on until the new
@@ -212,7 +212,7 @@ function replacing() {
  *
  * Away rather than disabled where there is nothing newer, because a button that
  * would put the version already here back is a button that does nothing.
- * Disabled whilst a run is on, because the helper takes one job at a time and a
+ * Disabled while a run is on, because the helper takes one job at a time and a
  * second request is refused rather than queued.
  */
 function offerTheUpdate(offered) {
@@ -265,13 +265,13 @@ function wireTheUpdate() {
 
   /* Opening it asks straight away, because a window that filled itself at the
      next poll would stand empty for a moment first, and this is also the one
-     moment that has the Pi ask GitHub. A release published whilst somebody sits
+     moment that has the Pi ask GitHub. A release published while somebody sits
      in front of this window therefore turns up when they close it and open it
      again, which is what keeps a window left open from spending the sixty
      requests an hour an address is allowed. */
   window_.addEventListener("nx-open", () => refreshTheUpdate(true));
 
-  /* Whilst the window is open, or whilst a replacement is running with it
+  /* While the window is open, or while a replacement is running with it
      closed. The second matters more than it looks: the service goes away in the
      middle, and the page that comes back to it has to be able to say what
      happened rather than showing the state from before. */

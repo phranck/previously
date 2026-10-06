@@ -347,7 +347,7 @@ def test_a_build_after_the_release_stands_above_it(build):
 
 
 def test_a_build_on_the_way_to_a_release_stands_below_it(build):
-    """The source already says 1.0.0 whilst the newest tag is still the release
+    """The source already says 1.0.0 while the newest tag is still the release
     before it, so this is a build towards 1.0.0 rather than after it."""
     assert build.version_from("1.0.0", "v0.1.3-42-g2f250d5") == "1.0.0~42.g2f250d5"
 

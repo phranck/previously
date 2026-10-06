@@ -1,7 +1,7 @@
 """Reading the emulated screen.
 
 What is faked is the pair of commands that reach the X server. What is tested
-is the judgement made on what they answer, because that judgement decides
+is the judgment made on what they answer, because that judgment decides
 whether a machine gets rolled back.
 """
 
@@ -30,7 +30,7 @@ def test_a_screen_with_something_on_it_is_alive(answers):
     assert screen.looks_alive() is True
 
 
-def test_a_screen_of_one_flat_colour_is_not(answers):
+def test_a_screen_of_one_flat_color_is_not(answers):
     """A machine that never booted. The emulator is running and its window is
     there, and nothing has been drawn in it."""
     answers["import"] = "0"

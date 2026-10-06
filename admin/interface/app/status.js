@@ -36,7 +36,7 @@ function drawStatus(status) {
   drawWhatThisMachineIs(status);
 
   if (status === null) {
-    /* Nothing can be asked of a machine that is not answering, and whilst it
+    /* Nothing can be asked of a machine that is not answering, and while it
        restarts it will not answer for a minute or two. Leaving the buttons
        live would collect requests that go nowhere. */
     state.replaceChildren(document.createTextNode(t("state.unreachable")));
@@ -47,7 +47,7 @@ function drawStatus(status) {
 
   allowActions(true);
 
-  /* The lamp carries the state as a shape as well as a colour, because colour
+  /* The lamp carries the state as a shape as well as a color, because color
      alone asks the reader to compare two small squares. */
   const lamp = document.createElement("span");
   lamp.className = "lamp";
@@ -119,8 +119,8 @@ function drawStatus(status) {
   show("info-screen", screenOf(machine));
   show("info-disk", machine.disk ?? t("info.no-disk"));
 
-  /* The same picture the boot ROM puts up whilst it tests this machine. Colour
-     plays no part in it: a NeXTstation Color stands in the same case as a grey
+  /* The same picture the boot ROM puts up while it tests this machine. Color
+     plays no part in it: a NeXTstation Color stands in the same case as a gray
      one, and the line above says which tube is in it. */
   runningArt = machineArt(machine.enclosure);
   /** @type {any} */ (document.getElementById("info-icon")).style.backgroundImage = `var(--${runningArt})`;
@@ -152,7 +152,7 @@ function offerTheInstaller() {
  * @param {any} status - What /api/status answered, or null.
  *
  * It carries the machine's own name, so its words are written here rather than
- * taken from the catalogue: `About NeXTcube Turbo`. On a Pi with nothing
+ * taken from the catalog: `About NeXTcube Turbo`. On a Pi with nothing
  * installed there is no machine to be about, and an entry that opened a window
  * of em dashes would be a question with no answer, so it is not in the menu at
  * all.
@@ -196,7 +196,7 @@ let runningArt = Art.Computer;
  *  about the file rather than about a machine. */
 let lastStatus = null;
 
-/** Written into noteState whilst a note is new and the state it describes has
+/** Written into noteState while a note is new and the state it describes has
  *  not been seen yet. */
 const JUST_WRITTEN = Symbol("just written");
 

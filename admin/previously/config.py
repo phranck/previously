@@ -144,7 +144,7 @@ def describe(system, memory, dimension):
 
 
 def note_written(path, state_directory):
-    """Records what this service just wrote, so it can be recognised later.
+    """Records what this service just wrote, so it can be recognized later.
 
     @param path - The file that was written.
     @param state_directory - pathlib.Path the service may write to, which
@@ -171,10 +171,10 @@ def _written_by_us(path, state_directory):
     """Whether the file is still the one this service wrote.
 
     @returns bool. False where there is no note, which is the honest answer:
-      this service has written nothing it can recognise.
+      this service has written nothing it can recognize.
 
     Only one side of this is knowable. A file that does not match the note was
-    written by somebody else, and Previous's own dialogue and a text editor
+    written by somebody else, and Previous's own dialog and a text editor
     look exactly alike from here.
     """
     if state_directory is None:
@@ -386,7 +386,7 @@ def write(path, settings):
     model. Previous keeps 234 lines here and this tool understands ten of them,
     so the other 224 are none of its business and are passed through untouched.
 
-    The section has to be tracked whilst walking, because the same key name
+    The section has to be tracked while walking, because the same key name
     appears in more than one of them. nMemoryBankSize0 is the machine's first
     memory bank under [Memory], and [Dimension] carries its own board memory
     under names that begin the same way.
@@ -521,7 +521,7 @@ def inserting(slot, disc):
 
     Write protected as well as inserted, which is two ways of saying the same
     thing: Previous makes a CD target read only from its type alone, in
-    `scsi.c`, and forces the flag when its own dialogue closes. Written here so
+    `scsi.c`, and forces the flag when its own dialog closes. Written here so
     that a person reading the file sees what the machine has rather than having
     to know that rule.
     """

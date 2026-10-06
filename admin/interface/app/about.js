@@ -45,7 +45,7 @@ async function showWhatThisIs() {
  * line about where the tool was made stands apart below them.
  *
  * Built here rather than handed over as a sentence, because one word in it is
- * a link and the catalogues hold words rather than markup. The name is its own
+ * a link and the catalogs hold words rather than markup. The name is its own
  * entry for the same reason: it is a name, so it is the same in every
  * language, and the sentence around it is not.
  */
@@ -60,7 +60,7 @@ function versionAndCopyright(versionLine) {
   holder.rel = "noopener noreferrer";
   holder.textContent = t("about.holder");
 
-  /* This year rather than one written into the catalogues, so the line is
+  /* This year rather than one written into the catalogs, so the line is
      current whenever it is read. */
   const copyright = t("about.copyright", { year: new Date().getFullYear() });
   const [before, after] = copyright.split("{holder}");

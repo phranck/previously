@@ -9,7 +9,7 @@ const GRIP_PX = 4;
  * The dock: a column of slots, one tile high, that a person arranges.
  *
  * A tile is lifted out of the column by dragging it, carried up and down, and
- * set down on a slot that is free. Whilst it travels, the slot it would land
+ * set down on a slot that is free. While it travels, the slot it would land
  * on shows itself. Letting go anywhere else puts it back where it came from,
  * because a tile can only be somewhere in the dock.
  *
@@ -116,7 +116,7 @@ class NxDock extends HTMLElement {
   }
 
   /**
-   * Shows which slot a travelling tile would land on.
+   * Shows which slot a traveling tile would land on.
    * @param {number} slot - Which one, or 0 for none, which is what letting go
    *   over an occupied slot means.
    */
@@ -146,7 +146,7 @@ class NxDock extends HTMLElement {
    * @param {HTMLElement} tile
    *
    * Only up and down, because the dock is one tile wide and a tile has
-   * nowhere else to be. It is moved with a transform whilst it travels, so
+   * nowhere else to be. It is moved with a transform while it travels, so
    * the column it is leaving is not laid out again on every frame, and its
    * slot is written once at the end.
    */
@@ -188,7 +188,7 @@ class NxDock extends HTMLElement {
  *   tile carries this, because NeXTSTEP kept it at the head of the dock.
  * @attr foot - With `fixed`, sit at the foot of the column rather than at its
  *   head.
- * @attr carried - Set whilst it is being dragged, and taken off when it lands.
+ * @attr carried - Set while it is being dragged, and taken off when it lands.
  *
  * A double click starts it and a single click does nothing, which is what the
  * OpenStep guidelines require and why: a tile is moved by dragging it, and a
@@ -221,7 +221,7 @@ class NxTile extends HTMLElement {
  *
  * NeXTSTEP stacked those along the foot of the screen from the left corner
  * rightwards, and took each away when its application went. The tile is the
- * dock's own: `Workspace.app/tile.tiff` is a plain grey square with the icon
+ * dock's own: `Workspace.app/tile.tiff` is a plain gray square with the icon
  * on it and no lettering, and that is what a tile here already is.
  *
  * An application that has just been started does not simply appear there. Its

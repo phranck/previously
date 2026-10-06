@@ -73,7 +73,7 @@ function drawPicture(id, picture, name) {
 }
 
 /** What each picture view is showing and what it is called, so it can be
- *  released when it is replaced and saved whilst it is up. */
+ *  released when it is replaced and saved while it is up. */
 const shownPictures = {};
 
 /**

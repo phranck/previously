@@ -32,7 +32,7 @@ SOURCE = HERE / "interface"
 SERVED = HERE / "web"
 
 #: Where the interface starts. Everything else it is made of, the kit, the
-#: catalogues and this application's own modules, is reached from here through
+#: catalogs and this application's own modules, is reached from here through
 #: imports, so the order a browser runs them in is written in the code that
 #: needs them rather than in a list over here that has to agree with it.
 ENTRY = "app.js"
@@ -60,7 +60,7 @@ def minified(text, loader):
     @param loader - "js" or "css", which is what esbuild calls the two.
     @returns str
 
-    Legal comments are kept and moved to the foot, so the licence the vendor
+    Legal comments are kept and moved to the foot, so the license the vendor
     stylesheet carries survives being bundled with everything else.
     """
     if shutil.which("esbuild") is None:

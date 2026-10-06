@@ -164,7 +164,7 @@ def test_a_machine_is_written_and_comes_back(settings, machine):
     assert finished is True
     assert told["machine"] == "NeXTstation Turbo Color"
     # What the file says about itself, which cannot carry the Nitro or the
-    # colour that the catalogue's own name does.
+    # color that the catalog's own name does.
     written = config.read(settings.previous_config)
     assert written["model"] == "NeXTstation"
     assert written["turbo"] is True
@@ -582,7 +582,7 @@ def test_a_slot_with_nothing_on_it_is_not_ejected(settings, machine):
 def test_the_guest_goes_down_before_a_disc_arrives(settings, machine, media):
     """Previous reads its configuration when it starts and never again, so a
     disc written into that file arrives when the machine next comes up. Its own
-    dialogue can do it without a reset; a file written from outside cannot."""
+    dialog can do it without a reset; a file written from outside cannot."""
     written = []
     original = config.write
 
@@ -630,7 +630,7 @@ def test_a_saved_configuration_is_settled_before_it_is_written(settings, machine
     """Whatever is in that file, what reaches previous.cfg is a machine the
     emulator will not correct underneath it."""
     saved.save(settings.machines_file, "Ein Kubus", {
-        # A cube has no colour of its own, and three megabytes is not a size.
+        # A cube has no color of its own, and three megabytes is not a size.
         "kind": 1, "colour": True, "banks": [3, 0, 0, 0]})
 
     finished, _ = run("Ein Kubus", settings, machine)

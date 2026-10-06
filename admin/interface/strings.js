@@ -6,11 +6,11 @@
  * unfamiliar interface in a language one does not read is worse than one in
  * English.
  *
- * Every catalogue is loaded with the page. All six together are smaller than
+ * Every catalog is loaded with the page. All six together are smaller than
  * one of the pictures in the stylesheet, and loading them all is what makes a
  * change of language instant and the code that changes it three lines long.
  * Nothing is fetched, nothing waits, and nothing shows the wrong language
- * whilst the right one arrives.
+ * while the right one arrives.
  */
 
 import { en } from "./lang/en.js";
@@ -20,8 +20,8 @@ import { it } from "./lang/it.js";
 import { es } from "./lang/es.js";
 import { sv } from "./lang/sv.js";
 
-/** Every catalogue, by the code it answers to. Gathered here rather than
- *  written into by each of them, so that a catalogue is a table and nothing
+/** Every catalog, by the code it answers to. Gathered here rather than
+ *  written into by each of them, so that a catalog is a table and nothing
  *  else: what it is called, and when it is read, is this file's business. */
 const NX_STRINGS = { en, de, fr, it, es, sv };
 
@@ -33,7 +33,7 @@ const FALLBACK = "en";
  *  property of the machine. */
 const LANGUAGE_KEY = "previously:language";
 
-/** What each catalogue is called, in its own language. The Preferences window
+/** What each catalog is called, in its own language. The Preferences window
  *  offers these, and a language named in a language one does not read is no
  *  help to anybody. */
 const LANGUAGE_NAMES = {
@@ -87,8 +87,8 @@ function currentLocale() {
  * @param {number} [count] - Where the string has one wording for one thing and
  *   another for several, the number of things. The browser knows each
  *   language's own rule for which is which, so `lang/fr.js` gets the singular
- *   for zero and `lang/en.js` the plural, without either catalogue saying so.
- * @returns {string} The string with its places filled. A key the catalogues do
+ *   for zero and `lang/en.js` the plural, without either catalog saying so.
+ * @returns {string} The string with its places filled. A key the catalogs do
  *   not know comes back as itself, which is ugly on the screen and easy to
  *   find, and both of those are better than silence.
  */
@@ -107,7 +107,7 @@ function t(key, values, count) {
  * @param {string} line
  * @param {any} [values]
  * @returns {string} A place nothing was given for keeps its braces, so a
- *   catalogue entry that names a value the caller does not send shows up
+ *   catalog entry that names a value the caller does not send shows up
  *   rather than leaving a hole.
  */
 function fill(line, values) {
@@ -160,7 +160,7 @@ function translate(root = document) {
  * itself is written where there is one.
  *
  * Where there is none, which is an entry whose words are the page's rather
- * than the catalogue's, the new one goes in front of the letter rather than
+ * than the catalog's, the new one goes in front of the letter rather than
  * after it. Appended it reads as `bÜber NeXTcube Turbo`, with the shortcut
  * inside the label and nothing on the right where every other entry has it.
  */

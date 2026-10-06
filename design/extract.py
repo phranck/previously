@@ -4,8 +4,8 @@
 The icons come out of a NeXTSTEP 3.3 disk image. They sit in the Workspace
 Manager's bundle as TIFFs in a shape no current library reads, so ufs.py walks
 the filesystem and nxtiff.py decodes them. Each file holds the same picture
-twice, in the four greys a mono NeXT could draw and in four bits per colour
-channel, and the colour one is the one that ends up here.
+twice, in the four grays a mono NeXT could draw and in four bits per color
+channel, and the color one is the one that ends up here.
 
 The window buttons and the submenu arrow are not files at all. NeXTSTEP drew
 them in PostScript at runtime, so they are cut out of a screenshot of the
@@ -55,7 +55,7 @@ ICONS = {
     # editor is until it has one.
     "defaultAppIcon": ("defaultAppIcon", "an application, as NeXTSTEP drew one"),
     # In English.lproj rather than beside the others, which is where NeXT put
-    # the few icons that were localised.
+    # the few icons that were localized.
     "/usr/lib/NextStep/Workspace.app/WM.app/English.lproj/home":
         ("home", "a home directory, which NeXTSTEP drew as a house"),
     # Outside the Workspace's own directory, so it carries its whole path.
@@ -115,9 +115,9 @@ PARTS_IN_SCREENSHOT = {
     "wbtn-mini": (156, 16, 171, 31),
     "wbtn-close": (796, 305, 811, 320),
     # The three marks in the corner of a dock tile, which said the application
-    # was NOT running: they are there whilst it is off and go when it starts.
+    # was NOT running: they are there while it is off and go when it starts.
     # Read off the running system, where Mail, Librarian and the console carry
-    # them whilst the Workspace and the clock do not, and stated the same way
+    # them while the Workspace and the clock do not, and stated the same way
     # in the OpenStep User Interface Guidelines. Each is three pixels by two,
     # pressed into the face.
     "dock-marks": (1057, 186, 1070, 188),
@@ -155,7 +155,7 @@ def extract_parts(screenshot_path):
 
 
 def clear(piece, matches):
-    """Makes every pixel transparent whose colour the test accepts.
+    """Makes every pixel transparent whose color the test accepts.
 
     @param matches - Takes an (r, g, b) triple and returns whether to clear it.
     """
@@ -167,9 +167,9 @@ def clear(piece, matches):
 
 
 def colour_tube():
-    """Writes the colour variant of the machine icon.
+    """Writes the color variant of the machine icon.
 
-    A NeXT with a NeXTdimension or a Trinitron showed a colour picture, and
+    A NeXT with a NeXTdimension or a Trinitron showed a color picture, and
     this is that same icon with that same tube lit. Every pixel keeps the
     brightness it had; only the hue is laid over it, so nothing is invented
     beyond the fact that the screen was on.
@@ -202,7 +202,7 @@ def main():
     icons = extract_icons(pathlib.Path(sys.argv[1]))
     controls = extract_parts(pathlib.Path(sys.argv[2]))
     colour_tube()
-    print("wrote %d icons, %d controls and the colour tube into parts/" % (icons, controls))
+    print("wrote %d icons, %d controls and the color tube into parts/" % (icons, controls))
 
 
 if __name__ == "__main__":

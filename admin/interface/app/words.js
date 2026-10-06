@@ -43,7 +43,7 @@ const MACHINE_ART = {
  * @param {any} told - Its answer, carrying `reason` and whatever fills
  *   it.
  * @returns {string} The sentence in the language the interface speaks, or the
- *   bare name where no catalogue knows it, because a name on the screen is
+ *   bare name where no catalog knows it, because a name on the screen is
  *   ugly and silence is worse.
  *
  * The service sends a name and the values that fill it, so this is a lookup
@@ -72,7 +72,7 @@ function say(told) {
 
 /**
  * What a machine is called, from the facts the service sent.
- * @param {any} machine - A configuration or a catalogue entry.
+ * @param {any} machine - A configuration or a catalog entry.
  * @returns {string} The model's own name with what is fitted to it.
  *
  * The model is a product name and arrives as it is. What gets added to it is
@@ -85,7 +85,7 @@ function nameOf(machine) {
 
 /**
  * What the machine is called, and nothing about the boards in it.
- * @param {any} machine - A configuration or a catalogue entry.
+ * @param {any} machine - A configuration or a catalog entry.
  * @returns {string} The model's own name, with Turbo where that is part of it.
  *
  * For the one place a whole sentence does not fit: a menu entry is a line in a
@@ -99,7 +99,7 @@ function modelOf(machine) {
 }
 
 /**
- * @param {any} machine - A configuration or a catalogue entry.
+ * @param {any} machine - A configuration or a catalog entry.
  * @returns {string} The processor and its clock.
  */
 function cpuOf(machine) {
@@ -107,11 +107,11 @@ function cpuOf(machine) {
 }
 
 /**
- * @param {any} machine - A configuration or a catalogue entry.
- * @returns {string} What the screen shows, which is where colour is decided.
+ * @param {any} machine - A configuration or a catalog entry.
+ * @returns {string} What the screen shows, which is where color is decided.
  *
- * A cube has no colour of its own: Previous forces the flag off for that
- * machine type, and colour arrives only through a NeXTdimension.
+ * A cube has no color of its own: Previous forces the flag off for that
+ * machine type, and color arrives only through a NeXTdimension.
  */
 function screenOf(machine) {
   if (machine.dimension) return t("machine.screen.dimension");
@@ -119,7 +119,7 @@ function screenOf(machine) {
 }
 
 /**
- * @param {any} machine - A configuration or a catalogue entry.
+ * @param {any} machine - A configuration or a catalog entry.
  * @returns {string} The three chips that decide whether it runs at all.
  */
 function chipsOf(machine) {
@@ -187,7 +187,7 @@ function changedLine(file) {
  * @param {any} file - What the service says about previous.cfg.
  * @returns {string} One of two sentences. Previously leaves a note of what it
  *   wrote, so a file that no longer matches that note came from somewhere
- *   else, and the two candidates are the emulator's own settings dialogue and
+ *   else, and the two candidates are the emulator's own settings dialog and
  *   somebody at the keyboard.
  */
 function writtenLine(file) {
@@ -256,7 +256,7 @@ function sized(bytes, fine) {
 }
 
 /** Where a version stops being the release and starts being the build. The
- *  release is digits and full stops, and a package built between two releases
+ *  release is digits and periods, and a package built between two releases
  *  carries how far it stands from a tag and which commit it is after a `+` or
  *  a `~`. */
 const RELEASE_IN = /^\d+(?:\.\d+)*/;
@@ -266,7 +266,7 @@ const RELEASE_IN = /^\d+(?:\.\d+)*/;
  * @param {string} version - What the service reports, which for a build between
  *   two releases is something like `1.0.0+35.g553551d`.
  * @returns {string} The release alone, so `1.0.0`. A version this does not
- *   recognise is shown whole rather than swallowed, because a string nobody
+ *   recognize is shown whole rather than swallowed, because a string nobody
  *   expected is still better on the screen than nothing.
  *
  * The build is dropped here rather than at the service, which goes on reporting

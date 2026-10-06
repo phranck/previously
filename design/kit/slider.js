@@ -8,7 +8,7 @@
  * nothing about megahertz or megabytes, and the words stay with whoever owns
  * them.
  *
- * @attr dragging - Set whilst the knob follows the pointer, which is what takes
+ * @attr dragging - Set while the knob follows the pointer, which is what takes
  *   the travel off it so it does not trail behind the hand.
  * @attr fixed - Set where there is only one step, so the control reads as a
  *   statement rather than as a choice.

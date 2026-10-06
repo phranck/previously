@@ -23,7 +23,7 @@ const SOCKET_WORDS = {
 
 /** What the sentence about each machine type is called, by the number Previous
  *  gives the type. Written out rather than built from the number, because a
- *  sentence keyed by a name can be found in the catalogue and one keyed by 1
+ *  sentence keyed by a name can be found in the catalog and one keyed by 1
  *  cannot. The strings test holds these numbers to the types the service
  *  offers. */
 const KIND_NOTES = {
@@ -33,13 +33,13 @@ const KIND_NOTES = {
 };
 
 /** The least the first memory bank may hold for the machine to boot, in
- *  megabytes. Previous says so on its own memory dialogue and does not raise a
+ *  megabytes. Previous says so on its own memory dialog and does not raise a
  *  smaller bank itself, so the note under the banks is the one place somebody
  *  is told before the machine fails to come up. */
 
 /**
  * The sentence about one value of a group.
- * @param {string} group - The group's name in the catalogue, such as `clock`.
+ * @param {string} group - The group's name in the catalog, such as `clock`.
  * @param {string|number} value - What is chosen there, which is the last part
  *   of the key.
  * @param {any} [values] - What fills the sentence's places.
@@ -56,7 +56,7 @@ function noteFor(group, value, values) {
 /**
  * The sentence about a switch, for the state it is in.
  * @param {string} which - The switch, such as `turbo` or `floppy`, which is
- *   both the control's name in the draft and its name in the catalogue.
+ *   both the control's name in the draft and its name in the catalog.
  * @returns {string}
  */
 function switchNote(which) {
@@ -96,7 +96,7 @@ function bankNotes(banks) {
  * them.
  * @param {Array<number|string>} values
  * @returns {string} "1, 4 or 16" in English and "1, 4 oder 16" in German. The
- *   browser knows each language's word before the last one, so no catalogue
+ *   browser knows each language's word before the last one, so no catalog
  *   has to say it.
  */
 function listed(values) {

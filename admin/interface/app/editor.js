@@ -52,7 +52,7 @@ let showing = Object.keys(SUBJECTS)[0];
 let replacing = null;
 
 /** The last answer about the draft, so saving posts what was shown rather than
- *  asking again for something that may meanwhile read differently. Null whilst
+ *  asking again for something that may meanwhile read differently. Null while
  *  an answer is still on its way, which is what stops the button saving the
  *  machine that was in the window a moment ago. */
 let drafted = null;
@@ -98,7 +98,7 @@ function editConfiguration(machine, asker) {
  *   description rather than a configuration.
  * @returns {any} A draft of what can be read off it.
  *
- * For the machine that is running whilst being none of the ones this tool
+ * For the machine that is running while being none of the ones this tool
  * knows. What a description does not carry is left out rather than guessed, so
  * the service answers those with what that machine has.
  */
@@ -141,7 +141,7 @@ async function drawTheDraft() {
 
   const mine = ++asking;
   const answer = await ask("/api/machine/settled?" + asked);
-  /* A click whilst this was on its way asked a newer question, and that one's
+  /* A click while this was on its way asked a newer question, and that one's
      answer is the one the window belongs to. */
   if (mine !== asking) return;
   if (!answer) {
@@ -368,7 +368,7 @@ function change(what) {
  * @param {any} what - The machine type or the board that moved.
  *
  * Previous writes every one of FOLLOWS_THE_MACHINE afresh whenever one of those
- * two changes in its own dialogue, and the service does the same. Sending the
+ * two changes in its own dialog, and the service does the same. Sending the
  * values that were showing would carry a setting from the machine just left
  * behind, so a 40 MHz Nitro would stay at 40 through losing its turbo board.
  */

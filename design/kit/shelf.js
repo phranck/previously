@@ -76,7 +76,7 @@ class NxThing extends HTMLElement {
   carry() {
     this.addEventListener("dragstart", (event) => {
       /* Checked here rather than when this was wired, because a thing is
-         switched off and on again whilst the page is up. */
+         switched off and on again while the page is up. */
       if (!this.canBeUsed) return event.preventDefault();
       event.dataTransfer.setData("text/plain", this.value);
       event.dataTransfer.effectAllowed = "copy";

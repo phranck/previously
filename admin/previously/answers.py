@@ -2,7 +2,7 @@
 
 One function, and it is the whole of the contract between the two halves of
 this tool: the service answers with a name and the values that fill it, and the
-catalogue in `interface/lang/` turns that into a sentence in whichever language is
+catalog in `interface/lang/` turns that into a sentence in whichever language is
 being read.
 
 It lives on its own because everything that can report an outcome needs it, and
@@ -28,7 +28,7 @@ def told(reason, **values):
     what happened and the browser says it in words.
 
     `tests/test_strings.py` reads every name out of the modules that call this
-    and fails where a catalogue cannot say one of them, which is what keeps a
+    and fails where a catalog cannot say one of them, which is what keeps a
     new answer from reaching the screen as its own name.
     """
     return {"reason": reason, **values}

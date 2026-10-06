@@ -125,7 +125,7 @@ async function chooseThePassword(why, what, state) {
     const answer = await send("/api/password", { password: typed });
     if (answer === null) return false;
     if (answer.ok) return true;
-    /* Somebody else claimed this machine whilst the panel stood open, so what
+    /* Somebody else claimed this machine while the panel stood open, so what
        is due now is the password they chose rather than one of ours. */
     if (answer.status === 403) return signIn(t("ask.password.needed"));
     complaint = t(answer.status === 400

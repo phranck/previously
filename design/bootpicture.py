@@ -7,14 +7,14 @@ That picture is the only drawing of a NeXTcube and a NeXTstation the system
 holds, and it is what the machines in the admin's shelf wear.
 
 The input is a grab taken by Previous itself, which writes the emulated
-framebuffer at 1120 by 832 in NeXT's four greys rather than the window as it
-stands on the Pi's screen. Press Ctrl+Alt+G whilst the panel is up, and the
+framebuffer at 1120 by 832 in NeXT's four grays rather than the window as it
+stands on the Pi's screen. Press Ctrl+Alt+G while the panel is up, and the
 file appears in the emulator's working directory as next_screen_NNN.png.
 
     python3 bootpicture.py next_screen_021.png ../admin/web/parts/nextstation.png
 
 Nothing here is measured against one particular screenshot: the panel is found
-by its own grey and the picture by the gap that separates it from the text, so
+by its own gray and the picture by the gap that separates it from the text, so
 the same call works for either machine.
 """
 
@@ -22,11 +22,11 @@ import sys
 
 from PIL import Image
 
-#: NeXT drew everything in these four greys and nothing between them.
+#: NeXT drew everything in these four grays and nothing between them.
 PALETTE = [255, 170, 85, 0]
 
 #: What the ROM paints its panel in, and therefore what surrounds the picture.
-#: The desktop behind the panel is a different grey, which is what makes the
+#: The desktop behind the panel is a different gray, which is what makes the
 #: panel findable at all.
 PANEL = 170
 
@@ -42,9 +42,9 @@ ICON = 48
 def panel_box(image):
     """Where the ROM's panel sits in the frame.
 
-    @param image - The grab, as a greyscale Image.
+    @param image - The grab, as a grayscale Image.
     @returns (left, top, right, bottom), inclusive.
-    @raises SystemExit - No panel grey in the frame, which means the grab was
+    @raises SystemExit - No panel gray in the frame, which means the grab was
       taken at a moment when the panel was not up.
     """
     pixels = image.load()
@@ -55,7 +55,7 @@ def panel_box(image):
                 left, top = min(left, x), min(top, y)
                 right, bottom = max(right, x), max(bottom, y)
     if right < 0:
-        raise SystemExit("no boot panel in this frame: nothing is panel grey")
+        raise SystemExit("no boot panel in this frame: nothing is panel gray")
     return left, top, right, bottom
 
 
@@ -66,7 +66,7 @@ def picture_box(image, panel):
     with clear space between them, so the machine is the last block of ink
     before the panel's right edge.
 
-    @param image - The grab, as a greyscale Image.
+    @param image - The grab, as a grayscale Image.
     @param panel - What panel_box returned.
     @returns (left, top, right, bottom), inclusive.
     """
@@ -94,14 +94,14 @@ def picture_box(image, panel):
 
 
 def to_icon(picture):
-    """Reduces the picture to an icon with the panel grey taken out.
+    """Reduces the picture to an icon with the panel gray taken out.
 
-    @param picture - The cut-out machine, as a greyscale Image.
+    @param picture - The cut-out machine, as a grayscale Image.
     @returns An RGBA Image of ICON by ICON.
 
     The reduction averages rather than picking nearest pixels, because the ROM
-    draws its greys with dithering and picking would turn that into stripes.
-    The result goes back onto the four greys afterwards, so the icon stays in
+    draws its grays with dithering and picking would turn that into stripes.
+    The result goes back onto the four grays afterwards, so the icon stays in
     the palette the rest of the interface is drawn in.
     """
     scale = ICON / max(picture.size)
@@ -109,8 +109,8 @@ def to_icon(picture):
                             round(picture.height * scale)), Image.BOX)
     small = small.point(lambda value: min(PALETTE, key=lambda step: abs(step - value)))
 
-    # Flooding the panel grey inwards from the edges leaves the same grey
-    # inside the machine opaque, which a plain colour key would not.
+    # Flooding the panel gray inwards from the edges leaves the same gray
+    # inside the machine opaque, which a plain color key would not.
     alpha = Image.new("L", small.size, 255)
     seen = set()
     stack = [(x, y) for x in range(small.width) for y in (0, small.height - 1)]

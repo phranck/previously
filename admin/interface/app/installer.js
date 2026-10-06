@@ -22,8 +22,8 @@ const Install = {
 
 /** How often the Installer looks. Faster than the desk's own poll, because a
  *  download says something new every second and this is a window somebody sits
- *  and watches. Asked only whilst the window is open or something is running,
- *  and only every fourth time whilst neither is true. */
+ *  and watches. Asked only while the window is open or something is running,
+ *  and only every fourth time while neither is true. */
 const WATCHING_MS = 500;
 const EVERY_FOURTH = 4;
 
@@ -43,7 +43,7 @@ const INSTALLER_TABS = {
 };
 
 /** Which of them is showing. Kept here rather than read back off the markup,
- *  so a redraw whilst something is installing leaves somebody where they
+ *  so a redraw while something is installing leaves somebody where they
  *  were. */
 let showingInTheInstaller = Object.keys(INSTALLER_TABS)[0];
 
@@ -68,7 +68,7 @@ let askedAt = 0;
  *  this is a machine whose helper is not there rather than one that is slow. */
 const PATIENCE_MS = 30000;
 
-/** What the window says whilst it waits: first that the Pi is being asked, and
+/** What the window says while it waits: first that the Pi is being asked, and
  *  then whatever the service answered. It stands until the helper has
  *  something of its own to say, because a sentence that is wiped by the next
  *  draw is a sentence nobody reads. */
@@ -215,9 +215,9 @@ function drawTheSystems(systems) {
  * @param {any} progress - What the privileged helper wrote, or null
  *   where it has never run on this machine since it last started.
  *
- * The step is named in words out of the catalogue, because the helper sends a
+ * The step is named in words out of the catalog, because the helper sends a
  * name rather than a sentence for the same reason everything else here does.
- * The trough is there whilst something is running and gone otherwise, since an
+ * The trough is there while something is running and gone otherwise, since an
  * empty gauge is a window claiming to be busy.
  */
 function drawWhatIsBeingInstalled(progress) {
@@ -283,7 +283,7 @@ function drawWhatIsBeingInstalled(progress) {
   if (progress.ok) {
     show("installer-caption", t("installer.done"));
     /* What the machine has now, in one sentence about the job. The steps it
-       took are what somebody watched go past whilst it ran, and reading them
+       took are what somebody watched go past while it ran, and reading them
        back as a list afterwards tells them nothing they can act on. A run
        where every step found its work already done is right and is over in a
        second, and "Finished" on its own reads as nothing having happened. */
@@ -327,7 +327,7 @@ function whyItFailed(failed) {
 
 /**
  * Lets the window's buttons decide again, or turns them all off.
- * @param {boolean} allowed - False whilst something is being installed, because
+ * @param {boolean} allowed - False while something is being installed, because
  *   the service takes one installation at a time and a second request would be
  *   refused rather than queued.
  */
@@ -408,11 +408,11 @@ function wireTheInstaller() {
      next poll would stand empty for a moment first. */
   window_.addEventListener("nx-open", refreshTheInstaller);
 
-  /* Whilst the window is open, or whilst something is being installed with it
+  /* While the window is open, or while something is being installed with it
      closed: a run takes minutes and goes on whether anybody is watching, and
      what is on the screen when somebody comes back has to be true.
 
-     Four times as often whilst something is happening. A run where every step
+     Four times as often while something is happening. A run where every step
      finds its work already done is over in a second, and asking every two
      seconds would miss it entirely: somebody would press Install and see the
      window go from asked to finished with nothing in between, or nothing at

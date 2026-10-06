@@ -7,8 +7,8 @@ cannot run leaves a black screen with SSH as the only way back, which is the
 one outcome this must not produce.
 
 Previous does not write the file back of its own accord, neither when it exits
-nor when its own dialogue closes. Only "Save Config" in that dialogue writes,
-and that asks for a filename first. So what somebody sets in the dialogue holds
+nor when its own dialog closes. Only "Save Config" in that dialog writes,
+and that asks for a filename first. So what somebody sets in the dialog holds
 for that session and is gone at the next start unless they save it, and nothing
 here can see it in the meantime.
 
@@ -102,7 +102,7 @@ def to_disc(name, settings, sleep=None):
 
     The same cycle as everything else that changes the configuration, and for a
     reason worth writing down. Previous can put a disc on a slot that is
-    already a CD drive without resetting the machine, and its own dialogue does
+    already a CD drive without resetting the machine, and its own dialog does
     exactly that. What it cannot do is notice a file written from outside: it
     reads `previous.cfg` when it starts and never again. So from here a disc
     arrives the way a disk does, with the guest shut down properly first.

@@ -10,7 +10,7 @@ nx-window {
   min-height: var(--win-min-h);
 }
 
-/* The bar is 19 px tall and sits on a one-pixel grey ledge, with two pixels of
+/* The bar is 19 px tall and sits on a one-pixel gray ledge, with two pixels of
    shadow beneath it. Drawing all three as one gradient keeps the three numbers
    in one place instead of spread over a border, a margin and a pseudo-element. */
 nx-window .titlebar {
@@ -27,17 +27,17 @@ nx-window .titlebar {
     var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
 }
 /* The bar is 19 rows whether it is active or not, and the two rows under it
-   are the shadow. On an active bar the first of those reads as grey against
-   black; on an inactive one it would be the bar's own colour and would simply
+   are the shadow. On an active bar the first of those reads as gray against
+   black; on an inactive one it would be the bar's own color and would simply
    make the bar look a row taller, so it is black here. Measured off the real
-   File Viewer, whose grey bar ends after 19 rows with two black ones under it. */
+   File Viewer, whose gray bar ends after 19 rows with two black ones under it. */
 nx-window[inactive] .titlebar {
   background: linear-gradient(to bottom,
     var(--dark) 0 19px, var(--black) 19px 21px);
 }
 
 /* Both window buttons are the originals, 15 by 15, bevel and glyph in one
-   bitmap. The miniaturise one is a little window, not a filled square. */
+   bitmap. The miniaturize one is a little window, not a filled square. */
 nx-window .wbtn {
   width: 15px; height: 15px;
   flex: 0 0 auto;
@@ -50,7 +50,7 @@ nx-window .title { flex: 1; text-align: center; font-weight: bold; }
 
 /* Most windows hold their content clear of the frame. A terminal does not: its
    text view runs to the edge on every side, which is what flush says. */
-/* Eight pixels of the window's own grey between the frame and what is in it,
+/* Eight pixels of the window's own gray between the frame and what is in it,
    which is what the original leaves: one row of border, then eight of face,
    then the content. Measured in the File Viewer and again in the Preferences
    panel, so it is what a window does rather than what one window does. */
@@ -65,7 +65,7 @@ nx-window[flush] .pane { padding: 0; }
 
 /* Except at the foot of a window that can be resized, where the content runs
    straight into the bar. Measured in the File Viewer: its contents reach row
-   534, the bar's shadow is row 535, and there is no grey between them. A
+   534, the bar's shadow is row 535, and there is no gray between them. A
    window with no bar keeps its eight, which the Preferences panel does. */
 nx-window:not([fixed]) .pane { padding-bottom: 0; }
 

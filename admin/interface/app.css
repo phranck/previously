@@ -36,7 +36,7 @@ nx-window[name="preferences"] .module-row {
 }
 
 /* One cell, raised the way every button in this interface is: white on the
-   top and the left, black outside and grey inside on the other two. Read off
+   top and the left, black outside and gray inside on the other two. Read off
    the original at the seam between two cells, which goes light, black, white
    across: the right edge of one and the left edge of the next.
 
@@ -78,7 +78,7 @@ nx-window[name="preferences"] .module-row {
 }
 
 /* A list of choices, in NeXT's white. One is in force, and the one in force is
-   drawn the way NeXTSTEP drew a selected row, which is the colours turned
+   drawn the way NeXTSTEP drew a selected row, which is the colors turned
    around rather than a mark beside it. */
 .options {
   background: var(--white);
@@ -145,7 +145,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    the group with its name set into the top of it, and the buttons in a row
    that touch. Measured off the Keyboard module on the running system: the
    groove is one row of shadow with one of light inside it, and the chosen
-   button is white where the others are grey. */
+   button is white where the others are gray. */
 /* The one child of the scroller, holding whichever module's panel is up. */
 .module-panel { min-height: 100%; }
 
@@ -170,7 +170,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 /* The groove, drawn here rather than as the fieldset's own border.
    A browser places that border itself, from the height of the legend, and
    where its arithmetic falls on half a pixel the line comes out as a blend of
-   two greys across two rows. Measured in Chrome 152: sharp at a title height
+   two grays across two rows. Measured in Chrome 152: sharp at a title height
    of 17 and soft at 16, 18 and 20, which is a rule about the browser rather
    than about this design. Drawn from a length this stylesheet states, it lands
    where it is put, in every browser and at every size.
@@ -189,7 +189,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   pointer-events: none;
 }
 
-/* The title, centred, sitting over the groove and carrying the face colour so
+/* The title, centered, sitting over the groove and carrying the face color so
    that both rows of it stop at the words. Its own padding is how far short of
    them they stop. A fieldset cuts its border for a legend and leaves an inset
    shadow alone, so the light row would otherwise run on behind the word.
@@ -440,7 +440,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    round the way the words above it are. */
 .system[chosen] .system-mark[here] { filter: invert(1); }
 
-/* The one chosen, drawn the way NeXTSTEP drew a selected row: the colours
+/* The one chosen, drawn the way NeXTSTEP drew a selected row: the colors
    turned around rather than a mark put beside it. */
 .system[chosen] {
   background: var(--black);
@@ -456,7 +456,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 }
 
 /* How far through something long. A sunken trough with a filled bar in it,
-   which is what NeXT's own Installer drew whilst it worked. Only there whilst
+   which is what NeXT's own Installer drew while it worked. Only there while
    something is happening: an empty gauge would be a window claiming to be
    busy. */
 .gauge {
@@ -469,8 +469,8 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   box-shadow: var(--sunken-inside);
 }
 
-/* The part that is done. The dark grey the interface states a fact in rather
-   than a colour of its own, because nothing in NeXTSTEP is coloured to mean
+/* The part that is done. The dark gray the interface states a fact in rather
+   than a color of its own, because nothing in NeXTSTEP is colored to mean
    progress. */
 .gauge-fill {
   height: 100%;
@@ -485,7 +485,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   /* What a field carries when what is in it is not what is running. NeXTSTEP
      had nothing of this kind at all, so this is not read off the original: it
      is phranck's, chosen on 29 September 2026, and the palest of pinks reads as
-     a mark on a grey desk without reading as a warning. */
+     a mark on a gray desk without reading as a warning. */
   --newer: #ffe8fb;
 }
 

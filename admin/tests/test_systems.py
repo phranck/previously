@@ -4,7 +4,7 @@ Nothing here reaches the network. What is tested is the table itself and the
 two questions asked of it: where a system is fetched from, and whether one is
 already on this machine. Both are what the privileged helper acts on, and both
 are wrong in ways nothing else would notice: an address that leads somewhere
-else, or a disk that is here and is not recognised, which costs two gigabytes
+else, or a disk that is here and is not recognized, which costs two gigabytes
 and half an hour.
 """
 
@@ -114,7 +114,7 @@ def test_a_disk_fetched_by_this_tool_is_found(tmp_path):
 def test_a_disk_install_sh_left_behind_is_found_too(tmp_path):
     """That script unpacks the archive as it comes, which leaves the disk
     inside a folder named after the archive. A machine set up that way is one
-    to recognise rather than to fetch a second copy for."""
+    to recognize rather than to fetch a second copy for."""
     system = systems.find("nextstep-3.3")
     folder = tmp_path / "Nextstep 3.3 HD Image With Previous"
     folder.mkdir()
@@ -162,7 +162,7 @@ def test_room_is_asked_of_a_folder_that_is_not_there_yet(tmp_path):
 
 def test_a_fetch_needs_room_for_the_disk_and_the_archive(tmp_path):
     """Measured rather than guessed: the 3.3 disk is 2,012,774,400 bytes on the
-    reference machine, and the archive sits beside it whilst it unpacks."""
+    reference machine, and the archive sits beside it while it unpacks."""
     assert systems.ROOM_BYTES > systems.UNPACKED_BYTES
     assert systems.ROOM_BYTES > max(
         system.size for system in systems.CATALOGUE) + systems.UNPACKED_BYTES

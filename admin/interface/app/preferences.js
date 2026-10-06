@@ -13,7 +13,7 @@ import { drawPlace } from "./viewer.js";
  *
  * Each is named in its own language, because a language named in a language
  * one cannot read is no help to whoever is looking for theirs. The order is
- * the catalogue's own, so it does not move about as the interface changes.
+ * the catalog's own, so it does not move about as the interface changes.
  */
 function drawLanguages() {
   const list = /** @type {any} */ (document.getElementById("languages"));

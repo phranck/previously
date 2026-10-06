@@ -18,9 +18,9 @@ nx-dock {
   z-index: 50;
 }
 
-/* The slot a travelling tile would land on. Flat and pale, with none of a
+/* The slot a traveling tile would land on. Flat and pale, with none of a
    tile's bevel or diagonal face, so it reads as a place rather than as a
-   second tile. It is in the column only whilst something is being carried. */
+   second tile. It is in the column only while something is being carried. */
 nx-dock .slot {
   grid-column: 1;
   background: var(--light);

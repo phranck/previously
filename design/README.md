@@ -15,10 +15,10 @@ Six tools do that work:
 | Tool | What it does |
 |---|---|
 | `ufs.py` | Reads a NeXT UFS filesystem: 4.3BSD FFS, big endian, behind a `dlV3` disk label. |
-| `nxtiff.py` | Decodes NeXT's TIFFs, which no current library reads: two bits per sample, alpha in its own plane, and a second copy of each picture at four bits per colour channel. |
+| `nxtiff.py` | Decodes NeXT's TIFFs, which no current library reads: two bits per sample, alpha in its own plane, and a second copy of each picture at four bits per color channel. |
 | `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `parts/`. |
 | `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
-| `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their licence, into `../admin/web/fonts/`. |
+| `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their license, into `../admin/web/fonts/`. |
 | `build.py` | Puts the kit together, writes the two files the admin serves, and bakes `parts/` and those faces into the mockup as data URIs so it stays one file. |
 
 `parts/` is committed, so the draft works without running any of this. Run it again when a picture needs to change:
@@ -32,21 +32,21 @@ python3 build.py
 
 ## The two machines
 
-The pictures of the NeXTcube and the NeXTstation come from somewhere else again, because NeXTSTEP holds no drawing of either. The boot ROM does: whilst it tests the hardware it puts up a panel with the NeXT cube on the left and the machine on the right, and which machine that is follows from the configuration.
+The pictures of the NeXTcube and the NeXTstation come from somewhere else again, because NeXTSTEP holds no drawing of either. The boot ROM does: while it tests the hardware it puts up a panel with the NeXT cube on the left and the machine on the right, and which machine that is follows from the configuration.
 
-Previous can write the emulated framebuffer itself, which is what makes those pictures usable. Ctrl+Alt+G grabs it at the machine's own 1120 by 832 in NeXT's four greys, unscaled, and leaves `next_screen_NNN.png` in the directory the emulator was started in. Grabbing once a second through a boot catches the panel, and `bootpicture.py` finds the machine inside it and reduces it to an icon:
+Previous can write the emulated framebuffer itself, which is what makes those pictures usable. Ctrl+Alt+G grabs it at the machine's own 1120 by 832 in NeXT's four grays, unscaled, and leaves `next_screen_NNN.png` in the directory the emulator was started in. Grabbing once a second through a boot catches the panel, and `bootpicture.py` finds the machine inside it and reduces it to an icon:
 
 ```bash
 python3 bootpicture.py next_screen_021.png ../admin/web/parts/nextstation.png
 ```
 
-Nothing in it is fixed to one screenshot. The panel is found by its own grey, and the machine by the gap that separates it from the text, so the same call works for either.
+Nothing in it is fixed to one screenshot. The panel is found by its own gray, and the machine by the gap that separates it from the text, so the same call works for either.
 
 ## The Terminal's face
 
 NeXT's Terminal was set in Ohlfs, a face Keith Ohlfs drew for NeXTSTEP and only ever as bitmaps. The Terminal here is set in [Inconsolata](https://github.com/googlefonts/Inconsolata), the outline face closest to it. At 16 pixels its cell is Ohlfs's 8 by 16, its capitals are Ohlfs's 10 pixels, and its zero is slashed as Ohlfs's is. It carries hinting, so it is drawn sharp at every size the desk is drawn at.
 
-`fonts.py` takes the Regular and the Bold from the 3.000 release, checks each against its sum, and writes them into `../admin/web/fonts/` as WOFF2. The licence goes beside them as `OFL.txt`, because the SIL Open Font License lets the faces travel with software only together with it.
+`fonts.py` takes the Regular and the Bold from the 3.000 release, checks each against its sum, and writes them into `../admin/web/fonts/` as WOFF2. The license goes beside them as `OFL.txt`, because the SIL Open Font License lets the faces travel with software only together with it.
 
 ```bash
 python3 fonts.py
@@ -99,9 +99,9 @@ The rest: `nx-menu` with `nx-menu-item`, `nx-dock` with `nx-tile`, `nx-floor` fo
 
 NeXT wrote down why, so it is written down here. A tile acts on a double click and a single click does nothing, because a tile is moved by dragging it and a click that acted would fire whenever somebody began a drag and thought better of it. The File Viewer works the same way, one click to choose and two to open.
 
-The three marks in the lower left corner of a tile say the application is **not** running, and they go when it starts. That is the direction the OpenStep guidelines give and the direction the running system shows: Mail, Librarian and the console carry them whilst the Workspace and the clock do not.
+The three marks in the lower left corner of a tile say the application is **not** running, and they go when it starts. That is the direction the OpenStep guidelines give and the direction the running system shows: Mail, Librarian and the console carry them while the Workspace and the clock do not.
 
-An application that is running and is not in the dock puts its tile on the floor of the screen instead, from the left corner rightwards, and takes it away again when it stops. `nx-floor` is that floor. The tile is the dock's own, because `Workspace.app/tile.tiff` is a plain 64 by 64 grey square with the icon on it and no lettering.
+An application that is running and is not in the dock puts its tile on the floor of the screen instead, from the left corner rightwards, and takes it away again when it stops. `nx-floor` is that floor. The tile is the dock's own, because `Workspace.app/tile.tiff` is a plain 64 by 64 gray square with the icon on it and no lettering.
 
 ## A note on the icons and the face
 

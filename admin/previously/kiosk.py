@@ -57,7 +57,7 @@ QUIT_KEYS = "ctrl+alt+q"
 #: to shut down, so this is the time SDL takes to close a window.
 QUIT_TIMEOUT_SECONDS = 15
 
-#: How often the confirmation is pressed again whilst waiting for the guest.
+#: How often the confirmation is pressed again while waiting for the guest.
 #: NeXTSTEP raises its panel at its own pace, and one press at a fixed moment
 #: after the power key lands on the desktop when the panel is not up yet, which
 #: leaves the panel standing and the machine running.
@@ -332,7 +332,7 @@ def ask_to_set_up(runtime_directory, setup_directory, job, system=None,
     @param runtime_directory - The service's runtime directory, which is where
       `previously-setup.path` watches for the request.
     @param setup_directory - Where the helper says what it is doing, which is
-      read here to refuse a second request whilst one is still running.
+      read here to refuse a second request while one is still running.
     @param job - What to do, which has to be one of `setup.JOBS`.
     @param system - Which system, by identifier, or None where the job needs
       none.
