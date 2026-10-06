@@ -46,10 +46,10 @@ const MACHINE_ART = {
  *   bare name where no catalog knows it, because a name on the screen is
  *   ugly and silence is worse.
  *
- * The service sends a name and the values that fill it, so this is a lookup
- * and nothing more. Three of its answers need one thing beyond their values:
- * two say how many, which decides singular against plural, and one says which
- * of two things the board is doing.
+ * The service sends a name and the values that fill it, so this is mostly a
+ * lookup. Some answers need one thing beyond their values: a count decides
+ * singular against plural, a job or an action picks the sentence, and a count
+ * of bytes is put into words here, as every other size in this interface is.
  */
 function say(told) {
   if (!told?.reason) return "";
@@ -58,6 +58,12 @@ function say(told) {
      middle of the sentence rather than beside it. */
   const values = told.why ? { ...told, why: t(`why.${told.why}`) } : told;
 
+  /* Bytes are the one value the service cannot send ready to read: how large a
+     number is worth writing out, and how it is written, are questions about
+     the language rather than about the machine. */
+  if (told.reason === "setup.no-room") {
+    return t(key, { ...values, free: sized(told.free), needed: sized(told.needed) });
+  }
   if (told.reason === "board.on-its-way") return t(`${key}.${told.action}`, values);
   /* What the Pi was asked to do, which is five different things and therefore
      five sentences: one for all of them would say nothing about any. */

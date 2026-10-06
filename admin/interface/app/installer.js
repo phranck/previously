@@ -74,6 +74,12 @@ const PATIENCE_MS = 30000;
  *  draw is a sentence nobody reads. */
 let whilstWaiting = "";
 
+/** What the service said when it refused the last request, or "" where it
+ *  took it. Kept apart from the sentence above, because a refused request
+ *  never reaches the Pi, so the window stops waiting at once and the next draw
+ *  would show the run before it in its place. */
+let refusedWith = "";
+
 /**
  * Asks the service what can be installed and what is happening, and draws it.
  *
@@ -245,6 +251,21 @@ function drawWhatIsBeingInstalled(progress) {
   }
 
   const running = Boolean(progress) && progress.finished_at === null;
+
+  /* A request the service refused never reached the Pi, so the newest run
+     there is still the one from before it. The refusal is the whole answer to
+     the press and stands in that run's place until a run newer than it
+     appears. A run going on was started somewhere else, and it is what the
+     window shows. */
+  if (running) refusedWith = "";
+  if (refusedWith && (progress?.started_at ?? null) === theRunBefore) {
+    allowInstalling(true);
+    gauge.hidden = true;
+    show("installer-caption", t("installer.not-started"));
+    show("installer-note", refusedWith);
+    return;
+  }
+
   allowInstalling(!running);
   gauge.hidden = !running;
 
@@ -297,32 +318,13 @@ function drawWhatIsBeingInstalled(progress) {
      rest of the interface uses rather than as a line of shell output. */
   show("installer-caption", step);
   show("installer-note", [
-    whyItFailed(progress.failed),
+    say(progress.failed),
     progress.undone?.length
       ? t("installer.undone", {
           steps: progress.undone.map((name) => t(`setup.step.${name}`)).join(", "),
         })
       : "",
   ].filter(Boolean).join(" "));
-}
-
-/**
- * Why an installation stopped, as a sentence.
- * @param {any} failed - What the helper said, as `answers.told` shapes
- *   it, with the step it happened in beside it.
- * @returns {string}
- *
- * One of those answers carries counts of bytes, and bytes are the one value the
- * service cannot send ready to read: how large a number is worth writing out,
- * and how it is written, are questions about the language rather than about the
- * machine. So they are put into words here, as every other size in this window
- * is.
- */
-function whyItFailed(failed) {
-  if (!failed) return "";
-  if (failed.reason !== "setup.no-room") return say(failed);
-  return say({ ...failed, free: sized(failed.free),
-               needed: sized(failed.needed) });
 }
 
 /**
@@ -369,6 +371,7 @@ async function askTheInstaller(job, system) {
   theRunBefore = setupState?.progress?.started_at ?? null;
   askedAt = Date.now();
   whilstWaiting = t("installer.asking");
+  refusedWith = "";
   drawWhatIsBeingInstalled(setupState?.progress ?? null);
 
   const answer = await tell(SETUP, { do: job, system: system ?? null });
@@ -381,6 +384,7 @@ async function askTheInstaller(job, system) {
   /* What the service said, kept for as long as the window is waiting, because
      the draw that follows would otherwise wipe it before anybody reads it. */
   whilstWaiting = say(answer);
+  if (!answer.ok) refusedWith = whilstWaiting;
   show("installer-note", whilstWaiting);
   drawTheInstaller(answer.systems ? answer : setupState);
   refreshTheInstaller();
