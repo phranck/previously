@@ -388,6 +388,25 @@ def installed(package):
     return "ok installed" in answer.stdout
 
 
+def _packages_here():
+    """What dpkg has on the card, package by package.
+
+    @returns dict of package name to the state dpkg names it in, such as
+      `installed` or `config-files`. A package dpkg has no trace of is not in
+      it, and the whole of it is empty where dpkg could not be asked.
+
+    Names carry their architecture where dpkg qualifies them, as in
+    `libc6:arm64`, which is the form apt-get takes them back in.
+    """
+    found = {}
+    for line in _said(["dpkg-query", "-W",
+                       "-f=${binary:Package}\t${db:Status-Status}\n"]).splitlines():
+        name, _, state = line.partition("\t")
+        if state:
+            found[name] = state
+    return found
+
+
 def version_of(package):
     """@returns str - The version dpkg has in place, or None.
 
@@ -624,11 +643,18 @@ class Work:
 
     def reverse(self):
         """Walks the record backwards, so each step is reversed in a world that
-        still looks the way it did when that step ran."""
+        still looks the way it did when that step ran.
+
+        An undo that fails is left out of what was put back, and the walk
+        carries on. That covers a file that will not move and a command that
+        refuses, which is what taking packages back through apt-get can do. A
+        walk that stopped there would leave a run that never ends, and the
+        service refuses every later request while one seems to be running.
+        """
         for step, how in reversed(self._how):
             try:
                 how()
-            except OSError:
+            except (OSError, Refused):
                 continue
             if step not in self.undone:
                 self.undone.append(step)
@@ -885,15 +911,69 @@ def _packages(work, wanted):
     @param work - The run.
     @param wanted - The package names.
 
-    Only what was missing is recorded, so undoing never takes away something
-    the machine already had.
+    Only what was missing is installed, and only what the installation put on
+    the card is recorded, so undoing never takes away something the machine
+    already had.
     """
     missing = [package for package in wanted if not installed(package)]
     if not missing:
         return
-    run(["apt-get", "update", "-qq"])
-    _apt_install(work, missing)
-    work.undoes(lambda: run(["apt-get", "remove", "-y", "-qq", *missing]))
+    _put_in(work, missing)
+
+
+def _put_in(work, packages):
+    """Installs packages, and records how to take back what came with them.
+
+    @param work - The run.
+    @param packages - The names asked for, none of them installed yet.
+
+    What came is read off dpkg before and after rather than off the names,
+    because apt installs a package with whatever it depends on, and taking back
+    only the names leaves the rest on the card. Read after a failure as well,
+    because apt can stop with half of it unpacked.
+    """
+    before = _packages_here()
+    try:
+        run(["apt-get", "update", "-qq"])
+        _apt_install(work, packages)
+    finally:
+        gone, kept = _what_came(before, _packages_here(), packages)
+        if gone or kept:
+            work.undoes(lambda: _taken_back(gone, kept))
+
+
+def _what_came(before, after, packages):
+    """Which packages an installation put on the card.
+
+    @param before - What `_packages_here` said before it.
+    @param after - What it said afterwards.
+    @param packages - The names that were asked for.
+    @returns (list, list). The first holds the packages dpkg had no trace of
+      before, which go with their configuration. The second holds the ones
+      that had left only their configuration behind, which go back to that.
+
+    An empty answer is dpkg not answering rather than a card with nothing on
+    it, and reading it as the second would take back every package there is.
+    So without both readings the names alone go back, as they were asked for.
+    """
+    if not before or not after:
+        return [], list(packages)
+    came = sorted(name for name, state in after.items()
+                  if state == "installed" and before.get(name) != "installed")
+    return ([name for name in came if name not in before],
+            [name for name in came if name in before])
+
+
+def _taken_back(gone, kept):
+    """Takes packages off again, as `_what_came` sorted them.
+
+    @param gone - Packages to purge, configuration and all.
+    @param kept - Packages to remove, which leaves their configuration.
+    """
+    if gone:
+        run(["apt-get", "purge", "-y", "-qq", *gone])
+    if kept:
+        run(["apt-get", "remove", "-y", "-qq", *kept])
 
 
 def _apt_install(work, arguments):
@@ -961,10 +1041,7 @@ def _emulator(work):
     """Previous itself, left alone where it is already here."""
     if installed(EMULATOR_PACKAGE):
         return
-    run(["apt-get", "update", "-qq"])
-    _apt_install(work, [EMULATOR_PACKAGE])
-    work.undoes(lambda: run(["apt-get", "remove", "-y", "-qq",
-                             EMULATOR_PACKAGE]))
+    _put_in(work, [EMULATOR_PACKAGE])
 
 
 def _newest_emulator(work):
