@@ -488,6 +488,7 @@ export const sv = {
   "told.setup.wrong-architecture": "Det behövs {wanted}, och maskinen är {found}.",
   "told.setup.wrong-release": "Det behövs Raspberry Pi OS på Debian {wanted}, och här är det {found}. Äldre versioner har inget SDL3.",
   "told.setup.no-room": "Det finns inte plats för {name}: det behövs {needed} och {free} är ledigt.",
+  "told.setup.no-room-until-restart": "Det finns inte plats för {name} än: det behövs {needed} och {free} är ledigt. En omstart av Pi:n frigör de {back} som växlingsfilen tar, så starta om den och försök igen.",
   "told.setup.system-is-not-here": "{name} finns inte på den här maskinen.",
   "told.setup.system-in-use": "Maskinen startar från {name}, så den blir kvar. Byt till en annan disk först.",
   "told.setup.no-system-named": "Inget system angavs.",

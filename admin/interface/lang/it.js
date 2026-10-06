@@ -488,6 +488,7 @@ export const it = {
   "told.setup.wrong-architecture": "Serve {wanted}, e la macchina è {found}.",
   "told.setup.wrong-release": "Serve Raspberry Pi OS su Debian {wanted}, e qui c'è {found}. Le versioni più vecchie non hanno SDL3.",
   "told.setup.no-room": "Per {name} non c'è abbastanza spazio: servono {needed} e liberi sono {free}.",
+  "told.setup.no-room-until-restart": "Per {name} non c'è ancora abbastanza spazio: servono {needed} e liberi sono {free}. Riavviare il Pi libera i {back} del suo file di swap, quindi riavvialo e riprova.",
   "told.setup.system-is-not-here": "{name} non è su questa macchina.",
   "told.setup.system-in-use": "La macchina si avvia da {name}, quindi resta. Passa prima a un altro disco.",
   "told.setup.no-system-named": "Non è stato indicato nessun sistema.",

@@ -295,6 +295,27 @@ def test_the_package_puts_the_socket_directory_back_before_starting(build):
     assert created < postinst.index("systemctl enable --now")
 
 
+# -- swap ----------------------------------------------------------------
+
+
+def test_the_package_keeps_swap_off_the_card(build, tmp_path):
+    """rpi-swap's default keeps a file of up to two gigabytes on the card for
+    swap, which on an eight gigabyte card is the room a system's disk needs.
+    The package sets a mechanism without a file, and it is one the helper
+    counts on giving that room back at the next boot, so the two cannot say
+    different things about the same card."""
+    from previously import setup
+
+    build.lay_out(tmp_path / "tree")
+    written = (tmp_path / "tree" / build.SWAP).read_text(encoding="utf-8")
+    mechanism = re.search(r"^Mechanism=(\S+)$", written, re.M)
+
+    assert build.SWAP.startswith("usr/lib/rpi/swap.conf.d/")
+    assert build.SWAP.endswith(".conf")
+    assert re.search(r"^\[Main\]$", written, re.M)
+    assert mechanism and mechanism.group(1) in setup.WITHOUT_A_FILE
+
+
 # -- which build a package is --------------------------------------------
 
 
