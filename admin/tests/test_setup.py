@@ -11,6 +11,7 @@ Every command goes through it, so a test that replaces it sees the argument
 list for everything root would have done.
 """
 
+import configparser
 import json
 import os
 import pathlib
@@ -378,6 +379,24 @@ def test_a_fresh_configuration_names_the_disk_and_the_machine(tmp_path, commands
     assert "nMachineType = 1" in written
     assert "bTurbo = TRUE" in written
     assert "nCpuFreq = 33" in written
+
+
+def test_a_fresh_machine_boots_without_the_rom_printing_its_tests(tmp_path, commands):
+    """Previous fills a key that is left out with its own default, and its
+    default for `bVerbose` is true, which has the ROM monitor print the whole
+    power-on test before NeXTSTEP draws anything. A NeXT out of the box shows
+    its boot panel instead, so the key is written."""
+    work = work_in(tmp_path)
+    disk = work.settings.disks / "nextstep-3.3.dd"
+    disk.parent.mkdir(parents=True)
+    disk.write_bytes(b"x")
+
+    setup.STEPS["configuration"](work)
+    written = configparser.ConfigParser()
+    written.optionxform = str
+    written.read(work.settings.previous_config, encoding="utf-8")
+
+    assert written["Boot"]["bVerbose"] == "FALSE"
 
 
 def test_a_configuration_that_is_already_there_is_left_alone(tmp_path, commands):
