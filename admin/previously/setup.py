@@ -1405,7 +1405,10 @@ def _written(machine, disk):
         "ConfigDialog": {"bShowConfigDialogAtStartup": "FALSE"},
         "Screen": {"bFullScreen": "TRUE", "bShowStatusbar": "FALSE",
                    "bShowTitlebar": "FALSE"},
-        "Boot": {"nBootDevice": "1", "bVisible": "FALSE"},
+        # Previous boots verbose unless told otherwise, which has the ROM
+        # monitor print the whole power-on test before NeXTSTEP draws anything.
+        # A NeXT out of the box shows its boot panel instead.
+        "Boot": {"nBootDevice": "1", "bVerbose": "FALSE"},
         "HardDisk": {"szImageName0": str(disk), "nDeviceType0": "1",
                      "bDiskInserted0": "TRUE", "bWriteProtected0": "FALSE"},
     }
