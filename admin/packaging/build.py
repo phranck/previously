@@ -5,9 +5,10 @@
 
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
-package copies Python, static files, seven unit files and one tmpfiles entry
-into place. Nothing is compiled, nothing is patched and nothing is generated at
-install time, so the debhelper machinery would be a build system around a copy.
+package copies Python, static files, seven unit files, one tmpfiles entry and
+one rpi-swap drop-in into place. Nothing is compiled, nothing is patched and
+nothing is generated at install time, so the debhelper machinery would be a
+build system around a copy.
 
 The release is `previously.server.RELEASE` and is read from there rather than
 written down again here. A package built between two releases carries that
@@ -60,6 +61,25 @@ LIB = "usr/lib/" + NAME
 UNITS = "lib/systemd/system"
 CONFIG = "etc/" + NAME
 TMPFILES = "usr/lib/tmpfiles.d/" + NAME + ".conf"
+
+#: Where the package keeps swap in memory, as a drop-in rpi-swap reads while the
+#: machine starts. Under /usr/lib, because swap.conf(5) leaves /etc to the
+#: machine's administrator, and named to sort before the names its own examples
+#: use, since the drop-in sorted last wins and an administrator's should.
+SWAP = "usr/lib/rpi/swap.conf.d/50-" + NAME + ".conf"
+
+#: What that drop-in says. rpi-swap's default keeps a file of up to two
+#: gigabytes on the card as well, and on an eight gigabyte card that is the room
+#: a system's disk needs. The helper says a restart gives that room back where
+#: the mechanism is one of `setup.WITHOUT_A_FILE`, and `tests/test_packaging.py`
+#: holds the two together.
+SWAP_DROP_IN = (
+    "# Written by the previously package. Swap stays in memory: rpi-swap's\n"
+    "# default also keeps a file of up to 2 GB on the card, and on an 8 GB card\n"
+    "# that is the room a NeXTSTEP disk needs. A drop-in that sorts after this\n"
+    "# one, such as /etc/rpi/swap.conf.d/80-mine.conf, overrides it.\n"
+    "[Main]\n"
+    "Mechanism=zram\n")
 
 #: Where the kiosk's X server keeps its socket, which the service binds into
 #: its private /tmp to press the emulator's keys. Trixie ages /tmp after ten
@@ -372,6 +392,9 @@ def lay_out(into):
     # cleanup leaves alone is the path the postinst puts back.
     (into / TMPFILES).parent.mkdir(parents=True, exist_ok=True)
     (into / TMPFILES).write_text("x %s\n" % X11_SOCKETS, encoding="utf-8")
+
+    (into / SWAP).parent.mkdir(parents=True, exist_ok=True)
+    (into / SWAP).write_text(SWAP_DROP_IN, encoding="utf-8")
 
 
 def scripts():

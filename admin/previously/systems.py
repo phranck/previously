@@ -247,11 +247,23 @@ def room_beside(disks):
     changes with everything else on the machine and a figure from five minutes
     ago is what lets an unpack stop half way through a disk image.
     """
-    place = disks
-    while not place.exists() and place != place.parent:
-        place = place.parent
     try:
-        stats = os.statvfs(place)
+        stats = os.statvfs(nearest_existing(disks))
     except OSError:
         return None
     return stats.f_bavail * stats.f_frsize
+
+
+def nearest_existing(disks):
+    """The folder the disks live in, or the nearest one above it that exists.
+
+    @param disks - pathlib.Path of the folder the disks live in.
+    @returns pathlib.Path, which is on the file system the disks will be on.
+
+    A fresh machine has no disks folder, and what has to be known before one
+    is made is how much room there is to make it in and what shares that room.
+    """
+    place = disks
+    while not place.exists() and place != place.parent:
+        place = place.parent
+    return place

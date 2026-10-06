@@ -504,6 +504,7 @@ export const en = {
   "told.setup.wrong-architecture": "This needs {wanted}, and the machine is {found}.",
   "told.setup.wrong-release": "This needs Raspberry Pi OS on Debian {wanted}, and this is {found}. Older releases carry no SDL3.",
   "told.setup.no-room": "There is not enough room for {name}: it needs {needed} and {free} is free.",
+  "told.setup.no-room-until-restart": "There is not enough room for {name} yet: it needs {needed} and {free} is free. Restarting the Pi frees the {back} its swap file takes, so restart it and try again.",
   "told.setup.system-is-not-here": "{name} is not on this machine.",
   "told.setup.system-in-use": "{name} is the disk the machine boots, so it stays. Switch to another one first.",
   "told.setup.no-system-named": "No system was named.",

@@ -61,8 +61,9 @@ function say(told) {
   /* Bytes are the one value the service cannot send ready to read: how large a
      number is worth writing out, and how it is written, are questions about
      the language rather than about the machine. */
-  if (told.reason === "setup.no-room") {
-    return t(key, { ...values, free: sized(told.free), needed: sized(told.needed) });
+  if (["setup.no-room", "setup.no-room-until-restart"].includes(told.reason)) {
+    return t(key, { ...values, free: sized(told.free), needed: sized(told.needed),
+                    back: sized(told.back) });
   }
   if (told.reason === "board.on-its-way") return t(`${key}.${told.action}`, values);
   /* What the Pi was asked to do, which is five different things and therefore

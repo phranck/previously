@@ -37,3 +37,14 @@ def test_a_card_with_no_room_is_said_in_sizes_a_person_reads():
 
     assert sentence == ("There is not enough room for NeXTSTEP 3.3: "
                         "it needs 3.3 GB and 2.1 GB is free.")
+
+
+def test_room_a_restart_gives_back_is_said_in_sizes_as_well():
+    sentence = said({"reason": "setup.no-room-until-restart",
+                     "name": "NeXTSTEP 3.3", "free": 2_076_180_480,
+                     "needed": 3_139_122_432, "back": 2_147_487_744})
+
+    assert sentence == ("There is not enough room for NeXTSTEP 3.3 yet: it "
+                        "needs 3.1 GB and 2.1 GB is free. Restarting the Pi "
+                        "frees the 2.1 GB its swap file takes, so restart it "
+                        "and try again.")

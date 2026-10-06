@@ -35,6 +35,7 @@ import os
 import pathlib
 import pwd
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -103,14 +104,31 @@ REPOSITORY_SOURCE = pathlib.Path("/etc/apt/sources.list.d/wmlive.sources")
 REPOSITORY_PINS = pathlib.Path("/etc/apt/preferences.d/wmlive")
 EMULATOR_PACKAGE = "previous"
 
-#: What the tools and the emulator put on the card, with their dependencies and
-#: with the packages apt-get downloads to install them, which it keeps in its
-#: cache. Read off Raspberry Pi OS Lite trixie on 6 October 2026 with `apt-get
-#: -s remove --autoremove` and `apt-cache show`: 120 packages come with the
-#: tools, and 40 more are there only for the emulator. A system is fetched after
-#: both, so it has whatever room they leave.
-TOOLS_BYTES = 657_787_942
-EMULATOR_BYTES = 112_699_328
+#: What the tools and the emulator put on the card, with their dependencies.
+#: Read off Raspberry Pi OS Lite trixie on 6 October 2026 with `apt-get -s
+#: remove --autoremove` and `apt-cache show`: 120 packages come with the tools,
+#: and 40 more are there only for the emulator. What apt-get downloads to
+#: install them is cleared once they are in, so it is not counted. A system is
+#: fetched after both, so it has whatever room they leave.
+TOOLS_BYTES = 535_692_288
+EMULATOR_BYTES = 90_655_744
+
+#: How rpi-swap is asked what it is set to: through the tool its own generator
+#: reads its settings with, so the answer is the one the next boot acts on.
+SWAP_SETTINGS = ["rpi-systemd-config", "rpi/swap.conf",
+                 "mechanism", "Main::Mechanism", "path", "File::Path"]
+
+#: Where rpi-swap keeps its file where nothing names another, per swap.conf(5).
+SWAP_FILE = pathlib.Path("/var/swap")
+
+#: The rpi-swap mechanisms that keep no file. swap.conf(5) says an existing one
+#: is removed for them, which happens at the next boot, because rpi-swap sets
+#: swap up while the machine starts.
+WITHOUT_A_FILE = ("zram", "none")
+
+#: What one of the blocks `os.stat` counts in `st_blocks` holds, which is how
+#: much of the card a file takes rather than how long it says it is.
+STAT_BLOCK_BYTES = 512
 
 #: The machine a fresh configuration describes: the cube with the turbo board,
 #: which is what the one-liner gets as well. Where the disks live, where that
@@ -736,13 +754,19 @@ def room_for(steps, system, disks):
     @param disks - pathlib.Path of the folder the disks live in.
     @raises Refused with `setup.no-room` where the disk and its margin will not
       fit once the steps in front of the system have put their packages on the
-      card.
+      card, and with `setup.no-room-until-restart` where they will once the
+      next boot has taken rpi-swap's file away.
 
     The one answer to whether a run fits. The service asks it before it leaves
     a request, the first step asks it, and the system step asks it again,
     because what is free changes with everything else on the machine. A run
     with no system step, with no system named, or with that system already
     here needs no room at all.
+
+    The room a restart gives back is not counted as free, because it is not
+    there to unpack into until that restart. The setup never restarts the
+    machine in the middle of a run, so it says that a restart is what it is
+    waiting for.
     """
     if "system" not in steps or system is None:
         return
@@ -751,9 +775,14 @@ def room_for(steps, system, disks):
     free = systems.room_beside(disks)
     needed = systems.ROOM_BYTES + _packages_in_front(
         steps[:steps.index("system")])
-    if free is not None and free < needed:
-        raise Refused("setup.no-room", free=free, needed=needed,
-                      name=system.name)
+    if free is None or free >= needed:
+        return
+
+    back = _given_back_at_restart(disks)
+    if free + back >= needed:
+        raise Refused("setup.no-room-until-restart", free=free, needed=needed,
+                      back=back, name=system.name)
+    raise Refused("setup.no-room", free=free, needed=needed, name=system.name)
 
 
 def _packages_in_front(steps):
@@ -771,6 +800,55 @@ def _packages_in_front(steps):
     if "emulator" in steps and not installed(EMULATOR_PACKAGE):
         needed += EMULATOR_BYTES
     return needed
+
+
+def _given_back_at_restart(disks):
+    """How much room beside the disks the next boot gives back.
+
+    @param disks - pathlib.Path of the folder the disks live in.
+    @returns int, bytes: what rpi-swap's file takes on the card, where rpi-swap
+      is set to a mechanism without a file and the file is on the file system
+      the disks are on. Nothing otherwise, which includes a machine without
+      rpi-swap.
+
+    The package sets swap to stay in memory, and rpi-swap removes its file at
+    the next boot rather than at once. swap.conf(5) warns against changing
+    swap on a running machine, so the file is left for that boot to take.
+    """
+    settings = _swap_settings()
+    if settings.get("mechanism") not in WITHOUT_A_FILE:
+        return 0
+    swap = pathlib.Path(settings.get("path") or SWAP_FILE)
+    try:
+        held = swap.lstat()
+        beside = systems.nearest_existing(disks).stat()
+    except OSError:
+        return 0
+    if not stat.S_ISREG(held.st_mode) or held.st_dev != beside.st_dev:
+        return 0
+    return held.st_blocks * STAT_BLOCK_BYTES
+
+
+def _swap_settings():
+    """What rpi-swap is set to.
+
+    @returns dict, by the names SWAP_SETTINGS asks under. A setting nothing
+      sets is left out, which for the mechanism means rpi-swap's own default,
+      and the whole of it is empty where rpi-swap is not here to ask.
+
+    rpi-systemd-config answers in shell assignments, one per line, with the
+    value quoted the way a shell reads it back.
+    """
+    found = {}
+    for line in _said(SWAP_SETTINGS).splitlines():
+        try:
+            words = shlex.split(line)
+        except ValueError:
+            continue
+        if len(words) == 1 and "=" in words[0]:
+            name, value = words[0].split("=", 1)
+            found[name] = value
+    return found
 
 
 def _tools(work):
@@ -829,9 +907,19 @@ def _apt_install(work, arguments):
     the window and the one-liner show a step that looks stuck. apt writes its
     status lines to the descriptor it is given, and standard output is the one
     this reads.
+
+    What apt-get downloaded is cleared once the packages are in, because it
+    keeps every package it fetches and that is room a system's disk needs a
+    few minutes later. A cache that cannot be cleared is left where it is: the
+    packages are in either way, and the system step asks about the room before
+    it fetches anything.
     """
     run(["apt-get", "-o", "APT::Status-Fd=1", "install", "-y", "-qq", *arguments],
         heard=lambda percent: work.through(round(percent), 100, INSTALLING))
+    try:
+        run(["apt-get", "clean"])
+    except Refused:
+        pass
 
 
 def _archive(work):

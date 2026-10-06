@@ -680,6 +680,120 @@ def test_a_system_that_is_already_here_needs_no_room(tmp_path, commands,
     setup.room_for(setup.JOBS["install"], systems.find("nextstep-3.3"), tmp_path)
 
 
+@pytest.fixture
+def swap_file(tmp_path, monkeypatch):
+    """A swap file beside the disks, and rpi-swap answering about it.
+
+    @returns a function taking the mechanism rpi-swap is set to, or None where
+      nothing sets one, and answering with the room the file takes.
+    """
+    swap = tmp_path / "swap"
+    swap.write_bytes(b"\1" * 1024 * 1024)
+
+    def set_to(mechanism):
+        said = "path='%s'" % swap
+        if mechanism:
+            said = "mechanism='%s'\n%s" % (mechanism, said)
+        monkeypatch.setattr(setup, "_said", lambda command: (
+            said if command[0] == "rpi-systemd-config" else ""))
+        return swap.stat().st_blocks * setup.STAT_BLOCK_BYTES
+
+    return set_to
+
+
+def test_a_swap_file_the_next_boot_removes_asks_for_that_boot(
+        tmp_path, monkeypatch, swap_file):
+    """rpi-swap removes the file at the next boot once it is set to keep swap
+    in memory, and not before, so the room it holds is coming and is not yet
+    there to unpack into. The setup does not restart a machine in the middle
+    of a run, so it says that a restart is what it is waiting for."""
+    back = swap_file("zram")
+    monkeypatch.setattr(setup, "installed", lambda package: True)
+    monkeypatch.setattr(systems, "room_beside",
+                        lambda where: systems.ROOM_BYTES - back)
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.room_for(setup.JOBS["install"], systems.find("nextstep-3.3"),
+                       tmp_path)
+
+    assert refused.value.told["reason"] == "setup.no-room-until-restart"
+    assert refused.value.told["back"] == back
+    assert refused.value.told["needed"] == systems.ROOM_BYTES
+
+
+@pytest.mark.parametrize("mechanism,short", [
+    # Nothing set is rpi-swap's own default, which keeps the file.
+    (None, 0),
+    ("zram+file", 0),
+    # Set to go, and still not enough once it has.
+    ("zram", 1),
+])
+def test_a_swap_file_that_stays_or_does_not_help_is_no_room(
+        tmp_path, monkeypatch, swap_file, mechanism, short):
+    back = swap_file(mechanism)
+    monkeypatch.setattr(setup, "installed", lambda package: True)
+    monkeypatch.setattr(systems, "room_beside",
+                        lambda where: systems.ROOM_BYTES - back - short)
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.room_for(setup.JOBS["install"], systems.find("nextstep-3.3"),
+                       tmp_path)
+
+    assert refused.value.told["reason"] == "setup.no-room"
+
+
+def test_a_machine_without_rpi_swap_gives_nothing_back(tmp_path, monkeypatch):
+    """Which is also how it answers where the tool that reads its settings is
+    not there or says nothing."""
+    monkeypatch.setattr(setup, "_said", lambda command: "")
+    monkeypatch.setattr(setup, "installed", lambda package: True)
+    monkeypatch.setattr(systems, "room_beside", lambda where: 1024)
+
+    with pytest.raises(setup.Refused) as refused:
+        setup.room_for(setup.JOBS["install"], systems.find("nextstep-3.3"),
+                       tmp_path)
+
+    assert refused.value.told["reason"] == "setup.no-room"
+
+
+def test_what_apt_downloaded_is_cleared_once_the_packages_are_in(tmp_path,
+                                                                 commands):
+    """apt-get keeps every package it downloads, and the room they take is
+    room a system's disk needs a few minutes later."""
+    work = work_in(tmp_path)
+    work.at("tools", 2)
+
+    setup._packages(work, ["cage"])
+    installing = next(index for index, command in enumerate(commands)
+                      if "install" in command)
+
+    assert ["apt-get", "clean"] in commands[installing:]
+
+
+def test_a_cache_that_cannot_be_cleared_does_not_stop_the_step(tmp_path,
+                                                               monkeypatch):
+    """The packages are in either way, and the room the cache keeps is what the
+    system step asks about before it fetches anything."""
+    ran = []
+
+    def run(command, seconds=None, heard=None):
+        ran.append(command)
+        if command == ["apt-get", "clean"]:
+            raise setup.Refused("setup.command-failed", command="apt-get",
+                                code=100)
+        return ""
+
+    monkeypatch.setattr(setup, "run", run)
+    monkeypatch.setattr(setup, "installed", lambda package: False)
+    work = work_in(tmp_path)
+    work.at("tools", 2)
+
+    setup._packages(work, ["cage"])
+
+    assert ["apt-get", "clean"] in ran
+    assert work.changed == ["tools"]
+
+
 def test_the_largest_file_in_an_archive_is_the_disk(tmp_path):
     """Those archives carry ROM images, a Windows binary and a text file
     besides."""
