@@ -14,7 +14,6 @@ list for everything root would have done.
 import json
 import os
 import pathlib
-import re
 
 import pytest
 
@@ -487,48 +486,59 @@ def test_bringing_it_up_to_date_can_be_undone(tmp_path, commands):
     assert profile.read_text() == was
 
 
-def test_the_installer_and_this_write_the_same_autostart():
-    """`install.sh` carries its own copy of these lines for `--update-admin`,
-    which brings a console up to date without asking the helper for anything
-    else. Two copies of one thing drift, and the drift would be a console that
-    behaves differently depending on which of the two set the machine up. This
-    is what says so.
-
-    Character for character, comments included. Both sides replace a block that
-    no longer says what they write, so a comment wrapped differently in the two
-    is not cosmetic: it is the two rewriting each other every time a machine
-    sees both, which is what happened while this compared only the lines that
-    run.
-
-    Compared as shell rather than as text. The installer writes its copy inside
-    a heredoc, so every `$` in it is escaped and every backslash doubled, and it
-    names paths by the variables it declared above. Both sides are put back into
-    what the console will actually read, and then they have to be the same.
-    """
+def test_the_console_starts_previous_on_x_where_there_is_one():
+    """The admin reaches the emulator through X: xdotool presses its keys and
+    ImageMagick reads its screen. Previous is built against SDL3, which takes
+    Wayland wherever cage offers it, and then the power key never arrives. X
+    goes first, and Wayland stays behind it, so a machine without an X server
+    still starts its emulator."""
     class Somebody:
         home = pathlib.Path("/home/next")
 
-    installer = (pathlib.Path(__file__).resolve().parent.parent.parent
-                 / "install.sh").read_text(encoding="utf-8")
-    values = dict(re.findall(r'^readonly (\w+)="([^"]*)"$', installer, re.M))
-    values["HOME"] = str(Somebody.home)
+    started = [line.split() for line in setup._autostart_block(Somebody()).splitlines()
+               if line.strip().endswith("cage -- /usr/bin/previous")]
+    assert len(started) == 1, "the console starts Previous in one place"
 
-    def settled(text):
-        """One variable at a time, until none is left: they are written in
-        terms of each other, so HOLD_FILE is RUNTIME_DIR and a slash."""
-        for _ in range(4):
-            text = re.sub(r"\$\{(\w+)\}",
-                          lambda found: values.get(found.group(1), found.group(0)),
-                          text)
-        return text
+    name, _, drivers = started[0][0].partition("=")
+    assert name == "SDL_VIDEO_DRIVER"
+    assert drivers.split(",") == ["x11", "wayland"]
 
-    block = re.search(r"(\$\{AUTOSTART_MARKER\}\n.*?\$\{AUTOSTART_END\})",
-                      installer, re.S)
-    assert block, "no autostart block in install.sh"
-    theirs = settled(block.group(1).replace("\\$", "$").replace("\\\\", "\\"))
-    ours = setup._autostart_block(Somebody()).strip("\n")
 
-    assert theirs == ours
+def test_the_package_brings_a_console_from_an_older_version_up_to_date(tmp_path):
+    """The package does this on every install and upgrade, so a tool replaced
+    from the browser does not go on running beside a console that starts its
+    emulator where the tool cannot reach it."""
+    owner = Nobody(tmp_path)
+    profile = tmp_path / setup.PROFILE
+    profile.write_text(
+        "export EDITOR=vi\n\n%s\ncage -- /usr/bin/previous\n%s\n"
+        % (setup.AUTOSTART_OPENS, setup.AUTOSTART_CLOSES), encoding="utf-8")
+
+    assert setup.refresh_console(owner)
+    assert profile.read_text() == "export EDITOR=vi\n" + setup._autostart_block(owner)
+
+
+def test_the_package_gives_a_machine_without_a_console_none(tmp_path):
+    """Installing the tool is not setting the machine up. A console is written
+    by the install job, and the package only keeps one that is there current."""
+    owner = Nobody(tmp_path)
+    profile = tmp_path / setup.PROFILE
+    profile.write_text("export EDITOR=vi\n", encoding="utf-8")
+
+    assert not setup.refresh_console(owner)
+    assert profile.read_text() == "export EDITOR=vi\n"
+    assert not setup.refresh_console(Nobody(tmp_path / "nobody-home"))
+
+
+def test_the_package_leaves_a_current_console_alone(tmp_path, commands):
+    work = work_in(tmp_path)
+    work.owner.home.mkdir(parents=True)
+    setup.STEPS["autostart"](work)
+    profile = work.owner.home / setup.PROFILE
+    once = profile.read_text()
+
+    assert not setup.refresh_console(work.owner)
+    assert profile.read_text() == once
 
 
 def test_an_installation_ends_with_the_machine_running(tmp_path, commands, monkeypatch):

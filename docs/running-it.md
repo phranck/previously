@@ -125,6 +125,8 @@ From a checkout on the Pi, the same script builds the package out of what is bes
 ./install.sh --update-admin
 ```
 
+However the tool is replaced, from the window or from a shell, the console that starts the emulator is brought up to the new version as well, where the machine has one.
+
 The password in `/var/lib/previously/password` and the configuration in `/etc/previously/config.ini` both survive either way, because the password is state the tool wrote itself and the configuration is a conffile that an upgrade never overwrites. `dpkg-query -W previously` says on the Pi itself what the window says in the browser.
 
 **The browser shows the release, and the Pi knows which build it is.** In the window a version reads as `1.0.0`. The package itself carries more: anything built between two releases says how far it stands from the last tag and which commit it came from, so `1.0.0+7.g2f250d5` is seven commits past the release and `1.0.0~7.g2f250d5` is seven commits on the way to one that has not been tagged yet, and a build from a tree with something uncommitted in it ends in `.modified`. Every one of those sorts the way apt expects, so an upgrade is an upgrade in either direction. `dpkg-query -W previously` is where you read it when you need it.

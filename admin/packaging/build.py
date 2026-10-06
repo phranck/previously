@@ -44,10 +44,12 @@ ARCHITECTURE = "all"
 #:   python3          the service itself
 #:   xdotool          the keys that reach the emulator, in screen.press
 #:   imagemagick      the picture of the screen, in grab.photographed
+#:   xwayland         the X server both of those reach it through, which
+#:                    cage starts only where it is installed
 #:   openssh-client   the login behind the terminal, in terminal.Session
 #:   procps           pgrep and ps, which say whether the emulator runs
-DEPENDS = ["python3 (>= 3.11)", "xdotool", "imagemagick", "openssh-client",
-           "procps", "systemd"]
+DEPENDS = ["python3 (>= 3.11)", "xdotool", "imagemagick", "xwayland",
+           "openssh-client", "procps", "systemd"]
 
 #: The emulator this administers. A recommendation rather than a dependency,
 #: because it comes from an archive this package knows nothing about, and an
@@ -273,8 +275,9 @@ fi
 
 #: Run after the files are in place. Only what dpkg does not do itself: who
 #: the tool runs as is written down, systemd has to be told the units exist,
-#: the one directory the service cannot create for itself is made, and the
-#: service is started so that installing it is enough to have it.
+#: the one directory the service cannot create for itself is made, a console
+#: that is there is brought up to this version, and the service is started so
+#: that installing it is enough to have it.
 POSTINST = """#!/bin/sh
 set -e
 
@@ -302,6 +305,17 @@ if [ "$1" = configure ]; then
     if [ -n "$home" ] && [ -d "$home" ]; then
         install -d -o "$owner" -g "$group" -m 0700 "$home/.config/%(name)s" || true
     fi
+
+    # The console that starts the emulator, brought up to what this version of
+    # the helper writes where the machine has one, and left out where it has
+    # none. Here rather than in any one way of updating, so the browser, a shell
+    # and apt all leave the tool and its console in step. Not fatal: the console
+    # that is there still starts the machine.
+    PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/%(lib)s python3 -c '
+import sys
+from previously import setup
+setup.refresh_console(setup.Owner(sys.argv[1]))
+' "$owner" || true
 
     # systemd's own x11.conf is what makes the X server's socket directory, at
     # boot. Applied here as well, because the /tmp cleanup may have taken it
@@ -406,7 +420,7 @@ def scripts():
     reading what the package carries instead of filling the same names in a
     second time and agreeing with themselves.
     """
-    words = {"name": NAME, "service": SERVICE, "units": UNITS,
+    words = {"name": NAME, "service": SERVICE, "units": UNITS, "lib": LIB,
              "watchers": " ".join(WATCHERS), "x11": X11_SOCKETS,
              "find_owner": FIND_OWNER.rstrip("\n"),
              "owner_file": OWNER_FILE,
