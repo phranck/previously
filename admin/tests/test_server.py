@@ -1606,9 +1606,12 @@ def test_asking_for_an_installation_needs_a_session(service, tmp_path):
     assert not (tmp_path / "setup").exists(), "refused and asked anyway"
 
 
-def test_an_installation_is_asked_for_by_leaving_a_request(service, tmp_path):
+def test_an_installation_is_asked_for_by_leaving_a_request(service, tmp_path,
+                                                           monkeypatch):
     """This service does none of the work and holds none of the privilege. It
     writes three names into a file that a path unit watches for."""
+    monkeypatch.setattr(server.systems, "room_beside", lambda where: 1 << 40)
+
     with tell(service, "/api/setup",
               {"do": "install", "system": "nextstep-2.2"}) as answer:
         said = json.loads(answer.read())
@@ -1641,6 +1644,22 @@ def test_a_request_naming_something_nobody_offers_is_refused(service, tmp_path,
 
     assert refused.value.code == 409
     assert json.loads(refused.value.read())["reason"] == reason
+    assert not (tmp_path / "setup").exists()
+
+
+def test_a_system_the_card_has_no_room_for_is_refused_at_once(service, tmp_path,
+                                                              monkeypatch):
+    """With the figures the window says it in, and before anything is left for
+    the helper to start on."""
+    monkeypatch.setattr(server.systems, "room_beside", lambda where: 1024)
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/setup", {"do": "install", "system": "nextstep-3.3"})
+
+    said = json.loads(refused.value.read())
+    assert refused.value.code == 409
+    assert said["reason"] == "setup.no-room"
+    assert said["free"] == 1024
     assert not (tmp_path / "setup").exists()
 
 

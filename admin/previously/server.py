@@ -531,7 +531,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         taken, told = kiosk.ask_to_set_up(
             self.settings.runtime_directory, self.settings.setup_directory,
-            job, body.get("system"), None, body.get("backup"))
+            self.settings.disks, job, body.get("system"), None,
+            body.get("backup"))
         return self._json({"ok": taken, **told, **self._setup()},
                           status=200 if taken else 409)
 
@@ -589,7 +590,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         taken, told = kiosk.ask_to_set_up(
             self.settings.runtime_directory, self.settings.setup_directory,
-            body.get("do"), body.get("system"), body.get("machine"))
+            self.settings.disks, body.get("do"), body.get("system"),
+            body.get("machine"))
         # What dpkg and apt last said is about to stop being true, and the
         # window asks again the moment this answer arrives.
         setup.forget()
@@ -672,7 +674,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """
         taken, told = kiosk.ask_to_set_up(
             self.settings.runtime_directory, self.settings.setup_directory,
-            setup.UPDATE_TOOL)
+            self.settings.disks, setup.UPDATE_TOOL)
         return self._json({"ok": taken, **told, **self._update()},
                           status=200 if taken else 409)
 

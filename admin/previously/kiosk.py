@@ -325,7 +325,7 @@ def board(action, runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS,
     return True, told("board.on-its-way", action=action)
 
 
-def ask_to_set_up(runtime_directory, setup_directory, job, system=None,
+def ask_to_set_up(runtime_directory, setup_directory, disks, job, system=None,
                   machine=None, backup=None):
     """Asks the privileged helper to install something, and says whether it took.
 
@@ -333,6 +333,8 @@ def ask_to_set_up(runtime_directory, setup_directory, job, system=None,
       `previously-setup.path` watches for the request.
     @param setup_directory - Where the helper says what it is doing, which is
       read here to refuse a second request while one is still running.
+    @param disks - pathlib.Path of the folder the disks live in, which is where
+      the room for a system is asked.
     @param job - What to do, which has to be one of `setup.JOBS`.
     @param system - Which system, by identifier, or None where the job needs
       none.
@@ -348,7 +350,9 @@ def ask_to_set_up(runtime_directory, setup_directory, job, system=None,
     The three names are checked here as well as there, and that is not two
     answers to one question: the check there is the boundary, and this one is
     so that a name nobody offers is answered at once rather than by a run that
-    starts, refuses and leaves a failure to read.
+    starts, refuses and leaves a failure to read. The room for a system is
+    asked here for the same reason, through the one answer `setup.room_for`
+    gives, because a run that is short of it fails after minutes of packages.
 
     Written under another name and moved into place, because the unit watching
     for it fires the moment the name appears and a file half written is a
@@ -364,6 +368,11 @@ def ask_to_set_up(runtime_directory, setup_directory, job, system=None,
     running = setting_up(setup_directory)
     if running is not None and running.get("finished_at") is None:
         return False, told("setup.one-at-a-time")
+
+    try:
+        setup.room_for(setup.JOBS[job], systems.find(system), disks)
+    except setup.Refused as refusal:
+        return False, refusal.told
 
     asking = {"do": job, "system": system, "machine": machine,
               "backup": backup}
