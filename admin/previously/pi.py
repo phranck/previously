@@ -44,7 +44,7 @@ THROTTLING_SINCE_BOOT = {
 
 #: Where the kernel reports what each sound card's playback stream is doing.
 #: An emulator that opened a device once and never asks again leaves this at
-#: "closed" whilst its own configuration still names the card, which is the one
+#: "closed" while its own configuration still names the card, which is the one
 #: failure that looks like nothing at all.
 SOUND_CARDS = pathlib.Path("/proc/asound")
 

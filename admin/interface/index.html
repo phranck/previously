@@ -13,8 +13,8 @@
 <body>
 
 <!-- Every word a person reads is a key here rather than a sentence, and the
-     catalogues in lang/ hold the sentences. The markup carries no text at all,
-     so nothing can show the wrong language whilst the right one arrives. What
+     catalogs in lang/ hold the sentences. The markup carries no text at all,
+     so nothing can show the wrong language while the right one arrives. What
      stays as it is written are names: NeXT's, the machine's own, and the
      applications'. -->
 
@@ -26,20 +26,20 @@
      An entry with no `for` is the workspace's own.
 
      The letter beside an entry is a letter of the word that entry shows, so
-     it is a catalogue entry like the word itself, and the letters have to be
+     it is a catalog entry like the word itself, and the letters have to be
      distinct within one menu rather than across all of them. Raspberry Pi
      keeps its name in every language and still needs a letter of its own,
      because whichever letter Preferences takes cannot also be this one. -->
 <nx-menu name="menu" title="Workspace" x="8" y="8">
   <!-- What this tool is, which NeXTSTEP put first in every application's menu
        and named Info. That word is taken here by the board's own readings, so
-       this one names the thing it is about. Three full stops rather than the
+       this one names the thing it is about. Three periods rather than the
        ellipsis character, because the original counts them. -->
   <nx-menu-item name="about-previously" data-t-key="menu.about-previously.key"
                 data-t="menu.about-previously"></nx-menu-item>
   <!-- Info is about the machine this runs on, which is the Raspberry Pi. What
        the emulated machine is belongs to the entry below, and that one is not
-       there at all whilst there is no emulated machine to be about. -->
+       there at all while there is no emulated machine to be about. -->
   <nx-menu-item opens="pi" data-t-key="menu.info.key" data-t="window.info"></nx-menu-item>
   <!-- Its words are the page's, because they carry the machine's own name.
        No data-t, so a change of language never shows the unfilled sentence
@@ -65,7 +65,7 @@
 </nx-menu>
 
 <!-- The Workspace is always running and never carries the marks. The editor
-     carries them whilst its window is closed, like any other application here. -->
+     carries them while its window is closed, like any other application here. -->
 <nx-dock>
   <nx-tile icon="Workspace" title="NeXT" fixed></nx-tile>
   <!-- No `opens`, unlike the other tiles: the editor is opened on a machine, and
@@ -74,7 +74,7 @@
            name="editor" app="/Apps/Config Editor.app"></nx-tile>
 </nx-dock>
 
-<!-- Where an application that is not in the dock puts its icon whilst it is
+<!-- Where an application that is not in the dock puts its icon while it is
      running, from the left corner rightwards. -->
 <nx-floor id="floor"></nx-floor>
 
@@ -128,7 +128,7 @@
     <nx-row><label data-t="pi.memory"></label><nx-field id="pi-memory">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="pi.card"></label><nx-field id="pi-disk">&mdash;</nx-field></nx-row>
     <!-- Which version of this tool is answering. A name rather than a
-         catalogue entry, the same way Raspberry Pi keeps its own in every
+         catalog entry, the same way Raspberry Pi keeps its own in every
          language, because a reader who cannot see this has no way to tell a
          current installation from one that was left behind. -->
     <nx-row><label>Previously</label><nx-field id="pi-version">&mdash;</nx-field></nx-row>
@@ -150,7 +150,7 @@
     <nx-row><label data-t="pi.emulator"></label><nx-field id="pi-emulator">&mdash;</nx-field></nx-row>
   </div>
   <!-- How far a replacement of this tool has got. The trough is there only
-       whilst one is running, and what fills it is read from the Pi rather than
+       while one is running, and what fills it is read from the Pi rather than
        held here, which is what lets the page pick the same run up again after
        the service it was talking to has been stopped and started underneath
        it. -->
@@ -210,8 +210,8 @@
   </div>
 </nx-window>
 
-<!-- Config Editor, which is Previous's own System dialogue in this interface's
-     idiom: the choices on the left of that dialogue and the overview on the
+<!-- Config Editor, which is Previous's own System dialog in this interface's
+     idiom: the choices on the left of that dialog and the overview on the
      right of it, here stacked as the picture and its readings over the groups
      that change them.
 
@@ -372,7 +372,7 @@
       </div>
     </fieldset>
   </div>
-  <!-- What is happening now. The trough is only there whilst something is, and
+  <!-- What is happening now. The trough is only there while something is, and
        how far through it is comes from the Pi rather than from anything this
        browser is holding, so a reload shows the same thing. -->
   <div class="gauge" id="installer-gauge" hidden>
@@ -424,7 +424,7 @@
            x="560" y="120" w="440" h="330" min-h="240" closed>
   <!-- A row of cells with a scroller under it, which is what NeXTSTEP drew:
        fourteen modules do not fit across a panel this wide, so the row scrolls
-       and the chosen module's cell is white where the others are grey. Read off
+       and the chosen module's cell is white where the others are gray. Read off
        the running system: a cell is 66 square on a 68 grid, parted by the
        sunken line this interface uses everywhere. -->
   <nx-scroller class="modules" bars="across">
@@ -506,7 +506,7 @@
 <script src="vendor/xterm.js"></script>
 <script src="vendor/xterm-addon-fit.js"></script>
 <!-- Everything else is reached from app.js through its imports: the kit, the
-     six catalogues, the terminal and this application's own modules. What is
+     six catalogs, the terminal and this application's own modules. What is
      served is the one file build_web.py bundles out of them, and this tag is
      what it stands in place of. -->
 <script type="module" src="app.js"></script>

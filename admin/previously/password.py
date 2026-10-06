@@ -15,7 +15,7 @@ browser opens this one machine for a month and is no use anywhere else.
 
 Whoever is on the network when the machine is still unclaimed can claim it.
 That window is the price of not fetching a secret over SSH, and the interface
-says plainly whilst it is open.
+says plainly while it is open.
 """
 
 import hashlib

@@ -81,7 +81,7 @@ function gatherWindows() {
    own: offsetLeft, style.left, clientHeight and a transform are all in the
    pixels an element has before zoom multiplies them.
 
-   At twice the size a hand that travelled 100 viewport pixels has moved a
+   At twice the size a hand that traveled 100 viewport pixels has moved a
    window 50 of its own, so one cannot be subtracted from the other. There are
    three ways a viewport number reaches this desk, and each of them is a
    function below: a pointer, an element's rectangle, and the size of the
@@ -180,7 +180,7 @@ function gesture(handle, onMove, onStart, onEnd) {
     const finish = () => {
       handle.removeEventListener("pointermove", move);
       /* The last position has to land before anything saves it, so a frame
-         still owed is run now rather than cancelled. */
+         still owed is run now rather than canceled. */
       if (frame) {
         cancelAnimationFrame(frame);
         apply();
@@ -197,7 +197,7 @@ function gesture(handle, onMove, onStart, onEnd) {
 /**
  * Moves an element by its handle, and settles it where it was let go.
  *
- * Whilst the gesture runs the element is moved with a transform, which the
+ * While the gesture runs the element is moved with a transform, which the
  * compositor can do without laying the page out again. Its left and top are
  * written once, at the end, so everything that reads them afterwards sees a
  * plain position and knows nothing about how it got there.
@@ -477,7 +477,7 @@ function zoom(from, to) {
  * @param {number} end
  * @param {number} part - Where between them, from zero to one.
  * @returns {number} Rounded, because a rectangle drawn on half a pixel is a
- *   grey line rather than a black one.
+ *   gray line rather than a black one.
  */
 function between(start, end, part) {
   return Math.round(start + (end - start) * part);

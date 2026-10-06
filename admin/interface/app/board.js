@@ -11,7 +11,7 @@ import { Art, say } from "./words.js";
  * Asks before the whole machine goes, and says in which order.
  * @param {string} what - The wording on the acting button.
  * @param {string} question - Which question to put, by its name in the
- *   catalogue, because the two differ in what the board does afterwards.
+ *   catalog, because the two differ in what the board does afterwards.
  * @returns {Promise<boolean>}
  */
 function warnAboutTheBoard(what, question) {
@@ -38,7 +38,7 @@ async function operateBoard(route, working) {
      rather than a failure. Saying so beats a page that claims no contact. */
   show("pi-note", answer === null ? t("note.board-gone") : say(answer));
 
-  /* Nothing is switched back on here. The next status decides: whilst the
+  /* Nothing is switched back on here. The next status decides: while the
      board is away it does not answer, and everything stays off until it does. */
   refresh();
 }

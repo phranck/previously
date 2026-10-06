@@ -18,7 +18,7 @@ const WAYS = {
 };
 
 /**
- * A view with NeXT's scroller on its left: a chequered trough, a knob that
+ * A view with NeXT's scroller on its left: a checkered trough, a knob that
  * takes its size from how much of the content is showing, and both arrows at
  * the far end. With nothing to scroll the whole bar goes empty, which is how
  * an idle terminal looks.

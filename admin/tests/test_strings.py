@@ -1,11 +1,11 @@
-"""The six catalogues, held against each other and against the code.
+"""The six catalogs, held against each other and against the code.
 
 Six files answering the same question drift, and the way they drift is
 invisible: a missing entry falls back to English, so the interface goes on
 working and one line of it is in the wrong language. Nothing on the screen says
 so. These tests are what says so.
 
-The catalogues are read as text rather than run, because this suite has no
+The catalogs are read as text rather than run, because this suite has no
 JavaScript in it and one entry per line is all that needs to be understood.
 """
 
@@ -15,11 +15,11 @@ import pytest
 
 from conftest import INTERFACE, page_source
 
-#: Where the catalogues live, English first because it is the one the others
+#: Where the catalogs live, English first because it is the one the others
 #: are measured against.
 LANGUAGES = ["en", "de", "fr", "it", "es", "sv"]
 
-#: One entry of a catalogue: a quoted key, a colon, a quoted sentence.
+#: One entry of a catalog: a quoted key, a colon, a quoted sentence.
 ENTRY = re.compile(r'^\s*"([^"]+)":\s*"(.*)",\s*$')
 
 #: What fills a place in a sentence, such as `{machine}`.
@@ -55,8 +55,8 @@ def english():
     return catalogue("en")
 
 
-def test_the_english_catalogue_is_not_empty(english):
-    """Every test below measures against English, so an English catalogue that
+def test_the_english_catalog_is_not_empty(english):
+    """Every test below measures against English, so an English catalog that
     failed to parse would make all of them pass on nothing."""
     assert len(english) > 100
 
@@ -89,7 +89,7 @@ def test_every_sentence_has_the_same_places(language, english):
 
 def test_the_markup_asks_for_strings_that_exist(english):
     """The interface's own labels, which carry a key and no words at all, so a
-    key that is not in the catalogue shows on the screen as itself."""
+    key that is not in the catalog shows on the screen as itself."""
     markup = (INTERFACE / "index.html").read_text(encoding="utf-8")
     wanted = set(re.findall(r'data-t(?:-title)?="([^"]+)"', markup))
 
@@ -112,7 +112,7 @@ def test_the_page_asks_for_strings_that_exist(english):
 
 
 #: An answer the page finishes off with a value before looking it up, so the
-#: catalogue holds one sentence per value rather than one for the name. Each is
+#: catalog holds one sentence per value rather than one for the name. Each is
 #: the name and the key of the value that follows it.
 BUILT_FROM_A_VALUE = {
     "board.on-its-way": "action",
@@ -126,14 +126,14 @@ BUILT_FROM_A_VALUE = {
 
 
 def test_every_answer_built_from_a_value_is_built_in_the_page(english):
-    """A name the page looks up whole, where the catalogue only holds it with
+    """A name the page looks up whole, where the catalog only holds it with
     something on the end, reaches the screen as `told.setup.asked`. That is
     what somebody saw the first time an installation was asked for."""
     page = page_source()
     said = page[page.index("function say("):page.index("\n}", page.index("function say("))]
 
     for reason in BUILT_FROM_A_VALUE:
-        # Either the page finishes the key off itself, or the catalogue answers
+        # Either the page finishes the key off itself, or the catalog answers
         # the bare name. One of the two, for every one of them.
         finished = f'"{reason}"' in said
         assert finished or f"told.{reason}" in english, reason
@@ -153,7 +153,7 @@ def test_every_answer_the_service_can_give_has_a_sentence(english):
 
 def test_every_setting_the_editor_offers_has_a_sentence(english):
     """The note under a group is the sentence for what is chosen there, keyed
-    by the value, so a value the service can offer and the catalogue cannot
+    by the value, so a value the service can offer and the catalog cannot
     speak about shows its key on the screen. The values come from the service's
     own tables, so a clock or a size added there arrives with its sentence or
     fails here."""
@@ -202,9 +202,9 @@ def test_every_application_can_be_named_in_words(english):
 
 
 @pytest.mark.parametrize("language", LANGUAGES)
-def test_the_about_panel_says_what_the_licence_says(language):
+def test_the_about_panel_says_what_the_license_says(language):
     """Who holds the copyright is stated in `LICENSE`, and a browser cannot
-    read that file. So the name is in the catalogues, and this is what stops
+    read that file. So the name is in the catalogs, and this is what stops
     the two drifting apart. The year is the current one, which the panel fills
     in when it opens, so every language has to leave a place for it."""
     licence = (INTERFACE.parent.parent / "LICENSE").read_text(encoding="utf-8")
@@ -216,7 +216,7 @@ def test_the_about_panel_says_what_the_licence_says(language):
     assert "{year}" in words["about.copyright"], language
     assert "{holder}" in words["about.copyright"], language
     # The name alone, because the panel sets it as the mark is set and the
-    # licence sets it as a legal document does.
+    # license sets it as a legal document does.
     assert holder.group(2).strip().lower() == words["about.holder"].lower(), language
 
 

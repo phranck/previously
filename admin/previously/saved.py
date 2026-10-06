@@ -43,7 +43,7 @@ class NotReadable(Exception):
 
     Distinct from there being none, which is the ordinary state of a machine
     nobody has saved anything on. This one means something is in the way, and
-    every change refuses whilst it is, because writing would destroy whatever
+    every change refuses while it is, because writing would destroy whatever
     could not be read.
     """
 

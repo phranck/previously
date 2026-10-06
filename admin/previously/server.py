@@ -94,7 +94,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     sessions = None
     attempts = None
 
-    #: Held whilst a shell session is open, so there is one at a time. A class
+    #: Held while a shell session is open, so there is one at a time. A class
     #: attribute because there is one server, and http.server makes a handler
     #: per request.
     terminals = threading.Lock()
@@ -129,7 +129,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 **pi.readings(self.settings.runtime_directory)})
         if route == "/api/activity":
             # Its own route rather than more of the one above, because this one
-            # is asked once a second whilst a monitor is open and that one
+            # is asked once a second while a monitor is open and that one
             # forks three times to answer.
             return self._json(activity.readings())
         if route == "/api/files":
@@ -144,7 +144,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(self._setup())
         if route == "/api/update":
             # Opening the window that shows this asks GitHub again; the poll
-            # that redraws it whilst it is open does not, because sixty
+            # that redraws it while it is open does not, because sixty
             # requests an hour is what an address is allowed and a loop would
             # spend them.
             asked = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
@@ -638,14 +638,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """What the published release says about itself.
 
         Its own address rather than a field of the answer above, because that
-        one is asked for every two seconds whilst the Raspberry Pi window is
+        one is asked for every two seconds while the Raspberry Pi window is
         open and this is asked when somebody presses a button. Notes are
         thousands of characters and the rest of that answer is four short
         values.
 
         Nothing is fetched here either. The notes came with the release GitHub
         described and are kept beside the version and the digest, so this route
-        has nothing to wait for and answers empty where nothing has been learnt
+        has nothing to wait for and answers empty where nothing has been learned
         yet.
 
         Markdown, which is what GitHub keeps them as, and the browser is what
@@ -866,7 +866,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _choose_the_password(self):
         """Sets this machine's password, and signs the browser in with it.
 
-        Open whilst the machine is unclaimed, which is how the first browser to
+        Open while the machine is unclaimed, which is how the first browser to
         reach a fresh installation claims it without fetching anything from the
         Pi. Once there is a password, changing it needs the one there is, which
         a signed in session already proves.

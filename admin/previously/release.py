@@ -126,7 +126,7 @@ def published(check=False, now=None):
       redrawing what is already on the screen.
     @param now - The moment to measure the floor against, for a test. None means
       the clock.
-    @returns dict as `look` describes it, or None where nothing has been learnt
+    @returns dict as `look` describes it, or None where nothing has been learned
       yet. None is not an error: it is the ordinary state of the first seconds
       after this service starts, and of a machine with no internet.
 

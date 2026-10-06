@@ -21,6 +21,6 @@ admin/packaging/build/
 admin/node_modules/
 admin/package-lock.json
 
-# Where the browser automation leaves its snapshots whilst a page is being
+# Where the browser automation leaves its snapshots while a page is being
 # looked at.
 .playwright-mcp/

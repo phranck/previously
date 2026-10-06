@@ -9,7 +9,7 @@
    screenshot of the running system, because NeXTSTEP drew those in PostScript
    and they exist as no file. ../../design/extract.py fetches both.
 
-   Every colour and raster below is read off that same screenshot at its own
+   Every color and raster below is read off that same screenshot at its own
    1120 by 832:
 
      Arbeitsfläche        #555577
@@ -31,7 +31,7 @@
    Ohlfs's 8 by 16, its capitals are Ohlfs's 10 px, and its zero is slashed as
    Ohlfs's is. It carries hinting, so it is drawn sharp at whatever size the
    desk is drawn at. design/fonts.py says where the two files come from, and
-   the licence is beside them in fonts/.
+   the license is beside them in fonts/.
 
    It has no italic, so a shell's italic is drawn by the browser.
 
@@ -57,7 +57,7 @@
   --dark:  #555555;
   --black: #000000;
 
-  /* Measured off the screenshot: not a grey, the dark value with more blue. */
+  /* Measured off the screenshot: not a gray, the dark value with more blue. */
   --desktop: #555577;
 
   --live: #2f7d32;
@@ -99,11 +99,11 @@
      tall. */
   --text-size: 12px;
   /* A whole number of pixels, and an even one. NeXTSTEP drew on the pixel
-     grid: it had four greys and no half of one, so a line that lands between
+     grid: it had four grays and no half of one, so a line that lands between
      two rows comes out as a blend of the two and reads soft beside everything
      around it. A ratio such as 1.4 gives 16.8 here, and every box measured off
      a line of text then sits on a fraction, which travels down through
-     whatever it contains. Even, because a box that centres something in this
+     whatever it contains. Even, because a box that centers something in this
      height halves it. */
   --line: 16px;
   /* The one thing it set smaller, whose capital is 7. */
@@ -163,13 +163,13 @@
 
   /* The one value outside the four above. It marks the configuration the
      emulator is actually running, which is a thing NeXTSTEP had no idea of, so
-     there is no original to take a colour from. A shade under the window's own
-     grey, because it has to read as a state and not as a selection. */
+     there is no original to take a color from. A shade under the window's own
+     gray, because it has to read as a state and not as a selection. */
   --in-force: #999999;
 
   /* The same mark with half of it missing, for a configuration that is written
      down but has not been through a boot. NeXTSTEP drew a checkerboard of two
-     greys wherever something was partial, and at this size it reads as a
+     grays wherever something was partial, and at this size it reads as a
      texture rather than as a pattern. */
   --dither: repeating-conic-gradient(var(--in-force) 0% 25%, var(--light) 0% 50%);
   --dither-size: 2px;

@@ -10,7 +10,7 @@
 #
 # None of the usual hardening is here, and that is on purpose rather than by
 # omission. This writes into /etc, into /boot and into somebody's home, and
-# runs apt. A unit claiming ProtectSystem whilst doing that would be a unit
+# runs apt. A unit claiming ProtectSystem while doing that would be a unit
 # somebody had to switch off again at the first failure.
 
 [Unit]

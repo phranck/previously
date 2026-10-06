@@ -105,7 +105,7 @@ function gatherWindows() {
    own: offsetLeft, style.left, clientHeight and a transform are all in the
    pixels an element has before zoom multiplies them.
 
-   At twice the size a hand that travelled 100 viewport pixels has moved a
+   At twice the size a hand that traveled 100 viewport pixels has moved a
    window 50 of its own, so one cannot be subtracted from the other. There are
    three ways a viewport number reaches this desk, and each of them is a
    function below: a pointer, an element's rectangle, and the size of the
@@ -204,7 +204,7 @@ function gesture(handle, onMove, onStart, onEnd) {
     const finish = () => {
       handle.removeEventListener("pointermove", move);
       /* The last position has to land before anything saves it, so a frame
-         still owed is run now rather than cancelled. */
+         still owed is run now rather than canceled. */
       if (frame) {
         cancelAnimationFrame(frame);
         apply();
@@ -221,7 +221,7 @@ function gesture(handle, onMove, onStart, onEnd) {
 /**
  * Moves an element by its handle, and settles it where it was let go.
  *
- * Whilst the gesture runs the element is moved with a transform, which the
+ * While the gesture runs the element is moved with a transform, which the
  * compositor can do without laying the page out again. Its left and top are
  * written once, at the end, so everything that reads them afterwards sees a
  * plain position and knows nothing about how it got there.
@@ -501,7 +501,7 @@ function zoom(from, to) {
  * @param {number} end
  * @param {number} part - Where between them, from zero to one.
  * @returns {number} Rounded, because a rectangle drawn on half a pixel is a
- *   grey line rather than a black one.
+ *   gray line rather than a black one.
  */
 function between(start, end, part) {
   return Math.round(start + (end - start) * part);
@@ -672,7 +672,7 @@ class NxWindow extends HTMLElement {
    * Shows it, in front.
    * @param {HTMLElement} [asker] - What was used to open it, if anything was.
    *   It rides along as a rectangle, because an application whose icon has to
-   *   travel to the foot of the screen has to know where it is travelling
+   *   travel to the foot of the screen has to know where it is traveling
    *   from, and only whoever was clicked knows that.
    */
   open(asker) {
@@ -706,7 +706,7 @@ class NxWindow extends HTMLElement {
   }
 
   /**
-   * Takes what is dropped on it, and says so whilst something is over it.
+   * Takes what is dropped on it, and says so while something is over it.
    *
    * Raises the same `nx-choose` a double click does, because carrying a thing
    * here and double clicking it mean the same thing to whoever answers.
@@ -954,7 +954,7 @@ const GRIP_PX = 4;
  * The dock: a column of slots, one tile high, that a person arranges.
  *
  * A tile is lifted out of the column by dragging it, carried up and down, and
- * set down on a slot that is free. Whilst it travels, the slot it would land
+ * set down on a slot that is free. While it travels, the slot it would land
  * on shows itself. Letting go anywhere else puts it back where it came from,
  * because a tile can only be somewhere in the dock.
  *
@@ -1061,7 +1061,7 @@ class NxDock extends HTMLElement {
   }
 
   /**
-   * Shows which slot a travelling tile would land on.
+   * Shows which slot a traveling tile would land on.
    * @param {number} slot - Which one, or 0 for none, which is what letting go
    *   over an occupied slot means.
    */
@@ -1091,7 +1091,7 @@ class NxDock extends HTMLElement {
    * @param {HTMLElement} tile
    *
    * Only up and down, because the dock is one tile wide and a tile has
-   * nowhere else to be. It is moved with a transform whilst it travels, so
+   * nowhere else to be. It is moved with a transform while it travels, so
    * the column it is leaving is not laid out again on every frame, and its
    * slot is written once at the end.
    */
@@ -1133,7 +1133,7 @@ class NxDock extends HTMLElement {
  *   tile carries this, because NeXTSTEP kept it at the head of the dock.
  * @attr foot - With `fixed`, sit at the foot of the column rather than at its
  *   head.
- * @attr carried - Set whilst it is being dragged, and taken off when it lands.
+ * @attr carried - Set while it is being dragged, and taken off when it lands.
  *
  * A double click starts it and a single click does nothing, which is what the
  * OpenStep guidelines require and why: a tile is moved by dragging it, and a
@@ -1166,7 +1166,7 @@ class NxTile extends HTMLElement {
  *
  * NeXTSTEP stacked those along the foot of the screen from the left corner
  * rightwards, and took each away when its application went. The tile is the
- * dock's own: `Workspace.app/tile.tiff` is a plain grey square with the icon
+ * dock's own: `Workspace.app/tile.tiff` is a plain gray square with the icon
  * on it and no lettering, and that is what a tile here already is.
  *
  * An application that has just been started does not simply appear there. Its
@@ -1229,7 +1229,7 @@ const WAYS = {
 };
 
 /**
- * A view with NeXT's scroller on its left: a chequered trough, a knob that
+ * A view with NeXT's scroller on its left: a checkered trough, a knob that
  * takes its size from how much of the content is showing, and both arrows at
  * the far end. With nothing to scroll the whole bar goes empty, which is how
  * an idle terminal looks.
@@ -1466,7 +1466,7 @@ class NxThing extends HTMLElement {
   carry() {
     this.addEventListener("dragstart", (event) => {
       /* Checked here rather than when this was wired, because a thing is
-         switched off and on again whilst the page is up. */
+         switched off and on again while the page is up. */
       if (!this.canBeUsed) return event.preventDefault();
       event.dataTransfer.setData("text/plain", this.value);
       event.dataTransfer.effectAllowed = "copy";
@@ -1847,7 +1847,7 @@ class NxViewer extends HTMLElement {
  * nothing about megahertz or megabytes, and the words stay with whoever owns
  * them.
  *
- * @attr dragging - Set whilst the knob follows the pointer, which is what takes
+ * @attr dragging - Set while the knob follows the pointer, which is what takes
  *   the travel off it so it does not trail behind the hand.
  * @attr fixed - Set where there is only one step, so the control reads as a
  *   statement rather than as a choice.

@@ -1,4 +1,4 @@
-"""The catalogue, and what each machine is in the file.
+"""The catalog, and what each machine is in the file.
 
 The rules being tested are Previous's own, from Configuration_SetSystemDefaults
 in its src/configuration.c. Every machine here was booted on the Pi on 14
@@ -60,8 +60,8 @@ def test_everything_after_it_is_a_68040_with_the_unit_on_the_chip():
         assert system["nSCSI"] == "TRUE", machine.identifier
 
 
-def test_only_a_turbo_or_a_colour_station_carries_the_later_clock_chip():
-    """The MCCS1850 came with the turbo board and with the colour station, and
+def test_only_a_turbo_or_a_color_station_carries_the_later_clock_chip():
+    """The MCCS1850 came with the turbo board and with the color station, and
     a plain machine given it is the machine that would not boot."""
     for machine in machines.CATALOGUE:
         system = machines.settings_for(machine)["System"]
@@ -150,8 +150,8 @@ def test_three_boards_fit_in_one_cube():
         "TRUE", "TRUE", "TRUE"]
 
 
-def test_only_the_station_carries_colour_of_its_own():
-    """A cube has no colour without a NeXTdimension, and Previous forces the
+def test_only_the_station_carries_color_of_its_own():
+    """A cube has no color without a NeXTdimension, and Previous forces the
     flag off for that machine type anyway."""
     for machine in machines.CATALOGUE:
         if machines.settings_for(machine)["System"]["bColor"] == "TRUE":
@@ -239,14 +239,14 @@ def test_settling_a_settled_machine_changes_nothing():
     assert machines.settled(once) == once
 
 
-def test_a_cube_cannot_have_colour():
+def test_a_cube_cannot_have_color():
     """Previous forces bColor off for both cube types, so a cube saved with it
-    would come back without it and the interface would have said colour."""
+    would come back without it and the interface would have said color."""
     for kind in [machines.NEXT_COMPUTER, machines.NEXTCUBE]:
         assert machines.settled(drafted(kind=kind, colour=True)).colour is False
 
 
-def test_only_a_station_keeps_colour():
+def test_only_a_station_keeps_color():
     assert machines.settled(
         drafted(kind=machines.NEXTSTATION, colour=True)).colour is True
 
@@ -282,7 +282,7 @@ def test_nitro_without_a_turbo_board_is_not_nitro():
 
 def test_a_clock_the_machine_cannot_have_becomes_the_one_its_boards_give_it():
     """Previous writes the clock afresh whenever the machine type or the turbo
-    board changes in its own dialogue, so a machine holding one it is not
+    board changes in its own dialog, so a machine holding one it is not
     offered gets the one that goes with what it is now."""
     assert machines.settled(drafted(turbo=True, mhz=0)).mhz == 33
     assert machines.settled(drafted(turbo=False, mhz=0)).mhz == 25
@@ -326,7 +326,7 @@ def test_a_plain_station_reaches_two_banks_only():
     assert station.banks == (16, 16, 0, 0)
 
 
-def test_colour_and_turbo_give_a_station_all_four_banks():
+def test_color_and_turbo_give_a_station_all_four_banks():
     """The restriction is on the plain monochrome board alone."""
     colour = machines.settled(
         drafted(kind=machines.NEXTSTATION, colour=True, banks=(8, 8, 8, 8)))
@@ -373,9 +373,9 @@ def test_what_each_kind_of_machine_offers_a_bank():
         machines.PLAIN_BANK_SIZES
 
 
-def test_a_turbo_board_decides_the_sizes_before_colour_does():
-    """Previous asks in that order, so a colour turbo station takes the turbo
-    sizes rather than the colour ones."""
+def test_a_turbo_board_decides_the_sizes_before_color_does():
+    """Previous asks in that order, so a color turbo station takes the turbo
+    sizes rather than the color ones."""
     assert machines.bank_sizes(machines.NEXTSTATION, turbo=True, colour=True)[1] == \
         machines.TURBO_BANK_SIZES
 
@@ -399,14 +399,14 @@ def test_every_shipped_machine_holds_a_total_that_can_be_chosen():
 
 
 def test_which_totals_each_machine_is_offered():
-    """From Previous's own dialogue, which takes the larger two away where the
+    """From Previous's own dialog, which takes the larger two away where the
     board cannot hold them."""
     assert machines.memory_totals(machines.NEXTCUBE, turbo=True, colour=False) == \
         (8, 16, 32, 64, 128)
     # A monochrome cube has four banks of 16 and stops at 64.
     assert machines.memory_totals(machines.NEXTCUBE, turbo=False, colour=False) == \
         (8, 16, 32, 64)
-    # A colour board fills all four banks at 32, and a plain station reaches
+    # A color board fills all four banks at 32, and a plain station reaches
     # only two banks at all. Both stop there.
     assert machines.memory_totals(machines.NEXTSTATION, turbo=False, colour=True) == \
         (8, 16, 32)
@@ -416,7 +416,7 @@ def test_which_totals_each_machine_is_offered():
 
 def test_a_total_is_made_of_the_modules_that_machine_takes():
     """The same total is laid out differently: 16 MB is one module on a plain
-    machine and two on anything with a turbo or a colour board."""
+    machine and two on anything with a turbo or a color board."""
     plain = machines.banks_for(16, machines.NEXTCUBE, turbo=False, colour=False)
     turbo = machines.banks_for(16, machines.NEXTCUBE, turbo=True, colour=False)
 
@@ -496,11 +496,11 @@ def test_the_faster_clock_needs_the_board_it_belongs_to():
 
 def test_the_memory_follows_the_machine_the_draft_turned_out_to_be():
     """The flags are settled first, because they decide which totals there are
-    and what each one is made of. A cube asked for in colour is a cube."""
+    and what each one is made of. A cube asked for in color is a cube."""
     cube = machines.drafted(kind=machines.NEXTCUBE, colour=True, memory=64)
 
     assert cube.colour is False
-    # The monochrome layout for 64, rather than the colour board's, which has no
+    # The monochrome layout for 64, rather than the color board's, which has no
     # 64 at all.
     assert cube.banks == (16, 16, 16, 16)
 
@@ -513,7 +513,7 @@ def test_the_1988_machine_offers_no_turbo_board():
     assert machines.offers(machines.find("nextcube"))["turbo"] is True
 
 
-def test_only_a_station_offers_colour_and_only_a_cube_a_dimension():
+def test_only_a_station_offers_color_and_only_a_cube_a_dimension():
     station = machines.offers(machines.find("nextstation"))
     cube = machines.offers(machines.find("nextcube"))
 
@@ -597,7 +597,7 @@ def test_banks_arrive_as_text_and_are_read_as_numbers():
 
 def test_a_bank_chosen_on_its_own_is_still_held_to_what_the_machine_takes():
     """Three megabytes is not a module a plain machine has, and a station
-    without a turbo board or colour cannot reach the last two banks at all."""
+    without a turbo board or color cannot reach the last two banks at all."""
     assert machines.drafted(kind=machines.NEXTCUBE, banks=(3, 0, 0, 0)
                             ).banks == (4, 0, 0, 0)
     assert machines.drafted(kind=machines.NEXTSTATION, banks=(16, 16, 16, 16)
@@ -632,7 +632,7 @@ def test_what_each_bank_takes_is_offered():
 
 
 def test_the_1988_machine_has_the_optical_drive_and_no_floppy():
-    """Which is what NeXT sold, and what Previous's own dialogues say on their
+    """Which is what NeXT sold, and what Previous's own dialogs say on their
     faces. The emulator enforces neither, so this is the editor's rule."""
     computer = machines.find("next-computer")
 
@@ -740,7 +740,7 @@ def test_what_is_offered_is_what_the_machine_in_hand_holds():
 
 
 def test_the_first_bank_is_the_one_the_machine_boots_from():
-    """Previous says so on the face of its own memory dialogue and does not
+    """Previous says so on the face of its own memory dialog and does not
     enforce it, because the check that would is compiled out. The editor does,
     since a machine that cannot boot is not one worth building."""
     for turbo, colour, wanted in [(True, False, (8, 32)),

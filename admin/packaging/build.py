@@ -131,7 +131,7 @@ FIND_OWNER = (
     % OWNER_FILE)
 
 #: Which of those are switched on when the package is installed. A path unit
-#: costs nothing whilst nothing is asked of it: it watches for one file and
+#: costs nothing while nothing is asked of it: it watches for one file and
 #: starts its service when that file appears.
 WATCHERS = (NAME + "-poweroff.path", NAME + "-reboot.path",
             NAME + "-setup.path")

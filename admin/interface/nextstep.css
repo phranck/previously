@@ -11,7 +11,7 @@
    screenshot of the running system, because NeXTSTEP drew those in PostScript
    and they exist as no file. ../../design/extract.py fetches both.
 
-   Every colour and raster below is read off that same screenshot at its own
+   Every color and raster below is read off that same screenshot at its own
    1120 by 832:
 
      Arbeitsfläche        #555577
@@ -33,7 +33,7 @@
    Ohlfs's 8 by 16, its capitals are Ohlfs's 10 px, and its zero is slashed as
    Ohlfs's is. It carries hinting, so it is drawn sharp at whatever size the
    desk is drawn at. design/fonts.py says where the two files come from, and
-   the licence is beside them in fonts/.
+   the license is beside them in fonts/.
 
    It has no italic, so a shell's italic is drawn by the browser.
 
@@ -59,7 +59,7 @@
   --dark:  #555555;
   --black: #000000;
 
-  /* Measured off the screenshot: not a grey, the dark value with more blue. */
+  /* Measured off the screenshot: not a gray, the dark value with more blue. */
   --desktop: #555577;
 
   --live: #2f7d32;
@@ -101,11 +101,11 @@
      tall. */
   --text-size: 12px;
   /* A whole number of pixels, and an even one. NeXTSTEP drew on the pixel
-     grid: it had four greys and no half of one, so a line that lands between
+     grid: it had four grays and no half of one, so a line that lands between
      two rows comes out as a blend of the two and reads soft beside everything
      around it. A ratio such as 1.4 gives 16.8 here, and every box measured off
      a line of text then sits on a fraction, which travels down through
-     whatever it contains. Even, because a box that centres something in this
+     whatever it contains. Even, because a box that centers something in this
      height halves it. */
   --line: 16px;
   /* The one thing it set smaller, whose capital is 7. */
@@ -165,13 +165,13 @@
 
   /* The one value outside the four above. It marks the configuration the
      emulator is actually running, which is a thing NeXTSTEP had no idea of, so
-     there is no original to take a colour from. A shade under the window's own
-     grey, because it has to read as a state and not as a selection. */
+     there is no original to take a color from. A shade under the window's own
+     gray, because it has to read as a state and not as a selection. */
   --in-force: #999999;
 
   /* The same mark with half of it missing, for a configuration that is written
      down but has not been through a boot. NeXTSTEP drew a checkerboard of two
-     greys wherever something was partial, and at this size it reads as a
+     grays wherever something was partial, and at this size it reads as a
      texture rather than as a pattern. */
   --dither: repeating-conic-gradient(var(--in-force) 0% 25%, var(--light) 0% 50%);
   --dither-size: 2px;
@@ -299,7 +299,7 @@ nx-window {
   min-height: var(--win-min-h);
 }
 
-/* The bar is 19 px tall and sits on a one-pixel grey ledge, with two pixels of
+/* The bar is 19 px tall and sits on a one-pixel gray ledge, with two pixels of
    shadow beneath it. Drawing all three as one gradient keeps the three numbers
    in one place instead of spread over a border, a margin and a pseudo-element. */
 nx-window .titlebar {
@@ -316,17 +316,17 @@ nx-window .titlebar {
     var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
 }
 /* The bar is 19 rows whether it is active or not, and the two rows under it
-   are the shadow. On an active bar the first of those reads as grey against
-   black; on an inactive one it would be the bar's own colour and would simply
+   are the shadow. On an active bar the first of those reads as gray against
+   black; on an inactive one it would be the bar's own color and would simply
    make the bar look a row taller, so it is black here. Measured off the real
-   File Viewer, whose grey bar ends after 19 rows with two black ones under it. */
+   File Viewer, whose gray bar ends after 19 rows with two black ones under it. */
 nx-window[inactive] .titlebar {
   background: linear-gradient(to bottom,
     var(--dark) 0 19px, var(--black) 19px 21px);
 }
 
 /* Both window buttons are the originals, 15 by 15, bevel and glyph in one
-   bitmap. The miniaturise one is a little window, not a filled square. */
+   bitmap. The miniaturize one is a little window, not a filled square. */
 nx-window .wbtn {
   width: 15px; height: 15px;
   flex: 0 0 auto;
@@ -339,7 +339,7 @@ nx-window .title { flex: 1; text-align: center; font-weight: bold; }
 
 /* Most windows hold their content clear of the frame. A terminal does not: its
    text view runs to the edge on every side, which is what flush says. */
-/* Eight pixels of the window's own grey between the frame and what is in it,
+/* Eight pixels of the window's own gray between the frame and what is in it,
    which is what the original leaves: one row of border, then eight of face,
    then the content. Measured in the File Viewer and again in the Preferences
    panel, so it is what a window does rather than what one window does. */
@@ -354,7 +354,7 @@ nx-window[flush] .pane { padding: 0; }
 
 /* Except at the foot of a window that can be resized, where the content runs
    straight into the bar. Measured in the File Viewer: its contents reach row
-   534, the bar's shadow is row 535, and there is no grey between them. A
+   534, the bar's shadow is row 535, and there is no gray between them. A
    window with no bar keeps its eight, which the Preferences panel does. */
 nx-window:not([fixed]) .pane { padding-bottom: 0; }
 
@@ -432,7 +432,7 @@ nx-menu .title {
   line-height: var(--row);
   padding: 0 6px;
   /* And it has no say in how wide the menu is. A title is the name of a
-     thing, which can be any length, whilst the entries are what the menu is
+     thing, which can be any length, while the entries are what the menu is
      for. Zero takes it out of the width the entries decide, and the minimum
      puts it back across the whole of it afterwards. */
   width: 0;
@@ -448,7 +448,7 @@ nx-menu-item {
      entry below it. */
   white-space: nowrap;
   border-top: 1px solid var(--white);
-  /* One pixel of black at the very bottom, one of grey above it. The later
+  /* One pixel of black at the very bottom, one of gray above it. The later
      shadow is painted under the earlier one, so black wins the last row. */
   box-shadow: inset 0 -2px 0 var(--dark), inset 0 -1px 0 var(--black);
   cursor: default;
@@ -465,7 +465,7 @@ nx-menu-item[last] { box-shadow: none; }
 nx-menu-item:hover { background: var(--white); }
 nx-menu-item:active { background: var(--black); color: var(--white); }
 
-/* An entry that would do nothing. The lettering greys and the entry stays in
+/* An entry that would do nothing. The lettering grays and the entry stays in
    place, so the menu keeps its shape and a reader sees that the thing exists
    and is not available now. Nothing lights under the pointer, because nothing
    would happen. */
@@ -518,9 +518,9 @@ nx-dock {
   z-index: 50;
 }
 
-/* The slot a travelling tile would land on. Flat and pale, with none of a
+/* The slot a traveling tile would land on. Flat and pale, with none of a
    tile's bevel or diagonal face, so it reads as a place rather than as a
-   second tile. It is in the column only whilst something is being carried. */
+   second tile. It is in the column only while something is being carried. */
 nx-dock .slot {
   grid-column: 1;
   background: var(--light);
@@ -594,9 +594,9 @@ nx-tile[idle]::after {
 /* --- nx-scroller -------------------------------------------------------- */
 
 /* NeXTSTEP put its scroller on the left of the view, and both its arrows at
-   the bottom rather than one at either end. The trough is a one-pixel chequer
-   of #555555 and #aaaaaa, which reads as a grey halfway between them and is
-   how a machine with four greys drew a fifth.
+   the bottom rather than one at either end. The trough is a one-pixel checker
+   of #555555 and #aaaaaa, which reads as a gray halfway between them and is
+   how a machine with four grays drew a fifth.
 
    Every sunken surface that could ever scroll goes inside one of these. That
    is the rule, and this rule block is what enforces it: nx-scroller is the one
@@ -735,7 +735,7 @@ nx-scroller[inner] > :not(.bar) { overflow: hidden; }
 
 /* --- nx-shelf and nx-thing ---------------------------------------------- */
 
-/* The file viewer's floor is the same grey as the window. Icons sit on it
+/* The file viewer's floor is the same gray as the window. Icons sit on it
    loose, without a tile of their own. */
 nx-shelf {
   display: grid;
@@ -759,7 +759,7 @@ nx-thing {
   display: grid;
   justify-items: center;
   align-content: start;
-  /* No gap: the two halves of a mark have to touch, or the window's grey shows
+  /* No gap: the two halves of a mark have to touch, or the window's gray shows
      between them and one thing reads as two. */
   gap: 0;
   padding: 2px;
@@ -770,7 +770,7 @@ nx-thing {
 }
 
 /* The icon sits in a slot the size of hilite.tiff, so turning the selection on
-   changes a colour and never a size. */
+   changes a color and never a size. */
 nx-thing .slot {
   width: var(--slot-w);
   /* Two pixels taller than the icon's box, spent above it, because the mark
@@ -790,7 +790,7 @@ nx-thing .slot {
 
 /* The two inner corners where the slot meets the wider name below it. Left
    square they are the one sharp angle in a shape that is otherwise all curves,
-   so each is filled with a square of the mark's own colour that has its far
+   so each is filled with a square of the mark's own color that has its far
    corner rounded away, which turns the angle into a concave curve.
 
    They work because the slot has a fixed width and the name is never narrower
@@ -840,7 +840,7 @@ nx-thing .name {
 }
 
 /* The machine the emulator is actually running. The same shape as a selection
-   so the two read as one language, in grey rather than white so they are never
+   so the two read as one language, in gray rather than white so they are never
    confused, with the icon dimmed because this machine is a fact rather than
    something to act on.
 
@@ -879,16 +879,16 @@ nx-thing.current.untried .slot::after {
 }
 
 /* Selection is white behind the icon and white behind the name, and the
-   lettering stays black. No second colour enters the interface.
+   lettering stays black. No second color enters the interface.
 
    Two shapes that touch rather than one box around both. Each follows what it
    is behind, so a short name gives a narrow one, and the pair reads as one
    thing because nothing shows between them. A single rectangle around the two
-   would take in the window's grey on either side of the icon, which belongs to
+   would take in the window's gray on either side of the icon, which belongs to
    the desk rather than to the machine that is chosen. */
 nx-thing[chosen] { --mark: var(--white); }
 
-/* Whilst a machine is being carried, the thing it came from dims. */
+/* While a machine is being carried, the thing it came from dims. */
 nx-thing[lifting] { opacity: .45; }
 
 /* --- the panel that asks before it changes anything --------------------- */
@@ -902,7 +902,7 @@ nx-thing[lifting] { opacity: .45; }
    was handed those 430 pixels without anything saying so: its own rule is
    still there, and this one simply also sets a width.
 
-   Centred across, and in the upper part of the desk rather than the middle of
+   Centered across, and in the upper part of the desk rather than the middle of
    it, which is where the Panels chapter puts an attention panel. The chapter
    gives no distance, so a tenth of the desk's height is a choice.
 
@@ -959,7 +959,7 @@ nx-ask .titlebar {
    edge rather than stopping at the padding. It is therefore drawn as one edge
    on each of the two blocks that meet at it, which is what makes it reach both
    sides. Dark above white is what the figure has, its row 87 being the dark
-   grey and row 88 the white, and it is the pair the kit already states as
+   gray and row 88 the white, and it is the pair the kit already states as
    --groove-sides. */
 nx-ask .naming {
   display: flex;
@@ -992,11 +992,11 @@ nx-ask .subtitle { margin: 0; }
 
 /* Ranged left, which nothing written down settles either way. Neither the
    Panels chapter nor the Controls chapter says a word about how the text
-   inside a panel is aligned. The one thing the Panels chapter centres is the
+   inside a panel is aligned. The one thing the Panels chapter centers is the
    panel itself, in "Attention panels come up centered in the upper part of the
    screen", which nx-ask above does.
 
-   The figure does centre its message, at 96 pixels from the left edge and 98
+   The figure does center its message, at 96 pixels from the left edge and 98
    from the right. That message is one line. Every message here runs to
    several, and about those the original says nothing, so this follows what
    reads rather than a rule stretched to cover a case the original never
@@ -1011,7 +1011,7 @@ nx-ask .lines p:last-child { margin: 0; }
 /* A word in a line that leads somewhere off this machine. NeXTSTEP had no
    such thing, so there is nothing to copy: it is drawn as text that is
    underlined, which is what every browser since has meant by it, and it keeps
-   the colour of the sentence it stands in rather than taking one of its own. */
+   the color of the sentence it stands in rather than taking one of its own. */
 nx-ask .lines a { color: inherit; }
 
 /* The line a panel takes an answer on, which is a name or a password. NeXT's
@@ -1030,13 +1030,13 @@ nx-ask .entry {
 nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
 
 /* The button Return presses carries the Return-key symbol, to the right of its
-   label, and it carries it only whilst Return will press it, which here is
-   whilst the line above is shown.
+   label, and it carries it only while Return will press it, which here is
+   while the line above is shown.
 
    The symbol is the original's own 15 by 10 bitmap, cut out of the figure the
    Panels chapter draws its attention panel with, at
    https://www.nextop.de/NeXTstep_3.3_Developer_Documentation/UserInterface/05_Panel/Panel.htmld/F6.gif
-   with the button's own grey taken out of it. So the black edge along its top
+   with the button's own gray taken out of it. So the black edge along its top
    and the white one along its foot are NeXT's, and what shows between them is
    whatever the button is standing on.
 
@@ -1066,7 +1066,7 @@ nx-viewer {
   flex-direction: column;
 }
 
-/* The shelf sits on the window's own grey with no frame, which is what makes
+/* The shelf sits on the window's own gray with no frame, which is what makes
    it read as part of the window rather than as another view. */
 nx-viewer .keep {
   /* The original packs its shelf tighter than the band below it, which is the
@@ -1076,12 +1076,12 @@ nx-viewer .keep {
   min-height: calc(var(--slot-h) + var(--slot-top) + 2 * var(--name-air) + 20px);
 }
 
-/* Whilst something is being carried over it, the shelf says it will take it,
+/* While something is being carried over it, the shelf says it will take it,
    the same way a window that accepts drops does. */
 nx-viewer .keep[droppable] { outline: 2px solid var(--white); outline-offset: -3px; }
 
 /* One line about the whole, in the smaller lettering NeXTSTEP used for it and
-   in the grey that says it is not a reading anybody acts on. */
+   in the gray that says it is not a reading anybody acts on. */
 nx-viewer .status {
   flex: 0 0 auto;
   margin: 0;
@@ -1106,7 +1106,7 @@ nx-viewer .path {
 }
 
 /* The mark between two steps, drawn the way the scroller's arrows are: three
-   borders, one of them the colour. */
+   borders, one of them the color. */
 nx-viewer .step-arrow {
   flex: 0 0 auto;
   width: 0;
@@ -1117,7 +1117,7 @@ nx-viewer .step-arrow {
 }
 
 /* Room under the path, so the two framed bands do not touch. Six pixels of
-   the window's own grey, measured between the two boxes in the original. */
+   the window's own gray, measured between the two boxes in the original. */
 nx-viewer > nx-scroller + nx-scroller { margin-top: var(--band-gap); }
 
 /* The last band has no bottom edge. It runs to the foot of the window, where
@@ -1202,7 +1202,7 @@ button:active {
   padding: 4px 13px 2px 15px;
 }
 
-/* One that cannot be pressed, dimmed rather than taken away. The same grey a
+/* One that cannot be pressed, dimmed rather than taken away. The same gray a
    disabled menu entry wears, because it is the same statement: this is here,
    and it is not for now. Without it a button that does nothing looks exactly
    like one that does, which is the whole of what a person reads a button by. */
@@ -1248,8 +1248,8 @@ nx-window:not([fixed]) .buttons:last-child { padding-bottom: var(--pane-pad); }
 /* --- nx-slider ----------------------------------------------------------- */
 
 /* A knob in a trough, which is what NeXTSTEP gave anything read along a scale.
-   It is the scroller's own pair of parts laid on its side: the same chequered
-   trough, the same raised knob with a dimple in it, and the same greys, so this
+   It is the scroller's own pair of parts laid on its side: the same checkered
+   trough, the same raised knob with a dimple in it, and the same grays, so this
    needs nothing that is not already in the kit.
 
    It moves between the values it is given rather than sliding freely, because
@@ -1271,8 +1271,8 @@ nx-slider .scale {
   --knob-width: 22px;
 }
 
-/* The trough. Its chequer of #555555 and #aaaaaa reads as a grey halfway
-   between them, which is how a machine with four greys drew a fifth, and it is
+/* The trough. Its checker of #555555 and #aaaaaa reads as a gray halfway
+   between them, which is how a machine with four grays drew a fifth, and it is
    what the scroller's own trough is filled with. */
 nx-slider .trough {
   position: relative;
@@ -1298,12 +1298,12 @@ nx-slider .knob {
   border: 1px solid;
   border-color: var(--raised-sides);
   box-shadow: var(--raised-inside);
-  /* Moved with a transform, so travelling between two steps costs the
+  /* Moved with a transform, so traveling between two steps costs the
      compositor and nothing else. */
   transition: transform var(--slide-time, 120ms) ease-out;
 }
 
-/* Whilst it is being dragged it follows the pointer, and a transition there
+/* While it is being dragged it follows the pointer, and a transition there
    would have it trailing behind the hand holding it. */
 nx-slider[dragging] .knob { transition: none; }
 
@@ -1345,7 +1345,7 @@ nx-slider .tick {
   white-space: nowrap;
 }
 
-/* The step in force. Black against the grey of the others, which is the one
+/* The step in force. Black against the gray of the others, which is the one
    difference this interface has between a thing that is set and a thing that
    could be. */
 nx-slider .tick[chosen] { color: var(--black); }

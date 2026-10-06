@@ -9,7 +9,7 @@
    was handed those 430 pixels without anything saying so: its own rule is
    still there, and this one simply also sets a width.
 
-   Centred across, and in the upper part of the desk rather than the middle of
+   Centered across, and in the upper part of the desk rather than the middle of
    it, which is where the Panels chapter puts an attention panel. The chapter
    gives no distance, so a tenth of the desk's height is a choice.
 
@@ -66,7 +66,7 @@ nx-ask .titlebar {
    edge rather than stopping at the padding. It is therefore drawn as one edge
    on each of the two blocks that meet at it, which is what makes it reach both
    sides. Dark above white is what the figure has, its row 87 being the dark
-   grey and row 88 the white, and it is the pair the kit already states as
+   gray and row 88 the white, and it is the pair the kit already states as
    --groove-sides. */
 nx-ask .naming {
   display: flex;
@@ -99,11 +99,11 @@ nx-ask .subtitle { margin: 0; }
 
 /* Ranged left, which nothing written down settles either way. Neither the
    Panels chapter nor the Controls chapter says a word about how the text
-   inside a panel is aligned. The one thing the Panels chapter centres is the
+   inside a panel is aligned. The one thing the Panels chapter centers is the
    panel itself, in "Attention panels come up centered in the upper part of the
    screen", which nx-ask above does.
 
-   The figure does centre its message, at 96 pixels from the left edge and 98
+   The figure does center its message, at 96 pixels from the left edge and 98
    from the right. That message is one line. Every message here runs to
    several, and about those the original says nothing, so this follows what
    reads rather than a rule stretched to cover a case the original never
@@ -118,7 +118,7 @@ nx-ask .lines p:last-child { margin: 0; }
 /* A word in a line that leads somewhere off this machine. NeXTSTEP had no
    such thing, so there is nothing to copy: it is drawn as text that is
    underlined, which is what every browser since has meant by it, and it keeps
-   the colour of the sentence it stands in rather than taking one of its own. */
+   the color of the sentence it stands in rather than taking one of its own. */
 nx-ask .lines a { color: inherit; }
 
 /* The line a panel takes an answer on, which is a name or a password. NeXT's
@@ -137,13 +137,13 @@ nx-ask .entry {
 nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
 
 /* The button Return presses carries the Return-key symbol, to the right of its
-   label, and it carries it only whilst Return will press it, which here is
-   whilst the line above is shown.
+   label, and it carries it only while Return will press it, which here is
+   while the line above is shown.
 
    The symbol is the original's own 15 by 10 bitmap, cut out of the figure the
    Panels chapter draws its attention panel with, at
    https://www.nextop.de/NeXTstep_3.3_Developer_Documentation/UserInterface/05_Panel/Panel.htmld/F6.gif
-   with the button's own grey taken out of it. So the black edge along its top
+   with the button's own gray taken out of it. So the black edge along its top
    and the white one along its foot are NeXT's, and what shows between them is
    whatever the button is standing on.
 

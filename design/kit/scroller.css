@@ -1,9 +1,9 @@
 /* --- nx-scroller -------------------------------------------------------- */
 
 /* NeXTSTEP put its scroller on the left of the view, and both its arrows at
-   the bottom rather than one at either end. The trough is a one-pixel chequer
-   of #555555 and #aaaaaa, which reads as a grey halfway between them and is
-   how a machine with four greys drew a fifth.
+   the bottom rather than one at either end. The trough is a one-pixel checker
+   of #555555 and #aaaaaa, which reads as a gray halfway between them and is
+   how a machine with four grays drew a fifth.
 
    Every sunken surface that could ever scroll goes inside one of these. That
    is the rule, and this rule block is what enforces it: nx-scroller is the one

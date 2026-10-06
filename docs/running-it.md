@@ -22,7 +22,7 @@ curl -fsSL https://previous.li/install.sh | bash
 
 That fetches the admin tool, installs it and starts it. Open `http://<hostname>.local:8810`, choose a password, and the desk comes up with the Installer already open, because a Pi with nothing on it has nothing else to offer.
 
-**The Installer puts the rest there.** Previous with everything around it, and a system to run on it: NeXTSTEP 3.3 unless another of the six is chosen. It says what each costs to fetch and what would be left on the card before it starts, and whilst it runs it says which step it is on and how far through. A failure says which step failed and which of the earlier ones were put back.
+**The Installer puts the rest there.** Previous with everything around it, and a system to run on it: NeXTSTEP 3.3 unless another of the six is chosen. It says what each costs to fetch and what would be left on the card before it starts, and while it runs it says which step it is on and how far through. A failure says which step failed and which of the earlier ones were put back.
 
 **Nothing in the browser holds any privilege.** The tool writes a small file into its own runtime directory, and a systemd path unit starts a program that runs as root and reads it. That file carries four names: a job, a system, a machine and, for putting a copy back, the name of that copy. Three of the four are looked up in tables that ship with the package and the fourth is matched against the listing of one folder, so nothing that arrives from a browser is ever a path, a URL or a command. `admin/previously/setup.py` is the whole of what root does, and it is one file.
 
@@ -63,7 +63,7 @@ Before rebooting into the kiosk, at the Pi's own keyboard on the text console:
 cage -- previous
 ```
 
-The grey NeXT screen should appear, followed within half a minute by the NeXTSTEP login panel. Log in as `me`, no password. A second account, `root`, has none either.
+The gray NeXT screen should appear, followed within half a minute by the NeXTSTEP login panel. Log in as `me`, no password. A second account, `root`, has none either.
 
 Over SSH there is no screen to draw on, but the disk can still be checked:
 
@@ -99,13 +99,13 @@ sudo apt install --only-upgrade previous
 
 Afterwards `sudo systemctl start getty@tty1` brings the machine back.
 
-The package owns `/usr/bin` and `/usr/share/previous`. The disk image and the configuration belong to you and are never touched by a package operation. What does cause damage is quitting Previous whilst NeXTSTEP is still running, and that damage shows up after the update rather than before it.
+The package owns `/usr/bin` and `/usr/share/previous`. The disk image and the configuration belong to you and are never touched by a package operation. What does cause damage is quitting Previous while NeXTSTEP is still running, and that damage shows up after the update rather than before it.
 
 ## Updating the admin tool
 
 **From the browser.** Open the Raspberry Pi window. The line marked Previously is the version that is answering, the one under it is the newest that has been published, and where the second is newer than the first that field is tinted and an Update button stands beside Restart. Pressing it is the whole of it.
 
-Opening the window is what asks GitHub, at most three times a minute. So a release published whilst you are looking at the window turns up when you close it and open it again, and leaving the window open does not spend the sixty requests an hour an address is allowed.
+Opening the window is what asks GitHub, at most three times a minute. So a release published while you are looking at the window turns up when you close it and open it again, and leaving the window open does not spend the sixty requests an hour an address is allowed.
 
 **Release Notes**, beside that line, opens the published release's own notes in Preview. It is there whenever there is a release to read about, whether it is newer than the one you are running or not.
 

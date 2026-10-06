@@ -204,7 +204,7 @@ def test_nothing_is_known_before_anything_is_asked(monkeypatch):
 
 
 def test_a_poll_reads_what_is_known_and_asks_for_nothing(monkeypatch):
-    """The window redraws itself every two seconds whilst it is open. An address
+    """The window redraws itself every two seconds while it is open. An address
     may ask GitHub sixty times an hour, so a poll that asked would spend that in
     twenty minutes and then stop answering without saying so."""
     monkeypatch.setattr(release, "_look_behind_this",
@@ -214,7 +214,7 @@ def test_a_poll_reads_what_is_known_and_asks_for_nothing(monkeypatch):
 
 
 def test_opening_the_window_asks(monkeypatch):
-    """Which is the whole of what makes a release published whilst this runs
+    """Which is the whole of what makes a release published while this runs
     turn up at all."""
     asked = []
     monkeypatch.setattr(release, "_look_behind_this",
@@ -301,7 +301,7 @@ def test_what_is_answered_cannot_be_changed_from_outside(answering):
 
 def test_one_lookup_at_a_time(answering, monkeypatch):
     """A window polling every five seconds would otherwise start one per poll
-    whilst the first is still waiting for a timeout."""
+    while the first is still waiting for a timeout."""
     holding = threading.Event()
     started = threading.Semaphore(0)
 

@@ -15,7 +15,7 @@ import { Art, EDITOR, NOTHING, changedLine, chipsOf, cpuOf, fitted, machineArt, 
  * Shows what one machine is, in a window of its own.
  * @param {string} where - The machine's path in the tree.
  *
- * The settings come from the catalogue, so a machine that is not running is
+ * The settings come from the catalog, so a machine that is not running is
  * described exactly as the running one is. The two lines about the file are
  * about the file rather than about the machine, so they are filled in only for
  * the machine the file actually holds.
@@ -42,7 +42,7 @@ function showMachineInfo(where) {
      and to no other. */
   const file = lastStatus?.file;
   /* By identifier rather than by name, because the file cannot carry the
-     Nitro that the catalogue's name does. */
+     Nitro that the catalog's name does. */
   const isTheOneInTheFile = lastStatus?.configuration?.catalogue === machine.id;
   if (!file || !isTheOneInTheFile) {
     show("mi-changed", t("file.other-machine"));
@@ -57,8 +57,8 @@ function showMachineInfo(where) {
 
 /**
  * Asks about a machine and changes to it when the answer is yes.
- * @param {string} identifier - Which machine, as the catalogue names it.
- *   The catalogue's own identifier rather than a path, because that is what
+ * @param {string} identifier - Which machine, as the catalog names it.
+ *   The catalog's own identifier rather than a path, because that is what
  *   the service takes.
  */
 async function changeTo(identifier) {
@@ -162,7 +162,7 @@ function reportAboutTheSaved(answer) {
 
 /* --- the Config Editor ----------------------------------------------------
 
-   Previous's own System dialogue, in this interface's idiom: what can be chosen
+   Previous's own System dialog, in this interface's idiom: what can be chosen
    on one side and what follows from it on the other. Here the picture and its
    readings stand over the groups that change them.
 

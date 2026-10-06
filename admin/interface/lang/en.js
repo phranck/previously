@@ -1,6 +1,6 @@
 /* English, and the one every other language falls back to.
  *
- * This catalogue is complete by definition: a key missing here shows as itself
+ * This catalog is complete by definition: a key missing here shows as itself
  * on the screen, so this is the file that decides what a string is called and
  * what it says. Everything in braces is filled in by the page.
  */
@@ -88,13 +88,13 @@ export const en = {
      the key from what is chosen, and the strings test derives every key the
      page can build from what the service offers. */
   "editor.machine.note.next-computer": "NeXT's first cube, from 1988. A 68030 at 25 MHz, and the only machine here whose DSP has no expansion memory.",
-  "editor.machine.note.nextcube": "The cube with a 68040. Colour reaches it only through a NeXTdimension board, of which it takes three.",
+  "editor.machine.note.nextcube": "The cube with a 68040. Color reaches it only through a NeXTdimension board, of which it takes three.",
   "editor.machine.note.nextstation": "The pizza box with a 68040. It has no NeXTbus, so no NeXTdimension board fits.",
   "editor.machine.note.resets": "Changing the machine type sets the clock, the DSP and the memory banks back to what the new one starts with.",
   "editor.turbo.note.in": "The Turbo board is in. It brings the 40 MHz clock, 32 MB modules and 128 MB in all.",
   "editor.turbo.note.out": "No Turbo board. The clock stops at 33 MHz and the memory at 64 MB on a cube, 32 on a NeXTstation.",
-  "editor.colour.note.in": "The colour board is in, so the screen is a colour MegaPixel display.",
-  "editor.colour.note.out": "No colour board, so the screen is greyscale.",
+  "editor.colour.note.in": "The color board is in, so the screen is a color MegaPixel display.",
+  "editor.colour.note.out": "No color board, so the screen is grayscale.",
   "editor.boards.note.resets": "Seating a board or taking one out sets the clock, the DSP and the memory banks afresh.",
   "editor.clock.note.16": "The machine reports 16 MHz.",
   "editor.clock.note.20": "The machine reports 20 MHz.",
@@ -118,9 +118,9 @@ export const en = {
   "editor.banks.note.first": "Bank 0 is the one the machine boots from, so it cannot be emptied, and it takes {sizes} MB.",
   "editor.banks.note.modules": "This machine takes modules of {sizes} MB.",
   "editor.banks.note.reach": "Only the first {count} banks are there on this machine, so the rest stay empty.",
-  "editor.dimension.note.none": "No NeXTdimension board is in, so the machine draws on its own greyscale screen.",
-  "editor.dimension.note.some.one": "One board, in slot {slot}. It draws the console in colour.",
-  "editor.dimension.note.some.other": "{count} boards. The first, in slot {slot}, draws the console in colour.",
+  "editor.dimension.note.none": "No NeXTdimension board is in, so the machine draws on its own grayscale screen.",
+  "editor.dimension.note.some.one": "One board, in slot {slot}. It draws the console in color.",
+  "editor.dimension.note.some.other": "{count} boards. The first, in slot {slot}, draws the console in color.",
   "editor.dimension-memory.note.4": "4 MB, the least a board can have.",
   "editor.dimension-memory.note.16": "16 MB in the board's first bank.",
   "editor.dimension-memory.note.32": "32 MB, which is what Previous gives a board by default.",
@@ -285,7 +285,7 @@ export const en = {
   "button.put-back": "Put Back",
   "ask.backup.title": "Copy {name}",
   "ask.backup.cost": "A copy of {name} is another {size} on the card.",
-  "ask.backup.off": "The machine has to be switched off first. A copy taken whilst NeXTSTEP is writing is a disk that fails on its first boot.",
+  "ask.backup.off": "The machine has to be switched off first. A copy taken while NeXTSTEP is writing is a disk that fails on its first boot.",
   "ask.restore.title": "Put {name} back",
   "ask.restore.loss": "What is on that disk now is written over and does not come back. The copy itself stays where it is.",
 
@@ -326,7 +326,7 @@ export const en = {
   "pi.memory.free": "{available} of {total} MB free",
   "pi.disk.free": "{gb} GB free, {percent} % used",
   "pi.newest": "Newest",
-  "pi.update.unknown": "What the newest release is has not been learnt yet.",
+  "pi.update.unknown": "What the newest release is has not been learned yet.",
   "pi.update.current": "This is the newest release there is.",
   "pi.update.available": "{version} is published and can take the place of this one.",
   "pi.update.asked": "The Pi has been asked to put it in place.",
@@ -489,7 +489,7 @@ export const en = {
   "told.setup.asked.back-up": "The Pi is copying the disk.",
   "told.setup.asked.restore": "The Pi is putting the copy back.",
   "told.setup.asked.update-tool": "The Pi is replacing this tool.",
-  "told.setup.machine-is-running": "The machine is running. A copy taken whilst NeXTSTEP is writing is a disk that fails on its first boot, so switch it off first.",
+  "told.setup.machine-is-running": "The machine is running. A copy taken while NeXTSTEP is writing is a disk that fails on its first boot, so switch it off first.",
   "told.setup.no-such-copy": "There is no copy of that name.",
   "told.setup.cannot-copy": "The copy of {name} could not be made.",
   "told.setup.no-such-job": "There is nothing to do by that name.",

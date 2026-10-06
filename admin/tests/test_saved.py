@@ -92,7 +92,7 @@ def test_a_saved_configuration_is_settled_when_it_is_read(machines_file):
         "machines": [{
             "name": "Hand written",
             "kind": machines.NEXTCUBE,
-            # A cube has no colour of its own and Previous forces the flag off.
+            # A cube has no color of its own and Previous forces the flag off.
             "colour": True,
             "turbo": False,
             "banks": [3, 0, 0, 0],
@@ -404,7 +404,7 @@ def test_one_of_the_eleven_cannot_be_removed(machines_file):
 # -- what happens when the file is in the way -----------------------------
 
 
-def test_nothing_is_changed_whilst_the_file_cannot_be_read(machines_file):
+def test_nothing_is_changed_while_the_file_cannot_be_read(machines_file):
     """Writing would destroy whatever could not be read, so every change refuses
     until somebody has looked at it."""
     broken = "{not json at all"

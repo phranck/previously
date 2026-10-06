@@ -9,7 +9,7 @@ takes 1.5 ms, and a whole answer to `/api/pi` takes 9.9 ms.
 
 So nothing here forks. Everything is a file under `/proc`, which is the kernel
 answering out of memory it already holds. A whole reading costs 0.42 ms on that
-same Pi whilst the emulator runs, and 0.13 ms whilst it does not, which at one
+same Pi while the emulator runs, and 0.13 ms while it does not, which at one
 a second is four hundredths of one per cent of one core.
 
 **Every figure here is a difference between two moments.** The counters in
@@ -66,7 +66,7 @@ _LAST = None
 #: more than everything else here put together.
 _PID = None
 
-#: How often to look for the emulator whilst it is not running. Finding it
+#: How often to look for the emulator while it is not running. Finding it
 #: costs a read per process, which is 5.6 ms on a Pi 5 against the 0.07 ms
 #: everything else here comes to, and a machine that is switched off stays
 #: switched off for minutes rather than for a second. When it is running there
@@ -275,7 +275,7 @@ def _emulator_pid():
     something else fails that check, which is what makes keeping it safe.
 
     Looking for it afresh is the expensive part, because it means a read per
-    process on the machine. So whilst there is nothing to find, that happens
+    process on the machine. So while there is nothing to find, that happens
     every few seconds rather than every reading: an emulator that is not
     running is not about to be missed by a monitor that notices it five seconds
     later.

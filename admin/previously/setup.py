@@ -115,7 +115,7 @@ AUTOLOGIN = pathlib.Path("/etc/systemd/system/getty@tty1.service.d/autologin.con
 HUSHLOGIN = ".hushlogin"
 
 #: The two files that decide what the screen shows before NeXTSTEP does, and
-#: what a copy of one of them is called whilst this holds it.
+#: what a copy of one of them is called while this holds it.
 CMDLINE = pathlib.Path("/boot/firmware/cmdline.txt")
 CONFIG_TXT = pathlib.Path("/boot/firmware/config.txt")
 BACKUP = ".previously.backup"
@@ -202,7 +202,7 @@ COMMAND_SECONDS = 1800
 TIMEOUT_SECONDS = 5
 
 #: How long what dpkg and apt said is worth keeping. The Installer asks twice a
-#: second whilst its window is open, and those answers change when something is
+#: second while its window is open, and those answers change when something is
 #: installed and at no other time.
 REMEMBER_SECONDS = 5
 
@@ -305,7 +305,7 @@ def _streamed(command, seconds, environment, heard):
     The clock is a timer that ends the command, because a command that stops
     writing is exactly the one a wait on its next line would never see end.
     What it writes on its error stream is dropped, so that stream cannot fill
-    and stop it whilst this reads the other.
+    and stop it while this reads the other.
     """
     process = subprocess.Popen(command, stdout=subprocess.PIPE,
                                stderr=subprocess.DEVNULL, text=True,
@@ -417,7 +417,7 @@ def emulator():
       whether there is anything to update to.
 
     Kept for a few seconds, because the Installer window asks twice a second
-    whilst it is open and these three commands are the most expensive thing
+    while it is open and these three commands are the most expensive thing
     behind that route. What they answer changes when something is installed
     and at no other time, so a few seconds of memory costs nothing and saves a
     Pi real work.
@@ -513,7 +513,7 @@ class Owner:
         self.owns(path)
 
 
-# -- what it says whilst it works --------------------------------------------
+# -- what it says while it works --------------------------------------------
 
 
 class Work:
@@ -573,7 +573,7 @@ class Work:
     def undoes(self, how):
         """Records how to reverse what the step now running just did.
 
-        @param how - A callable taking nothing. Recorded whilst the step is
+        @param how - A callable taking nothing. Recorded while the step is
           running rather than afterwards, so a step that fails half way through
           still reverses the half it managed.
 
@@ -756,7 +756,7 @@ def _packages(work, wanted):
 
 
 def _apt_install(work, arguments):
-    """Installs with apt, and says how far dpkg has got whilst it does.
+    """Installs with apt, and says how far dpkg has got while it does.
 
     @param work - The run, whose progress carries the percentage.
     @param arguments - What follows `apt-get install -y -qq`: package names,
@@ -1019,7 +1019,7 @@ def _in_use(configuration, disk):
 def _copy(work):
     """Copies a disk, so that what is on it can be got back.
 
-    Only with the guest shut down. A copy taken whilst NeXTSTEP is writing is a
+    Only with the guest shut down. A copy taken while NeXTSTEP is writing is a
     torn file system: it looks like a disk and fails on the first boot in a way
     nobody can debug.
     """

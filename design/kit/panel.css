@@ -75,7 +75,7 @@ button:active {
   padding: 4px 13px 2px 15px;
 }
 
-/* One that cannot be pressed, dimmed rather than taken away. The same grey a
+/* One that cannot be pressed, dimmed rather than taken away. The same gray a
    disabled menu entry wears, because it is the same statement: this is here,
    and it is not for now. Without it a button that does nothing looks exactly
    like one that does, which is the whole of what a person reads a button by. */

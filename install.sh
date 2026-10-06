@@ -172,7 +172,7 @@ banner() {
 
 # Runs a command with its output in the log and the spinner beside it.
 #
-# $1 is what to show whilst it runs, and the rest is the command. Answers with
+# $1 is what to show while it runs, and the rest is the command. Answers with
 # the command's own status.
 quietly() {
   local label="$1"
@@ -188,7 +188,7 @@ quietly() {
 
 # Runs apt with its output in the log, and shows how far it has got beside the
 # spinner. apt writes a status line for every move it makes when it is given a
-# descriptor for them, `dlstatus` whilst it downloads and `pmstatus` whilst
+# descriptor for them, `dlstatus` while it downloads and `pmstatus` while
 # dpkg unpacks and configures, each with a percentage and what it is doing;
 # standard output is that descriptor here, so the lines land in the log and
 # the newest one since this call began is the one shown.
@@ -435,7 +435,7 @@ step_index() {
 
 # What each step of the install job is called, in the words the Installer
 # window uses for it. tests/test_install.py holds these to the English
-# catalogue and to the steps the job takes.
+# catalog and to the steps the job takes.
 step_label() {
   case "$1" in
     host) echo "Checking the machine" ;;

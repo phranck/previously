@@ -86,7 +86,7 @@ def test_reads_a_cube_turbo_with_a_dimension(tmp_path):
 
 
 def test_a_seated_board_travels_as_a_fact(tmp_path):
-    """A cube has no colour of its own, so the board is what decides it, and
+    """A cube has no color of its own, so the board is what decides it, and
     what the browser says about the screen follows from these two."""
     answer = config.read(write(tmp_path, CUBE_TURBO_WITH_DIMENSION))
 
@@ -134,7 +134,7 @@ def test_no_inserted_disk_reads_as_none(tmp_path):
 # -- describing a machine from either side -------------------------------
 
 
-def test_the_catalogue_and_the_file_describe_a_machine_the_same_way(tmp_path):
+def test_the_catalog_and_the_file_describe_a_machine_the_same_way(tmp_path):
     """The shelf says what a machine would be and the info window says what
     the running one is. Two ways of working that out would drift."""
     from previously import machines
@@ -187,7 +187,7 @@ def catalogue():
             for machine in machines.CATALOGUE]
 
 
-def test_a_file_written_from_the_catalogue_is_recognised(tmp_path):
+def test_a_file_written_from_the_catalog_is_recognized(tmp_path):
     from previously import machines
 
     path = write(tmp_path, "[System]\n")
@@ -198,7 +198,7 @@ def test_a_file_written_from_the_catalogue_is_recognised(tmp_path):
 
 def test_a_nitro_is_told_apart_from_the_machine_it_is_named_after(tmp_path):
     """Previous has no idea of Nitro, so the file calls this one NeXTcube
-    Turbo. Matching against the whole catalogue is what tells them apart, and
+    Turbo. Matching against the whole catalog is what tells them apart, and
     matching against the name alone would not."""
     from previously import machines
 
@@ -253,7 +253,7 @@ def test_a_file_missing_a_key_differs_by_it(tmp_path):
 # -- who wrote the file --------------------------------------------------
 
 
-def test_a_file_this_service_wrote_is_recognised(tmp_path):
+def test_a_file_this_service_wrote_is_recognized(tmp_path):
     path = write(tmp_path, PLAIN_STATION)
     state = tmp_path / "state"
     state.mkdir()
@@ -263,7 +263,7 @@ def test_a_file_this_service_wrote_is_recognised(tmp_path):
 
 
 def test_a_file_somebody_else_wrote_is_not(tmp_path):
-    """Previous's own dialogue and a text editor look alike from here, so the
+    """Previous's own dialog and a text editor look alike from here, so the
     answer is only ever yes or not-us."""
     path = write(tmp_path, PLAIN_STATION)
     state = tmp_path / "state"

@@ -1,8 +1,8 @@
 /* --- nx-slider ----------------------------------------------------------- */
 
 /* A knob in a trough, which is what NeXTSTEP gave anything read along a scale.
-   It is the scroller's own pair of parts laid on its side: the same chequered
-   trough, the same raised knob with a dimple in it, and the same greys, so this
+   It is the scroller's own pair of parts laid on its side: the same checkered
+   trough, the same raised knob with a dimple in it, and the same grays, so this
    needs nothing that is not already in the kit.
 
    It moves between the values it is given rather than sliding freely, because
@@ -24,8 +24,8 @@ nx-slider .scale {
   --knob-width: 22px;
 }
 
-/* The trough. Its chequer of #555555 and #aaaaaa reads as a grey halfway
-   between them, which is how a machine with four greys drew a fifth, and it is
+/* The trough. Its checker of #555555 and #aaaaaa reads as a gray halfway
+   between them, which is how a machine with four grays drew a fifth, and it is
    what the scroller's own trough is filled with. */
 nx-slider .trough {
   position: relative;
@@ -51,12 +51,12 @@ nx-slider .knob {
   border: 1px solid;
   border-color: var(--raised-sides);
   box-shadow: var(--raised-inside);
-  /* Moved with a transform, so travelling between two steps costs the
+  /* Moved with a transform, so traveling between two steps costs the
      compositor and nothing else. */
   transition: transform var(--slide-time, 120ms) ease-out;
 }
 
-/* Whilst it is being dragged it follows the pointer, and a transition there
+/* While it is being dragged it follows the pointer, and a transition there
    would have it trailing behind the hand holding it. */
 nx-slider[dragging] .knob { transition: none; }
 
@@ -98,7 +98,7 @@ nx-slider .tick {
   white-space: nowrap;
 }
 
-/* The step in force. Black against the grey of the others, which is the one
+/* The step in force. Black against the gray of the others, which is the one
    difference this interface has between a thing that is set and a thing that
    could be. */
 nx-slider .tick[chosen] { color: var(--black); }

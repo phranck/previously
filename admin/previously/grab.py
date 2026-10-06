@@ -80,7 +80,7 @@ def keep(picture, where):
 
     Named for the moment it was taken, because that is the one thing that
     tells two pictures of the same screen apart, and written in a form that
-    sorts the way it reads. The seconds are separated with full stops rather
+    sorts the way it reads. The seconds are separated with periods rather
     than colons, which a filesystem takes and a colon is not worth arguing
     with.
     """

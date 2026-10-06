@@ -502,7 +502,7 @@ def test_a_name_nobody_offers_leaves_no_request(tmp_path, job, system, machine, 
     assert list(tmp_path.iterdir()) == []
 
 
-def test_a_second_request_whilst_one_runs_is_refused(tmp_path):
+def test_a_second_request_while_one_runs_is_refused(tmp_path):
     """One installation at a time, which is what the terminal route does too."""
     import json
 

@@ -1,6 +1,6 @@
 /* --- nx-shelf and nx-thing ---------------------------------------------- */
 
-/* The file viewer's floor is the same grey as the window. Icons sit on it
+/* The file viewer's floor is the same gray as the window. Icons sit on it
    loose, without a tile of their own. */
 nx-shelf {
   display: grid;
@@ -24,7 +24,7 @@ nx-thing {
   display: grid;
   justify-items: center;
   align-content: start;
-  /* No gap: the two halves of a mark have to touch, or the window's grey shows
+  /* No gap: the two halves of a mark have to touch, or the window's gray shows
      between them and one thing reads as two. */
   gap: 0;
   padding: 2px;
@@ -35,7 +35,7 @@ nx-thing {
 }
 
 /* The icon sits in a slot the size of hilite.tiff, so turning the selection on
-   changes a colour and never a size. */
+   changes a color and never a size. */
 nx-thing .slot {
   width: var(--slot-w);
   /* Two pixels taller than the icon's box, spent above it, because the mark
@@ -55,7 +55,7 @@ nx-thing .slot {
 
 /* The two inner corners where the slot meets the wider name below it. Left
    square they are the one sharp angle in a shape that is otherwise all curves,
-   so each is filled with a square of the mark's own colour that has its far
+   so each is filled with a square of the mark's own color that has its far
    corner rounded away, which turns the angle into a concave curve.
 
    They work because the slot has a fixed width and the name is never narrower
@@ -105,7 +105,7 @@ nx-thing .name {
 }
 
 /* The machine the emulator is actually running. The same shape as a selection
-   so the two read as one language, in grey rather than white so they are never
+   so the two read as one language, in gray rather than white so they are never
    confused, with the icon dimmed because this machine is a fact rather than
    something to act on.
 
@@ -144,15 +144,15 @@ nx-thing.current.untried .slot::after {
 }
 
 /* Selection is white behind the icon and white behind the name, and the
-   lettering stays black. No second colour enters the interface.
+   lettering stays black. No second color enters the interface.
 
    Two shapes that touch rather than one box around both. Each follows what it
    is behind, so a short name gives a narrow one, and the pair reads as one
    thing because nothing shows between them. A single rectangle around the two
-   would take in the window's grey on either side of the icon, which belongs to
+   would take in the window's gray on either side of the icon, which belongs to
    the desk rather than to the machine that is chosen. */
 nx-thing[chosen] { --mark: var(--white); }
 
-/* Whilst a machine is being carried, the thing it came from dims. */
+/* While a machine is being carried, the thing it came from dims. */
 nx-thing[lifting] { opacity: .45; }
 

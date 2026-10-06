@@ -188,7 +188,7 @@ function fillWithBanks(id, offered) {
     socket.className = "bank";
     socket.toggleAttribute("absent", isAbsent(sizes));
     /* A bank offered one size and no empty one cannot move, which is the first
-       bank of a colour station: it takes an 8 MB module and nothing else. */
+       bank of a color station: it takes an 8 MB module and nothing else. */
     if (sizes.length > 1) {
       socket.addEventListener("click", () => change({
         banks: bankMovedOn(bank, sizes),

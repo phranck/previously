@@ -3,9 +3,9 @@
  *
  * Everything else here is written from nothing. A terminal is not: what
  * arrives from a shell is a stream of escape sequences that move a cursor,
- * set a colour, switch to an alternate screen and scroll a region, and
+ * set a color, switch to an alternate screen and scroll a region, and
  * writing that again would be a project of its own. xterm.js does it, and it
- * is in vendor/ with its licence beside it.
+ * is in vendor/ with its license beside it.
  *
  * So this element stays out of the kit, which takes nothing from anybody. It
  * is a view and nothing more: it draws what it is given, says what was typed
@@ -16,7 +16,7 @@
 /** What NeXT's Terminal looked like, as xterm's theme.
  *
  *  Black on white, which is the whole of it: NeXTSTEP drew its terminal in
- *  one colour on paper. The sixteen ANSI colours stay, because a shell that
+ *  one color on paper. The sixteen ANSI colors stay, because a shell that
  *  paints its prompt and its listings is saying something with them, but the
  *  pale ones are darkened. Yellow on white is the one nobody can read. */
 const NEXT_THEME = {

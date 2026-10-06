@@ -162,7 +162,7 @@ function nameFor(entry) {
  *   name carries.
  *
  * NeXTSTEP kept the two apart and so does this. The bundle in `/NextApps` was
- * `Preferences.app` in every language, whilst the application called itself
+ * `Preferences.app` in every language, while the application called itself
  * `Präferenzen` in German wherever it named itself in a sentence, which is
  * what its own `preferences.strings` holds.
  */

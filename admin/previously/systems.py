@@ -43,7 +43,7 @@ UNPACKED_BYTES = 2_012_774_400
 SPARE_BYTES = 500_000_000
 
 #: What has to be free before a system is fetched: the disk, the archive beside
-#: it whilst it unpacks, and that margin.
+#: it while it unpacks, and that margin.
 ROOM_BYTES = UNPACKED_BYTES + SPARE_BYTES
 
 #: The least a file in one of these archives can be and still be the disk. The
@@ -156,7 +156,7 @@ def disk_in(disks, system):
 
     Two places, because `install.sh` got there first. It unpacks the archive as
     it comes, which leaves the disk inside a folder named after the archive, and
-    a machine set up that way is one this must recognise rather than fetch a
+    a machine set up that way is one this must recognize rather than fetch a
     second copy for. Anything fetched from here is one file named after the
     system.
     """
@@ -228,7 +228,7 @@ def a_copy_of(system, when):
     The identifier first, so the system can be read back off the name by
     splitting at the first space, and the moment after it, because that is the
     one thing that tells two copies of the same system apart. Written in a form
-    that sorts the way it reads, with full stops where a clock has colons,
+    that sorts the way it reads, with periods where a clock has colons,
     which a filesystem takes and a colon is not worth arguing with.
     """
     return "%s %s%s" % (system.identifier,

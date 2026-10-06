@@ -83,7 +83,7 @@ class Connection:
     """One WebSocket, over a socket that is already connected.
 
     Reading and writing are separated so that two threads can use one
-    connection: a terminal has to send what the shell says whilst it is
+    connection: a terminal has to send what the shell says while it is
     waiting for what the person types, and neither may wait for the other.
     """
 
@@ -145,7 +145,7 @@ class Connection:
     def close(self):
         """Says goodbye, once, and stops sending.
 
-        Whatever goes wrong whilst saying it is the other side having gone
+        Whatever goes wrong while saying it is the other side having gone
         already, which is the thing being said.
         """
         if not self.open:

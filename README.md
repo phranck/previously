@@ -13,7 +13,7 @@
 
 # Previously
 
-A Raspberry Pi 5 that starts straight into NeXTSTEP. No desktop behind it, no login to get past, nothing on the screen but the grey NeXT panel. The emulator underneath is [Previous](https://previous.nextcommunity.net/), and the machine it pretends to be is a NeXTcube from 1993.
+A Raspberry Pi 5 that starts straight into NeXTSTEP. No desktop behind it, no login to get past, nothing on the screen but the gray NeXT panel. The emulator underneath is [Previous](https://previous.nextcommunity.net/), and the machine it pretends to be is a NeXTcube from 1993.
 
 One line sets all of it up, and afterwards a web admin takes over that looks like the machine it configures.
 
@@ -33,7 +33,7 @@ A step that fails puts back what it changed. The Installer window in the admin t
 
 Machines, drives and displays are things you pick rather than values you type. Complete configurations move by drag and drop, and any of them can be changed and kept as your own. It answers on the network, so the Pi never needs a keyboard of its own.
 
-None of it is approximated: the icons are the original files out of a NeXTSTEP 3.3 disk image, the window buttons are cut pixel for pixel out of the running system, and every colour, edge and raster is measured off it.
+None of it is approximated: the icons are the original files out of a NeXTSTEP 3.3 disk image, the window buttons are cut pixel for pixel out of the running system, and every color, edge and raster is measured off it.
 
 ## More
 
@@ -44,7 +44,7 @@ None of it is approximated: the icons are the original files out of a NeXTSTEP 3
 
 To Andreas Grabher and everyone on [Previous](https://previous.nextcommunity.net/), without whom none of this would run at all.
 
-NeXT, NeXTSTEP, OPENSTEP and the NeXT cube logo are registered trademarks of Apple Computer, Inc. The Raspberry Pi mark belongs to Raspberry Pi Ltd. Neither of them has anything to do with this project, and neither the marks nor the icons taken from a NeXTSTEP disk image are covered by the licence below.
+NeXT, NeXTSTEP, OPENSTEP and the NeXT cube logo are registered trademarks of Apple Computer, Inc. The Raspberry Pi mark belongs to Raspberry Pi Ltd. Neither of them has anything to do with this project, and neither the marks nor the icons taken from a NeXTSTEP disk image are covered by the license below.
 
 ## License
 

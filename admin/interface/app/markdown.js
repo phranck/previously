@@ -13,7 +13,7 @@
  * disappearing, and that is the right failure for a document somebody wrote by
  * hand.
  *
- * A Markdown library would understand more and would be a licence, a weight and
+ * A Markdown library would understand more and would be a license, a weight and
  * a supply chain for a tool that ships to a Raspberry Pi. What it would buy is
  * constructs these notes do not use.
  */

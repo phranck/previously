@@ -33,7 +33,7 @@ let started = [];
 /**
  * Draws which applications are running and where their icons go.
  *
- * A tile in the dock carries the three marks whilst its application is not
+ * A tile in the dock carries the three marks while its application is not
  * running and loses them when it is, which is what NeXTSTEP's dock did. An
  * application that is running and is not in the dock stands on the floor of
  * the screen instead, from the left corner rightwards.

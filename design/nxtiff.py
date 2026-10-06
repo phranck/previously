@@ -4,10 +4,10 @@
 They are ordinary uncompressed TIFFs, but in a shape no current library reads:
 two bits per sample, two or more samples per pixel with the last one an alpha
 channel, and the samples sometimes in separate planes. A NeXT could draw four
-greys, so two bits is the whole of its greyscale.
+grays, so two bits is the whole of its grayscale.
 
-Most icon files hold the same picture twice, once in those four greys and once
-in four bits per colour channel, so every directory is decoded and the richer
+Most icon files hold the same picture twice, once in those four grays and once
+in four bits per color channel, so every directory is decoded and the richer
 one wins."""
 
 import struct
@@ -105,8 +105,8 @@ def _strip_bytes(data, tags, plane, planes):
 def _unpack(raw, width, height, bits, sample, per_pixel):
     """Reads one sample of every pixel out of a packed, row-aligned bitmap.
 
-    @param bits - The width of one sample, 2 for NeXT's greys and 4 for each
-      channel of its colour icons.
+    @param bits - The width of one sample, 2 for NeXT's grays and 4 for each
+      channel of its color icons.
     @param sample - Which sample to take, counting from zero.
     @param per_pixel - How many samples one pixel holds in this bitmap, so 1
       when the planes are separate and the full count when interleaved.

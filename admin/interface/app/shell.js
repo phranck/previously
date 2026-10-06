@@ -7,7 +7,7 @@ import { TERMINAL } from "./service.js";
  *  One at a time, which is also all the service hands out. */
 let shell = null;
 
-/** What has been typed at the login prompt, or null whilst a session runs and
+/** What has been typed at the login prompt, or null while a session runs and
  *  every key belongs to the far side. */
 let typedAtThePrompt = null;
 

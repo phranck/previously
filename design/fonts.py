@@ -5,7 +5,7 @@ Inconsolata is a monospaced outline face under the SIL Open Font License, and
 its release carries hinting, so it is drawn sharp at whatever size the desk is
 drawn at. This takes the Regular and the Bold out of the release named below,
 checks each against its sum, and writes them into admin/web/fonts as WOFF2,
-with the licence beside them.
+with the license beside them.
 
 The one change it makes on the way is in metrics rather than in outlines, and
 line() says why it is needed.
@@ -40,7 +40,7 @@ FACES = {
         "263faa57f6c00c43a04e77df7abd5cb5cd4aae9f93507002c1217e02641fc7e6",
 }
 
-#: The licence, which goes wherever the faces go: the OFL allows them to be
+#: The license, which goes wherever the faces go: the OFL allows them to be
 #: bundled with software on the condition that it travels with them.
 LICENCE = "OFL.txt"
 LICENCE_SUM = "5d362a6f8690517fd9a5573128a081d8bbbb2f92714cf00556e08fbbe9600426"
@@ -125,7 +125,7 @@ def main():
         font.save(SERVED / (name + ".woff2"))
         font.close()
     (SERVED / LICENCE).write_bytes(download(RELEASE + LICENCE, LICENCE_SUM))
-    print("wrote %d faces and their licence into %s" % (len(FACES), SERVED))
+    print("wrote %d faces and their license into %s" % (len(FACES), SERVED))
 
 
 if __name__ == "__main__":

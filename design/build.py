@@ -208,7 +208,7 @@ def declarations(blocks):
             methods = sorted(set(METHOD.findall(body)) - {"connectedCallback"})
             lines.append("export declare class %s extends HTMLElement {" % cls)
             lines.extend("  %s(...args: any[]): any;" % method for method in methods)
-            # What it keeps whilst it runs, which each of them writes onto
+            # What it keeps while it runs, which each of them writes onto
             # itself in its own methods. Named rather than listed, because
             # what those are is the element's business and this file is here
             # to stop a name being unknown rather than to describe one.

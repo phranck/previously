@@ -297,7 +297,7 @@ def test_a_step_that_changed_nothing_is_not_undone(tmp_path, monkeypatch):
     assert work.reading()["undone"] == []
 
 
-def test_what_it_is_doing_is_readable_whilst_it_runs(tmp_path, monkeypatch):
+def test_what_it_is_doing_is_readable_while_it_runs(tmp_path, monkeypatch):
     """Minutes rather than seconds, so this is a window somebody leaves open
     and comes back to."""
     progress = tmp_path / "progress" / setup.PROGRESS
@@ -461,7 +461,7 @@ def test_the_installer_and_this_write_the_same_autostart():
     Character for character, comments included. Both sides replace a block that
     no longer says what they write, so a comment wrapped differently in the two
     is not cosmetic: it is the two rewriting each other every time a machine
-    sees both, which is what happened whilst this compared only the lines that
+    sees both, which is what happened while this compared only the lines that
     run.
 
     Compared as shell rather than as text. The installer writes its copy inside
@@ -668,7 +668,7 @@ def test_nothing_at_all_from_apt_offers_nothing(monkeypatch):
 
 
 def test_what_dpkg_and_apt_said_is_kept_for_a_few_seconds(monkeypatch):
-    """The window asks twice a second whilst it is open, and those three
+    """The window asks twice a second while it is open, and those three
     commands are the most expensive thing behind that route."""
     asked = []
     monkeypatch.setattr(setup, "installed", lambda package: True)
@@ -740,8 +740,8 @@ def test_a_copy_is_named_after_the_system_and_the_moment(card):
     assert path.read_bytes() == (card.settings.disks / "nextstep-3.3.dd").read_bytes()
 
 
-def test_a_copy_is_not_taken_whilst_the_machine_runs(card, monkeypatch):
-    """A copy taken whilst NeXTSTEP is writing is a torn file system: it looks
+def test_a_copy_is_not_taken_while_the_machine_runs(card, monkeypatch):
+    """A copy taken while NeXTSTEP is writing is a torn file system: it looks
     like a disk and fails on the first boot in a way nobody can debug."""
     monkeypatch.setattr(setup, "_the_guest_is_running", lambda: True)
 
@@ -810,7 +810,7 @@ def test_a_copy_that_is_not_in_that_folder_is_refused(card, named):
     assert disk.read_bytes() == before
 
 
-def test_nothing_is_put_back_whilst_the_machine_runs(card, monkeypatch):
+def test_nothing_is_put_back_while_the_machine_runs(card, monkeypatch):
     setup.STEPS["copy"](card)
     (copy, _), = systems.copies_in(card.settings.disks)
     card.backup = copy.name
@@ -845,7 +845,7 @@ def test_a_copy_that_stops_half_way_leaves_the_disk_alone(card, monkeypatch):
     assert disk.read_bytes() == before
 
 
-def test_how_far_a_copy_has_got_is_readable_whilst_it_runs(card):
+def test_how_far_a_copy_has_got_is_readable_while_it_runs(card):
     """Two gigabytes on a card is minutes, so this is a window somebody leaves
     open and comes back to."""
     setup.carry_out(card)
@@ -1011,7 +1011,7 @@ def test_installing_with_nothing_fetched_is_refused(tmp_path, a_release):
     assert refused.value.told["reason"] == "setup.no-package-to-install"
 
 
-def test_what_the_window_is_told_whilst_this_runs(tmp_path, a_release):
+def test_what_the_window_is_told_while_this_runs(tmp_path, a_release):
     """The whole reason the work is done by the helper rather than by the
     service: the record outlives the service being stopped and started, so this
     is what a page reads before and after."""

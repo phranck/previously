@@ -1,16 +1,16 @@
 """Which machines can be configured, and what each one is in the file.
 
 A machine is not one setting. Choosing a NeXTcube Turbo means a machine type, a
-processor level, a clock, whether the colour board is seated, which slot it
+processor level, a clock, whether the color board is seated, which slot it
 speaks from, and four memory banks, and getting one of them wrong produces a
 machine that either will not boot or is not the machine that was asked for.
-Previous's own dialogue moves them together when the type changes there, and
+Previous's own dialog moves them together when the type changes there, and
 this does the same.
 
 The rules come from Previous itself, out of `Configuration_SetSystemDefaults`
 and `Configuration_CheckMemory` in its `src/configuration.c`. That function is
-what the emulator's own dialogue runs when somebody changes the machine there,
-and it decides seven settings from the type, the turbo board and the colour
+what the emulator's own dialog runs when somebody changes the machine there,
+and it decides seven settings from the type, the turbo board and the color
 board together. Writing some of them and leaving the others produces a machine
 Previous cannot run: it resets in a loop and shows a white screen, with nothing
 in the log to say why.
@@ -35,18 +35,18 @@ FPU_68882 = "68882"
 FPU_ON_CHIP = "68040"
 
 #: The clocks in megahertz, from the CPU clock group in Previous's
-#: src/gui-sdl/dlgAdvanced.c. Its own dialogue offers these four whatever the
+#: src/gui-sdl/dlgAdvanced.c. Its own dialog offers these four whatever the
 #: machine is, and adds NITRO_MHZ only where a turbo board is seated.
 CLOCKS = (16, 20, 25, 33)
 
-#: The fifth, which is what the catalogue calls a Nitro. Previous has no idea of
+#: The fifth, which is what the catalog calls a Nitro. Previous has no idea of
 #: Nitro and reads nCpuFreq as it finds it, so this is a name of ours for the
-#: fastest clock its own dialogue will offer.
+#: fastest clock its own dialog will offer.
 NITRO_MHZ = 40
 
 #: What a machine runs at when nothing else has been chosen, which is what
 #: Configuration_SetSystemDefaults writes every time the machine type or the
-#: turbo board changes in Previous's own dialogue.
+#: turbo board changes in Previous's own dialog.
 PLAIN_MHZ = 25
 TURBO_MHZ = 33
 
@@ -134,7 +134,7 @@ NEXTSTATION = 2
 
 #: Which sizes one memory bank accepts, in megabytes, by what the machine is.
 #: From Configuration_CheckMemory in Previous's src/configuration.c, which asks
-#: in this order: a turbo board decides first, then colour, then what is left.
+#: in this order: a turbo board decides first, then color, then what is left.
 #: Anything in between is rounded up to the next of these and anything above
 #: the largest is capped at it.
 TURBO_BANK_SIZES = (0, 2, 8, 32)
@@ -142,7 +142,7 @@ COLOUR_BANK_SIZES = (0, 2, 8)
 PLAIN_BANK_SIZES = (0, 1, 4, 16)
 
 #: How many banks the machine holds, and how many of them a NeXTstation without
-#: a turbo board and without colour can reach. On that board the other two are
+#: a turbo board and without color can reach. On that board the other two are
 #: not physically there, and Previous empties them at every start rather than
 #: when the machine is chosen, so a file that fills them is corrected under
 #: whoever wrote it.
@@ -150,7 +150,7 @@ BANKS = 4
 STATION_PLAIN_BANKS = 2
 
 #: The bank a machine boots from, and the least it must hold to do it, in
-#: megabytes. Previous says so on the face of its own memory dialogue: "For
+#: megabytes. Previous says so on the face of its own memory dialog: "For
 #: booting Bank0 must contain at least 4 MB of memory."
 #:
 #: The emulator does not enforce it, because the check that would is compiled
@@ -166,7 +166,7 @@ FIRST_BANK = 0
 BOOTABLE_BANK_MB = 4
 
 #: The ones with a default carry what Previous starts every machine from, or
-#: what NeXT fitted as standard, so the catalogue below names them only where
+#: what NeXT fitted as standard, so the catalog below names them only where
 #: one of the eleven differs.
 #:
 #: `floppy`, `optical` and `printer` say whether the machine has that drive or
@@ -342,19 +342,19 @@ def bank_sizes(kind, turbo, colour):
 
     @param kind - NEXT_COMPUTER, NEXTCUBE or NEXTSTATION.
     @param turbo - Whether a turbo board is seated, as settled() leaves it.
-    @param colour - Whether the colour board is, the same way.
+    @param color - Whether the color board is, the same way.
     @returns tuple of four tuples of megabytes, one per bank in the order they
       sit in. A bank the machine cannot reach offers nothing but zero, which is
       a choice of one rather than an absence, so whatever draws this has four
       banks to draw either way.
 
     Taking the two flags rather than a Machine, because they have to be the
-    settled ones: a cube with colour asked for is a cube without it, and
+    settled ones: a cube with color asked for is a cube without it, and
     reading a bank rule off a choice the emulator refuses would offer sizes no
     machine has.
 
     The first bank is the one that cannot be empty. Previous says so on the face
-    of its own memory dialogue, and the editor holds the machine to it rather
+    of its own memory dialog, and the editor holds the machine to it rather
     than warning about it afterwards, because a machine that cannot boot is not
     one worth building.
     """
@@ -389,11 +389,11 @@ def _sizes_for(sizes, bank, reachable):
 
 #: What a total of memory is made of, bank by bank, in megabytes. From
 #: `defmemsize` in Previous's src/gui-sdl/dlgAdvanced.c, which is the table its
-#: own dialogue fills the four banks from when somebody picks a size there.
+#: own dialog fills the four banks from when somebody picks a size there.
 #:
 #: Two families, because the same total is laid out differently: a plain
 #: monochrome machine takes 16 MB modules and anything with a turbo board or a
-#: colour board takes 8 and 32 MB ones.
+#: color board takes 8 and 32 MB ones.
 PLAIN_MEMORY = {
     8: (4, 4, 0, 0),
     16: (16, 0, 0, 0),
@@ -409,7 +409,7 @@ WIDE_MEMORY = {
 }
 
 #: Which of those totals each kind of machine is offered, from the same
-#: dialogue, which takes the larger two away where the board cannot hold them:
+#: dialog, which takes the larger two away where the board cannot hold them:
 #: 128 MB wants a turbo board, and 64 MB wants either that or the four banks a
 #: monochrome cube has.
 TURBO_MEMORY = (8, 16, 32, 64, 128)
@@ -422,10 +422,10 @@ def memory_totals(kind, turbo, colour):
 
     @param kind - NEXT_COMPUTER, NEXTCUBE or NEXTSTATION.
     @param turbo - Whether a turbo board is seated, as settled() leaves it.
-    @param colour - Whether the colour board is, the same way.
+    @param color - Whether the color board is, the same way.
     @returns tuple of int, smallest first.
 
-    A total rather than four banks, because that is what Previous's own dialogue
+    A total rather than four banks, because that is what Previous's own dialog
     offers and what a person means by how much memory a machine has. Which
     modules make it up follows from the machine, and PLAIN_MEMORY and
     WIDE_MEMORY are that.
@@ -433,7 +433,7 @@ def memory_totals(kind, turbo, colour):
     if turbo:
         return TURBO_MEMORY
     if colour or kind == NEXTSTATION:
-        # A colour board takes 8 MB modules and fills all four banks at 32, and
+        # A color board takes 8 MB modules and fills all four banks at 32, and
         # a plain station reaches only two banks at all. Both stop at 32.
         return NARROW_MEMORY
     return CUBE_MEMORY
@@ -445,7 +445,7 @@ def banks_for(total, kind, turbo, colour):
     @param total - How much memory, in megabytes.
     @param kind - The machine type.
     @param turbo - Whether a turbo board is seated, as settled() leaves it.
-    @param colour - Whether the colour board is, the same way.
+    @param color - Whether the color board is, the same way.
     @returns tuple of four ints.
 
     A total the machine is not offered is answered with the largest it is
@@ -468,7 +468,7 @@ def clocks_for(turbo):
     @returns tuple of int, slowest first.
 
     Previous offers the same four for every machine and adds the fastest only
-    where that board is in, which is what its own dialogue does by replacing the
+    where that board is in, which is what its own dialog does by replacing the
     40 MHz option with blank space.
     """
     return (CLOCKS + (NITRO_MHZ,)) if turbo else CLOCKS
@@ -481,7 +481,7 @@ def default_clock(turbo):
     @returns int
 
     Previous writes this whenever the machine type or that board changes in its
-    own dialogue, and never checks the clock at start. So a clock that does not
+    own dialog, and never checks the clock at start. So a clock that does not
     belong to the machine is not corrected there, it is replaced the moment
     somebody touches what decides it, and this is the same act.
     """
@@ -496,7 +496,7 @@ def default_dsp_memory(kind):
 
     The 1988 machine is the one without the expansion, and
     Configuration_SetSystemDefaults writes that difference every time the
-    machine type changes in Previous's own dialogue.
+    machine type changes in Previous's own dialog.
     """
     return DSP_MEMORY_PLAIN if kind == NEXT_COMPUTER else DSP_MEMORY_EXPANDED
 
@@ -508,7 +508,7 @@ def takes_a_floppy(kind):
     @returns bool
 
     NeXT's 1988 machine shipped with the optical drive and no floppy, which is
-    what Previous's own Floppy dialogue says on its face. The emulator does not
+    what Previous's own Floppy dialog says on its face. The emulator does not
     enforce it: with a drive connected there, `floppy_controller_present` in its
     src/floppy.c answers that the controller is there. So this is our rule, and
     it is here because the editor builds machines that were built.
@@ -524,7 +524,7 @@ def takes_an_optical_drive(kind, turbo):
     @returns bool
 
     The cubes had it and the turbo boards dropped it, which is what Previous's
-    own Optical dialogue says on its face. Not enforced there either, for the
+    own Optical dialog says on its face. Not enforced there either, for the
     same reason as the floppy above.
     """
     return kind != NEXTSTATION and not turbo
@@ -623,7 +623,7 @@ def drafted(kind, turbo=False, colour=False, dimensions=NO_BOARDS,
 
     @param kind - The machine type, as a number or a string of one.
     @param turbo - Whether a turbo board is asked for.
-    @param colour - Whether the colour board is.
+    @param color - Whether the color board is.
     @param dimensions - How much memory each NeXTdimension board has, in
       slot order, as a sequence or as a string of comma separated numbers.
       A slot with no board in it is zero.
@@ -654,7 +654,7 @@ def drafted(kind, turbo=False, colour=False, dimensions=NO_BOARDS,
     machine has rather than as what the last one did.
 
     Nitro is not one of them. Previous has no such thing and reads nCpuFreq as
-    it finds it, so a clock of 40 is what the catalogue calls a Nitro and that is
+    it finds it, so a clock of 40 is what the catalog calls a Nitro and that is
     the direction the translation runs in.
     """
     wanted = _sizes_asked_for(banks)
@@ -710,7 +710,7 @@ def offers(machine):
 
     @param machine - A Machine, settled.
     @returns dict, one entry per control an editor draws: the machine types,
-      whether the turbo board, the colour board and a NeXTdimension may be
+      whether the turbo board, the color board and a NeXTdimension may be
       seated at all, which clocks there are, and which totals of memory.
 
     Answered by the service rather than worked out in the browser, so there is
@@ -718,7 +718,7 @@ def offers(machine):
     machine the emulator would correct underneath it.
 
     A machine type carries its number and its name together, because a cell is
-    labelled with the one and chosen by the other. The name is the emulator's
+    labeled with the one and chosen by the other. The name is the emulator's
     own and is not translated anywhere, which is why it travels from here rather
     than being a word the interface holds.
 
@@ -767,13 +767,13 @@ def settled(machine):
     """The machine Previous would run, given what somebody put together.
 
     @param machine - A Machine, which may hold a choice the emulator does not
-      allow: colour on a cube, a board in a station, memory in a bank that is
+      allow: color on a cube, a board in a station, memory in a bank that is
       not there.
     @returns Machine, identical in everything Previous accepts and corrected in
       everything it does not.
 
     Previous never refuses a configuration. It corrects one, in two places, and
-    both are in its src/configuration.c. Its own dialogue runs
+    both are in its src/configuration.c. Its own dialog runs
     Configuration_SetSystemDefaults whenever the machine type changes there, and
     Configuration_Apply runs the four check functions at every start, whatever
     wrote the file. So a configuration that has not been through this is one the
@@ -794,7 +794,7 @@ def settled(machine):
     return machine._replace(
         turbo=turbo,
         # The clock and the DSP are the values Previous does not check at start.
-        # Its own dialogue writes all three afresh every time the machine type or
+        # Its own dialog writes all three afresh every time the machine type or
         # a board changes, so a machine holding one it cannot be offered gets
         # what that machine actually has.
         mhz=machine.mhz if machine.mhz in clocks_for(turbo) else default_clock(turbo),
@@ -810,7 +810,7 @@ def settled(machine):
                     else default_dsp_memory(machine.kind)),
         # A drive the machine never had goes, the way a board it cannot hold
         # does. Previous enforces neither of these two and says both on the face
-        # of its own dialogues.
+        # of its own dialogs.
         floppy=machine.floppy and takes_a_floppy(machine.kind),
         optical=machine.optical and takes_an_optical_drive(machine.kind, turbo),
         # And the socket the 1988 machine has none of, which
@@ -829,7 +829,7 @@ def _system_for(machine):
     @param machine - A Machine.
     @returns dict of key to value, all strings.
 
-    Every value here follows from the type, the turbo board and the colour
+    Every value here follows from the type, the turbo board and the color
     board, exactly as Previous's own Configuration_SetSystemDefaults derives
     them. They are written together because they only make sense together: a
     machine with one chip of a turbo and one of a plain board is not a machine,
@@ -844,7 +844,7 @@ def _system_for(machine):
         "bTurbo": _flag(machine.turbo),
         "bColor": _flag(machine.colour),
         # The real-time clock. A turbo board carries the MCCS1850, and so does
-        # a colour station, whilst everything else has the MC68HC68T1. Previous
+        # a color station, while everything else has the MC68HC68T1. Previous
         # writes the choice as a boolean, and TRUE is the MCCS1850.
         "nRTC": _flag(machine.turbo or (machine.kind == NEXTSTATION and machine.colour)),
         # The SCSI controller, as a boolean the same way: the 1988 machine has

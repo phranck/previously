@@ -96,7 +96,7 @@ def test_every_application_opens_a_window_that_is_there(markup):
 
 
 def test_the_entry_about_this_machine_is_written_by_the_page(page, markup):
-    """It carries the machine's own name, so the catalogue holds a sentence
+    """It carries the machine's own name, so the catalog holds a sentence
     with a place in it rather than the words themselves. Given `data-t` as
     well, a change of language would write `Über {machine}` into the menu for
     the moment before the page filled it in."""
@@ -127,7 +127,7 @@ def test_the_page_asks_for_something(page, markup):
 
 
 def test_the_editor_reads_what_a_machine_type_actually_carries(page):
-    """A cell in the machine type group is labelled with one field of an entry
+    """A cell in the machine type group is labeled with one field of an entry
     and marked as chosen by another, so an entry carrying neither draws a row of
     buttons with nothing written in them and nothing chosen."""
     from previously import machines

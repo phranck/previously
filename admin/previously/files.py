@@ -449,7 +449,7 @@ def user_machines(machines_file):
     this is one folder of a tree that also holds the applications, the pictures
     and the eleven, and none of those should go missing over it. Saying so is
     left to the moment somebody tries to change something, which `saved.py`
-    refuses whilst the file is in the way.
+    refuses while the file is in the way.
     """
     try:
         kept = saved.read(machines_file)
@@ -471,7 +471,7 @@ def _machine(machine, in_folder, in_set):
     settings = machines.settings_for(machine)
     entry = config.describe(settings["System"], settings["Memory"], settings["Dimension"])
     entry["id"] = machine.identifier
-    # The catalogue's own name, which carries the Nitro that the file cannot:
+    # The catalog's own name, which carries the Nitro that the file cannot:
     # to Previous that is a clock and nothing else. A saved configuration's name
     # is its own, and it is its identifier as well.
     entry["name"] = machine.name

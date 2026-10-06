@@ -43,7 +43,7 @@ nx-menu .title {
   line-height: var(--row);
   padding: 0 6px;
   /* And it has no say in how wide the menu is. A title is the name of a
-     thing, which can be any length, whilst the entries are what the menu is
+     thing, which can be any length, while the entries are what the menu is
      for. Zero takes it out of the width the entries decide, and the minimum
      puts it back across the whole of it afterwards. */
   width: 0;
@@ -59,7 +59,7 @@ nx-menu-item {
      entry below it. */
   white-space: nowrap;
   border-top: 1px solid var(--white);
-  /* One pixel of black at the very bottom, one of grey above it. The later
+  /* One pixel of black at the very bottom, one of gray above it. The later
      shadow is painted under the earlier one, so black wins the last row. */
   box-shadow: inset 0 -2px 0 var(--dark), inset 0 -1px 0 var(--black);
   cursor: default;
@@ -76,7 +76,7 @@ nx-menu-item[last] { box-shadow: none; }
 nx-menu-item:hover { background: var(--white); }
 nx-menu-item:active { background: var(--black); color: var(--white); }
 
-/* An entry that would do nothing. The lettering greys and the entry stays in
+/* An entry that would do nothing. The lettering grays and the entry stays in
    place, so the menu keeps its shape and a reader sees that the thing exists
    and is not available now. Nothing lights under the pointer, because nothing
    would happen. */
