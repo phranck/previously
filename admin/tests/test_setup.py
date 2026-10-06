@@ -50,6 +50,9 @@ def commands(monkeypatch):
     answer = Commands()
     monkeypatch.setattr(setup, "run", answer)
     monkeypatch.setattr(setup, "installed", lambda package: False)
+    # The packages on the machine running the suite are not the card's, so
+    # dpkg is read as having nothing to say unless a test says otherwise.
+    monkeypatch.setattr(setup, "_packages_here", lambda: {})
     return answer
 
 
@@ -253,6 +256,39 @@ def test_a_failure_says_which_step_and_what_was_put_back(tmp_path, monkeypatch):
     assert said["failed"]["reason"] == "setup.no-room"
     assert said["failed"]["name"] == "NeXTSTEP 3.3"
     assert said["undone"] == ["tools", "host"]
+
+
+def test_an_undo_that_is_refused_still_lets_the_run_end(tmp_path, monkeypatch):
+    """Putting a package back runs apt-get, and apt-get can fail. A run that
+    stopped there would never write its end, and every later request would be
+    refused as one too many while it seemed to be running. So the undo that
+    failed is left out of what was put back, and the walk carries on."""
+    undone = []
+
+    def records(work):
+        work.undoes(lambda step=work.step: undone.append(step))
+
+    def put_back_refuses(work):
+        def refuses():
+            raise setup.Refused("setup.command-failed", command="apt-get",
+                                code=100)
+        work.undoes(refuses)
+
+    def fails(work):
+        raise setup.Refused("setup.no-room", name="NeXTSTEP 3.3", free=1,
+                            needed=2)
+
+    monkeypatch.setattr(setup, "STEPS", {
+        "host": records, "tools": put_back_refuses, "system": fails})
+    work = work_in(tmp_path, steps=("host", "tools", "system"))
+
+    assert setup.carry_out(work) is False
+    said = json.loads((work.into / setup.PROGRESS).read_text(encoding="utf-8"))
+
+    assert said["finished_at"] is not None
+    assert said["failed"]["reason"] == "setup.no-room"
+    assert said["undone"] == ["host"]
+    assert undone == ["host"]
 
 
 def test_a_run_says_which_steps_actually_did_something(tmp_path, monkeypatch):
@@ -785,6 +821,7 @@ def test_a_cache_that_cannot_be_cleared_does_not_stop_the_step(tmp_path,
 
     monkeypatch.setattr(setup, "run", run)
     monkeypatch.setattr(setup, "installed", lambda package: False)
+    monkeypatch.setattr(setup, "_packages_here", lambda: {})
     work = work_in(tmp_path)
     work.at("tools", 2)
 
@@ -1337,3 +1374,72 @@ def test_installing_packages_says_how_far_dpkg_has_got(tmp_path, commands):
     installing = [command for command in commands if "install" in command]
     assert "APT::Status-Fd=1" in installing[0]
     assert work.part == {"done": 42, "of": 100, "doing": setup.INSTALLING}
+
+
+@pytest.fixture
+def dpkg_says(monkeypatch):
+    """What dpkg has on the card before an installation and after it.
+
+    @returns a function taking the readings in the order they are asked for,
+      each a dict of package to the state dpkg names it in.
+    """
+    def says(*readings):
+        answers = iter(readings)
+        monkeypatch.setattr(setup, "_packages_here", lambda: next(answers))
+
+    return says
+
+
+@pytest.mark.parametrize("step", ["tools", "emulator"])
+def test_putting_packages_back_takes_what_came_with_them(tmp_path, commands,
+                                                         dpkg_says, step):
+    """apt installs a package with whatever it depends on, and taking back
+    only the ones that were named leaves the rest on the card. A failed
+    installation on an eight gigabyte card gave back five megabytes that
+    way."""
+    dpkg_says({"libc6:arm64": "installed"},
+              {"libc6:arm64": "installed", "previous": "installed",
+               "libsdl3-0": "installed"})
+    work = work_in(tmp_path)
+    work.at(step, 2)
+
+    setup.STEPS[step](work)
+    del commands[:]
+    work.reverse()
+
+    assert commands == [["apt-get", "purge", "-y", "-qq",
+                         "libsdl3-0", "previous"]]
+
+
+def test_a_package_that_left_its_configuration_behind_gets_it_back(
+        tmp_path, commands, dpkg_says):
+    """One taken off earlier without its configuration files is installed
+    again by the run, and putting the run back leaves those files where they
+    were. Undoing never takes away what the machine already had."""
+    dpkg_says({"cage": "config-files"},
+              {"cage": "installed", "libwlroots": "installed"})
+    work = work_in(tmp_path)
+    work.at("tools", 2)
+
+    setup.STEPS["tools"](work)
+    del commands[:]
+    work.reverse()
+
+    assert commands == [["apt-get", "purge", "-y", "-qq", "libwlroots"],
+                        ["apt-get", "remove", "-y", "-qq", "cage"]]
+
+
+def test_without_an_answer_from_dpkg_the_named_packages_are_put_back(
+        tmp_path, commands, dpkg_says):
+    """An empty answer is dpkg not answering rather than a card with nothing
+    on it, and reading it as the second would put back every package there
+    is."""
+    dpkg_says({}, {"cage": "installed", "libc6:arm64": "installed"})
+    work = work_in(tmp_path)
+    work.at("tools", 2)
+
+    setup._packages(work, ["cage"])
+    del commands[:]
+    work.reverse()
+
+    assert commands == [["apt-get", "remove", "-y", "-qq", "cage"]]
