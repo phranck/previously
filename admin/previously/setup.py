@@ -23,8 +23,8 @@ backwards.
 
 These steps are written here and nowhere else. `install.sh` installs this tool
 and asks for the `install` job, which is the job the Installer window asks for
-too. The one thing that script still writes itself is the console, under
-`--update-admin`, and `_autostart_block` says why.
+too. The package's postinst calls `refresh_console` from here, which is how a
+console that is already there follows the tool from one version to the next.
 """
 
 import datetime
@@ -1528,17 +1528,37 @@ def _autostart(work):
     """
     profile = work.owner.home / PROFILE
     text = profile.read_text(encoding="utf-8") if profile.exists() else ""
-    wanted = _autostart_block(work.owner)
     if AUTOSTART_OPENS in text:
-        if _the_block_in(text) == wanted.strip("\n"):
-            return
-        was = text
-        work.owner.write(profile, _without_the_block(text) + wanted)
-        work.undoes(lambda: work.owner.write(profile, was))
+        if refresh_console(work.owner):
+            work.undoes(lambda: work.owner.write(profile, text))
         return
 
-    work.owner.write(profile, text + wanted)
+    work.owner.write(profile, text + _autostart_block(work.owner))
     work.undoes(lambda: _without_autostart(profile))
+
+
+def refresh_console(owner):
+    """Brings a console that is there up to what this version writes.
+
+    @param owner - Whose profile it is.
+    @returns bool, whether anything was written.
+
+    A profile without the block is given none, because writing one is setting
+    the machine up, which is the install job's to do. The package calls this
+    from postinst on every install and upgrade, so a tool replaced from the
+    browser, from a shell or by apt does not go on running beside a console
+    that starts the emulator where the tool cannot reach it.
+    """
+    profile = owner.home / PROFILE
+    try:
+        text = profile.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    wanted = _autostart_block(owner)
+    if AUTOSTART_OPENS not in text or _the_block_in(text) == wanted.strip("\n"):
+        return False
+    owner.write(profile, _without_the_block(text) + wanted)
+    return True
 
 
 def _the_block_in(text):
@@ -1573,14 +1593,10 @@ def _without_the_block(text):
 def _autostart_block(owner):
     """@returns str - What is added to the profile, markers and all.
 
-    Every line of this, comments included, is what `install.sh
-    --update-admin` writes, because replacing the tool from a shell brings the
-    console up to date without asking for anything else. Either of the two
-    may therefore have written a given machine's console, and both replace a
-    block that no longer says what they write. A difference between them
-    would therefore be the two rewriting each other for ever.
-
-    `tests/test_setup.py` holds them together character for character.
+    The one statement of the console. The install job writes it, and
+    `refresh_console` replaces a block that no longer says this, so a change
+    here reaches every machine with the next install or upgrade of the
+    package.
     """
     return (
         "\n%s\n"
@@ -1608,12 +1624,18 @@ def _autostart_block(owner):
         "# gone at every boot, so whatever is in it happened since this board came up and\n"
         "# nothing has to work out when. The exit runs the session down exactly as exec\n"
         "# did, so the console never falls through to a prompt.\n"
+        "#\n"
+        "# Previous runs on cage's X server, because that is how the admin tool reaches\n"
+        "# it: xdotool presses its keys and ImageMagick reads its screen, both through X.\n"
+        "# Previous is built against SDL3, which takes Wayland wherever it can, so it is\n"
+        "# told to try X first. Wayland comes second, so a machine without an X server\n"
+        "# still starts its emulator.\n"
         'if [ "$XDG_VTNR" = 1 ] && [ -z "$WAYLAND_DISPLAY" ]; then\n'
         "  clear\n"
         "  while [ -f %s ]; do sleep 2; done\n"
         "  mkdir -p %s\n"
         "  cd %s\n"
-        "  cage -- /usr/bin/previous\n"
+        "  SDL_VIDEO_DRIVER=x11,wayland cage -- /usr/bin/previous\n"
         "  status=$?\n"
         '  if [ "$status" -ne 0 ] && [ -d %s ]; then\n'
         '    printf "%%s %%s\\n" "$(date +%%s)" "$status" >> %s\n'

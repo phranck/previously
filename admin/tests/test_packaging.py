@@ -295,6 +295,29 @@ def test_the_package_puts_the_socket_directory_back_before_starting(build):
     assert created < postinst.index("systemctl enable --now")
 
 
+def test_the_package_brings_the_x_server_the_emulator_is_reached_through(build):
+    """xdotool and ImageMagick reach the emulator through X, and cage starts an
+    X server only where Xwayland is installed. The cage in the Raspberry Pi
+    archive no longer brings it along, so the package does."""
+    assert "xwayland" in build.DEPENDS
+
+
+def test_the_package_brings_the_console_up_to_date(build, tmp_path):
+    """On every install and upgrade, whichever way the package arrived, with
+    the helper module the package has just put in place and for the user it
+    has just written down."""
+    build.lay_out(tmp_path)
+    postinst = build.scripts()["postinst"]
+
+    found = re.search(r"PYTHONPATH=(\S+) python3 -c '(.*?)' \"\$owner\"", postinst,
+                      re.S)
+    assert found, "postinst does not bring the console up to date"
+    where, program = found.groups()
+    assert (tmp_path / where.lstrip("/") / "previously" / "setup.py").is_file()
+    assert "setup.refresh_console(setup.Owner(sys.argv[1]))" in program
+    assert postinst.index("User=$owner") < found.start()
+
+
 # -- swap ----------------------------------------------------------------
 
 

@@ -74,16 +74,6 @@ readonly PACKAGE_URL="https://github.com/phranck/previously/releases/latest/down
 # under in admin/previously/systems.py.
 readonly SYSTEM="nextstep-3.3"
 
-# Where the emulator runs, and therefore where it writes what it is asked to
-# write. The console below changes into it.
-readonly WORK_DIR="${HOME}/.cache/previously"
-
-# ~/.profile and not ~/.bash_profile. Bash reads only the first of the login
-# files that exists, and on Raspberry Pi OS that is ~/.profile, which pulls in
-# ~/.bashrc. Creating ~/.bash_profile would switch both off, including for SSH
-# sessions, which are the way back into a machine whose screen is taken.
-readonly PROFILE="${HOME}/.profile"
-
 # The admin tool's own runtime directory, which its unit makes on a tmpfs. The
 # request for the helper goes in here, under the name previously-setup.path
 # watches for.
@@ -97,19 +87,6 @@ readonly PROGRESS="/run/previously-setup/progress.json"
 # Who the tool runs as, which its package wrote down on install. The request
 # goes into that user's runtime directory, so this has to run as them too.
 readonly OWNER_FILE="/etc/systemd/system/previously.service.d/owner.conf"
-
-# The admin tool holds the emulator down by creating this file, and the
-# console's autostart below waits on it. On a tmpfs, so a board that has just
-# started runs its emulator whoever switched it off before the last shutdown.
-readonly HOLD_FILE="${RUNTIME_DIR}/hold"
-
-# Where the console writes down an emulator that ended badly, one line each,
-# which the Raspberry Pi window reads. On the same tmpfs, so the file is gone
-# at every boot and what is in it is what happened since this board came up.
-readonly CRASHES_FILE="${RUNTIME_DIR}/crashes"
-
-readonly AUTOSTART_MARKER="# >>> nextstep-rpi >>>"
-readonly AUTOSTART_END="# <<< nextstep-rpi <<<"
 
 # How long the helper may take to answer a request before this gives up on
 # it. The path unit fires within a second; this is for a machine where it
@@ -270,17 +247,6 @@ on_interrupt() {
   # Leave through the exit handler with the conventional code for SIGINT
   # rather than doing the work twice.
   exit 130
-}
-
-# Called from an undo entry. A function rather than an inline `sed -i`, because
-# in-place editing is spelled differently on different systems and an undo step
-# that fails silently is worse than no undo step at all.
-remove_autostart_block() {
-  local file="$1" scratch
-  [[ -f "$file" ]] || return 0
-  scratch="$(mktemp)"
-  sed "/${AUTOSTART_MARKER}/,/${AUTOSTART_END}/d" "$file" > "$scratch"
-  mv -f "$scratch" "$file"
 }
 
 trap on_exit EXIT
@@ -610,97 +576,6 @@ set_up_the_machine() {
   done
 }
 
-# ---------------------------------------------------------------------------
-# The console, under --update-admin. A full run has the helper write it; a
-# machine whose tool is replaced has its console brought up to what this
-# version writes, because it is what starts the emulator and what writes down
-# a crash, and a tool that has moved on with a console that has not is the
-# state this exists to prevent.
-# ---------------------------------------------------------------------------
-
-# What the autostart says, as one piece. Written out here rather than straight
-# into the file, because a block that is already there has to be compared with
-# it: it is generated, so a machine set up before this version carries whatever
-# that version wrote, and the change that matters most is the one nobody would
-# notice, which is the line that writes down a crash.
-autostart_block() {
-  cat <<EOF
-${AUTOSTART_MARKER}
-# Hand the first console to Previous. XDG_VTNR carries the number of the text
-# console and is set only where one is actually behind the login, so an SSH
-# session falls through and stays the way in once the screen is taken.
-#
-# The wait is how the admin tool stops and starts the emulator without any
-# privileges at all: it creates ${HOLD_FILE} to hold it down and removes the
-# file to let it come back. Waiting rather than exiting matters twice. It keeps
-# the console from falling through to a shell prompt while the emulator is
-# held, and it avoids the race that stopping through systemd would have, since
-# this unit restarts itself the moment a session ends and would bring a fresh
-# emulator up underneath whatever stopped the last one.
-#
-# The file is on a tmpfs, so a board that has just booted never finds one and
-# always starts its emulator.
-#
-# The directory it runs in is where it writes a screen grab, and the admin tool
-# reads those and removes them. Its own rather than the home directory, so the
-# tool needs write access to that one directory and to nothing else of yours.
-#
-# An emulator that ends badly says so in one line, which the Raspberry Pi window
-# reads. It goes in the runtime directory because that is a tmpfs: the file is
-# gone at every boot, so whatever is in it happened since this board came up and
-# nothing has to work out when. The exit runs the session down exactly as exec
-# did, so the console never falls through to a prompt.
-if [ "\$XDG_VTNR" = 1 ] && [ -z "\$WAYLAND_DISPLAY" ]; then
-  clear
-  while [ -f ${HOLD_FILE} ]; do sleep 2; done
-  mkdir -p ${WORK_DIR}
-  cd ${WORK_DIR}
-  cage -- /usr/bin/previous
-  status=\$?
-  if [ "\$status" -ne 0 ] && [ -d ${RUNTIME_DIR} ]; then
-    printf "%s %s\\n" "\$(date +%s)" "\$status" >> ${CRASHES_FILE}
-  fi
-  exit "\$status"
-fi
-${AUTOSTART_END}
-EOF
-}
-
-# What the file says now, between the markers, or nothing where there is none.
-autostart_in_profile() {
-  [[ -f "$PROFILE" ]] || return 0
-  sed -n "/${AUTOSTART_MARKER}/,/${AUTOSTART_END}/p" "$PROFILE"
-}
-
-# Brings a console that is there up to what this version writes. A machine
-# that has never had a console is not given one: --update-admin exists to
-# replace the admin tool and touch nothing else.
-refresh_autostart() {
-  local wanted there
-  wanted="$(autostart_block)"
-  there="$(autostart_in_profile)"
-
-  if [[ -z "$there" ]]; then
-    already_line "No console here, and --update-admin adds none"
-    return
-  fi
-  if [[ "$there" == "$wanted" ]]; then
-    already_line "The console"
-    return
-  fi
-
-  # The whole file is kept, rather than the block alone, so the undo puts back
-  # what was there instead of taking the console away altogether.
-  local was
-  was="$(mktemp)"
-  cp "$PROFILE" "$was"
-  remove_autostart_block "$PROFILE"
-  printf '\n%s\n' "$wanted" >> "$PROFILE"
-  undo "put ${PROFILE} back as it was" \
-       "mv -f $(printf '%q' "$was") $(printf '%q' "$PROFILE")"
-  done_line "The console, brought up to this version"
-}
-
 usage() {
   cat <<'EOF'
 Usage: install.sh [--update-admin]
@@ -725,7 +600,6 @@ main() {
       check_host
       check_sudo
       update_admin
-      refresh_autostart
       COMPLETED=true
       rm -f "$LOG"
       return

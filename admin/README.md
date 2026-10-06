@@ -12,13 +12,13 @@ make browser      # what only a browser can show, in Safari Technology Preview
 
 ## What it needs installed
 
-**To run, on the Pi**, five things beyond what Raspberry Pi OS already has: `cage`, `7zip`, `xdotool`, `imagemagick`, and Previous itself out of the Window Maker Live archive. The one-liner has the helper install all five.
+**To run, on the Pi**, six things beyond what Raspberry Pi OS already has: `cage`, `xwayland`, `7zip`, `xdotool`, `imagemagick`, and Previous itself out of the Window Maker Live archive. The package brings `xwayland`, `xdotool` and `imagemagick`, because the tool uses them itself, and the one-liner has the helper install the rest.
 
 The rest is the system's own and is assumed rather than installed: `systemd` for `systemctl`, `procps` for `pgrep` and `ps`, `raspi-utils-core` for `vcgencmd`, and `python3`. A Pi without `vcgencmd` still runs this; the window shows one reading fewer, because every reading in `pi.py` answers with nothing rather than failing.
 
 `activity.py` needs none of them. It answers the same kind of question once a second and reads `/proc` alone, because what is cheap at one answer every five seconds is not cheap at one a second. Measured on a Pi 5: a whole reading costs 0.42 ms while the emulator runs, against 9.9 ms for an answer to `/api/pi`, which forks `vcgencmd` twice and `ps` once at 1.5 ms a fork. Every figure it gives is the difference between two readings, since the kernel's counters are totals since the board started and a total says nothing about now.
 
-What each is for: `cage` is the compositor the emulator runs in, `7zip` unpacks the disk archive, `xdotool` presses the emulator's keys, and ImageMagick's `import` reads its screen, which is the only way to tell a machine that booted from one that did not.
+What each is for: `cage` is the compositor the emulator runs in, `xwayland` is the X server cage runs it on, `7zip` unpacks the disk archive, `xdotool` presses the emulator's keys, and ImageMagick's `import` reads its screen, which is the only way to tell a machine that booted from one that did not. Both of the last two reach the emulator through that X server.
 
 **To work on it**, `flake8` and `pytest` as well. They are not on the Pi and `install.sh` does not put them there, because nothing in running the service needs them.
 
@@ -297,7 +297,7 @@ Both directions need the machine switched off. A copy taken while NeXTSTEP is wr
 
 One key is not enough. NeXTSTEP answers the power key with a panel asking whether the machine should really switch off, so the return key follows it two seconds later to press that panel's default button.
 
-The keys go in through the X server with `xdotool`, because Previous runs as an X client under the kiosk's Xwayland. A Wayland virtual keyboard is not the way: it binds its protocol against the compositor and reports success, and the emulator never sees the key. Both directions were measured on the machine.
+The keys go in through the X server with `xdotool`, because Previous runs as an X client under the kiosk's Xwayland. It does so because the console tells it to: Previous is built against SDL3, which takes Wayland wherever it can, so the console starts it with `SDL_VIDEO_DRIVER=x11,wayland`. A Wayland virtual keyboard is not the way: it binds its protocol against the compositor and reports success, and the emulator never sees the key. Both directions were measured on the machine.
 
 **Restarting or switching off the board takes NeXTSTEP down first**, and waits for it. A board that reboots underneath a running emulator does the same damage as killing the emulator, and to a machine that then has to come back up.
 
@@ -311,7 +311,7 @@ A sudoers rule was the other way to do this, and it cannot work here: the servic
 
 ```sh
 while [ -f /run/previously/hold ]; do sleep 2; done
-cage -- /usr/bin/previous
+SDL_VIDEO_DRIVER=x11,wayland cage -- /usr/bin/previous
 status=$?
 if [ "$status" -ne 0 ] && [ -d /run/previously ]; then
   printf "%s %s\n" "$(date +%s)" "$status" >> /run/previously/crashes
@@ -401,7 +401,7 @@ The Raspberry Pi window says which version is here and which is published, and w
 
 **Which release is newest comes from `api.github.com`**, which carries the tag, the download address, the size and the digest in one answer. `release.py` keeps that answer for a quarter of an hour and looks it up again in a thread, so `GET /api/update` never waits for the network: a board with no internet answers as quickly as one with it and says that nothing is known yet. Four requests an hour against the sixty an address is allowed unauthenticated. The address that answer carries is checked against the same hosts the fetch is allowed, because it arrives inside somebody else's answer and is then handed to a download root makes.
 
-**Two steps, because the second one is the part nobody can see.** Fetching and checking the package is measured in bytes. Installing it stops this service and starts the new one, which the package's own maintainer scripts do, so for a few seconds there is nothing for the page to talk to.
+**Two steps, because the second one is the part nobody can see.** Fetching and checking the package is measured in bytes. Installing it stops this service and starts the new one, which the package's own maintainer scripts do, so for a few seconds there is nothing for the page to talk to. The same scripts bring the console that starts the emulator up to the new version, where the machine has one, so the tool and the console never drift apart whichever way the tool was replaced.
 
 **That is why the record is root's and not the service's.** The helper writes how far it has got into `/run/previously-setup`, which carries `RuntimeDirectoryPreserve=yes` and therefore outlives the service being replaced. The page reads the same run before and after: while there is no answer it says the tool is being put in place rather than claiming no contact, and when the new service answers it reads the finished record out of the same file and says which version is now talking to it. Nothing about the run is ever held in the browser.
 
