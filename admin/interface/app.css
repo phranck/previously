@@ -50,8 +50,8 @@ nx-window[name="preferences"] .module-row {
   place-items: center;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--white) var(--black) var(--black) var(--white);
-  box-shadow: inset -1px -1px 0 var(--dark);
+  border-color: var(--raised-sides);
+  box-shadow: var(--raised-inside);
   cursor: default;
 }
 

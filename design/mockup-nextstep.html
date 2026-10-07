@@ -531,9 +531,12 @@ nx-tile {
   cursor: default;
   flex: 0 0 auto;
   grid-column: 1;
-  /* The tile's bevel is two pixels rather than the usual one. */
+  /* The raised edge, whose colors nx-tile reads from base.css with every other
+     raised surface, drawn two pixels wide rather than one, because that is the
+     bevel the original gives a tile: the 68 of --dock-width is 64 of tile and
+     that bevel on each side. The inner shadow of the one-pixel edge is left
+     off, so the two pixels stay one color on each side. */
   border-width: 2px;
-  border-color: var(--white) var(--black) var(--black) var(--white);
   box-shadow: none;
   /* The face runs diagonally, not down. Measured at the four corners of a tile
      it reads #aaaaaa top left and #555555 bottom right, with the other two
@@ -652,8 +655,8 @@ nx-scroller .knob {
   top: 0;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--white) var(--black) var(--black) var(--white);
-  box-shadow: inset -1px -1px 0 var(--dark);
+  border-color: var(--raised-sides);
+  box-shadow: var(--raised-inside);
   cursor: default;
 }
 /* The dimple in the middle of the knob, which is what you take hold of. */
@@ -688,13 +691,13 @@ nx-scroller .step {
   place-items: center;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--white) var(--black) var(--black) var(--white);
-  box-shadow: inset -1px -1px 0 var(--dark);
+  border-color: var(--raised-sides);
+  box-shadow: var(--raised-inside);
   cursor: default;
 }
 nx-scroller .step:active {
-  border-color: var(--dark) var(--white) var(--white) var(--dark);
-  box-shadow: inset 1px 1px 0 var(--black);
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
 }
 nx-scroller .step i {
   width: 0; height: 0;
@@ -1020,7 +1023,7 @@ nx-ask .entry {
   color: var(--black);
   background: var(--white);
   border: 1px solid var(--dark);
-  box-shadow: inset 1px 1px 0 var(--black);
+  box-shadow: var(--sunken-inside);
   padding: 3px 5px;
 }
 nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
@@ -1193,8 +1196,8 @@ button {
 }
 /* Pressed, a button wears the sunken edge instead. */
 button:active {
-  border-color: var(--dark) var(--white) var(--white) var(--dark);
-  box-shadow: inset 1px 1px 0 var(--black);
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
   padding: 4px 13px 2px 15px;
 }
 

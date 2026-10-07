@@ -70,8 +70,8 @@ button {
 }
 /* Pressed, a button wears the sunken edge instead. */
 button:active {
-  border-color: var(--dark) var(--white) var(--white) var(--dark);
-  box-shadow: inset 1px 1px 0 var(--black);
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
   padding: 4px 13px 2px 15px;
 }
 

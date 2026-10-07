@@ -131,7 +131,7 @@ nx-ask .entry {
   color: var(--black);
   background: var(--white);
   border: 1px solid var(--dark);
-  box-shadow: inset 1px 1px 0 var(--black);
+  box-shadow: var(--sunken-inside);
   padding: 3px 5px;
 }
 nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
