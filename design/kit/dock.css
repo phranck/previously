@@ -35,9 +35,12 @@ nx-tile {
   cursor: default;
   flex: 0 0 auto;
   grid-column: 1;
-  /* The tile's bevel is two pixels rather than the usual one. */
+  /* The raised edge, whose colors nx-tile reads from base.css with every other
+     raised surface, drawn two pixels wide rather than one, because that is the
+     bevel the original gives a tile: the 68 of --dock-width is 64 of tile and
+     that bevel on each side. The inner shadow of the one-pixel edge is left
+     off, so the two pixels stay one color on each side. */
   border-width: 2px;
-  border-color: var(--white) var(--black) var(--black) var(--white);
   box-shadow: none;
   /* The face runs diagonally, not down. Measured at the four corners of a tile
      it reads #aaaaaa top left and #555555 bottom right, with the other two
