@@ -455,9 +455,11 @@ Adding a string means adding it to all six catalogs. `tests/test_strings.py` fai
 
 ## Preferences
 
-NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath, and this is that with one module in it. The row stays at one module because it is the shape of the window rather than a count: the next one arrives into it instead of introducing it.
+NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath. The row holds two module pictures, Localization and Monitor, and each has its own panel.
 
-The module is the one NeXTSTEP called Localization, and it offers the six languages. Everything it shows comes out of the disk image rather than from us: `Localization.tiff` is the picture Preferences.app carried for it, the window's title is what each language's `preferences.strings` called the application, and the module's name is the `Long Name` in the `Info` file of its own bundle. Three of the six left the application's name untranslated, so the window says `Preferences` in French, Italian and Swedish and `Präferenzen` in German, exactly as it did.
+The first module is the one NeXTSTEP called Localization, and it offers the six languages. Everything it shows comes out of the disk image rather than from us: `Localization.tiff` is the picture Preferences.app carried for it, the window's title is what each language's `preferences.strings` called the application, and the module's name is the `Long Name` in the `Info` file of its own bundle. Three of the six left the application's name untranslated, so the window says `Preferences` in French, Italian and Swedish and `Präferenzen` in German, exactly as it did.
+
+The other module is Monitor, and it offers the interface size. Its picture comes from `design/extract.py`, which takes it from `/NextApps/Preferences.app/Monitor.preferences/Monitor`.
 
 ## Activity Monitor
 
