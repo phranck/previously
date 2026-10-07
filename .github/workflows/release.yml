@@ -39,6 +39,13 @@ jobs:
           # commit and no tags at all.
           fetch-depth: 0
 
+      # The Node the interface is checked with, which .nvmrc names for every
+      # machine that checks it, so the runner does not decide it by whatever
+      # its image happens to carry.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
       - name: Check the service before packaging it
         working-directory: admin
         run: |
@@ -54,8 +61,10 @@ jobs:
           # somebody presses the thing that needs it.
           npm install --silent
           python3 -m flake8 --max-line-length=100 previously tests browser build_web.py
-          node_modules/.bin/eslint interface --no-warn-ignored
+          node_modules/.bin/eslint interface tests/kit --no-warn-ignored
           node_modules/.bin/tsc -p tsconfig.json
+          # The kit's elements against a DOM, with what `npm install` brought.
+          node --test tests/kit/*.test.js
           # Named and timed, because a test that waits here and not on a laptop
           # is waiting for something this machine does not have, and a suite
           # that stops without saying which test it stopped in says nothing at
