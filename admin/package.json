@@ -3,10 +3,11 @@
   "private": true,
   "description": "What checking and building the interface needs. Nothing here runs on the Pi: the service is the standard library alone, and what ships is the built interface, which is committed.",
   "type": "module",
-  "scripts": {
-    "lint": "eslint interface --no-warn-ignored"
+  "engines": {
+    "node": ">=22"
   },
   "devDependencies": {
+    "@happy-dom/global-registrator": "^20.14.5",
     "eslint": "^9.36.0",
     "typescript": "^7.0.2"
   }

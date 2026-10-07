@@ -9,11 +9,11 @@ PYTHON ?= python3
 ESLINT ?= node_modules/.bin/eslint
 TSC ?= node_modules/.bin/tsc
 
-.PHONY: help run test browser lint lint-service lint-interface types check kit web clean
+.PHONY: help run test test-kit browser lint lint-service lint-interface types check kit web clean
 
 help:
 	@echo 'run      start the service in the foreground'
-	@echo 'test     run the test suite'
+	@echo 'test     run the test suite: the service, and the kit against a DOM'
 	@echo 'browser  run what only a browser can show, in Safari Technology Preview'
 	@echo 'lint     check both halves: flake8 on the service, eslint and tsc on the interface'
 	@echo 'check    lint and test, which is what a commit needs'
@@ -35,8 +35,14 @@ web:
 run:
 	$(PYTHON) -m previously
 
-test:
+test: test-kit
 	$(PYTHON) -m pytest tests -q
+
+# The kit's elements, run in Node against happy-dom with the kit's own
+# stylesheet on the page. What a part does to the markup it is given, without
+# a browser anybody has to drive. `npm install` puts happy-dom here.
+test-kit:
+	node --test tests/kit/*.test.js
 
 # What only a browser laying the page out can show, such as a scroller's knob
 # against what there is to scroll. Safari Technology Preview through its own
@@ -55,7 +61,7 @@ lint-service:
 # imported bundles without a word and fails when somebody presses the thing
 # that needs it. `npm install eslint` puts it here.
 lint-interface:
-	$(ESLINT) interface --no-warn-ignored
+	$(ESLINT) interface tests/kit --no-warn-ignored
 
 # And what the documentation comments say, read as types. The interface stays
 # JavaScript: this compiles nothing and writes nothing, it only reads what is

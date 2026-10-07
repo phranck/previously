@@ -69,6 +69,8 @@ python3 build.py            # or: make -C ../admin kit
 
 The two files it writes, `../admin/interface/nextstep.css` and `../admin/interface/nextstep.js`, say at the top that they are generated. `../admin/tests/test_kit.py` fails when either has been edited by hand, which is what makes one source safe to rely on.
 
+What the parts do is tested in `../admin/tests/kit/`, against the script `build.py` wrote, so a change to a part is tested once `make kit` has run. Those tests put the elements on a document in Node and read back what they made of their markup: a scroller drives the view it wraps, an opened window comes to the front, the menu shows one owner's entries, and a tile lands only on a free slot. `make -C ../admin check` runs them with everything else.
+
 What is not in the kit is what only one application has. The admin keeps that in `../admin/interface/app.css`, and this draft keeps its own beside the marks in the file.
 
 ## What the interface is built from

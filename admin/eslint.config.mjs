@@ -13,6 +13,23 @@
  * moment somebody presses the thing that needs it.
  */
 
+/** The rules, which hold the interface and the kit's tests alike. */
+const rules = {
+  "no-undef": "error",
+  // An imported name cannot be assigned to, so a module that keeps a value
+  // has to be the one that changes it. This is what says so at the moment the
+  // import is written rather than when the page is built.
+  "no-import-assign": "error",
+  "no-unused-vars": ["error", { args: "none" }],
+  "no-fallthrough": "error",
+  "no-dupe-keys": "error",
+  "no-dupe-args": "error",
+  "no-const-assign": "error",
+  "no-self-compare": "error",
+  "no-unreachable": "error",
+  "require-atomic-updates": "off",
+};
+
 export default [
   {
     files: ["interface/**/*.js"],
@@ -65,20 +82,24 @@ export default [
         FitAddon: "readonly",
       },
     },
-    rules: {
-      "no-undef": "error",
-      // An imported name cannot be assigned to, so a module that keeps a
-      // value has to be the one that changes it. This is what says so at the
-      // moment the import is written rather than when the page is built.
-      "no-import-assign": "error",
-      "no-unused-vars": ["error", { args: "none" }],
-      "no-fallthrough": "error",
-      "no-dupe-keys": "error",
-      "no-dupe-args": "error",
-      "no-const-assign": "error",
-      "no-self-compare": "error",
-      "no-unreachable": "error",
-      "require-atomic-updates": "off",
+    rules,
+  },
+  {
+    // The kit's tests, which run in Node with happy-dom's document put on the
+    // global object, so they name what a browser brings without importing it.
+    files: ["tests/kit/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: "module",
+      globals: {
+        document: "readonly",
+        localStorage: "readonly",
+        dispatchEvent: "readonly",
+        PointerEvent: "readonly",
+        KeyboardEvent: "readonly",
+        URL: "readonly",
+      },
     },
+    rules,
   },
 ];
