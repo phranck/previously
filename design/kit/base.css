@@ -125,12 +125,32 @@
   --win-min-w: 280px;
   --win-min-h: 160px;
 
+  /* NeXTSTEP's own selection was a white rounded shape, and this is the corner
+     it drew, read off hilite.tiff: white begins five pixels in on the first
+     row and reaches the edge on the sixth. */
+  --hilite-radius: 5px;
+
+  /* The one value outside the four above. It marks the configuration the
+     emulator is actually running, which is a thing NeXTSTEP had no idea of, so
+     there is no original to take a color from. A shade under the window's own
+     gray, because it has to read as a state and not as a selection. */
+  --in-force: #999999;
+
+  /* The same mark with half of it missing, for a configuration that is written
+     down but has not been through a boot. NeXTSTEP drew a checkerboard of two
+     grays wherever something was partial, and at this size it reads as a
+     texture rather than as a pattern. */
+  --dither: repeating-conic-gradient(var(--in-force) 0% 25%, var(--light) 0% 50%);
+  --dither-size: 2px;
+
   /* PARTS: the pictures, which build.py bakes into the mockup as data URIs */
   /* As files rather than as data URIs here. A service that
      serves files should serve these as files too, so the browser caches
      them and this stylesheet stays readable. ../../design/extract.py says
      where the icons came from, and ../../design/bootpicture.py where the two
-     machines came from. */
+     machines came from. Nothing but pictures goes below the line above,
+     because in the mockup everything from it to the end of this block is
+     replaced. */
   --Workspace: url("parts/Workspace.png");
   /* This tool's own mark, which is the one picture here that NeXT did not
      draw. It comes from the Previously website, where phranck made it. */
@@ -156,23 +176,6 @@
   --Installer: url("parts/Installer.png");
   --Localization: url("parts/Localization.png");
   --Monitor: url("parts/Monitor.png");
-  /* NeXTSTEP's own selection was a white rounded shape, and this is the corner
-     it drew, read off hilite.tiff: white begins five pixels in on the first
-     row and reaches the edge on the sixth. */
-  --hilite-radius: 5px;
-
-  /* The one value outside the four above. It marks the configuration the
-     emulator is actually running, which is a thing NeXTSTEP had no idea of, so
-     there is no original to take a color from. A shade under the window's own
-     gray, because it has to read as a state and not as a selection. */
-  --in-force: #999999;
-
-  /* The same mark with half of it missing, for a configuration that is written
-     down but has not been through a boot. NeXTSTEP drew a checkerboard of two
-     grays wherever something was partial, and at this size it reads as a
-     texture rather than as a pattern. */
-  --dither: repeating-conic-gradient(var(--in-force) 0% 25%, var(--light) 0% 50%);
-  --dither-size: 2px;
   --net: url("parts/net.png");
   --nextcube: url("parts/nextcube.png");
   --nextstation: url("parts/nextstation.png");

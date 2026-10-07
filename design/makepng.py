@@ -21,7 +21,8 @@ import pathlib
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = pathlib.Path(__file__).parent
-PARTS = HERE / "parts"
+#: build.py says why the pictures live there and nowhere else.
+PARTS = HERE.parent / "admin" / "web" / "parts"
 
 #: What the lettering is set in. Measured against tiff.tiff: mostly pure blue
 #: with darker blues where the strokes thicken.
@@ -47,7 +48,7 @@ def main():
               "PNG", font=font, fill=INK)
 
     sheet.save(PARTS / "png.png")
-    print("wrote parts/png.png")
+    print("wrote %s" % (PARTS / "png.png"))
 
 
 if __name__ == "__main__":

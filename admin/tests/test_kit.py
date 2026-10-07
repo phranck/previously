@@ -42,6 +42,21 @@ def test_the_script_is_what_the_kit_says(build):
     assert served == build.script(), "run design/build.py"
 
 
+#: A picture the kit's stylesheet points at, by the name of its file.
+NAMED_PICTURE = re.compile(r'url\("parts/([^"]+)"\)')
+
+
+def test_every_picture_the_kit_names_is_served(build):
+    """The kit names its pictures by hand, and the admin serves them from
+    web/parts. A name with no file there is an icon that never appears and a
+    404 on every load, and nothing else in the suite would notice."""
+    named = NAMED_PICTURE.findall(build.stylesheet())
+    assert len(named) > 20, "the stylesheet names no pictures this can read"
+
+    missing = [name for name in named if not (build.PARTS / name).is_file()]
+    assert missing == []
+
+
 def test_every_part_of_the_kit_has_a_source(build):
     """A part named in the table with neither a stylesheet nor a script is a
     line nobody ever sees fail."""

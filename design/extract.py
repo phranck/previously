@@ -13,7 +13,8 @@ running system at their own pixel bounds.
 
     python3 extract.py ~/nextstep/NS33_2GB.dd screenshot.png
 
-Afterwards run build.py, which bakes parts/ into the mockup.
+They go into ../admin/web/parts/, which is where the admin serves them from.
+Afterwards run build.py, which puts them into the mockup from there.
 """
 
 import pathlib
@@ -25,7 +26,8 @@ import nxtiff
 from ufs import UFS
 
 HERE = pathlib.Path(__file__).parent
-PARTS = HERE / "parts"
+#: build.py says why the pictures live there and nowhere else.
+PARTS = HERE.parent / "admin" / "web" / "parts"
 
 # Where the filesystem starts inside the image. A NeXT disk opens with a dlV3
 # label, so the superblock is not at the front.
@@ -123,6 +125,7 @@ PARTS_IN_SCREENSHOT = {
     "dock-marks": (1057, 186, 1070, 188),
 }
 
+
 def extract_icons(image_path):
     """Reads the icon TIFFs out of the disk image and writes them as PNG."""
     filesystem = UFS(str(image_path), PARTITION_OFFSET)
@@ -202,7 +205,7 @@ def main():
     icons = extract_icons(pathlib.Path(sys.argv[1]))
     controls = extract_parts(pathlib.Path(sys.argv[2]))
     colour_tube()
-    print("wrote %d icons, %d controls and the color tube into parts/" % (icons, controls))
+    print("wrote %d icons, %d controls and the color tube into %s" % (icons, controls, PARTS))
 
 
 if __name__ == "__main__":
