@@ -90,9 +90,15 @@ export declare class NxSlider extends HTMLElement {
   [held: string]: any;
 }
 
+export declare class NxLeds extends HTMLElement {
+  draw(...args: any[]): any;
+  [held: string]: any;
+}
+
 export declare const DESK_WAS_NEW: any;
 export declare const FLIGHT_MS: any;
 export declare const GRIP_PX: any;
+export declare const LEDS_IN_A_ROW: any;
 export declare const NEAR_FLIGHT_MS: any;
 export declare const STORE: any;
 export declare const SVG_NS: any;
@@ -134,5 +140,6 @@ declare global {
     "nx-ask": NxAsk;
     "nx-viewer": NxViewer;
     "nx-slider": NxSlider;
+    "nx-leds": NxLeds;
   }
 }

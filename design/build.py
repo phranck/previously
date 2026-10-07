@@ -61,6 +61,8 @@ KIT_PARTS = (
     ("panel", (), "nx-portrait, nx-row and nx-field, for an info panel"),
     ("slider", (("nx-slider", "NxSlider"),),
      "a knob in a trough, moving between the steps it is given"),
+    ("leds", (("nx-leds", "NxLeds"),),
+     "a row of lamps lighting from the left, for a share of something"),
     ("terminal", (), "a text view, black on white"),
 )
 
@@ -84,7 +86,7 @@ MARKS = {
 PARTS_MARKER = "/* PARTS: the pictures, which build.py bakes into the mockup as data URIs */"
 
 #: What a part declares at its top level, which is what the kit offers. A part
-#: keeps nothing private: the twelve of them are one script split into files so
+#: keeps nothing private: the parts are one script split into files so
 #: that a person can find things, and every name in them is the kit's.
 DECLARED = re.compile(
     r"^(?:export\s+)?(?:async\s+)?(?:function|class|const|let)\s+([A-Za-z_$][\w$]*)",

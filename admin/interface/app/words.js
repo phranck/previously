@@ -233,6 +233,40 @@ function duration(seconds) {
 }
 
 /**
+ * What the emulator is costing, as one line.
+ * @param {any} emulator - What the service says about it, carrying
+ *   `cpu_percent`, `memory_mb` and `uptime_seconds`, or null where it is not
+ *   running.
+ * @returns {string}
+ *
+ * The Raspberry Pi window and Activity Monitor both say this, and they say it
+ * the same way. The percentage is of one core, so around 150 is ordinary with
+ * a NeXTdimension, whose second thread runs beside the first, and the figure
+ * is stated without judging it. A figure the service could not work out yet,
+ * which is the first answer after a pause, stands as a dash.
+ */
+function costOf(emulator) {
+  if (!emulator) return t("pi.emulator.stopped");
+  return t("pi.emulator.running", {
+    percent: emulator.cpu_percent === null ? NOTHING : Math.round(emulator.cpu_percent),
+    mb: emulator.memory_mb ?? NOTHING,
+    uptime: duration(emulator.uptime_seconds),
+  });
+}
+
+/**
+ * A figure with two places after the point, written the way the language
+ * being read writes one.
+ * @param {number} value
+ * @returns {string} Two places, which is how the kernel writes a load average
+ *   and how every tool that shows one has shown it.
+ */
+function decimal(value) {
+  return new Intl.NumberFormat(currentLocale(),
+    { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+}
+
+/**
  * What the board says about its power, in words.
  * @param {string[]} names - The service's names for it, such as
  *   `under-voltage`. It sends names rather than sentences for the same reason
@@ -296,7 +330,9 @@ export {
   NOTHING,
   changedLine,
   chipsOf,
+  costOf,
   cpuOf,
+  decimal,
   duration,
   fitted,
   machineArt,

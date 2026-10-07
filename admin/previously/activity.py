@@ -18,12 +18,15 @@ now: a machine that was busy for an hour this morning carries that hour for as
 long as it stays up. So this keeps the last sample and reports what has changed
 since, which is what a load monitor has always done.
 
-That has two consequences worth knowing. The first answer after the service
+That has three consequences worth knowing. The first answer after the service
 starts has nothing to compare against and says `None` rather than a figure it
-cannot have. And two browsers asking at once shorten each other's window, since
-each call takes the sample the one before it left; the percentages stay right,
-because they are measured against the real time between the two samples rather
-than against an interval anybody assumed.
+cannot have. So does the first answer after nobody has asked for a while,
+because a difference across an hour is the average of that hour, and a window
+opened now would show it as what the board is doing now. And two browsers
+asking at once shorten each other's window, since each call takes the sample
+the one before it left; the percentages stay right, because they are measured
+against the real time between the two samples rather than against an interval
+anybody assumed.
 """
 
 import os
@@ -60,6 +63,12 @@ STARTTIME_FIELD = 19
 #: one. `when` is the monotonic clock, because the wall clock can step.
 _LAST = None
 
+#: How old that sample may be and still be compared against. Activity Monitor
+#: asks once a second while its window is open, so a sample older than this
+#: was left by a window that has since been closed, and what changed since
+#: then is not what the board is doing now.
+COMPARABLE_FOR_SECONDS = 5
+
 #: Which process is the emulator, once it has been found. Checked against its
 #: own name on every reading, so a stale number answers nothing: the scan below
 #: walks a few hundred directories, and doing that once a second would cost
@@ -90,7 +99,7 @@ def readings():
     now = time.monotonic()
     cores = _cpu_times()
     ticks = _emulator_ticks()
-    before = _LAST
+    before = _LAST if _LAST and now - _LAST[0] <= COMPARABLE_FOR_SECONDS else None
     _LAST = (now, cores, ticks)
 
     seconds = now - before[0] if before else 0

@@ -16,7 +16,7 @@ import urllib.request
 import pytest
 
 from conftest import settings_for
-from previously import machines, saved, server
+from previously import files, machines, saved, server
 from previously.password import COOKIE, Attempts, Password, Sessions
 
 #: What the machine in these tests has been given. Long enough to be a password
@@ -680,15 +680,18 @@ def test_every_machine_says_which_case_it_is_in(service):
 
 
 def test_the_applications_are_there_and_say_what_they_open(service):
+    """Every application this tool has crosses the wire with the window it
+    opens, in the order a viewer sorts them. Which applications those are is
+    `files.APPLICATIONS`, so this holds the route to that rather than to a copy
+    of it."""
     _, _, body = fetch(service + "/api/files")
     tree = json.loads(body)
     apps = next(e for e in tree["entries"] if e["name"] == "Apps")
+    names = [entry["name"] for entry in apps["entries"]]
 
-    assert [entry["name"] for entry in apps["entries"]] == [
-        "Config Editor.app", "Grab.app", "Installer.app", "Preferences.app",
-        "Preview.app", "Terminal.app"]
-    assert [entry["opens"] for entry in apps["entries"]] == [
-        "editor", "grab", "installer", "preferences", "preview", "terminal"]
+    assert names == sorted(names)
+    assert {entry["name"]: entry["opens"] for entry in apps["entries"]} == {
+        name: opens for name, _, opens, _ in files.APPLICATIONS}
 
 
 def test_changing_the_machine_needs_a_session(service):

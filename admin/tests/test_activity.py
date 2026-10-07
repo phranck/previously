@@ -99,6 +99,22 @@ def test_two_readings_at_the_same_moment_are_not_a_division_by_zero(monkeypatch,
     assert activity.readings()["cores"] == [0.0]
 
 
+def test_a_sample_left_long_ago_is_not_compared_against(monkeypatch, tmp_path):
+    """Activity Monitor asks only while its window is open. Opened again after
+    an hour, a difference against the sample the last window left would be the
+    average of that hour, drawn as what the board is doing now."""
+    proc(monkeypatch, tmp_path, [(100, 900)])
+    activity.readings()
+    when, cores, ticks = activity._LAST
+    activity._LAST = (when - activity.COMPARABLE_FOR_SECONDS - 1, cores, ticks)
+    proc(monkeypatch, tmp_path, [(150, 950)])
+
+    assert activity.readings()["cores"] is None
+    # And the answer after that compares against this one, as it should.
+    proc(monkeypatch, tmp_path, [(200, 1000)])
+    assert activity.readings()["cores"] == [50.0]
+
+
 def test_a_core_that_appears_keeps_the_shape_of_the_answer(monkeypatch, tmp_path):
     """A core coming out of a sleep state has no figure of its own yet. The
     window keeps one bar per core rather than changing shape underneath

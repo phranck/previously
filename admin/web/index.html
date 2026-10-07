@@ -20,6 +20,8 @@
 
   <nx-menu-item opens="info" name="about" data-t-key="menu.about.key" hidden></nx-menu-item>
   <nx-menu-item opens="files" data-t-key="menu.files.key" data-t="menu.files"></nx-menu-item>
+
+  <nx-menu-item opens="activity" data-t-key="menu.activity-monitor.key" data-t="app.activity-monitor"></nx-menu-item>
   <nx-menu-item opens="preferences" data-t-key="menu.preferences.key" data-t="app.preferences"></nx-menu-item>
   <nx-menu-item name="password" data-t-key="menu.password.key" data-t="menu.password"></nx-menu-item>
 
@@ -33,6 +35,7 @@
   <nx-menu-item for="terminal" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
   <nx-menu-item for="installer" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
   <nx-menu-item for="preferences" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
+  <nx-menu-item for="activity" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
 
   <nx-menu-item for="editor" name="editor-save" data-t-key="menu.save.key" data-t="menu.save"></nx-menu-item>
   <nx-menu-item for="editor" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
@@ -111,6 +114,17 @@
 
     <button id="pi-update" data-t="button.update" hidden></button>
   </div>
+</nx-window>
+
+<nx-window name="activity" data-t-title="app.activity-monitor" fixed
+           x="620" y="300" w="470" closed>
+  <div class="readings" id="activity-cores"></div>
+  <div class="readings">
+    <nx-row><label data-t="pi.memory"></label><nx-leds id="activity-memory"></nx-leds></nx-row>
+    <nx-row><label data-t="activity.load"></label><nx-field id="activity-load">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="pi.emulator"></label><nx-field id="activity-emulator">&mdash;</nx-field></nx-row>
+  </div>
+  <p class="note" id="activity-note"></p>
 </nx-window>
 
 <nx-window name="files" title="Previously" x="180" y="330" w="470" h="480"

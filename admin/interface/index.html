@@ -46,6 +46,12 @@
        for the moment before the page writes it. -->
   <nx-menu-item opens="info" name="about" data-t-key="menu.about.key" hidden></nx-menu-item>
   <nx-menu-item opens="files" data-t-key="menu.files.key" data-t="menu.files"></nx-menu-item>
+  <!-- Its letter, in each language, is one that none of the three tables in
+       chapter 3 of NeXT's interface guidelines claims, wherever the word holds
+       such a letter. Where it does not, it is the m of Monitor, which those
+       tables recommend only for Miniaturize Window, a command this desk does
+       not have. -->
+  <nx-menu-item opens="activity" data-t-key="menu.activity-monitor.key" data-t="app.activity-monitor"></nx-menu-item>
   <nx-menu-item opens="preferences" data-t-key="menu.preferences.key" data-t="app.preferences"></nx-menu-item>
   <nx-menu-item name="password" data-t-key="menu.password.key" data-t="menu.password"></nx-menu-item>
 
@@ -59,6 +65,7 @@
   <nx-menu-item for="terminal" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
   <nx-menu-item for="installer" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
   <nx-menu-item for="preferences" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
+  <nx-menu-item for="activity" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
 
   <nx-menu-item for="editor" name="editor-save" data-t-key="menu.save.key" data-t="menu.save"></nx-menu-item>
   <nx-menu-item for="editor" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
@@ -171,6 +178,25 @@
          this one does not. -->
     <button id="pi-update" data-t="button.update" hidden></button>
   </div>
+</nx-window>
+
+<!-- Activity Monitor, which NeXTSTEP never had. The Raspberry Pi window above
+     answers "how is it now" with a figure every five seconds. This one draws
+     the board live, once a second, and asks nothing while it is closed.
+
+     One row of lamps per core, the way BeOS's Pulse drew a processor, and the
+     page builds those rows because how many cores there are is the board's to
+     say. Under them comes memory, which is a share and a figure at once, and
+     then the two readings that are figures alone. -->
+<nx-window name="activity" data-t-title="app.activity-monitor" fixed
+           x="620" y="300" w="470" closed>
+  <div class="readings" id="activity-cores"></div>
+  <div class="readings">
+    <nx-row><label data-t="pi.memory"></label><nx-leds id="activity-memory"></nx-leds></nx-row>
+    <nx-row><label data-t="activity.load"></label><nx-field id="activity-load">&mdash;</nx-field></nx-row>
+    <nx-row><label data-t="pi.emulator"></label><nx-field id="activity-emulator">&mdash;</nx-field></nx-row>
+  </div>
+  <p class="note" id="activity-note"></p>
 </nx-window>
 
 <!-- Everything this tool holds, arranged the way NeXTSTEP arranged things.

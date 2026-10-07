@@ -8,6 +8,7 @@ export const fr = {
   "menu.about": "À propos de {machine}",
   "menu.about.key": "r",
   "menu.files.key": "f",
+  "menu.activity-monitor.key": "u",
   "menu.preferences.key": "p",
   "menu.password.key": "m",
   "menu.picture": "Image",
@@ -130,6 +131,7 @@ export const fr = {
   "button.save-as": "Enregistrer sous...",
 
   /* --- the applications, as they are called in words ------------------ */
+  "app.activity-monitor": "Moniteur d’activité",
   "app.config-editor": "Éditeur de configuration",
   "app.grab": "Grab",
   "app.preview": "Preview",
@@ -320,6 +322,13 @@ export const fr = {
   "pi.update.asked": "Le Pi a été prié de la mettre en place.",
   "pi.update.away": "Mise en place, ce qui arrête cet outil et démarre le nouveau. Cette page n'a rien à qui parler jusqu'à son retour.",
   "pi.update.done": "Fait. Cette page parle à {version}.",
+
+  /* --- Activity Monitor ------------------------------------------------- */
+  "activity.core": "Cœur {number}",
+  "activity.percent": "{percent} %",
+  "activity.load": "Charge",
+  "activity.load.figure.one": "{one} ; {five} ; {fifteen} sur {cores} cœur",
+  "activity.load.figure.other": "{one} ; {five} ; {fifteen} sur {cores} cœurs",
 
   "throttling.under-voltage": "sous-tension",
   "throttling.frequency-capped": "fréquence plafonnée",

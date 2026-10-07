@@ -1,0 +1,56 @@
+/* --- nx-leds ------------------------------------------------------------- */
+
+/* A row of lamps on a dark field, lighting from the left as whatever it
+   measures fills up. NeXTSTEP had nothing of the kind, so this is BeOS's
+   Pulse, which drew each processor as a run of LEDs, built from this desk's
+   own parts: the sunken edge every reading stands in, and the lamp the
+   readings already use for a state, lit in the same green and dark in the
+   same gray. A lit lamp therefore means here what it means beside "running".
+
+   The lamps are whole pixels at a size stated here, not shares of whatever
+   width the row is given. A lamp of 9.6 pixels is drawn as a blend of two
+   columns at each edge, and twenty of those read as a smear rather than as a
+   row of lamps.
+
+   The words beside the row belong to whoever uses it, as the unit beside a
+   slider does, so the row says nothing about processors or memory. */
+nx-leds {
+  --led: 8px;
+  --led-gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The field. Six pixels of it around eight of lamp inside a one pixel edge
+   is 22, which is the height of the nx-field a reading is written in, so a
+   row with a bar in it and a row with a figure in it stand the same height
+   and a column of both reads as one list. */
+nx-leds .lamps {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--led-gap);
+  padding: 6px;
+  background: var(--black);
+  border: 1px solid;
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
+}
+
+nx-leds .led {
+  width: var(--led);
+  height: var(--led);
+  background: var(--dark);
+}
+
+nx-leds .led[lit] { background: var(--live); }
+
+/* The figure, which changes once a second, so its digits are held to one
+   width and the words after them do not shift about while somebody reads. */
+nx-leds .says {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
