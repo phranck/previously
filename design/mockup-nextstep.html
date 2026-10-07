@@ -1386,6 +1386,63 @@ nx-slider .unit {
   nx-slider .knob { --slide-time: 40ms; }
 }
 
+/* --- nx-leds ------------------------------------------------------------- */
+
+/* A row of lamps on a dark field, lighting from the left as whatever it
+   measures fills up. NeXTSTEP had nothing of the kind, so this is BeOS's
+   Pulse, which drew each processor as a run of LEDs, built from this desk's
+   own parts: the sunken edge every reading stands in, and the lamp the
+   readings already use for a state, lit in the same green and dark in the
+   same gray. A lit lamp therefore means here what it means beside "running".
+
+   The lamps are whole pixels at a size stated here, not shares of whatever
+   width the row is given. A lamp of 9.6 pixels is drawn as a blend of two
+   columns at each edge, and twenty of those read as a smear rather than as a
+   row of lamps.
+
+   The words beside the row belong to whoever uses it, as the unit beside a
+   slider does, so the row says nothing about processors or memory. */
+nx-leds {
+  --led: 8px;
+  --led-gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The field. Six pixels of it around eight of lamp inside a one pixel edge
+   is 22, which is the height of the nx-field a reading is written in, so a
+   row with a bar in it and a row with a figure in it stand the same height
+   and a column of both reads as one list. */
+nx-leds .lamps {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--led-gap);
+  padding: 6px;
+  background: var(--black);
+  border: 1px solid;
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
+}
+
+nx-leds .led {
+  width: var(--led);
+  height: var(--led);
+  background: var(--dark);
+}
+
+nx-leds .led[lit] { background: var(--live); }
+
+/* The figure, which changes once a second, so its digits are held to one
+   width and the words after them do not shift about while somebody reads. */
+nx-leds .says {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
 /* --- the terminal ------------------------------------------------------- */
 
 /* NeXT's Terminal was black on white, so this one is too, in the face base.css
@@ -1507,6 +1564,7 @@ nx-slider .unit {
  *   nx-viewer                   the File Viewer, as four bands in one window
  *   panel                       nx-portrait, nx-row and nx-field, for an info panel
  *   nx-slider                   a knob in a trough, moving between the steps it is given
+ *   nx-leds                     a row of lamps lighting from the left, for a share of something
  *   terminal                    a text view, black on white
  *
  * They use the light DOM rather than a shadow root, so the stylesheet
@@ -3513,6 +3571,96 @@ class NxSlider extends HTMLElement {
   }
 }
 
+/* --- nx-leds ------------------------------------------------------------- */
+
+/** How many lamps a row has where it does not say. Twenty is one lamp for
+ *  every five per cent, which is as fine as an eye reads a row of lamps at a
+ *  glance and still fits beside a label in a panel. */
+const LEDS_IN_A_ROW = 20;
+
+/**
+ * A row of lamps lighting from the left, for a share of something.
+ *
+ * It holds no scale beyond the share itself: whoever uses it hands over a
+ * percentage and the words for it, and the words stay with whoever owns them.
+ * It is drawn once for each value it is given and never animated, because
+ * what it shows changes once a second at most and a lamp has no state
+ * between on and off.
+ *
+ * @attr lamps - How many lamps the row has. LEDS_IN_A_ROW where it does not
+ *   say.
+ */
+class NxLeds extends HTMLElement {
+  connectedCallback() {
+    if (this.ready) return;
+    this.ready = true;
+
+    this.row = document.createElement("div");
+    this.row.className = "lamps";
+    const count = Number(this.getAttribute("lamps")) || LEDS_IN_A_ROW;
+    for (let lamp = 0; lamp < count; lamp += 1) {
+      const led = document.createElement("i");
+      led.className = "led";
+      this.row.append(led);
+    }
+
+    /* Beside the row rather than over it, the way the unit stands beside a
+       slider, so the lamps are never covered by what they mean. */
+    this.figure = document.createElement("span");
+    this.figure.className = "says";
+    this.figure.textContent = this.words ?? "";
+
+    this.append(this.row, this.figure);
+    this.setAttribute("role", "meter");
+    this.setAttribute("aria-valuemin", "0");
+    this.setAttribute("aria-valuemax", "100");
+    this.draw();
+  }
+
+  /** @returns {number|null} The share last given, in per cent. */
+  get value() {
+    return this.share ?? null;
+  }
+
+  /**
+   * @param {number|null} percent - How full whatever it measures is, from 0
+   *   to 100. Anything outside that lights all of the row or none of it, and
+   *   null is a reading that is not there, which lights nothing.
+   *
+   * Kept even before the row is on the page, and drawn once it arrives, so
+   * whoever builds one can fill it in before or after putting it somewhere.
+   */
+  set value(percent) {
+    this.share = Number.isFinite(percent) ? percent : null;
+    this.draw();
+  }
+
+  /** @param {string} words - What the share is, in the words of whoever
+   *  measures it, such as `12 %`. Written beside the row. */
+  set says(words) {
+    this.words = words;
+    if (this.figure) this.figure.textContent = words;
+    this.setAttribute("aria-valuetext", words);
+  }
+
+  /** Lights as many lamps from the left as the share is of the row.
+   *
+   *  Rounded to the nearest lamp, so a row of twenty lights its first lamp at
+   *  two and a half per cent and its last at ninety-seven and a half. */
+  draw() {
+    if (!this.row) return;
+    const lamps = [...this.row.children];
+    const share = this.value === null ? null : Math.min(Math.max(this.value, 0), 100);
+    const lit = share === null ? 0 : Math.round(share / 100 * lamps.length);
+    for (const [index, lamp] of lamps.entries()) {
+      lamp.toggleAttribute("lit", index < lit);
+    }
+
+    if (share === null) this.removeAttribute("aria-valuenow");
+    else this.setAttribute("aria-valuenow", String(share));
+  }
+}
+
 /**
  * Defines every element the kit brings, and picks the front window.
  *
@@ -3533,6 +3681,7 @@ export function defineTheKit() {
   ["nx-ask", NxAsk],
   ["nx-viewer", NxViewer],
   ["nx-slider", NxSlider],
+  ["nx-leds", NxLeds],
   ]) {
     customElements.define(tag, type);
   }
@@ -3547,10 +3696,12 @@ export {
   DESK_WAS_NEW,
   FLIGHT_MS,
   GRIP_PX,
+  LEDS_IN_A_ROW,
   NEAR_FLIGHT_MS,
   NxAsk,
   NxDock,
   NxFloor,
+  NxLeds,
   NxMenu,
   NxMenuItem,
   NxScroller,

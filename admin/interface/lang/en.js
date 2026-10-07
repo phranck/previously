@@ -16,6 +16,7 @@ export const en = {
   "menu.about": "About {machine}",
   "menu.about.key": "a",
   "menu.files.key": "f",
+  "menu.activity-monitor.key": "m",
   "menu.preferences.key": "p",
   "menu.password.key": "s",
   "menu.picture": "Picture",
@@ -142,6 +143,7 @@ export const en = {
   "button.save-as": "Save As...",
 
   /* --- the applications, as they are called in words ------------------ */
+  "app.activity-monitor": "Activity Monitor",
   "app.config-editor": "Config Editor",
   "app.grab": "Grab",
   "app.preview": "Preview",
@@ -332,6 +334,13 @@ export const en = {
   "pi.update.asked": "The Pi has been asked to put it in place.",
   "pi.update.away": "Putting it in place, which stops this tool and starts the new one. This page has nothing to talk to until it comes back.",
   "pi.update.done": "Done. This page is talking to {version}.",
+
+  /* --- Activity Monitor ------------------------------------------------- */
+  "activity.core": "Core {number}",
+  "activity.percent": "{percent} %",
+  "activity.load": "Load",
+  "activity.load.figure.one": "{one}, {five}, {fifteen} on {cores} core",
+  "activity.load.figure.other": "{one}, {five}, {fifteen} on {cores} cores",
 
   "throttling.under-voltage": "under-voltage",
   "throttling.frequency-capped": "clock capped",

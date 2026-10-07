@@ -69,7 +69,7 @@ python3 build.py            # or: make -C ../admin kit
 
 The two files it writes, `../admin/interface/nextstep.css` and `../admin/interface/nextstep.js`, say at the top that they are generated. `../admin/tests/test_kit.py` fails when either has been edited by hand, which is what makes one source safe to rely on.
 
-What the parts do is tested in `../admin/tests/kit/`, against the script `build.py` wrote, so a change to a part is tested once `make kit` has run. Those tests put the elements on a document in Node and read back what they made of their markup: a scroller drives the view it wraps, an opened window comes to the front, the menu shows one owner's entries, and a tile lands only on a free slot. `make -C ../admin check` runs them with everything else.
+What the parts do is tested in `../admin/tests/kit/`, against the script `build.py` wrote, so a change to a part is tested once `make kit` has run. Those tests put the elements on a document in Node and read back what they made of their markup: a scroller drives the view it wraps, an opened window comes to the front, the menu shows one owner's entries, a tile lands only on a free slot, and a row of lamps lights as far as its share reaches. `make -C ../admin check` runs them with everything else.
 
 What is not in the kit is what only one application has. The admin keeps that in `../admin/interface/app.css`, and this draft keeps its own beside the marks in the file.
 
@@ -95,7 +95,7 @@ The NeXTSTEP draft is a set of custom elements that plug into one another:
 
 The last two bands sit in scrollers, and each says which scrollers it has. The path only ever grows sideways, so it has the one along its foot; the contents have both. A trough is there whether or not there is anything to scroll, because in the original it is part of the view rather than something that appears when it is needed.
 
-The rest: `nx-menu` with `nx-menu-item`, `nx-dock` with `nx-tile`, `nx-floor` for the tiles that are not in the dock, `nx-shelf` with `nx-thing`, and `nx-portrait`, `nx-row` and `nx-field` for panels. They use the light DOM rather than a shadow root, so one stylesheet and one set of design tokens reach all of them.
+The rest: `nx-menu` with `nx-menu-item`, `nx-dock` with `nx-tile`, `nx-floor` for the tiles that are not in the dock, `nx-shelf` with `nx-thing`, `nx-slider` for a value on a scale, `nx-leds` for a share drawn as a row of lamps, and `nx-portrait`, `nx-row` and `nx-field` for panels. They use the light DOM rather than a shadow root, so one stylesheet and one set of design tokens reach all of them.
 
 ## How a tile behaves
 

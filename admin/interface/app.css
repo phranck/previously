@@ -506,6 +506,14 @@ nx-row .beside {
 nx-row .beside nx-field { flex: 1 1 auto; min-width: 0; }
 
 
+/* --- Activity Monitor ----------------------------------------------------- */
+
+/* The cores are one instrument and the readings under them another, so the
+   two stand apart by the step an info panel leaves between its picture and
+   the readings beside it. */
+#activity-cores + .readings { margin-top: var(--portrait-gap); }
+
+
 /* --- a document in preview ------------------------------------------------ */
 
 :root {

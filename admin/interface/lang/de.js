@@ -8,6 +8,7 @@ export const de = {
   "menu.about": "Über {machine}",
   "menu.about.key": "b",
   "menu.files.key": "d",
+  "menu.activity-monitor.key": "k",
   "menu.preferences.key": "p",
   "menu.password.key": "s",
   "menu.picture": "Bild",
@@ -130,6 +131,7 @@ export const de = {
   "button.save-as": "Sichern unter...",
 
   /* --- the applications, as they are called in words ------------------ */
+  "app.activity-monitor": "Aktivitätsanzeige",
   "app.config-editor": "Konfigurationseditor",
   "app.grab": "Grab",
   "app.preview": "Preview",
@@ -320,6 +322,13 @@ export const de = {
   "pi.update.asked": "Der Pi wurde gebeten, sie einzuspielen.",
   "pi.update.away": "Wird eingespielt, dabei wird dieses Werkzeug gestoppt und das neue gestartet. Diese Seite hat bis dahin nichts, mit dem sie sprechen kann.",
   "pi.update.done": "Erledigt. Diese Seite spricht mit {version}.",
+
+  /* --- Activity Monitor ------------------------------------------------- */
+  "activity.core": "Kern {number}",
+  "activity.percent": "{percent} %",
+  "activity.load": "Last",
+  "activity.load.figure.one": "{one}; {five}; {fifteen} bei {cores} Kern",
+  "activity.load.figure.other": "{one}; {five}; {fifteen} bei {cores} Kernen",
 
   "throttling.under-voltage": "Unterspannung",
   "throttling.frequency-capped": "Takt gedeckelt",

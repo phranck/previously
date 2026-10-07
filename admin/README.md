@@ -16,7 +16,7 @@ make browser      # what only a browser can show, in Safari Technology Preview
 
 The rest is the system's own and is assumed rather than installed: `systemd` for `systemctl`, `procps` for `pgrep` and `ps`, `raspi-utils-core` for `vcgencmd`, and `python3`. A Pi without `vcgencmd` still runs this; the window shows one reading fewer, because every reading in `pi.py` answers with nothing rather than failing.
 
-`activity.py` needs none of them. It answers the same kind of question once a second and reads `/proc` alone, because what is cheap at one answer every five seconds is not cheap at one a second. Measured on a Pi 5: a whole reading costs 0.42 ms while the emulator runs, against 9.9 ms for an answer to `/api/pi`, which forks `vcgencmd` twice and `ps` once at 1.5 ms a fork. Every figure it gives is the difference between two readings, since the kernel's counters are totals since the board started and a total says nothing about now.
+`activity.py` needs none of them. It answers the same kind of question once a second and reads `/proc` alone, because what is cheap at one answer every five seconds is not cheap at one a second. Measured on a Pi 5: a whole reading costs 0.42 ms while the emulator runs, against 9.9 ms for an answer to `/api/pi`, which forks `vcgencmd` twice and `ps` once at 1.5 ms a fork. Every figure it gives is the difference between two readings, since the kernel's counters are totals since the board started and a total says nothing about now. A reading older than five seconds is not compared against, because it was left by a window that has since been closed, and a difference across that pause would be its average rather than the present.
 
 What each is for: `cage` is the compositor the emulator runs in, `xwayland` is the X server cage runs it on, `7zip` unpacks the disk archive, `xdotool` presses the emulator's keys, and ImageMagick's `import` reads its screen, which is the only way to tell a machine that booted from one that did not. Both of the last two reach the emulator through that X server.
 
@@ -427,9 +427,9 @@ Two of those paths are worth telling apart. `state_directory` is `/var/lib/previ
 
 ## The interface
 
-`interface/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-tile`, `nx-floor`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`, `nx-viewer`.
+`interface/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-tile`, `nx-floor`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`, `nx-viewer`, `nx-slider`, `nx-leds`.
 
-**An application here is its window.** The Apps folder holds three, and one is running when the window it opens is open, so closing that window is quitting it. NeXTSTEP kept an application alive without windows; this tool has nothing for such an application to be, and a light saying it was running would mean nothing.
+**An application here is its window.** One is running when the window it opens is open, so closing that window is quitting it. NeXTSTEP kept an application alive without windows; this tool has nothing for such an application to be, and a light saying it was running would mean nothing.
 
 What follows is what the dock does: the Workspace tile is Previously itself and never carries the three marks, the Config Editor carries them while its window is closed and loses them while it is open, and everything else puts its tile on the floor of the screen while it is open, because those are not in the dock.
 
@@ -459,6 +459,22 @@ NeXTSTEP's Preferences is a row of module pictures across the top and the chosen
 
 The module is the one NeXTSTEP called Localization, and it offers the six languages. Everything it shows comes out of the disk image rather than from us: `Localization.tiff` is the picture Preferences.app carried for it, the window's title is what each language's `preferences.strings` called the application, and the module's name is the `Long Name` in the `Info` file of its own bundle. Three of the six left the application's name untranslated, so the window says `Preferences` in French, Italian and Swedish and `Präferenzen` in German, exactly as it did.
 
+## Activity Monitor
+
+NeXTSTEP had no Activity Monitor, and a Pi that boots straight into an emulator needs one. Nobody watches such a machine, and the Raspberry Pi window answers how it is doing with a figure every five seconds. Activity Monitor draws it live.
+
+**One row of lamps per core.** Each core's load is a run of twenty small square lamps on a dark field, lit from the left, the way BeOS's Pulse drew a processor. One lamp is five per cent, and the figure stands beside the row. How many rows there are is the board's to say, so a Pi 5 draws four and a two-core board draws two.
+
+**Under the cores, the readings that are not the load of one core.** Memory is a row of lamps for what is in use, with what is free beside it in the words the Raspberry Pi window uses. The three load averages are figures, read against the number of cores, because 4.0 is a machine working flat out on four cores and one four times oversubscribed on one. The last line is what the emulator costs. Its percentage is of one core, so around 150 is ordinary with a NeXTdimension.
+
+**It asks once a second while its window is open, and never while it is closed.** The answer comes from `GET /api/activity`, which reads `/proc` and forks nothing. Each figure is a difference between two readings, so the first answer after the window opens has none, and the rows stand dark for that one second.
+
+**The row of lamps is `nx-leds`, a part of the kit.** It takes a share in per cent and the words for it, and it knows nothing about processors or memory. Its lamps are whole pixels at a size the part states, because a lamp sized as a share of the row's width blends into its neighbor at every edge. A lit lamp is the green and an unlit one the gray of the lamp beside "running" in the Info window, so lit means the same thing in both places.
+
+**Its name in words is the one each language already knows.** The bundle is `Activity Monitor.app` in every language. In words it is what macOS calls its own Activity Monitor in each of the six, as that application's `InfoPlist.loctable` has it. It wears the screen Preferences drew for its Monitor module, because NeXTSTEP drew no picture for an application it never had.
+
+**Its letter in the Workspace menu stays out of NeXT's tables where it can.** Chapter 3 of the interface guidelines reserves some letters, requires others once a feature exists, and recommends a third set. Where the name holds a letter none of those tables claims, that letter is used. Elsewhere it is the m of Monitor, which the tables recommend only for Miniaturize Window, a command this desk does not have.
+
 ## What it shows
 
 Previously arranges what it has the way NeXTSTEP arranged things, which is a place with places in it. `files.py` builds that tree and `/api/files` hands it over whole, because it is small enough that a route per folder would only add round trips.
@@ -466,6 +482,7 @@ Previously arranges what it has the way NeXTSTEP arranged things, which is a pla
 ```
 Previously          the root, drawn as a home the way NeXTSTEP drew one
   Apps
+    Activity Monitor.app
     Config Editor.app
     Grab.app
     Installer.app
@@ -486,9 +503,9 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
 
 **What an application is called in words is another thing**, and NeXTSTEP translated that one: the bundle is `Preferences.app` and the window over it says `Präferenzen`. Both are true at once. The words are used in the window's title, in the menu that opens it, and in a panel that talks about it.
 
-**The sentence around the names is read in whichever language is chosen**, so the line under the shelf says `Apps: 3 Einträge` and `System: 11 Einträge, nur lesbar`.
+**The sentence around the names is read in whichever language is chosen**, so the line under the shelf says `Apps: 7 Einträge` and `System: 11 Einträge, nur lesbar`.
 
-**An application in that folder opens its window**, and one whose window is not built yet says so. All five are built, and a test holds each one's `opens` to a window the markup actually has.
+**An application in that folder opens its window**, and one whose window is not built yet says so. Every one of them is built, and a test holds each one's `opens` to a window the markup actually has.
 
 **The User folder is not there until it holds something.** An empty folder promises a place to put things, and the Config Editor is what puts one there.
 
@@ -517,7 +534,7 @@ brew install esbuild                 # macOS
 npm install --global esbuild         # anywhere with node
 ```
 
-`interface/app.css` is this application's own. What goes in it is what only Previously has, which is its Preferences window and its Config Editor.
+`interface/app.css` is this application's own. What goes in it is what only Previously has, such as its Preferences window, its Config Editor, its Installer and Activity Monitor.
 
 `../design/extract.py` says where the icons came from, and `../design/bootpicture.py` where the two machines came from.
 

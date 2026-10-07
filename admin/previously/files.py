@@ -1,11 +1,12 @@
 """What Previously shows as a filesystem, which is not one.
 
 Nothing here is on the card. These are the things this tool has, arranged the
-way NeXTSTEP arranged things, because a person choosing between eleven machines
-and three applications is choosing in a place rather than reading a list.
+way NeXTSTEP arranged things, because a person choosing among machines and
+applications is choosing in a place rather than reading a list.
 
     Previously          the root, drawn as a home the way NeXTSTEP drew one
       Apps
+        Activity Monitor.app
         Config Editor.app
         Grab.app
         Installer.app
@@ -119,14 +120,17 @@ OTHER_FILE_ICON = "defaultIcon"
 
 #: Which files are pictures, and therefore wear the one and open in Preview.
 PICTURE_SUFFIXES = (".png", ".tiff", ".tif", ".jpg", ".jpeg", ".gif")
-PREFERENCES_ICON = "Preferences"
-TERMINAL_ICON = "Terminal"
+
+#: What Activity Monitor wears. NeXTSTEP had no such application and so no
+#: picture of one. It wears the screen Preferences drew for its own Monitor
+#: module, because a monitor is what it is.
+ACTIVITY_MONITOR_ICON = "Monitor"
 
 #: The applications, in the order a viewer sorts them. Each carries its
 #: picture, the window it opens and the name of what it is called in words,
-#: which is not what its bundle is called. The editor is #50, and until it
-#: exists choosing it says so.
+#: which is not what its bundle is called.
 APPLICATIONS = (
+    ("Activity Monitor.app", ACTIVITY_MONITOR_ICON, "activity", "app.activity-monitor"),
     ("Config Editor.app", DEFAULT_APP_ICON, "editor", "app.config-editor"),
     ("Grab.app", GRAB_ICON, "grab", "app.grab"),
     ("Installer.app", INSTALLER_ICON, "installer", "app.installer"),

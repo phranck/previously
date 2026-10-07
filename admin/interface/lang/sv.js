@@ -8,6 +8,7 @@ export const sv = {
   "menu.about": "Om {machine}",
   "menu.about.key": "o",
   "menu.files.key": "f",
+  "menu.activity-monitor.key": "k",
   "menu.preferences.key": "p",
   "menu.password.key": "l",
   "menu.picture": "Bild",
@@ -130,6 +131,7 @@ export const sv = {
   "button.save-as": "Spara som...",
 
   /* --- the applications, as they are called in words ------------------ */
+  "app.activity-monitor": "Aktivitetskontroll",
   "app.config-editor": "Konfigurationsredigerare",
   "app.grab": "Grab",
   "app.preview": "Preview",
@@ -320,6 +322,13 @@ export const sv = {
   "pi.update.asked": "Pi:n har blivit ombedd att lägga in den.",
   "pi.update.away": "Läggs in, vilket stoppar det här verktyget och startar det nya. Den här sidan har inget att tala med tills det kommer tillbaka.",
   "pi.update.done": "Klart. Den här sidan talar med {version}.",
+
+  /* --- Activity Monitor ------------------------------------------------- */
+  "activity.core": "Kärna {number}",
+  "activity.percent": "{percent} %",
+  "activity.load": "Belastning",
+  "activity.load.figure.one": "{one}; {five}; {fifteen} på {cores} kärna",
+  "activity.load.figure.other": "{one}; {five}; {fifteen} på {cores} kärnor",
 
   "throttling.under-voltage": "underspänning",
   "throttling.frequency-capped": "frekvensen begränsad",

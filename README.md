@@ -31,7 +31,7 @@ A step that fails puts back what it changed. The Installer window in the admin t
 
 ## The admin
 
-Machines, drives and displays are things you pick rather than values you type. Complete configurations move by drag and drop, and any of them can be changed and kept as your own. It answers on the network, so the Pi never needs a keyboard of its own.
+Machines, drives and displays are things you pick rather than values you type. Complete configurations move by drag and drop, and any of them can be changed and kept as your own. It answers on the network, so the Pi never needs a keyboard of its own. Its Activity Monitor shows what every core of the Pi is doing as a row of LEDs, once a second.
 
 None of it is approximated: the icons are the original files out of a NeXTSTEP 3.3 disk image, the window buttons are cut pixel for pixel out of the running system, and every color, edge and raster is measured off it.
 

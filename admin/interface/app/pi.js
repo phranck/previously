@@ -3,7 +3,7 @@
 import { t } from "../strings.js";
 import { show, showState } from "./page.js";
 import { allowActions } from "./status.js";
-import { NOTHING, duration, named, released, when } from "./words.js";
+import { NOTHING, costOf, duration, named, released, when } from "./words.js";
 
 /** How often the status is fetched. A machine whose job is to sit there does
  *  not repay a faster poll than this. */
@@ -44,15 +44,7 @@ function drawPi(pi) {
     showState("pi-power", true, t("pi.power.fine"));
   }
 
-  /* Around 150 per cent of one core is ordinary with a NeXTdimension, because
-     two threads run, so the figure is stated without judging it. */
-  show("pi-emulator", pi.emulator
-    ? t("pi.emulator.running", {
-        percent: Math.round(pi.emulator.cpu_percent),
-        mb: pi.emulator.memory_mb,
-        uptime: duration(pi.emulator.uptime_seconds),
-      })
-    : t("pi.emulator.stopped"));
+  show("pi-emulator", costOf(pi.emulator));
 
   /* The one that looks like nothing: the card is there, the configuration
      still names it, and the stream was closed when the speaker was moved. */
