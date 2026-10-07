@@ -16,12 +16,12 @@ Six tools do that work:
 |---|---|
 | `ufs.py` | Reads a NeXT UFS filesystem: 4.3BSD FFS, big endian, behind a `dlV3` disk label. |
 | `nxtiff.py` | Decodes NeXT's TIFFs, which no current library reads: two bits per sample, alpha in its own plane, and a second copy of each picture at four bits per color channel. |
-| `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `parts/`. |
+| `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `../admin/web/parts/`. |
 | `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
 | `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their license, into `../admin/web/fonts/`. |
-| `build.py` | Puts the kit together, writes the two files the admin serves, and bakes `parts/` and those faces into the mockup as data URIs so it stays one file. |
+| `build.py` | Puts the kit together, writes the two files the admin serves, and bakes the pictures and those faces into the mockup as data URIs so it stays one file. |
 
-`parts/` is committed, so the draft works without running any of this. Run it again when a picture needs to change:
+**Every picture lives in `../admin/web/parts/`, and nowhere else.** That is the folder the admin serves them from, and a package is built out of `admin/` alone. Every tool here writes into it, and `build.py` bakes the mockup from it, as it bakes the Terminal's face from `../admin/web/fonts/`. The folder is committed, so the draft works without running any of this. Run it again when a picture needs to change:
 
 ```bash
 python3 extract.py ~/nextstep/NS33_2GB.dd screenshot.png
@@ -105,7 +105,7 @@ An application that is running and is not in the dock puts its tile on the floor
 
 ## A note on the icons and the face
 
-The pictures in `parts/` are NeXT's, and NeXT's assets belong to Apple. They stay, and this repository can carry them: that was weighed and decided in #8 on 14 September 2026.
+The pictures in `../admin/web/parts/` are NeXT's, and NeXT's assets belong to Apple. They stay, and this repository can carry them: that was weighed and decided in #8 on 14 September 2026.
 
 Thirteen are read out of the Workspace Manager's own bundle in a NeXTSTEP 3.3 disk image, one out of Terminal.app and two out of Preferences.app in the same image. Three are cut from a screenshot of the running system, because NeXTSTEP drew its window buttons and dock marks in PostScript and they exist as no file at all. Two come from the boot ROM, through the emulator's own grab.
 

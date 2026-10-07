@@ -6,10 +6,10 @@ element and that component's styles beside it. This writes the two files the
 admin's interface is built from, and the same two into the mockup, so a
 component is edited in one place and cannot drift from itself.
 
-The pictures come from two places, and extract.py puts them there: the icons
-out of a NeXTSTEP 3.3 disk image, and the interface parts out of a screenshot
-of the running system. Into the mockup they go as data URIs, which is what
-keeps it one file that opens anywhere.
+The pictures come from two places, and extract.py puts both into the folder
+the admin serves them from: the icons out of a NeXTSTEP 3.3 disk image, and
+the interface parts out of a screenshot of the running system. Into the mockup
+they go as data URIs, which is what keeps it one file that opens anywhere.
 
     python3 build.py
 """
@@ -20,7 +20,11 @@ import re
 
 HERE = pathlib.Path(__file__).parent
 KIT = HERE / "kit"
-PARTS = HERE / "parts"
+#: The pictures, in the one folder that holds them: the one the admin serves
+#: them from, because a package is built out of admin/ alone. extract.py,
+#: makepng.py and bootpicture.py write there, and the mockup is baked from
+#: there, as it is from the Terminal's face below.
+PARTS = HERE.parent / "admin" / "web" / "parts"
 MOCKUP = HERE / "mockup-nextstep.html"
 #: Where the admin's interface is written. The kit goes there rather than into
 #: what is served, because admin/build_web.py is what puts the served files
