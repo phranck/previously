@@ -6,6 +6,7 @@ line, the headers and the body.
 """
 
 import json
+import subprocess
 import threading
 import http.client
 import http.server
@@ -25,12 +26,21 @@ PASSWORD = "a good password"
 
 
 @pytest.fixture
-def service(tmp_path, readable_config):
+def service(tmp_path, readable_config, monkeypatch):
     """A running service on a port the system picks, torn down afterwards.
 
     Claimed already, because that is the state nearly every route is about. The
     few tests that are about claiming one make their own.
+
+    What dpkg and apt would say is answered here too, as a machine with no
+    emulator and an archive that offers none. Several routes ask, and left real
+    they would ask the package database of whatever runs this suite, at
+    whatever speed that machine answers. A test about packages says what it
+    needs with its own monkeypatch, which comes after this one and wins.
     """
+    monkeypatch.setattr(server.setup, "installed", lambda package: False)
+    monkeypatch.setattr(server.setup, "version_of", lambda package: None)
+    monkeypatch.setattr(server.setup, "newest_of", lambda package: None)
     server.Handler.settings = settings_for(tmp_path)
     server.Handler.password = Password(tmp_path / "password")
     server.Handler.password.set(PASSWORD)
@@ -104,6 +114,29 @@ def test_what_every_core_is_doing_is_open(service):
 
     assert status == 200
     assert set(payload) == {"cores", "load", "memory", "emulator"}
+
+
+def test_no_route_asks_the_package_database_of_the_machine_running_the_suite(
+        service, tmp_path, monkeypatch):
+    """What dpkg and apt say depends on whatever runs this suite, and so does
+    how long they take to say it. On a GitHub runner `apt-cache policy` can
+    take longer than the five seconds a request here is given, which fails a
+    test about something else entirely."""
+    asked = []
+    running = subprocess.run
+
+    def watched(command, *args, **kwargs):
+        if command and command[0] in ("dpkg", "dpkg-query", "apt-cache"):
+            asked.append(command)
+        return running(command, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", watched)
+    for route in ["/api/status", "/api/setup"]:
+        fetch(service + route)
+    a_disk(tmp_path)
+    tell(service, "/api/disk/backup", {"system": "nextstep-3.3"}).close()
+
+    assert asked == []
 
 
 def test_nothing_is_cached(service):
