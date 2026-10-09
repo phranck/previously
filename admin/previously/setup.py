@@ -1397,9 +1397,11 @@ def _written(machine, disk):
     @returns str
 
     Only the keys that differ from what Previous writes by default, plus the
-    machine itself. Everything else it fills in the first time it exits,
+    machine itself. Everything else Previous takes from its own defaults,
     including the path to the ROM it boots from, which its own package
-    installs.
+    installs. Previous writes the file back only from "Save config" in its own
+    dialog, so it stays this short, and `config.write` puts a key it lacks into
+    the section that key belongs to.
     """
     sections = {
         "ConfigDialog": {"bShowConfigDialogAtStartup": "FALSE"},

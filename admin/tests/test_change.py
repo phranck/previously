@@ -173,8 +173,8 @@ def test_a_machine_is_written_and_comes_back(settings, machine):
 
 
 def test_the_guest_is_shut_down_before_anything_is_written(settings, machine):
-    """Previous writes previous.cfg from memory when it exits, so a change made
-    underneath a running emulator is thrown away by the emulator itself."""
+    """Previous reads previous.cfg only when it starts, so the guest goes down
+    properly first and the new machine is the one that comes back."""
     written = []
     original = config.write
 
@@ -307,7 +307,8 @@ def test_a_name_that_is_not_a_machine_changes_nothing(settings, machine):
 
 
 def test_a_guest_that_will_not_shut_down_leaves_the_file_alone(settings, machine):
-    """Writing underneath a running emulator loses the change when it exits."""
+    """A file written underneath a guest that will not go down would describe a
+    machine nobody has tried, so nothing is written."""
     before = settings.previous_config.read_text()
     machine.press_power = lambda: True   # key sent, guest ignores it
 

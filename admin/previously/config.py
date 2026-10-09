@@ -390,6 +390,13 @@ def write(path, settings):
     appears in more than one of them. nMemoryBankSize0 is the machine's first
     memory bank under [Memory], and [Dimension] carries its own board memory
     under names that begin the same way.
+
+    A key the file does not carry yet goes into the section it belongs to,
+    after that section's last line. Previous reads a section up to the next header, so a
+    key written anywhere below a later header belongs to that one and is never
+    read. Files without some keys are ordinary: Previous writes its file only
+    from "Save config" in its own dialog, and a configuration `setup.py`
+    writes holds only what differs from Previous's defaults.
     """
     try:
         lines = path.read_text().splitlines(keepends=True)
@@ -400,10 +407,14 @@ def write(path, settings):
     changed = 0
     section = None
     out = []
+    # Where the section being walked ends, as the index in `out` of its last
+    # line that is not blank. Its missing keys go in right after it.
+    section_end = None
 
     for line in lines:
         stripped = line.strip()
         if stripped.startswith("[") and stripped.endswith("]"):
+            changed += _inserted(out, section_end, wanted.get(section))
             section = stripped[1:-1]
         elif section in wanted and "=" in line:
             key = line.split("=", 1)[0].strip()
@@ -414,12 +425,17 @@ def write(path, settings):
                     changed += 1
                 line = replacement
         out.append(line)
+        if stripped:
+            section_end = len(out) - 1
+    changed += _inserted(out, section_end, wanted.get(section))
 
-    # Anything the file did not already carry. Previous writes every key it
-    # knows, so this is for a file somebody has trimmed by hand.
+    # A section the file does not have at all, which goes at the end with its
+    # header. Every section the file does have has had its keys by now.
     for name, remaining in wanted.items():
         if remaining:
-            out.extend(_appended(name, remaining, out))
+            _ended(out)
+            out.append("\n[%s]\n" % name)
+            out.extend("%s = %s\n" % pair for pair in remaining.items())
             changed += len(remaining)
 
     try:
@@ -429,23 +445,39 @@ def write(path, settings):
     return changed
 
 
-def _appended(name, keys, out):
-    """The lines for keys whose section did not hold them.
+def _inserted(out, after, keys):
+    """Puts the keys a section lacks at the end of that section.
 
-    @param name - The section they belong to.
-    @param keys - What is left over.
-    @param out - The lines written so far, so an existing section is found.
-    @returns list of lines to add at the end.
+    @param out - The lines written so far, changed in place.
+    @param after - The index in `out` of the section's last line that is not
+      blank, or None where nothing has been written yet.
+    @param keys - What that section still lacks, emptied here, or None where
+      the section is not one being written.
+    @returns int, how many lines went in.
 
-    Appended rather than inserted into the section where it sits, because a
-    file that is missing a key Previous always writes is a file somebody has
-    edited, and moving their lines about would be a second surprise.
+    After the section's last line and before the blank lines that part it from
+    the next header, so the file keeps the shape it had.
     """
-    lines = []
-    if "[%s]" % name not in "".join(out):
-        lines.append("\n[%s]\n" % name)
-    lines.extend("%s = %s\n" % (key, value) for key, value in keys.items())
-    return lines
+    if not keys or after is None:
+        return 0
+    _ended(out, after)
+    added = ["%s = %s\n" % pair for pair in keys.items()]
+    out[after + 1:after + 1] = added
+    keys.clear()
+    return len(added)
+
+
+def _ended(out, index=-1):
+    """Makes sure a line ends before anything is put after it.
+
+    @param out - The lines written so far, changed in place.
+    @param index - Which line, the last one where none is named.
+
+    The last line of a file somebody edited may lack its newline, and a key
+    written after it would otherwise run on into that line.
+    """
+    if out and not out[index].endswith("\n"):
+        out[index] += "\n"
 
 
 def booting(disk):
