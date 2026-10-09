@@ -5,6 +5,7 @@ being tested is the shape that exists rather than the one that would be
 convenient.
 """
 
+import configparser
 import os
 import textwrap
 
@@ -237,8 +238,8 @@ def test_what_differs_is_named(tmp_path):
 
 
 def test_a_file_missing_a_key_differs_by_it(tmp_path):
-    """Previous writes every key it knows, so a file without one has been
-    edited, and it is not the machine it claims to be."""
+    """A file without one of the keys is not the machine it claims to be,
+    whoever left the key out."""
     from previously import machines
 
     settings = machines.settings_for(machines.find("nextstation"))
@@ -248,6 +249,90 @@ def test_a_file_missing_a_key_differs_by_it(tmp_path):
 
     assert differing["System"]["bTurbo"] == (None, "FALSE")
     assert "nMachineType" not in differing.get("System", {})
+
+
+# -- writing -------------------------------------------------------------
+
+
+def sections_of(path):
+    """@returns The file as Previous reads it: section to key to value."""
+    parser = configparser.ConfigParser()
+    parser.optionxform = str
+    parser.read(path)
+    return {name: dict(parser[name]) for name in parser.sections()}
+
+
+def test_a_key_a_section_lacks_goes_into_that_section(tmp_path):
+    """Previous reads a section up to the next header, so a key written below a
+    later section belongs to that one and is never read where it was meant."""
+    path = write(tmp_path, textwrap.dedent("""\
+        [Screen]
+        bFullScreen = TRUE
+
+        [Printer]
+        bPrinterConnected = FALSE
+        """))
+
+    changed = config.write(path, {"Screen": {"nSingleModeSlot": "2"}})
+
+    assert changed == 1
+    assert sections_of(path) == {
+        "Screen": {"bFullScreen": "TRUE", "nSingleModeSlot": "2"},
+        "Printer": {"bPrinterConnected": "FALSE"},
+    }
+    # After the section's own lines and before the blank line that parts it from
+    # the next, so the file keeps its shape.
+    assert path.read_text() == textwrap.dedent("""\
+        [Screen]
+        bFullScreen = TRUE
+        nSingleModeSlot = 2
+
+        [Printer]
+        bPrinterConnected = FALSE
+        """)
+
+
+def test_a_key_for_the_last_section_goes_at_its_end(tmp_path):
+    """The last section has no header after it, and a last line without its
+    newline must not swallow the key."""
+    path = write(tmp_path, "[System]\nnMachineType = 1\n\n[Printer]\nbPrinterConnected = FALSE")
+
+    config.write(path, {"Printer": {"bPrinterConnected": "TRUE"},
+                        "System": {"bADB": "TRUE"}})
+
+    assert sections_of(path) == {
+        "System": {"nMachineType": "1", "bADB": "TRUE"},
+        "Printer": {"bPrinterConnected": "TRUE"},
+    }
+
+
+def test_a_section_the_file_lacks_is_added_with_its_header(tmp_path):
+    path = write(tmp_path, "[System]\nnMachineType = 1\n")
+
+    config.write(path, {"Sound": {"bEnableSound": "FALSE"}})
+
+    assert sections_of(path) == {
+        "System": {"nMachineType": "1"},
+        "Sound": {"bEnableSound": "FALSE"},
+    }
+
+
+def test_a_disc_on_a_fresh_configuration_reaches_the_bus(tmp_path):
+    """A configuration the setup writes holds only the first slot, and its last
+    section is not [HardDisk]. A disc put on the second slot has to land in
+    [HardDisk] all the same, or Previous never sees it."""
+    from previously import machines, setup
+
+    path = tmp_path / "previous.cfg"
+    path.write_text(setup._written(machines.find("nextcube-turbo"),
+                                   tmp_path / "nextstep-3.3.dd"))
+
+    config.write(path, config.inserting(1, tmp_path / "Developer.iso"))
+
+    assert config.slots(path)[1]["inserted"] is True
+    hard_disk = sections_of(path)["HardDisk"]
+    assert hard_disk["szImageName1"] == str(tmp_path / "Developer.iso")
+    assert hard_disk["bWriteProtected1"] == "TRUE"
 
 
 # -- who wrote the file --------------------------------------------------
@@ -345,8 +430,8 @@ def test_something_that_is_not_a_config_is_refused(tmp_path):
 
 
 def test_a_config_missing_sections_still_answers(tmp_path):
-    """Previous writes every section, but a hand-edited file may not, and a
-    page that shows nothing is better than one that fails."""
+    """A file the setup or a person wrote holds only some sections, and a page
+    that shows nothing is better than one that fails."""
     answer = config.read(write(tmp_path, "[System]\nnMachineType = 0\n"))
 
     assert answer["model"] == "NeXT Computer"
