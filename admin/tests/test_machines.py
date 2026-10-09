@@ -128,6 +128,24 @@ def test_the_console_follows_the_first_board_there_is():
     assert machines.console_slot((32, 32, 0)) == 2
 
 
+def test_the_window_shows_the_screen_the_console_is_on():
+    """Previous shows the CPU board's own screen unless told otherwise, so a
+    machine with its console on a NeXTdimension would draw everything where
+    nobody sees it. Previous's own dialog sets the two together."""
+    with_board = machines.find("nextcube-turbo-dimension")
+    without = machines.find("nextcube-turbo")
+
+    assert machines.written_for(with_board)["Screen"] == {
+        "nMode": "0", "nSingleModeSlot": "2"}
+    assert machines.written_for(without)["Screen"] == {
+        "nMode": "0", "nSingleModeSlot": "0"}
+
+    # Everything else written is what the machine is, unchanged.
+    written = machines.written_for(with_board)
+    del written["Screen"]
+    assert written == machines.settings_for(with_board)
+
+
 def test_a_board_takes_a_size_it_can_have():
     """A size between two of them is the smaller, and anything below the
     smallest is no board at all."""
@@ -195,7 +213,7 @@ def test_every_value_written_is_a_string():
     """A configuration file holds text. An integer here would become one in the
     file through whatever formatting happened to be in the way."""
     for machine in machines.CATALOGUE:
-        for keys in machines.settings_for(machine).values():
+        for keys in machines.written_for(machine).values():
             assert all(isinstance(value, str) for value in keys.values())
 
 

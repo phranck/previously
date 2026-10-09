@@ -399,6 +399,20 @@ def test_a_fresh_machine_boots_without_the_rom_printing_its_tests(tmp_path, comm
     assert written["Boot"]["bVerbose"] == "FALSE"
 
 
+def test_a_fresh_machine_with_a_board_is_shown_on_it():
+    """The kiosk's Screen keys and the machine's share one section, and the
+    machine's must not take the kiosk's place."""
+    written = configparser.ConfigParser()
+    written.optionxform = str
+    written.read_string(setup._written(
+        machines.find("nextcube-turbo-dimension"),
+        pathlib.Path("/home/next/nextstep/nextstep-3.3.dd")))
+
+    assert written["Screen"]["bFullScreen"] == "TRUE"
+    assert written["Screen"]["nMode"] == "0"
+    assert written["Screen"]["nSingleModeSlot"] == "2"
+
+
 def test_a_configuration_that_is_already_there_is_left_alone(tmp_path, commands):
     """A machine somebody has built is theirs, and this is the step that would
     write over it."""

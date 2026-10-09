@@ -121,6 +121,12 @@ DIMENSION_BANKS = {
 #: only 0, 2, 4 and 6 mean anything.
 CONSOLE_ON_THE_MACHINE = 0
 
+#: How Previous lays its screens out: one screen in its one window, which is
+#: SCREEN_SINGLE, the first value of SCREENMODE in its
+#: src/includes/configuration.h. Which screen that is goes into
+#: nSingleModeSlot, numbered like nConsoleSlot.
+ONE_SCREEN = 0
+
 #: A machine with no board in any slot, and one with a single 32 MB board in the
 #: first, which is what the emulator's own file holds for a NeXTdimension.
 NO_BOARDS = (0,) * DIMENSION_BOARDS
@@ -581,6 +587,38 @@ def console_slot(dimensions):
         if memory:
             return dimension_slot(board)
     return CONSOLE_ON_THE_MACHINE
+
+
+def screen_for(machine):
+    """Which screen Previous shows in its window: the one the console is on.
+
+    @param machine - A Machine.
+    @returns dict of key to value for the Screen section, all strings.
+
+    Previous keeps the two apart. nConsoleSlot is where the ROM and NeXTSTEP
+    draw, and nSingleModeSlot is what the window shows, which is the CPU
+    board's own screen unless it says otherwise. Its own Graphics dialog sets
+    both together when "Color" is chosen, in src/gui-sdl/dlgGraphics.c, and
+    this does the same. A machine with its console on a NeXTdimension would
+    otherwise show the CPU board's screen while everything is drawn on the
+    board.
+    """
+    return {"nMode": str(ONE_SCREEN),
+            "nSingleModeSlot": str(console_slot(machine.dimensions))}
+
+
+def written_for(machine):
+    """Everything written into previous.cfg when a machine is started.
+
+    @param machine - A Machine.
+    @returns dict of section name to dict of key to value, as `settings_for`
+      answers, with the Screen section from `screen_for` beside it.
+
+    Two answers rather than one, because `settings_for` is also what a file is
+    matched against to say which machine it is, and which screen the window
+    shows does not make it a different machine.
+    """
+    return dict(settings_for(machine), Screen=screen_for(machine))
 
 
 def _dimensions_settled(dimensions, kind):

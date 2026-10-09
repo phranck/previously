@@ -4,6 +4,9 @@ The fixture is a real previous.cfg, cut from the one on the machine, so what is
 tested is the file that exists rather than one shaped to be convenient.
 """
 
+import configparser
+import pathlib
+import re
 import textwrap
 
 import pytest
@@ -14,6 +17,13 @@ REAL_SHAPE = textwrap.dedent("""\
     [Log]
     sLogFileName = /home/next/previous.log
     bConfirmQuit = TRUE
+
+    [Screen]
+    nMode = 0
+    nSingleModeSlot = 2
+    bFullScreen = TRUE
+    bShowStatusbar = FALSE
+    bShowTitlebar = FALSE
 
     [Memory]
     nMemoryBankSize0 = 32
@@ -97,6 +107,10 @@ def machine(tmp_path, monkeypatch):
             #: question.
             self.screen = True
             self.screen_after = True
+            #: How many looks at the new machine find nothing yet, which is
+            #: a NeXTdimension whose processor is still coming up.
+            self.dark_looks = 0
+            self.came_back = False
             self.quit_asked = 0
 
         def emulator_is_running(self):
@@ -115,6 +129,14 @@ def machine(tmp_path, monkeypatch):
             self.running = True
             self.age = age
             self.screen = self.screen_after
+            self.came_back = True
+
+        def looks(self):
+            """What reading the screen answers."""
+            if self.came_back and self.dark_looks > 0:
+                self.dark_looks -= 1
+                return False
+            return self.screen
 
         def quit(self, sleep=None):
             """Previous being told to go, for a guest that never started."""
@@ -128,7 +150,7 @@ def machine(tmp_path, monkeypatch):
     monkeypatch.setattr(kiosk, "press_power", emulator.press_power)
     # No X server in a test, so the screen cannot be read and nothing is
     # claimed about it. A test that is about the screen says so itself.
-    monkeypatch.setattr(screen, "looks_alive", lambda: emulator.screen)
+    monkeypatch.setattr(screen, "looks_alive", emulator.looks)
     monkeypatch.setattr(kiosk, "quit_emulator", emulator.quit)
     return emulator
 
@@ -267,6 +289,69 @@ def test_a_screen_that_cannot_be_read_is_not_held_against_it(settings, machine):
 
     assert finished is True
     assert machine.quit_asked == 0
+
+
+def test_a_machine_with_a_board_is_given_time_to_draw(settings, machine):
+    """A NeXTdimension draws nothing until its own processor is up, which takes
+    minutes rather than the seconds a machine without one needs. Read once
+    after ten seconds, every switch to one was put back."""
+    machine.dark_looks = 60
+
+    finished, told = run("nextcube-dimension", settings, machine)
+
+    assert finished is True, told
+    assert told["reason"] == "machine.running"
+    assert machine.quit_asked == 0
+
+
+def test_a_machine_with_a_board_that_never_draws_is_rolled_back(settings, machine):
+    before = settings.previous_config.read_text()
+    machine.dark_looks = change.DIMENSION_PICTURE_SECONDS + 1
+
+    finished, told = run("nextcube-dimension", settings, machine)
+
+    assert finished is False
+    assert told["why"] == "blank"
+    assert settings.previous_config.read_text() == before
+
+
+def test_a_machine_without_a_board_is_looked_at_once(settings, machine):
+    """It has drawn its boot panel by the time it has settled, so a blank
+    screen then is a machine that will not come up, and waiting minutes for it
+    only keeps somebody from their machine."""
+    machine.dark_looks = 1
+
+    finished, told = run("nextcube-turbo", settings, machine)
+
+    assert finished is False
+    assert told["why"] == "blank"
+
+
+def test_a_machine_with_a_board_is_shown_on_it(settings, machine):
+    """Previous shows the CPU board's own screen unless the file says
+    otherwise, and the console of a machine with a NeXTdimension is on the
+    board. A file that names no screen at all is what the Pi had."""
+    settings.previous_config.write_text(
+        REAL_SHAPE.replace("nMode = 0\n", "").replace("nSingleModeSlot = 2\n", ""))
+
+    run("nextcube-dimension", settings, machine)
+
+    written = configparser.ConfigParser()
+    written.optionxform = str
+    written.read(settings.previous_config)
+    assert written["Screen"]["nMode"] == "0"
+    assert written["Screen"]["nSingleModeSlot"] == "2"
+    assert written["Screen"]["bFullScreen"] == "TRUE"
+
+
+def test_the_browser_waits_longer_than_the_longest_change():
+    """The page gives up on an answer after a fixed time, and a change that
+    is still running then is reported as a service that cannot be reached."""
+    source = pathlib.Path(__file__).resolve().parent.parent / "interface" / "app" / "service.js"
+    found = re.search(r"const OPERATION_TIMEOUT_MS = (\d+);", source.read_text())
+
+    assert found, "OPERATION_TIMEOUT_MS is not where this test looks for it"
+    assert int(found.group(1)) > change.LONGEST_SECONDS * 1000
 
 
 def test_a_machine_that_never_returns_is_rolled_back(settings, machine):

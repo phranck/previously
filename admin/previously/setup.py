@@ -1414,7 +1414,10 @@ def _written(machine, disk):
         "HardDisk": {"szImageName0": str(disk), "nDeviceType0": "1",
                      "bDiskInserted0": "TRUE", "bWriteProtected0": "FALSE"},
     }
-    sections.update(machines.settings_for(machine))
+    # Merged section by section, because the machine's Screen keys go beside
+    # the kiosk's rather than in place of them.
+    for name, keys in machines.written_for(machine).items():
+        sections.setdefault(name, {}).update(keys)
     return "".join(
         "[%s]\n%s\n" % (name, "".join("%s = %s\n" % pair
                                       for pair in keys.items()))
