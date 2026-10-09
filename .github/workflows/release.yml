@@ -1,4 +1,9 @@
-# Builds the admin tool's package and attaches it to the release for a tag.
+# Builds the admin tool's package and puts it on a draft release for a tag.
+#
+# A draft, because a release is never public without its package. The draft is
+# made public by hand once the package on it has been checked, with
+# `gh release edit vX.Y.Z --draft=false --latest`. A run that fails therefore
+# leaves a tag and no release, and nobody installs from a tag.
 #
 # The package is Architecture: all, so nothing here has to run on a Pi: it is
 # Python, static files and seven unit files copied into place. Ubuntu's runner
@@ -79,10 +84,14 @@ jobs:
           cp packaging/build/previously_*_all.deb packaging/build/previously_all.deb
           dpkg-deb --info packaging/build/previously_all.deb
 
-      - name: Attach it to the release
+      # Creates the release as a draft with the package on it. A release that
+      # is public already keeps that state, because the action leaves an
+      # existing release's draft flag as it found it.
+      - name: Put it on a draft release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          draft: true
           files: admin/packaging/build/previously_all.deb
           fail_on_unmatched_files: true
 
