@@ -185,7 +185,7 @@ It is themed to what NeXT's Terminal was, black on white with a blinking block c
 
 Choosing a NeXTcube Turbo is not one setting. It is a machine type, a processor level, a clock, whether the color board is seated, which slot it speaks from, and four memory banks, and getting one of them wrong gives a machine that will not boot or is not the one that was asked for. `machines.py` holds the eleven that can be chosen and what each is in the file.
 
-Those values come from Previous itself, out of the function its own dialog runs when the machine changes there. Sixteen keys are written and everything else in `previous.cfg`, including the disk it boots from, belongs to the installation rather than to the machine and is passed through untouched.
+Those values come from Previous itself, out of the function its own dialog runs when the machine changes there. Forty-one keys make up a machine, two more in `[Screen]` say which of its screens the window shows, and everything else in `previous.cfg`, including the disk it boots from, belongs to the installation rather than to the machine and is passed through untouched.
 
 **They have to be written together.** Seven of them follow from the machine type, the turbo board and the color board at once: the processor level, its clock, the floating point unit, the real-time clock chip, the SCSI controller, the bus interface chip and the DSP's expansion memory. A machine that gets some of them and keeps the rest is not a machine Previous can run, and it does not say so: it resets in a loop and shows a white screen with nothing in the log.
 
@@ -193,13 +193,15 @@ Those values come from Previous itself, out of the function its own dialog runs 
 
 **Previous never writes the file back by itself.** Not when it exits, and not when its own configuration dialog closes. The only thing that writes is "Save Config" in that dialog, which asks for a filename first. So what somebody sets behind F12 holds for that session and is gone at the next start unless they save it, and this tool cannot see it while it is only in the emulator's memory. What it does see, within five seconds, is a file somebody saved.
 
-That also decides what this tool overwrites, which is the sixteen keys that make up a machine and nothing else. Sound, network and screen are left exactly as the file has them, whoever put them there.
+That also decides what this tool overwrites, which is the keys that make up a machine and the two that say which screen the window shows, and nothing else. Sound, network and the rest of the screen settings are left exactly as the file has them, whoever put them there.
 
 **Disks are the one exception, and it is three keys wide.** Which disk the machine boots is `szImageName0`, `nDeviceType0` and `bDiskInserted0`, and those are written when somebody activates a disk and at no other time. The six further slots, the write protection and everything else in `[HardDisk]` stay exactly as the file has them, so a disc somebody put on the bus is still on the bus afterwards. What it points at is always one of the disks this tool put on the card and never a path from anywhere else.
 
 So: shut the guest down properly, copy the file beside itself as `previous.cfg.bak`, write, let it come back, and watch long enough to know that it did. Anything that does not come back is put straight back the way it was.
 
 **Watching means two questions, not one.** A configuration Previous cannot run makes it exit at once, and the waiting console starts it again, so a machine that is broken looks exactly like one that is running. The age of the emulator process is what tells them apart.
+
+**Then the screen has to show something.** A configuration Previous cannot make sense of leaves the emulator running and the screen blank. A machine without a NeXTdimension has drawn its boot panel by the time it has settled, so it is looked at once. A machine with one draws nothing until the board's own processor has come up, which takes minutes, so its screen is read once a second for up to three more minutes before it counts as blank. The browser waits seven minutes for the answer, which is longer than a switch that ends with the old machine put back.
 
 ## System and User configurations
 
@@ -231,7 +233,7 @@ Previous's own System dialog, in this interface's idiom. That dialog puts what c
 
 **The memory speed is written and not offered.** It goes into System Control Register 1 and nowhere else, so it changes what the machine says about itself and nothing about how fast it runs, and two of its four positions are not even distinct on a machine without a turbo board. Previous never moves it either, since `Configuration_SetSystemDefaults` does not touch the key, so this tool writes what Previous starts every machine from.
 
-**The NeXTdimension is three boards.** A cube holds one in each of slots 2, 4 and 6, and each has memory of its own: 4, 16, 32 or 64 MB, which is what its four banks of 4 and 16 MB come to. A slot is a cell that puts a board in and takes it out again, and a board that is in gets a group of its own for its memory. The console follows the first board there is, and a machine with no board draws it itself. A NeXTstation holds none of them, because the board speaks on the NeXTbus and that machine has none.
+**The NeXTdimension is three boards.** A cube holds one in each of slots 2, 4 and 6, and each has memory of its own: 4, 16, 32 or 64 MB, which is what its four banks of 4 and 16 MB come to. A slot is a cell that puts a board in and takes it out again, and a board that is in gets a group of its own for its memory. The console follows the first board there is, and a machine with no board draws it itself. The window shows the screen the console is on, which is what Previous's own Graphics dialog sets when "Color" is chosen, so a machine with a board shows that board's screen. A NeXTstation holds none of them, because the board speaks on the NeXTbus and that machine has none.
 
 The board's ROM is not here. A path to a file on the Pi is not the machine.
 
