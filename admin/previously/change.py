@@ -32,20 +32,12 @@ RETURN_TIMEOUT_SECONDS = 30
 #: broken looks exactly like one that is running unless somebody waits.
 SETTLE_SECONDS = 10
 
-#: How much longer a machine with a NeXTdimension may show nothing at all. The
-#: board draws nothing until its own processor has come up, and PAP-PRE-001
-#: puts the whole start with the board at two to three minutes on a Pi 5. A
-#: machine without one has drawn its boot panel by the end of SETTLE_SECONDS,
-#: so it is read once and gets no more time than that.
-DIMENSION_PICTURE_SECONDS = 180
-
 #: The longest one change takes, rolled back included: the guest going down,
-#: the new machine coming up and showing nothing for as long as it may, being
-#: quit, and the old one coming back. The browser waits longer than this for
+#: the new machine coming up and settling, being quit because its screen is
+#: blank, and the old one coming back. The browser waits longer than this for
 #: an answer, which `tests/test_change.py` holds it to.
 LONGEST_SECONDS = (kiosk.SHUTDOWN_TIMEOUT_SECONDS
                    + 2 * (RETURN_TIMEOUT_SECONDS + SETTLE_SECONDS)
-                   + DIMENSION_PICTURE_SECONDS
                    + kiosk.QUIT_TIMEOUT_SECONDS + 1)
 
 
@@ -206,8 +198,7 @@ def _applied(settings, values, name, done, already, sleep):
     # The emulator running is not the machine running. A configuration Previous
     # cannot make sense of leaves the process up and the screen blank, and the
     # screen is the only place that difference shows.
-    patience = _picture_seconds(settings.previous_config)
-    if _shows_something(patience, sleep) is False:
+    if screen.looks_alive() is False:
         return False, _rolled_back(settings, name, sleep, blank=True)
 
     # `machine` rather than `name`, because that is what every sentence about
@@ -216,44 +207,6 @@ def _applied(settings, values, name, done, already, sleep):
     if changed:
         return True, told(done, machine=name, lines=changed)
     return True, told(already, machine=name)
-
-
-def _picture_seconds(path):
-    """How long the machine just started may go on showing nothing.
-
-    @param path - The configuration it was started with.
-    @returns int, seconds beyond the settling time `_stayed_up` already waited.
-
-    Read from the file rather than from what was chosen, because a disk or a
-    disc changes the machine that boots without naming it, and the file is
-    what the emulator started from either way. A file that cannot be read gets
-    no extra time.
-    """
-    try:
-        seated = config.read(path)["dimension"]
-    except config.NotReadable:
-        return 0
-    return DIMENSION_PICTURE_SECONDS if seated else 0
-
-
-def _shows_something(seconds, sleep):
-    """Whether the screen shows anything within that time.
-
-    @param seconds - How long to keep looking. Zero is one look.
-    @param sleep - How to wait between looks.
-    @returns True as soon as something is drawn, None as soon as the screen
-      cannot be read, and False where it was read and flat every time.
-
-    Once a second rather than once at the end, so a machine that draws early is
-    taken as running at once and only a machine that never draws costs the
-    whole wait.
-    """
-    for _ in range(seconds):
-        alive = screen.looks_alive()
-        if alive is not False:
-            return alive
-        sleep(1)
-    return screen.looks_alive()
 
 
 def _rolled_back(settings, name, sleep, blank=False):

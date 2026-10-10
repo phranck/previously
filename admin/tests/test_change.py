@@ -107,10 +107,6 @@ def machine(tmp_path, monkeypatch):
             #: question.
             self.screen = True
             self.screen_after = True
-            #: How many looks at the new machine find nothing yet, which is
-            #: a NeXTdimension whose processor is still coming up.
-            self.dark_looks = 0
-            self.came_back = False
             self.quit_asked = 0
 
         def emulator_is_running(self):
@@ -129,14 +125,6 @@ def machine(tmp_path, monkeypatch):
             self.running = True
             self.age = age
             self.screen = self.screen_after
-            self.came_back = True
-
-        def looks(self):
-            """What reading the screen answers."""
-            if self.came_back and self.dark_looks > 0:
-                self.dark_looks -= 1
-                return False
-            return self.screen
 
         def quit(self, sleep=None):
             """Previous being told to go, for a guest that never started."""
@@ -150,7 +138,7 @@ def machine(tmp_path, monkeypatch):
     monkeypatch.setattr(kiosk, "press_power", emulator.press_power)
     # No X server in a test, so the screen cannot be read and nothing is
     # claimed about it. A test that is about the screen says so itself.
-    monkeypatch.setattr(screen, "looks_alive", emulator.looks)
+    monkeypatch.setattr(screen, "looks_alive", lambda: emulator.screen)
     monkeypatch.setattr(kiosk, "quit_emulator", emulator.quit)
     return emulator
 
@@ -291,46 +279,11 @@ def test_a_screen_that_cannot_be_read_is_not_held_against_it(settings, machine):
     assert machine.quit_asked == 0
 
 
-def test_a_machine_with_a_board_is_given_time_to_draw(settings, machine):
-    """A NeXTdimension draws nothing until its own processor is up, which takes
-    minutes rather than the seconds a machine without one needs. Read once
-    after ten seconds, every switch to one was put back."""
-    machine.dark_looks = 60
-
-    finished, told = run("nextcube-dimension", settings, machine)
-
-    assert finished is True, told
-    assert told["reason"] == "machine.running"
-    assert machine.quit_asked == 0
-
-
-def test_a_machine_with_a_board_that_never_draws_is_rolled_back(settings, machine):
-    before = settings.previous_config.read_text()
-    machine.dark_looks = change.DIMENSION_PICTURE_SECONDS + 1
-
-    finished, told = run("nextcube-dimension", settings, machine)
-
-    assert finished is False
-    assert told["why"] == "blank"
-    assert settings.previous_config.read_text() == before
-
-
-def test_a_machine_without_a_board_is_looked_at_once(settings, machine):
-    """It has drawn its boot panel by the time it has settled, so a blank
-    screen then is a machine that will not come up, and waiting minutes for it
-    only keeps somebody from their machine."""
-    machine.dark_looks = 1
-
-    finished, told = run("nextcube-turbo", settings, machine)
-
-    assert finished is False
-    assert told["why"] == "blank"
-
-
 def test_a_machine_with_a_board_is_shown_on_it(settings, machine):
     """Previous shows the CPU board's own screen unless the file says
     otherwise, and the console of a machine with a NeXTdimension is on the
-    board. A file that names no screen at all is what the Pi had."""
+    board. That screen stays blank, so every switch to such a machine was put
+    back. A file that names no screen at all is what the Pi had."""
     settings.previous_config.write_text(
         REAL_SHAPE.replace("nMode = 0\n", "").replace("nSingleModeSlot = 2\n", ""))
 
