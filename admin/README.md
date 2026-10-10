@@ -201,7 +201,7 @@ So: shut the guest down properly, copy the file beside itself as `previous.cfg.b
 
 **Watching means two questions, not one.** A configuration Previous cannot run makes it exit at once, and the waiting console starts it again, so a machine that is broken looks exactly like one that is running. The age of the emulator process is what tells them apart.
 
-**Then the screen has to show something.** A configuration Previous cannot make sense of leaves the emulator running and the screen blank. A machine without a NeXTdimension has drawn its boot panel by the time it has settled, so it is looked at once. A machine with one draws nothing until the board's own processor has come up, which takes minutes, so its screen is read once a second for up to three more minutes before it counts as blank. The browser waits seven minutes for the answer, which is longer than a switch that ends with the old machine put back.
+**Then the screen has to show something.** A configuration Previous cannot make sense of leaves the emulator running and the screen blank. A machine that runs has drawn its boot panel by the time it has settled: on a Pi 5 a NeXTcube Turbo with a NeXTdimension shows it four seconds after the emulator starts. So the screen is read once then, and a blank one is put back. The browser waits four minutes for the answer, which is longer than a switch that ends with the old machine put back.
 
 ## System and User configurations
 

@@ -44,10 +44,10 @@ const Saved = {
 
 /** How long an operation may take before the page stops waiting for the
  *  answer. Longer than the longest change of machine, which is
- *  LONGEST_SECONDS in change.py: a machine with a NeXTdimension that never
- *  draws and is put back. So the reason the service gives always arrives
- *  rather than being cut off by the browser. */
-const OPERATION_TIMEOUT_MS = 420000;
+ *  LONGEST_SECONDS in change.py: a machine that comes up blank and is put
+ *  back. So the reason the service gives always arrives rather than being cut
+ *  off by the browser. */
+const OPERATION_TIMEOUT_MS = 240000;
 
 /**
  * Fetches one of the service's answers.
