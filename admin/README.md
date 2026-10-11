@@ -147,13 +147,15 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/update` | Asks the privileged helper to replace this tool with the newest release |
 | `GET /api/terminal` | Becomes a WebSocket carrying a login on this machine |
 
-Every POST is checked for a session before anything looks at what was sent, and the three routes above about the secret itself are what a browser goes through to have one. A POST that says it comes from another page is refused whatever it carries, because a cookie rides along with every request to this host and a session alone would let another site act here.
+Every POST is checked for a session before anything is done with what was sent, and the three routes above about the secret itself are what a browser goes through to have one. A POST that says it comes from another page is refused whatever it carries, because a cookie rides along with every request to this host and a session alone would let another site act here.
 
 The one route with no check of ours at all is the terminal, and the section below says why: what answers there is this machine's own SSH server, so whoever is connecting proves who they are to that.
 
 **Every answer from the API is `no-store`**, because each one is about right now and a kept copy is a wrong one. Files are the opposite and say so: each carries an `ETag` and a `Last-Modified`, and a browser that already has one is told `304` rather than sent it again. The pictures, the faces and the one vendor library also carry a day's `max-age`, since they change when a package is installed and at no other time. The page, the script and the stylesheet carry `no-cache`, which means the browser asks every time and is told `304` when nothing changed, so a new build is picked up at once.
 
 **The connection stays open.** `http.server` speaks HTTP/1.0 unless it is told otherwise, which closes the socket after every answer. That was costing a page load thirty connections, and on a Pi joined by Wi-Fi each of those took two seconds to open: measured on 2026-09-29, an icon of 1232 bytes arrived 8.7 seconds after it was asked for, of which 1 millisecond was the data. Every answer here carries a `Content-Length`, which is what lets the handler speak 1.1 and keep the socket.
+
+**A POST's body is read before it is answered, a refusal included.** Whatever an answer left in the socket would be read as the start of the next request on it. A body the service will not read closes the connection, and the answer says so with `Connection: close`: that is one larger than 64 KB, or one whose declared length is not a length at all.
 
 ## The shell
 
