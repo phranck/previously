@@ -4,7 +4,7 @@
   "description": "What checking and building the interface needs. Nothing here runs on the Pi: the service is the standard library alone, and what ships is the built interface, which is committed.",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=26"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.14.5",
