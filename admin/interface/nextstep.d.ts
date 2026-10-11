@@ -50,6 +50,7 @@ export declare class NxScroller extends HTMLElement {
   addBar(...args: any[]): any;
   drive(...args: any[]): any;
   fit(...args: any[]): any;
+  holdsMore(...args: any[]): any;
   refresh(...args: any[]): any;
   [held: string]: any;
 }

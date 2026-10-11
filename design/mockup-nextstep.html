@@ -2767,13 +2767,13 @@ const WAYS = {
     steps: ["up", "down"],
     length: "scrollHeight", showing: "clientHeight", along: "scrollTop",
     edge: "top", size: "height", pointer: "y", offset: "offsetTop",
-    room: "clientHeight",
+    room: "clientHeight", trailing: "paddingBottom",
   },
   across: {
     steps: ["left", "right"],
     length: "scrollWidth", showing: "clientWidth", along: "scrollLeft",
     edge: "left", size: "width", pointer: "x", offset: "offsetLeft",
-    room: "clientWidth",
+    room: "clientWidth", trailing: "paddingRight",
   },
 };
 
@@ -2922,20 +2922,42 @@ class NxScroller extends HTMLElement {
    * rather than a thing that appears when it is needed.
    */
   fit({ trough, knob, arrows, how }) {
-    const overflow = this.view[how.length] - this.view[how.showing];
-    knob.hidden = overflow <= 0;
-    arrows.hidden = overflow <= 0;
-    if (overflow <= 0) return;
+    const more = this.holdsMore(how);
+    knob.hidden = !more;
+    arrows.hidden = !more;
+    if (!more) return;
 
+    const overflow = this.view[how.length] - this.view[how.showing];
     const room = trough[how.room];
     const size = Math.max(NxScroller.SMALLEST_KNOB,
                           room * this.view[how.showing] / this.view[how.length]);
     knob.style[how.size] = size + "px";
     knob.style[how.edge] = (this.view[how.along] / overflow) * (room - size) + "px";
   }
+
+  /**
+   * Whether the view hides anything a reader could scroll to.
+   * @param {object} how - One of WAYS.
+   * @returns {boolean}
+   *
+   * The two figures cannot be compared as they come. Both are whole pixels
+   * rounded from sizes that are fractions wherever the desk is drawn at 125,
+   * 150 or 175 per cent, and WebKit then reports the content one pixel longer
+   * than a view it fits in: a File Viewer path that fills its band exactly,
+   * and a folder far shorter than its band. And the padding at the far end is
+   * room rather than content, so a band the window leaves a few pixels short
+   * of it still shows everything in it. So what counts is how far the content
+   * runs past that padding, and only by more than one rounding.
+   */
+  holdsMore(how) {
+    const trailing = parseFloat(getComputedStyle(this.view)[how.trailing]) || 0;
+    const past = this.view[how.length] - this.view[how.showing] - trailing;
+    return past > NxScroller.ROUNDING;
+  }
 }
 NxScroller.LINE = 18;            /* how far one press of an arrow moves the view */
 NxScroller.SMALLEST_KNOB = 16;   /* below this the knob is no longer a target */
+NxScroller.ROUNDING = 1;         /* what two sizes rounded to whole pixels can differ by */
 
 /* --- nx-shelf and nx-thing ---------------------------------------------- */
 
