@@ -481,6 +481,11 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 
 /* --- the raspberry pi window --------------------------------------------- */
 
+/* The board, as tall as the cube and the station stand in the About window and
+   as wide as its own shape makes it: ../design/board.svg is drawn 60 wide to an
+   icon's height of 48. */
+#pi-icon { width: 60px; }
+
 /* The published version, where it is newer than the one answering. Marked here
    as well as by the Update button appearing, because the button is at the foot
    of the window and this is the line somebody is reading. */

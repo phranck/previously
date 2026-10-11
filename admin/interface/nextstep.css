@@ -161,12 +161,16 @@
      because in the mockup everything from it to the end of this block is
      replaced. */
   --Workspace: url("parts/Workspace.png");
-  /* This tool's own mark, which is the one picture here that NeXT did not
-     draw. It comes from the Previously website, where phranck made it. */
+  /* This tool's own mark, which NeXT did not draw. It comes from the
+     Previously website, where phranck made it. */
   --Previously: url("parts/Previously.png");
   --defaultUnixIcon: url("parts/defaultUnixIcon.png");
   --defaultAppIcon: url("parts/defaultAppIcon.png");
   --defaultIcon: url("parts/defaultIcon.png");
+  /* The board this runs on, which NeXTSTEP has no picture of. It is drawn for
+     this repository in ../../design/board.svg, and the design README says how
+     it becomes this file. */
+  --board: url("parts/board.png");
   --Check: url("parts/Check.png");
   --dock-marks: url("parts/dock-marks.png");
   --floppy: url("parts/floppy.png");
@@ -191,11 +195,6 @@
   --optical: url("parts/optical.png");
   --png: url("parts/png.png");
   --Preferences: url("parts/Preferences.png");
-  /* The board this runs on, which is the one picture here neither NeXT nor
-     phranck drew: Raspberry Pi Ltd's registered logo, fetched from their own
-     site by ../../design/raspberrypi.py. Raspberry Pi is a trademark of
-     Raspberry Pi Ltd, and the window that shows it says so. */
-  --raspberry-pi: url("parts/raspberry-pi.png");
   --root: url("parts/root.png");
   --scsi: url("parts/scsi.png");
   --Terminal: url("parts/Terminal.png");
