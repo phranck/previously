@@ -8,9 +8,9 @@ Two other drafts were tried and not taken up, one showing the back of the cube a
 
 ## Where the pictures come from
 
-The NeXTSTEP draft draws nothing by hand. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
+The NeXTSTEP draft draws nothing by hand but the board the Info window wears, which NeXTSTEP has no picture of. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
 
-Six tools do that work:
+Seven tools do that work:
 
 | Tool | What it does |
 |---|---|
@@ -18,6 +18,7 @@ Six tools do that work:
 | `nxtiff.py` | Decodes NeXT's TIFFs, which no current library reads: two bits per sample, alpha in its own plane, and a second copy of each picture at four bits per color channel. |
 | `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `../admin/web/parts/`. |
 | `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
+| `makepng.py` | Draws the icon a PNG file wears on NeXT's own TIFF sheet, because NeXTSTEP has none for a format that came later. |
 | `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their license, into `../admin/web/fonts/`. |
 | `build.py` | Puts the kit together, writes the two files the admin serves, and bakes the pictures and those faces into the mockup as data URIs so it stays one file. |
 
@@ -57,16 +58,16 @@ The two files are committed, so nothing has to run for the Terminal to be set in
 
 It changes one thing on the way, in metrics rather than in outlines. A font states its line in three tables and a browser picks one of them by platform, and Inconsolata's three disagree: two give a line of 16.8 pixels at the Terminal's size and the third gives 23.3. All three are set to one em, which at 16 pixels is the 16 a row of this interface is. That is also why nothing states the cell: whatever needs it reads it off the face as `1ch` and `1lh`.
 
-## The board's logo
+## The board's picture
 
-The Info window wears the Raspberry Pi logo beside its readings. It is Raspberry Pi Ltd's registered trademark, and their rules ask that only the assets they publish on raspberrypi.com are used, so `raspberrypi.py` fetches the color symbol from the page that states those rules, holds it to the sum it was read at, cuts it to the symbol and writes it at 48 pixels as `admin/web/parts/raspberry-pi.png`. The window says at its foot that Raspberry Pi is a trademark of Raspberry Pi Ltd.
+The Info window wears a circuit board beside its readings. It is drawn here in `board.svg`, in the dark gray of the NeXTstation, with a pin header, a processor and its ports along two edges.
+
+It is drawn on the grid of pixels it is shown at, 60 by 48. Every edge falls between two pixels, so nothing in it is smoothed when it is rendered at that size. `rsvg-convert` renders it into `admin/web/parts/board.png`, and it comes with librsvg, which Homebrew installs as `librsvg`.
 
 ```bash
-python3 raspberrypi.py
+rsvg-convert board.svg -o ../admin/web/parts/board.png
 python3 build.py
 ```
-
-`fetched.py` is where `raspberrypi.py` and `fonts.py` fetch what they ship and hold it to its sum.
 
 ## The kit
 
@@ -121,6 +122,8 @@ An application that is running and is not in the dock puts its tile on the floor
 The pictures in `../admin/web/parts/` are NeXT's, and NeXT's assets belong to Apple. They stay, and this repository can carry them: that was weighed and decided in #8 on 14 September 2026.
 
 Thirteen are read out of the Workspace Manager's own bundle in a NeXTSTEP 3.3 disk image, one out of Terminal.app and two out of Preferences.app in the same image. Three are cut from a screenshot of the running system, because NeXTSTEP drew its window buttons and dock marks in PostScript and they exist as no file at all. Two come from the boot ROM, through the emulator's own grab.
+
+The circuit board is not NeXT's. It is drawn here in `board.svg` and is this repository's own.
 
 The tools are ours and hold none of it. `extract.py`, `bootpicture.py`, `ufs.py` and `nxtiff.py` know how to read a NeXT filesystem, a NeXT TIFF and a NeXT screen, which is a description of formats rather than a copy of anything.
 
