@@ -36,7 +36,8 @@ BOOT_SLOT = 0
 HARD_DISK = "1"
 
 #: What the emulator calls each machine, by the number in the file. The names
-#: are Previous's own, from its machine type enumeration.
+#: are Previous's own, as its System dialog labels the three in
+#: src/gui-sdl/dlgSystem.c.
 MACHINE_NAMES = {
     0: "NeXT Computer",
     1: "NeXTcube",
@@ -265,8 +266,8 @@ def matching(path, options):
 
     Asked against the whole list rather than against the machine the file names
     itself after, because two of the eleven differ from another two by their
-    clock alone. Previous has no idea of Nitro, so a Nitro configuration calls
-    itself by the name of the machine it is a faster version of.
+    clock alone. The file has no setting for Nitro, so a Nitro configuration
+    calls itself by the name of the machine it is a faster version of.
     """
     parser = _parsed(path)
     for name, settings in options:

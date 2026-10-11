@@ -25,8 +25,8 @@ let drafting = {};
 const FOLLOWS_THE_MACHINE = ["mhz", "dsp", "dsp_memory", "banks"];
 
 /** How much memory a NeXTdimension board gets when it is first put in, which is
- *  what the emulator's own file holds for one. Changed from there in its own
- *  group, so this decides only where somebody starts. */
+ *  what the catalog's machines with a board carry. Changed from there in its
+ *  own group, so this decides only where somebody starts. */
 const DIMENSION_DEFAULT_MEMORY = 32;
 
 /** What the editor shows one of at a time, and what each is called, in the order

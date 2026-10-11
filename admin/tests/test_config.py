@@ -198,9 +198,9 @@ def test_a_file_written_from_the_catalog_is_recognized(tmp_path):
 
 
 def test_a_nitro_is_told_apart_from_the_machine_it_is_named_after(tmp_path):
-    """Previous has no idea of Nitro, so the file calls this one NeXTcube
-    Turbo. Matching against the whole catalog is what tells them apart, and
-    matching against the name alone would not."""
+    """The file has no setting for Nitro, so it calls this one NeXTcube Turbo.
+    Matching against the whole catalog is what tells them apart, and matching
+    against the name alone would not."""
     from previously import machines
 
     path = write(tmp_path, "[System]\n")

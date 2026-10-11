@@ -117,8 +117,8 @@ function cpuOf(machine) {
  * @param {any} machine - A configuration or a catalog entry.
  * @returns {string} What the screen shows, which is where color is decided.
  *
- * A cube has no color of its own: Previous forces the flag off for that
- * machine type, and color arrives only through a NeXTdimension.
+ * A cube has no color of its own: Previous's own dialog switches the flag off
+ * for that machine type, and color arrives only through a NeXTdimension.
  */
 function screenOf(machine) {
   if (machine.dimension) return t("machine.screen.dimension");

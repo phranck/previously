@@ -10,10 +10,10 @@ this does the same.
 The rules come from Previous itself, out of `Configuration_SetSystemDefaults`
 and `Configuration_CheckMemory` in its `src/configuration.c`. That function is
 what the emulator's own dialog runs when somebody changes the machine there,
-and it decides seven settings from the type, the turbo board and the color
-board together. Writing some of them and leaving the others produces a machine
-Previous cannot run: it resets in a loop and shows a white screen, with nothing
-in the log to say why.
+and it sets eleven System values and the four memory banks from the type, the
+turbo board and the color board together. Writing some of them and leaving the
+others produces a machine Previous cannot run: it resets in a loop and shows a
+white screen, with nothing in the log to say why.
 
 Everything else in previous.cfg belongs to the installation rather than to the
 machine and is left exactly as it stands.
@@ -24,8 +24,9 @@ import collections
 from . import config
 
 #: The processor. NeXT's 1988 machine is a 68030 and everything after it a
-#: 68040, and Previous refuses to run a machine whose level disagrees with its
-#: type.
+#: 68040. Previous takes whatever level the file holds: `M68000_CheckCpuSettings`
+#: in its src/m68000.c turns the level into a processor without asking the
+#: machine type, so the level is written with the type every time.
 CPU_LEVEL_68030 = "3"
 CPU_LEVEL_68040 = "4"
 
@@ -39,9 +40,10 @@ FPU_ON_CHIP = "68040"
 #: machine is, and adds NITRO_MHZ only where a turbo board is seated.
 CLOCKS = (16, 20, 25, 33)
 
-#: The fifth, which is what the catalog calls a Nitro. Previous has no idea of
-#: Nitro and reads nCpuFreq as it finds it, so this is a name of ours for the
-#: fastest clock its own dialog will offer.
+#: The fifth, which is what the catalog calls a Nitro. The file has no setting
+#: of its own for Nitro: Previous takes a turbo board at this clock for one,
+#: maps the Nitro's cache controller for it in its src/cpu/memory.c, and names it
+#: Nitro in its status bar.
 NITRO_MHZ = 40
 
 #: What a machine runs at when nothing else has been chosen, which is what
@@ -52,8 +54,8 @@ TURBO_MHZ = 33
 
 #: What the DSP can be. The chip is a 56001 either way and the difference is its
 #: bootstrap ROM: DSP_WITH_ROM starts the core with it and DSP_PLAIN without,
-#: which is what `dsp_core_start` in Previous's src/dsp/dsp.c takes as its
-#: second argument. Neither is a file, so all three suit any machine.
+#: which is the second argument `dsp_core_start` takes in Previous's
+#: src/dsp/dsp_core.c. Neither is a file, so all three suit any machine.
 DSP_NONE = "none"
 DSP_PLAIN = "plain"
 DSP_WITH_ROM = "with-rom"
@@ -102,9 +104,11 @@ DIMENSION_BOARDS = 3
 #: How much memory one of those boards can have, in megabytes. Its four banks
 #: take 4 or 16 MB or nothing, so these are what a board evenly filled comes to.
 #:
-#: Zero means no board rather than a board with nothing in it, because there is
-#: no such thing: Configuration_CheckDimensionMemory puts 4 MB in the first bank
-#: of every board that is switched on.
+#: Zero means no board rather than a board with nothing in it. Previous would run
+#: a board with every bank empty, because the check in
+#: Configuration_CheckDimensionMemory that would put 4 MB in its first bank is
+#: compiled out (`RESTRICTIVE_MEMCHECK` is 0). So this is the catalog's rule: a
+#: slot holds a board with memory, or none.
 DIMENSION_MEMORY = (4, 16, 32, 64)
 
 #: What each of those totals is made of, bank by bank.
@@ -128,7 +132,8 @@ CONSOLE_ON_THE_MACHINE = 0
 ONE_SCREEN = 0
 
 #: A machine with no board in any slot, and one with a single 32 MB board in the
-#: first, which is what the emulator's own file holds for a NeXTdimension.
+#: first. Previous starts a board at 4 MB in each of its four banks, so 32 is the
+#: catalog's choice.
 NO_BOARDS = (0,) * DIMENSION_BOARDS
 ONE_BOARD = (32,) + (0,) * (DIMENSION_BOARDS - 1)
 
@@ -149,8 +154,8 @@ PLAIN_BANK_SIZES = (0, 1, 4, 16)
 
 #: How many banks the machine holds, and how many of them a NeXTstation without
 #: a turbo board and without color can reach. On that board the other two are
-#: not physically there, and Previous empties them at every start rather than
-#: when the machine is chosen, so a file that fills them is corrected under
+#: not physically there. Previous empties them when the machine is chosen in its
+#: dialog and again at every start, so a file that fills them is corrected under
 #: whoever wrote it.
 BANKS = 4
 STATION_PLAIN_BANKS = 2
@@ -487,9 +492,11 @@ def default_clock(turbo):
     @returns int
 
     Previous writes this whenever the machine type or that board changes in its
-    own dialog, and never checks the clock at start. So a clock that does not
-    belong to the machine is not corrected there, it is replaced the moment
-    somebody touches what decides it, and this is the same act.
+    own dialog. At start it only holds the clock between 1 and 1000 MHz, in
+    `M68000_CheckCpuSettings` in its src/m68000.c, and never against the
+    machine. So a clock that does not belong to the machine is not corrected
+    there, it is replaced the moment somebody touches what decides it, and this
+    is the same act.
     """
     return TURBO_MHZ if turbo else PLAIN_MHZ
 
@@ -642,8 +649,10 @@ def _dimensions_settled(dimensions, kind):
     @returns tuple of DIMENSION_BOARDS ints.
 
     A size the board does not take becomes the largest it does that is no
-    bigger, which is how Configuration_CheckDimensionMemory rounds a bank, and
-    anything below the smallest is no board at all.
+    bigger, and anything below the smallest is no board at all. That rounding
+    is this tool's, and it is of a total. Previous rounds each bank up to 4 or
+    16 MB in Configuration_CheckDimensionMemory, and every total offered here is
+    made of banks it leaves as they are.
     """
     if not takes_a_dimension(kind):
         return NO_BOARDS
@@ -702,9 +711,9 @@ def drafted(kind, turbo=False, colour=False, dimensions=NO_BOARDS,
     all three afresh at both of those moments. Each then comes back as what this
     machine has rather than as what the last one did.
 
-    Nitro is not one of them. Previous has no such thing and reads nCpuFreq as
-    it finds it, so a clock of 40 is what the catalog calls a Nitro and that is
-    the direction the translation runs in.
+    Nitro is not one of them. The file has no setting for it, and Previous
+    takes a turbo board at 40 MHz for a Nitro, so a clock of 40 is what the
+    catalog calls one and that is the direction the translation runs in.
     """
     wanted = _sizes_asked_for(banks)
     machine = settled(Machine(
@@ -824,10 +833,15 @@ def settled(machine):
     Previous never refuses a configuration. It corrects one, in two places, and
     both are in its src/configuration.c. Its own dialog runs
     Configuration_SetSystemDefaults whenever the machine type changes there, and
-    Configuration_Apply runs the four check functions at every start, whatever
-    wrote the file. So a configuration that has not been through this is one the
+    Configuration_Apply runs six check functions at every start, whatever wrote
+    the file. So a configuration that has not been through this is one the
     emulator will quietly change underneath whoever saved it, and the interface
     would then be showing a machine that is not the one running.
+
+    Two corrections here are the dialog's alone, because none of the six check
+    functions makes them: the turbo board comes off the 1988 machine, and color
+    comes off a cube. They are applied all the same, since those are machines
+    Previous's own dialog cannot produce.
 
     This is why it is applied when a saved configuration is read as well as when
     it is written: a file somebody edited by hand gets the same treatment as one
@@ -842,16 +856,15 @@ def settled(machine):
 
     return machine._replace(
         turbo=turbo,
-        # The clock and the DSP are the values Previous does not check at start.
-        # Its own dialog writes all three afresh every time the machine type or
-        # a board changes, so a machine holding one it cannot be offered gets
-        # what that machine actually has.
+        # The clock and the DSP are the values Previous does not check against
+        # the machine at start. Its own dialog writes all three afresh every time
+        # the machine type or a board changes, so a machine holding one it cannot
+        # be offered gets what that machine actually has.
         mhz=machine.mhz if machine.mhz in clocks_for(turbo) else default_clock(turbo),
         colour=colour,
-        # Every board goes on a machine with no NeXTbus, and a size the board
-        # does not take becomes the nearest it does, which is what
-        # Configuration_CheckDimensionSettings and Configuration_CheckDimensionMemory
-        # do at every start.
+        # Every board goes on a machine with no NeXTbus, which
+        # Configuration_CheckDimensionSettings does at every start, and a board's
+        # memory becomes one of the totals this tool offers.
         dimensions=_dimensions_settled(machine.dimensions, machine.kind),
         banks=tuple(_bank(wanted[bank], sizes[bank]) for bank in range(BANKS)),
         dsp=machine.dsp if machine.dsp in DSPS else DSP_PLAIN,
