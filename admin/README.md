@@ -259,7 +259,7 @@ A group with nothing to offer is not drawn, and a group's cells change with the 
 
 **The clock is chosen rather than worked out.** Previous offers 16, 20, 25 and 33 MHz for every machine and 40 only with a turbo board, and so does this. Changing the machine type or a board sets the clock afresh, to 33 with that board and 25 without, which is what `Configuration_SetSystemDefaults` writes at both of those moments.
 
-**The clock is also where Nitro lives.** Previous has no such thing and reads `nCpuFreq` as it finds it, so what the catalog calls a Nitro is a turbo board running at 40.
+**The clock is also where Nitro lives.** The file has no setting for it. Previous takes a turbo board running at 40 MHz for a Nitro, gives it the Nitro's cache controller and names it so in its status bar, so that is what the catalog calls a Nitro too.
 
 **The DSP is three choices rather than a chip that is simply there.** It can be absent, or a 56001, or a 56001 started with its bootstrap ROM, which is the more faithful of the two and loads no file. Its own memory is 24 or 96 kB, and that group is not drawn where there is no chip to give memory to. The 1988 machine is the one whose DSP has no expansion, and every machine gets its own back whenever the machine type or a board changes, exactly as the clock does.
 

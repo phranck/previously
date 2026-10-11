@@ -399,7 +399,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             answer["configuration"] = config.read(self.settings.previous_config)
             # Which configuration this is exactly, or None where it is none of
             # them. Asked against the whole set rather than against the name the
-            # file gives itself, because Previous has no idea of Nitro and a
+            # file gives itself, because the file has no setting for Nitro and a
             # Nitro machine therefore calls itself by another's name.
             answer["configuration"]["catalogue"] = config.matching(
                 self.settings.previous_config, self._choices())

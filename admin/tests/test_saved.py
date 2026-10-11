@@ -92,7 +92,8 @@ def test_a_saved_configuration_is_settled_when_it_is_read(machines_file):
         "machines": [{
             "name": "Hand written",
             "kind": machines.NEXTCUBE,
-            # A cube has no color of its own and Previous forces the flag off.
+            # A cube has no color of its own, and Previous's own dialog switches
+            # the flag off.
             "colour": True,
             "turbo": False,
             "banks": [3, 0, 0, 0],

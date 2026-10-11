@@ -41,8 +41,8 @@ def test_every_machine_sets_the_same_keys():
 
 
 def test_the_1988_machine_is_a_68030():
-    """NeXT's first machine is a 68030 with a separate 68882, and Previous
-    refuses a level that disagrees with the type."""
+    """NeXT's first machine is a 68030 with a separate 68882. Previous takes
+    whatever level the file holds, so the level is written with the type."""
     system = machines.settings_for(machines.find("next-computer"))["System"]
 
     assert system["nCpuLevel"] == "3"
@@ -110,7 +110,7 @@ def test_a_seated_board_answers_from_its_own_slot_and_an_absent_one_from_none():
     assert with_board["Dimension"]["bEnabled1"] == "FALSE"
     assert with_board["Dimension"]["bEnabled2"] == "FALSE"
     assert with_board["Dimension"]["nConsoleSlot"] == "2"
-    # The 32 MB board the emulator's own file holds, as two banks of 16.
+    # The catalog's 32 MB board, as two banks of 16.
     assert with_board["Dimension"]["nMemoryBankSize00"] == "16"
     assert with_board["Dimension"]["nMemoryBankSize01"] == "16"
     assert with_board["Dimension"]["nMemoryBankSize02"] == "0"
@@ -288,8 +288,9 @@ def test_settling_a_settled_machine_changes_nothing():
 
 
 def test_a_cube_cannot_have_color():
-    """Previous forces bColor off for both cube types, so a cube saved with it
-    would come back without it and the interface would have said color."""
+    """Previous's own dialog switches bColor off for both cube types, so a cube
+    in color is not a machine it would build, and the interface would have said
+    color."""
     for kind in [machines.NEXT_COMPUTER, machines.NEXTCUBE]:
         assert machines.settled(drafted(kind=kind, colour=True)).colour is False
 
@@ -300,7 +301,8 @@ def test_only_a_station_keeps_color():
 
 
 def test_the_1988_machine_cannot_have_a_turbo_board():
-    """NeXT built none, and Previous forces the flag off for that type."""
+    """NeXT built none, and Previous's own dialog switches the flag off for
+    that type."""
     computer = machines.settled(drafted(kind=machines.NEXT_COMPUTER, turbo=True))
     assert computer.turbo is False
 
@@ -368,7 +370,7 @@ def test_an_empty_bank_stays_empty():
 
 def test_a_plain_station_reaches_two_banks_only():
     """On that board the other two are not physically there, and Previous
-    empties them at every start rather than when the machine is chosen."""
+    empties them when the machine is chosen and again at every start."""
     station = machines.settled(
         drafted(kind=machines.NEXTSTATION, banks=(16, 16, 16, 16)))
     assert station.banks == (16, 16, 0, 0)
@@ -534,8 +536,8 @@ def test_a_draft_that_asks_for_what_previous_refuses_comes_back_without_it():
 
 
 def test_the_faster_clock_needs_the_board_it_belongs_to():
-    """A Nitro is a faster turbo board. Previous has no idea of it and reads the
-    clock as it finds it, so 40 without a turbo is not a machine."""
+    """A Nitro is a faster turbo board, and Previous's own dialog offers 40 MHz
+    only where that board is seated, so 40 without a turbo is not a machine."""
     without = machines.drafted(kind=machines.NEXTCUBE, turbo=False, mhz=40, memory=16)
 
     assert without.mhz == 25
