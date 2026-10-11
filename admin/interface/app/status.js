@@ -82,9 +82,9 @@ function drawStatus(status) {
     noteState = null;
   }
 
-  /** @type {any} */ (document.getElementById("kiosk-start")).disabled = status.running || isNew;
-  /** @type {any} */ (document.getElementById("kiosk-stop")).disabled = !status.running;
-  /** @type {any} */ (document.getElementById("kiosk-restart")).disabled = !status.running;
+  /** @type {any} */ (document.getElementById("kiosk-start")).disabled = working || status.running || isNew;
+  /** @type {any} */ (document.getElementById("kiosk-stop")).disabled = working || !status.running;
+  /** @type {any} */ (document.getElementById("kiosk-restart")).disabled = working || !status.running;
 
   /* A machine with nothing on it says so and is offered the one thing that can
      be done with it. Before the console, because that one is also missing on a
@@ -207,17 +207,27 @@ const JUST_WRITTEN = Symbol("just written");
  *  say once the machine has moved on from the state it was written in. */
 let noteState = null;
 
+/** Whether one of the operations is running, which holds the three buttons off
+ *  and the busy line up whatever the machine does in the meantime. A change of
+ *  machine takes it down and brings it back, and every status in between would
+ *  otherwise switch the buttons on again and take the line away. */
+let working = false;
+
 /**
  * Turns the buttons off while something is happening, and says what.
  * @param {boolean} busy
- * @param {string} note - What to show under the readings.
+ * @param {string} words - While busy, what is happening, which stands in the
+ *   busy line until the work ends. Afterwards, what came of it, which is a note
+ *   under the readings and goes once the machine has moved on.
  */
-function setBusy(busy, note) {
+function setBusy(busy, words) {
+  working = busy;
   for (const id of ["kiosk-start", "kiosk-stop", "kiosk-restart"]) {
     /** @type {any} */ (document.getElementById(id)).disabled = busy;
   }
-  show("kiosk-note", note);
-  noteState = note ? JUST_WRITTEN : null;
+  show("kiosk-busy", busy ? words : "");
+  show("kiosk-note", busy ? "" : words);
+  noteState = !busy && words ? JUST_WRITTEN : null;
 }
 
 /**

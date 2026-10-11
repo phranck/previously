@@ -72,6 +72,13 @@
 
   --live: #2f7d32;
 
+  /* What a field carries when it has to be noticed: a version newer than the
+     one running, and what a window is busy with. NeXTSTEP had nothing of this
+     kind at all, so this is not read off the original: it is phranck's, chosen
+     on 29 September 2026, and the palest of pinks reads as a mark on a gray
+     desk without reading as a warning. */
+  --notice: #ffe8fb;
+
   --icon: 48px;          /* what NeXTSTEP drew an icon at, and these are those */
   --tile: 128px;         /* the tile an icon and its name sit on, measured off
                             the original's contents band, where two icons stand
@@ -1196,7 +1203,17 @@ nx-field {
 }
 
 .state { display: flex; align-items: center; gap: 7px; }
-.lamp { width: 9px; height: 9px; border: 1px solid var(--black); background: var(--live); }
+/* The lamp, and the one a busy window carries before its words further down.
+   The box is stated here because `*` reaches no pseudo-element, and without it
+   that second lamp would be two pixels wider than the first. */
+.lamp,
+.busy::before {
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--black);
+  background: var(--live);
+}
 
 button {
   font: var(--text-size) var(--font);
@@ -1254,6 +1271,46 @@ nx-window:not([fixed]) .buttons:last-child { padding-bottom: var(--pane-pad); }
    hold a gap open under whatever is above it, which in the File Viewer is the
    band that has to reach the resize bar. */
 .note:empty { display: none; }
+
+/* What a window is doing right now, while it does it: changing the machine,
+   switching it off, restarting the board. The buttons are off for the whole of
+   it, which takes minutes, and this line is the only thing saying why, so it is
+   drawn as the window's state rather than as a note under it.
+
+   NeXTSTEP's chapter on windows puts status inside the window in small dark
+   gray text and says nothing about an operation that holds a window for
+   minutes. So this takes what the window already states things with: the
+   sunken field a reading sits in, as tall as every other field but across the
+   whole width and in the pink a field wears when it has to be noticed, and the
+   lamp the state row lights. The lamp blinks for as long as the work goes on,
+   which is what a lamp on a machine does while it is busy, and the words are
+   centered and bold. */
+.busy {
+  margin: 8px 0 0;
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 6px;
+  background: var(--notice);
+  border: 1px solid;
+  border-color: var(--sunken-sides);
+  box-shadow: var(--sunken-inside);
+  font-weight: bold;
+  text-align: center;
+}
+.busy:empty { display: none; }
+
+/* The lamp, alternating between lit and the dark an unlit lamp wears in the
+   state row. In whole steps, because a lamp is on or off. */
+.busy::before {
+  content: "";
+  flex: 0 0 auto;
+  animation: lamp-busy 1s steps(1) infinite;
+}
+@keyframes lamp-busy { 50% { background: var(--dark); } }
+@media (prefers-reduced-motion: reduce) { .busy::before { animation: none; } }
 
 /* --- nx-slider ----------------------------------------------------------- */
 

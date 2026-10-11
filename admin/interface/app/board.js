@@ -30,12 +30,14 @@ function warnAboutTheBoard(what, question) {
  */
 async function operateBoard(route, working) {
   allowActions(false);
-  show("pi-note", working);
+  show("pi-note", "");
+  show("pi-busy", working);
 
   const answer = await tell(route);
 
   /* A board that is going down answers nothing, and that is the ordinary case
      rather than a failure. Saying so beats a page that claims no contact. */
+  show("pi-busy", "");
   show("pi-note", answer === null ? t("note.board-gone") : say(answer));
 
   /* Nothing is switched back on here. The next status decides: while the

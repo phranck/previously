@@ -335,6 +335,8 @@ Stopping writes that file, presses F10 and waits for the guest to go. Starting r
 
 **The warning before stopping is always shown and always says the same thing.** Previous exposes nothing about what the emulated machine is doing, so a warning that appeared only sometimes would teach the reader that its absence means safe, which cannot be known.
 
+**While it works, the window says so in a band of its own.** Changing the machine or its disk, putting a disc in or taking one out, and switching the emulator or the board off or on all hold the buttons off for as long as they run, which can be minutes. A pink band above the buttons names what is happening, with the state row's lamp blinking in it, and it stays until the service answers, whatever the machine does in between. What came of it is then a note under the readings. The pink is the one the newest version wears in the Raspberry Pi window when it is newer than the one running.
+
 ## Installing from the browser
 
 Somebody with a bare Raspberry Pi OS installs one package and does everything else in a browser. What that takes is root, twenty-five times over: apt sources, packages, files in `/etc/systemd/system`, the kernel's command line in `/boot/firmware`. The tool has none of that and gets none of it.

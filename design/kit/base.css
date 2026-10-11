@@ -62,6 +62,13 @@
 
   --live: #2f7d32;
 
+  /* What a field carries when it has to be noticed: a version newer than the
+     one running, and what a window is busy with. NeXTSTEP had nothing of this
+     kind at all, so this is not read off the original: it is phranck's, chosen
+     on 29 September 2026, and the palest of pinks reads as a mark on a gray
+     desk without reading as a warning. */
+  --notice: #ffe8fb;
+
   --icon: 48px;          /* what NeXTSTEP drew an icon at, and these are those */
   --tile: 128px;         /* the tile an icon and its name sit on, measured off
                             the original's contents band, where two icons stand
