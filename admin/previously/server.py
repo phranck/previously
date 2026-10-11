@@ -640,6 +640,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         a question about reading rather than about comparing.
         """
         newest = release.published(check=check)
+        # And the list of every release, where it is out of date, so the notes
+        # of an earlier one are known by the time somebody reaches for them from
+        # this window. `history` asks only where the list is missing or lacks
+        # the newest, under the same floor.
+        release.history(check=check)
         here = setup.version_of(release.PACKAGE)
         running = kiosk.setting_up(self.settings.setup_directory)
         return {
@@ -656,7 +661,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         }
 
     def _release_notes(self):
-        """What the published release says about itself.
+        """What a published release says about itself, and which there are.
 
         Its own address rather than a field of the answer above, because that
         one is asked for every two seconds while the Raspberry Pi window is
@@ -664,10 +669,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         thousands of characters and the rest of that answer is four short
         values.
 
-        Nothing is fetched here either. The notes came with the release GitHub
-        described and are kept beside the version and the digest, so this route
-        has nothing to wait for and answers empty where nothing has been learned
-        yet.
+        Of the release `?version=` names, and of the newest where it names none
+        or one that is not known. The answer carries every version there is,
+        newest first, so the window can offer the others.
+
+        Nothing waits here either. The newest release's notes came with the
+        answer GitHub gave about it, and the others come from the list of every
+        release, which this asks for behind the answer where it is out of date.
+        A version that list does not hold yet is answered with the newest, and
+        the next time the window asks it is there.
 
         Markdown, which is what GitHub keeps them as, and the browser is what
         renders them. Sent as the text it is rather than as markup, so there is
@@ -679,10 +689,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """
         asked = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         language = asked.get("language", [""])[0]
+        wanted = asked.get("version", [""])[0]
         newest = release.published()
+        every = release.history(check=True)
+
+        versions = [entry["version"] for entry in every]
+        if newest and newest["version"] not in versions:
+            versions.insert(0, newest["version"])
+
+        chosen = (next((entry for entry in every if entry["version"] == wanted), None)
+                  or newest or (every[0] if every else None))
         return {
-            "version": newest["version"] if newest else None,
-            "notes": release.notes_in(newest["notes"], language) if newest else "",
+            "version": chosen["version"] if chosen else None,
+            "notes": release.notes_in(chosen["notes"], language) if chosen else "",
+            "versions": versions,
         }
 
     def _ask_to_update(self):

@@ -2,7 +2,9 @@
 
 The tool cannot say whether it is out of date without asking somebody, and the
 somebody is the repository it is released from. This module is the whole of that
-conversation: one address, one answer, and what came back kept for a while.
+conversation: the newest release, which an update is made from, the list of
+every release, which only the notes are read from, and what came back from each
+kept for a while.
 
 Nothing here waits. `published` answers with what is already known and looks
 again in a thread where that has got old, because the window asking is polled
@@ -38,6 +40,13 @@ PACKAGE = "previously"
 #: https://docs.github.com/en/rest/releases/releases#get-the-latest-release
 NEWEST = "https://api.github.com/repos/%s/%s/releases/latest" % (OWNER, REPOSITORY)
 
+#: Every release, for reading the notes of the ones before the newest. The same
+#: API lists them newest first, and leaves drafts out for anybody not signed in
+#: to the repository, which this service never is. One page holds a hundred,
+#: which is more releases than this tool will have for a long while.
+#: https://docs.github.com/en/rest/releases/releases#list-releases
+EVERY = "https://api.github.com/repos/%s/%s/releases?per_page=100" % (OWNER, REPOSITORY)
+
 #: What the package is called on a release. `.github/workflows/release.yml`
 #: attaches it under this name with no version in it, which is what makes one
 #: address always the newest one.
@@ -65,6 +74,11 @@ TIMEOUT_SECONDS = 20
 #: this is generous, and it is here so that a reply which never ends is not read
 #: until the memory runs out.
 LARGEST_ANSWER = 1024 * 1024
+
+#: The most of the list of every release to read. Each release in it carries its
+#: notes and its assets, a few kilobytes, so a hundred of them fit well inside
+#: this.
+LARGEST_LIST = 4 * 1024 * 1024
 
 #: The most a package may say it is. This tool's own is a quarter of a megabyte,
 #: so anything past this is not it, and the figure is what a progress bar and a
@@ -120,6 +134,12 @@ _KNOWN = None
 _ASKED_AT = 0.0
 _LOOKING = threading.Lock()
 
+#: The same three for the list of every release, which is asked for apart from
+#: the newest because the update reads nothing from it.
+_HISTORY = None
+_HISTORY_ASKED_AT = 0.0
+_LOOKING_BACK = threading.Lock()
+
 
 class Unreachable(Exception):
     """GitHub could not be asked, or said something this does not understand."""
@@ -174,6 +194,62 @@ def look():
     return found
 
 
+def history(check=False, now=None):
+    """Every published release's version and notes, without waiting for GitHub.
+
+    @param check - Whether to ask GitHub behind this answer where the list is
+      out of date. True where somebody is about to read notes.
+    @param now - The moment to measure the floor against, for a test.
+    @returns list of dicts with `version` and `notes`, newest first, and empty
+      where nothing has been learned yet.
+
+    Out of date means missing, or not holding the newest release `published`
+    knows of. A published release's notes are read far more often than they
+    change, so asking for them all at every reading would spend the requests an
+    address is allowed on the same answer, and a release that is new is exactly
+    what makes the list worth asking for again. The floor `published` keeps
+    holds here as well.
+    """
+    newest = _KNOWN["version"] if _KNOWN else None
+    known = _HISTORY or []
+    stale = not known or (newest is not None
+                          and newest not in {entry["version"] for entry in known})
+    if check and stale and (now or time.time()) - _HISTORY_ASKED_AT >= SOONEST_SECONDS:
+        _look_back_behind_this()
+    return [dict(entry) for entry in (_HISTORY or [])]
+
+
+def look_back():
+    """Asks GitHub for every published release's version and notes.
+
+    @returns list as `history` describes it.
+    @raises Unreachable where GitHub could not be asked or answered with
+      something that is not a list.
+
+    A release in the list that is a draft, a prerelease or carries no version
+    in its tag is left out rather than refusing the rest: these are notes to
+    read, and nothing in them reaches a fetch.
+    """
+    try:
+        with fetching.opened(EVERY, HOSTS, TIMEOUT_SECONDS, HEADERS) as answer:
+            said = json.loads(answer.read(LARGEST_LIST))
+    except (urllib.error.URLError, OSError, ValueError) as error:
+        raise Unreachable("cannot ask GitHub") from error
+    if not isinstance(said, list):
+        raise Unreachable("not a list of releases")
+
+    found = []
+    for entry in said:
+        if isinstance(entry, dict) and not entry.get("draft") \
+                and not entry.get("prerelease"):
+            read = _version_and_notes(entry)
+            if read:
+                found.append({"version": read[0], "notes": read[1]})
+    global _HISTORY
+    _HISTORY = [dict(entry) for entry in found]
+    return found
+
+
 def notes_in(notes, language):
     """A release's notes in one language.
 
@@ -197,9 +273,26 @@ def forget():
     A test that left either behind would be one test's machine answering
     another test's question, or one refusing to ask at all.
     """
-    global _KNOWN, _ASKED_AT
+    global _KNOWN, _ASKED_AT, _HISTORY, _HISTORY_ASKED_AT
     _KNOWN = None
     _ASKED_AT = 0.0
+    _HISTORY = None
+    _HISTORY_ASKED_AT = 0.0
+
+
+def _version_and_notes(said):
+    """The version a release's tag names, and its notes.
+
+    @param said - One release as GitHub describes it.
+    @returns (version, notes), or None where the tag names no version. Notes
+      that are missing or not text are "", because a release published without
+      any is still a release, and notes too long to be notes are cut.
+    """
+    tag = TAG.match(str(said.get("tag_name") or ""))
+    if not tag:
+        return None
+    body = said.get("body")
+    return tag.group(1), body[:LONGEST_NOTES] if isinstance(body, str) else ""
 
 
 def _understood(said):
@@ -222,17 +315,14 @@ def _understood(said):
     if not isinstance(said, dict):
         raise Unreachable("not a release")
 
-    tag = TAG.match(str(said.get("tag_name") or ""))
-    if not tag:
+    read = _version_and_notes(said)
+    if not read:
         raise Unreachable("no version in the tag")
-
-    body = said.get("body")
-    notes = body[:LONGEST_NOTES] if isinstance(body, str) else ""
+    version, notes = read
 
     for asset in said.get("assets") or []:
         if isinstance(asset, dict) and asset.get("name") == ASSET:
-            return {"version": tag.group(1), "notes": notes,
-                    **_the_package(asset)}
+            return {"version": version, "notes": notes, **_the_package(asset)}
     raise Unreachable("no %s on that release" % ASSET)
 
 
@@ -260,25 +350,46 @@ def _the_package(asset):
 
 
 def _look_behind_this():
-    """Looks again in a thread, where nothing is already looking.
+    """Looks again for the newest release in a thread, where nothing is already
+    looking."""
+    def stamp():
+        global _ASKED_AT
+        _ASKED_AT = time.time()
 
-    The moment is written down before the thread starts rather than after it
-    finishes, because the floor is about how often GitHub is asked and a lookup
-    that takes twenty seconds to time out is still a lookup that happened.
+    _behind(_LOOKING, stamp, look)
+
+
+def _look_back_behind_this():
+    """Asks for every release in a thread, where nothing is already asking."""
+    def stamp():
+        global _HISTORY_ASKED_AT
+        _HISTORY_ASKED_AT = time.time()
+
+    _behind(_LOOKING_BACK, stamp, look_back)
+
+
+def _behind(lock, stamp, work):
+    """Runs one lookup in a thread, where the lock says none is running.
+
+    @param lock - The one lookup of that kind at a time.
+    @param stamp - Writes down the moment, before the thread starts rather than
+      after it finishes, because the floor is about how often GitHub is asked
+      and a lookup that takes twenty seconds to time out is still a lookup that
+      happened.
+    @param work - The lookup.
     """
-    global _ASKED_AT
-    if not _LOOKING.acquire(blocking=False):
+    if not lock.acquire(blocking=False):
         return
-    _ASKED_AT = time.time()
+    stamp()
 
     def asking():
         try:
-            look()
+            work()
         except Unreachable:
             # Nothing to do about it here. What is known stays known, or stays
             # unknown, and the reading says so by being absent.
             pass
         finally:
-            _LOOKING.release()
+            lock.release()
 
     threading.Thread(target=asking, daemon=True).start()

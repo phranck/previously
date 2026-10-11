@@ -49,6 +49,8 @@ KIT_PARTS = (
      "a frame that drags, resizes, closes and remembers"),
     ("menu", (("nx-menu", "NxMenu"), ("nx-menu-item", "NxMenuItem")),
      "the menu, and the entries that open windows"),
+    ("popup", (("nx-popup", "NxPopup"),),
+     "a button that brings up a list of choices while it is held"),
     ("dock", (("nx-dock", "NxDock"), ("nx-tile", "NxTile"), ("nx-floor", "NxFloor")),
      "the column of tiles a person arranges, and the floor the others stand on"),
     ("scroller", (("nx-scroller", "NxScroller"),),

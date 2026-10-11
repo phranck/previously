@@ -26,6 +26,14 @@ export declare class NxMenuItem extends HTMLElement {
   [held: string]: any;
 }
 
+export declare class NxPopup extends HTMLElement {
+  drawLabel(...args: any[]): any;
+  held(...args: any[]): any;
+  offer(...args: any[]): any;
+  place(...args: any[]): any;
+  [held: string]: any;
+}
+
 export declare class NxDock extends HTMLElement {
   aimAt(...args: any[]): any;
   arrange(...args: any[]): any;
@@ -133,6 +141,7 @@ declare global {
     "nx-window": NxWindow;
     "nx-menu": NxMenu;
     "nx-menu-item": NxMenuItem;
+    "nx-popup": NxPopup;
     "nx-dock": NxDock;
     "nx-tile": NxTile;
     "nx-floor": NxFloor;

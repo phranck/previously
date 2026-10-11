@@ -272,8 +272,9 @@ function wireTheUpdate() {
   hold("#pi-update", Needs.Quiet, () => updateIsFree);
   /** @type {any} */ (document.getElementById("pi-update"))
     .addEventListener("click", askForTheNewest);
+  /* The newest release's notes, and the click itself is not a version. */
   /** @type {any} */ (document.getElementById("pi-notes"))
-    .addEventListener("click", showTheReleaseNotes);
+    .addEventListener("click", () => showTheReleaseNotes());
 
   /* Opening it asks straight away, because a window that filled itself at the
      next poll would stand empty for a moment first, and this is also the one

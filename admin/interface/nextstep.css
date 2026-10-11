@@ -475,6 +475,12 @@ nx-menu-item[last] { box-shadow: none; }
 nx-menu-item:hover { background: var(--white); }
 nx-menu-item:active { background: var(--black); color: var(--white); }
 
+/* An entry of a pop-up list, which popup.js builds out of these entries
+   because NeXTSTEP drew its pop-up lists as menus. The mouse is already down
+   there, so the entry under it is the one being pressed, and it is drawn the
+   way a pressed entry is. */
+nx-menu-item[lit] { background: var(--black); color: var(--white); }
+
 /* An entry that would do nothing. The lettering grays and the entry stays in
    place, so the menu keeps its shape and a reader sees that the thing exists
    and is not available now. Nothing lights under the pointer, because nothing
@@ -507,6 +513,63 @@ nx-menu[context] .title { cursor: default; }
 /* Pushed to the right edge on its own, so an entry carrying a picture keeps
    the picture and its words together on the left. */
 nx-menu-item .key { font-size: 11px; margin-left: auto; }
+
+/* --- nx-popup ----------------------------------------------------------- */
+
+nx-popup { display: inline-block; }
+
+/* The kit's own button, holding the label on the left and the mark on the
+   right, which is where chapter 7's figure puts it. */
+nx-popup .popup-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 100px;
+  text-align: left;
+}
+
+/* The pop-up mark, NeXT's own: EPS4.gif in chapter 7 of the interface
+   guidelines, 12 by 9 pixels. Read off it pixel by pixel, it is a raised box
+   9 across and 6 down, white on the top and the left, black on the right and
+   the bottom with the dark line inside them, and the same box in the dark gray
+   again two pixels to the right and two down, which is its shadow. The figure
+   is drawn in the documentation's grays, #C6C6C6 and #808080, so it is drawn
+   here from the kit's own edge and the grays of the screen rather than cut out
+   of it.
+
+   Room is left on the right and underneath for the shadow, which a box shadow
+   draws outside the box. */
+nx-popup .popup-mark {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 9px;
+  height: 6px;
+  margin: 0 2px 2px 0;
+  background: var(--light);
+  border: 1px solid;
+  border-color: var(--raised-sides);
+  box-shadow: var(--raised-inside), 2px 2px 0 var(--dark);
+}
+
+/* A button with nothing to choose between greys its label, and its mark with
+   it, so the whole of it says it is not for now. */
+nx-popup .popup-button:disabled .popup-mark {
+  border-color: var(--dark);
+  box-shadow: 2px 2px 0 var(--dark);
+}
+
+/* The list while it is up: a spring-loaded window, which stands above every
+   other kind, attention panels and context menus included. Its items are menu
+   entries, which is what NeXTSTEP's were, so menu.css draws them. At least as
+   wide as the button, which place() sets. */
+.popup-list {
+  position: absolute;
+  z-index: 95;
+  width: max-content;
+  border: 1px solid var(--black);
+  background: var(--light);
+}
 
 /* --- nx-dock ------------------------------------------------------------ */
 

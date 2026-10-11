@@ -80,14 +80,25 @@ const RENDERERS = {
 
     /**
      * @param {any} document_ - Carrying `notes` as the Markdown they were
-     *   written in.
+     *   written in, `version` as the release they are of, and `versions` as
+     *   every release there is, newest first.
      * @returns {Promise<string>} What to say where there are none.
      *
      * Turned into elements rather than into markup, which `markdown.js` is
      * what does: the text comes off a network and nothing built here is ever a
      * string of markup.
+     *
+     * The releases go into the pop-up list above the notes, which is how
+     * somebody reaches the notes of one before the newest.
      */
     async show(document_) {
+      const versions = document_.versions ?? [];
+      /** @type {any} */ (document.getElementById("preview-version")).offer(
+        versions.map((version) => ({ value: version, label: version })),
+        document_.version);
+      /** @type {any} */ (document.getElementById("preview-versions")).hidden =
+        versions.length === 0;
+
       if (!document_.notes) return t("preview.no-notes");
       document.getElementById("preview-document").append(render(document_.notes));
       return "";
@@ -95,6 +106,7 @@ const RENDERERS = {
 
     clear() {
       document.getElementById("preview-document").replaceChildren();
+      /** @type {any} */ (document.getElementById("preview-versions")).hidden = true;
     },
   },
 };
@@ -114,7 +126,9 @@ async function showInPreview(document_) {
   emptyThePreview(document_.kind);
   window_.rename(document_.name);
   window_.open();
-  keepShowing({ kind: document_.kind, name: document_.name });
+  /* With the release where it is notes, so a reload or a change of language
+     comes back to the notes somebody chose rather than to the newest. */
+  keepShowing({ kind: document_.kind, name: document_.name, version: document_.version });
 
   /* The scroller takes its bar from one element, which is its first child
      unless it is told otherwise, and this window has a room per kind of
@@ -177,7 +191,7 @@ function fillPreviewIfItCameBackOpen() {
       t("preview.empty");
     return;
   }
-  if (showing.kind === "notes") return void showTheReleaseNotes();
+  if (showing.kind === "notes") return void showTheReleaseNotes(showing.version);
   showInPreview(showing);
 }
 
@@ -195,22 +209,27 @@ function emptyThePreview(kind) {
 }
 
 /**
- * Opens the notes of whichever release is published.
+ * Opens the notes of a release.
+ * @param {string} [version] - Which release, the newest where none is named.
  *
  * Its own address rather than a field of the answer the Raspberry Pi window
  * polls, because that one is asked every two seconds and these are thousands of
  * characters asked for when somebody presses a button.
  *
  * In the language the interface speaks. A release carries its notes in each of
- * them, and the service answers with English where one is missing.
+ * them, and the service answers with English where one is missing. The answer
+ * names every release there is, which the pop-up list above the notes offers.
  */
-async function showTheReleaseNotes() {
-  const answer = await ask(
-    "/api/update/notes?language=" + encodeURIComponent(currentLanguage()));
+async function showTheReleaseNotes(version) {
+  const asked = new URLSearchParams({ language: currentLanguage() });
+  if (version) asked.set("version", version);
+  const answer = await ask("/api/update/notes?" + asked);
   showInPreview({
     kind: "notes",
     name: t("preview.notes.title", { version: answer?.version ?? "" }).trim(),
     notes: answer?.notes ?? "",
+    version: answer?.version ?? null,
+    versions: answer?.versions ?? [],
   });
 }
 
@@ -223,8 +242,9 @@ async function showTheReleaseNotes() {
  */
 function showTheNotesAgain() {
   const window_ = /** @type {any} */ (document.querySelector('nx-window[name="preview"]'));
-  if (!window_ || window_.hidden || whatItWasShowing()?.kind !== "notes") return;
-  showTheReleaseNotes();
+  const showing = whatItWasShowing();
+  if (!window_ || window_.hidden || showing?.kind !== "notes") return;
+  showTheReleaseNotes(showing.version);
 }
 
 /**
@@ -280,6 +300,11 @@ function openPictureMenu(thing, x, y) {
 
 /** Wires Preview, which holds nothing of its own once it is closed. */
 function wirePreview() {
+  /* A release chosen in the pop-up list is a release whose notes are asked for,
+     in the language the interface speaks. */
+  document.getElementById("preview-version")?.addEventListener("nx-pick",
+    (/** @type {any} */ event) => showTheReleaseNotes(event.detail.value));
+
   document.querySelector('nx-window[name="preview"]')
     ?.addEventListener("nx-close", () => {
       emptyThePreview();
