@@ -78,6 +78,13 @@ LARGEST_PACKAGE = 64 * 1024 * 1024
 #: them would take the update with them.
 LONGEST_NOTES = 64 * 1024
 
+#: How a release carries its notes in a language other than English: after the
+#: English ones, one block per language, which GitHub shows collapsed under the
+#: language's own name. The code is the one the interface's catalogs answer to,
+#: so the German notes are in `<details lang="de">`.
+TRANSLATION = re.compile(
+    r'<details lang="([a-z]{2})">\s*<summary>.*?</summary>(.*?)</details>', re.S)
+
 #: The least time between two lookups, whoever asks for one. Three a minute,
 #: which is what opening the Raspberry Pi window is allowed to cost.
 #:
@@ -165,6 +172,23 @@ def look():
     global _KNOWN
     _KNOWN = dict(found)
     return found
+
+
+def notes_in(notes, language):
+    """A release's notes in one language.
+
+    @param notes - The release's whole description, as `look` keeps it.
+    @param language - Which language, by the code the interface names it with,
+      such as "de".
+    @returns str, the block written in that language, or the English notes
+      where the release carries none in it. The English notes are the
+      description with every block taken out, because that is where GitHub
+      shows them and what a reader there sees first.
+    """
+    for code, text in TRANSLATION.findall(notes):
+        if code == language:
+            return text.strip()
+    return TRANSLATION.sub("", notes).strip()
 
 
 def forget():

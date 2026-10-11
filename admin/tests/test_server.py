@@ -1869,6 +1869,23 @@ def test_what_a_release_says_about_itself_has_its_own_address(
     assert said == {"version": "1.0.2", "notes": "## Installing it"}
 
 
+def test_the_notes_come_in_the_language_the_page_asks_for(service, monkeypatch):
+    """The page asks in the language its interface speaks, and a release that
+    carries none in it is answered in English."""
+    monkeypatch.setattr(server.release, "published", lambda check=False: {
+        "version": "1.2.6",
+        "notes": "One fix.\n\n<details lang=\"de\"><summary>Deutsch</summary>\n\n"
+                 "Ein Fix.\n\n</details>\n"})
+
+    _, _, german = fetch(service + "/api/update/notes?language=de")
+    _, _, swedish = fetch(service + "/api/update/notes?language=sv")
+    _, _, unnamed = fetch(service + "/api/update/notes")
+
+    assert json.loads(german)["notes"] == "Ein Fix."
+    assert json.loads(swedish)["notes"] == "One fix."
+    assert json.loads(unnamed)["notes"] == "One fix."
+
+
 def test_the_notes_are_sent_as_the_markdown_they_are(service, monkeypatch):
     """The browser renders them. Sent as markup instead, this answer would be
     a page handing another page something to run."""

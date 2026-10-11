@@ -95,6 +95,55 @@ def test_notes_longer_than_notes_are_cut_rather_than_refused(answering):
     assert found["version"] == "1.0.0"
 
 
+#: A release's description as a release carries it: the English notes where
+#: GitHub shows them, and two other languages in the blocks GitHub shows
+#: collapsed.
+IN_THREE_LANGUAGES = """One fix.
+
+## Fixed
+
+- Something.
+
+<details lang="de"><summary>Deutsch</summary>
+
+Ein Fix.
+
+## Behoben
+
+- Etwas.
+
+</details>
+<details lang="fr"><summary>Français</summary>
+
+Une correction.
+
+</details>
+"""
+
+ENGLISH = "One fix.\n\n## Fixed\n\n- Something."
+
+
+def test_the_notes_come_in_the_language_asked_for():
+    """The interface speaks six languages, and notes in another one than the
+    reader chose are notes the reader may not be able to read."""
+    assert release.notes_in(IN_THREE_LANGUAGES, "de") \
+        == "Ein Fix.\n\n## Behoben\n\n- Etwas."
+    assert release.notes_in(IN_THREE_LANGUAGES, "fr") == "Une correction."
+
+
+@pytest.mark.parametrize("language", ["en", "sv", "", "xx"])
+def test_a_language_with_no_notes_of_its_own_gets_the_english_ones(language):
+    """English is the one every release has, and without the blocks for the
+    other languages, which would otherwise come along under it."""
+    assert release.notes_in(IN_THREE_LANGUAGES, language) == ENGLISH
+
+
+def test_notes_in_one_language_are_those_whatever_is_asked_for():
+    """Every release before the notes were translated is like this."""
+    assert release.notes_in("## Installing it\n\nOne line.", "de") \
+        == "## Installing it\n\nOne line."
+
+
 def test_the_v_of_a_tag_is_not_part_of_the_version(answering):
     """A tag is `v1.0.0` and dpkg knows the package as `1.0.0`, so a version
     carrying the v would compare as older than everything."""

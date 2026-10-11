@@ -411,6 +411,8 @@ The Raspberry Pi window says which version is here and which is published, and w
 
 **What the release says about itself** is read in Preview, through the Release Notes button beside that line. The notes come with the answer GitHub already gave, so nothing is fetched for them, and they have an address of their own because the answer the window polls is asked every two seconds and these are thousands of characters asked for once.
 
+**They are in the language the interface speaks.** A release carries its notes in English at the top of its description, where GitHub shows them, and in each other language in a `<details lang="xx">` block after them, which GitHub shows collapsed. `GET /api/update/notes?language=de` answers with the German block, and with the English notes where the release carries none in that language. Changing the language in Preferences fetches notes that are open again.
+
 ## Preview and its renderers
 
 Preview opens, takes the document's name as its title and hands the room to whichever renderer takes that kind of document. It does no fetching, no drawing and no clearing of its own. A renderer names the part of the window it fills and says how to fill it and how to empty it, so a third kind of document is an entry in one table rather than a branch through the window.

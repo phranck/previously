@@ -653,11 +653,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
         Markdown, which is what GitHub keeps them as, and the browser is what
         renders them. Sent as the text it is rather than as markup, so there is
         nothing in this answer a page could be talked into running.
+
+        In the language the page asks for with `?language=`, which is the one
+        its interface speaks, and in English where the release carries none in
+        that language or the page names none.
         """
+        asked = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        language = asked.get("language", [""])[0]
         newest = release.published()
         return {
             "version": newest["version"] if newest else None,
-            "notes": newest["notes"] if newest else "",
+            "notes": release.notes_in(newest["notes"], language) if newest else "",
         }
 
     def _ask_to_update(self):
