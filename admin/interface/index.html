@@ -112,6 +112,10 @@
     <nx-row><label data-t="info.file"></label><nx-field id="info-file">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="info.written"></label><nx-field id="info-written">&mdash;</nx-field></nx-row>
   </div>
+  <!-- What is happening while it happens, and the note afterwards says what
+       came of it. Two lines rather than one, because the first is the window's
+       state for minutes and the second is a remark. -->
+  <p class="busy" id="kiosk-busy"></p>
   <p class="note" id="kiosk-note"></p>
   <div class="buttons">
     <button id="kiosk-stop" data-t="button.power-off"></button>
@@ -168,6 +172,7 @@
        write into: a replacement takes minutes and is drawn again at every poll,
        so sharing one paragraph would wipe whatever the last press said. -->
   <p class="note" id="pi-update-note"></p>
+  <p class="busy" id="pi-busy"></p>
   <p class="note" id="pi-note"></p>
   <div class="buttons">
     <button id="pi-poweroff" data-t="button.power-off"></button>
