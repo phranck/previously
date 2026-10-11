@@ -612,13 +612,24 @@ def written_for(machine):
 
     @param machine - A Machine.
     @returns dict of section name to dict of key to value, as `settings_for`
-      answers, with the Screen section from `screen_for` beside it.
+      answers, with `bADB` in the System section and the Screen section from
+      `screen_for` beside it.
 
     Two answers rather than one, because `settings_for` is also what a file is
-    matched against to say which machine it is, and which screen the window
-    shows does not make it a different machine.
+    matched against to say which machine it is, and every key it holds has to
+    be in the file for that. Neither of these makes a machine a different one.
+    Which screen the window shows is about the window, and the Apple Desktop
+    Bus follows from the turbo board alone. A file Previous's own dialog has
+    not saved since holds no `bADB` at all, and matching on it would name no
+    machine for that file.
     """
-    return dict(settings_for(machine), Screen=screen_for(machine))
+    written = settings_for(machine)
+    # The Apple Desktop Bus came with the turbo board, and Previous's own dialog
+    # switches it with that board in Configuration_SetSystemDefaults. Keyboard
+    # and mouse go through it wherever both are set.
+    written["System"]["bADB"] = _flag(machine.turbo)
+    written["Screen"] = screen_for(machine)
+    return written
 
 
 def _dimensions_settled(dimensions, kind):

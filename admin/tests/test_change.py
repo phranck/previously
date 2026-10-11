@@ -204,10 +204,28 @@ def test_the_rest_of_the_file_is_untouched(settings, machine):
     run("next-computer", settings, machine)
     after = settings.previous_config.read_text().splitlines()
 
-    assert len(before) == len(after)
+    # One line more, and it is the bus, which the file on the Pi does not hold.
+    assert len(after) == len(before) + 1
+    assert "bADB = FALSE" in after
     # The disk it boots from is not the machine's business and must survive.
     assert "szImageName0 = /home/next/nextstep/NS33.dd" in after
     assert "bDiskInserted0 = TRUE" in after
+
+
+def test_a_turbo_machine_is_written_with_its_desktop_bus(settings, machine):
+    """Into the System section, which is the only place Previous reads it from:
+    a key below a later header belongs to that one."""
+    run("nextcube-turbo", settings, machine)
+
+    written = configparser.ConfigParser()
+    written.optionxform = str
+    written.read(settings.previous_config)
+    assert written["System"]["bADB"] == "TRUE"
+
+    run("nextstation", settings, machine)
+
+    written.read(settings.previous_config)
+    assert written["System"]["bADB"] == "FALSE"
 
 
 def test_the_previous_file_is_kept_beside_it(settings, machine):
@@ -220,6 +238,10 @@ def test_the_previous_file_is_kept_beside_it(settings, machine):
 
 
 def test_choosing_what_is_already_set_changes_nothing(settings, machine):
+    # The machine as this tool writes it, which carries the bus the file on
+    # the Pi does not.
+    settings.previous_config.write_text(
+        REAL_SHAPE.replace("bTurbo = TRUE\n", "bTurbo = TRUE\nbADB = TRUE\n"))
     before = settings.previous_config.read_text()
     finished, told = run("nextcube-turbo-dimension", settings, machine)
 
