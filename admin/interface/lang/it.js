@@ -298,7 +298,7 @@ export const it = {
   "ask.board.loss": "Il lavoro non salvato nei programmi in funzione andrà perso.",
 
   /* --- the board underneath --------------------------------------------- */
-  "pi.model": "Macchina",
+  "pi.trademark": "Raspberry Pi è un marchio di Raspberry Pi Ltd.",
   "pi.uptime": "In funzione",
   "pi.temperature": "Temperatura",
   "pi.power": "Alimentazione",

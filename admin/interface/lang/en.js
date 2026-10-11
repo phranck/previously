@@ -310,7 +310,7 @@ export const en = {
   "ask.board.loss": "Unsaved work in running programs is lost.",
 
   /* --- the board underneath --------------------------------------------- */
-  "pi.model": "Machine",
+  "pi.trademark": "Raspberry Pi is a trademark of Raspberry Pi Ltd.",
   "pi.uptime": "Running",
   "pi.temperature": "Temperature",
   "pi.power": "Power",

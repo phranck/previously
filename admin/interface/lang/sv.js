@@ -298,7 +298,7 @@ export const sv = {
   "ask.board.loss": "Osparat arbete i program som är igång går förlorat.",
 
   /* --- the board underneath --------------------------------------------- */
-  "pi.model": "Maskin",
+  "pi.trademark": "Raspberry Pi är ett varumärke som tillhör Raspberry Pi Ltd.",
   "pi.uptime": "Igång",
   "pi.temperature": "Temperatur",
   "pi.power": "Ström",

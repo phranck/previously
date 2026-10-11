@@ -191,6 +191,11 @@
   --optical: url("parts/optical.png");
   --png: url("parts/png.png");
   --Preferences: url("parts/Preferences.png");
+  /* The board this runs on, which is the one picture here neither NeXT nor
+     phranck drew: Raspberry Pi Ltd's registered logo, fetched from their own
+     site by ../../design/raspberrypi.py. Raspberry Pi is a trademark of
+     Raspberry Pi Ltd, and the window that shows it says so. */
+  --raspberry-pi: url("parts/raspberry-pi.png");
   --root: url("parts/root.png");
   --scsi: url("parts/scsi.png");
   --Terminal: url("parts/Terminal.png");

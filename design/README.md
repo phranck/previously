@@ -57,6 +57,17 @@ The two files are committed, so nothing has to run for the Terminal to be set in
 
 It changes one thing on the way, in metrics rather than in outlines. A font states its line in three tables and a browser picks one of them by platform, and Inconsolata's three disagree: two give a line of 16.8 pixels at the Terminal's size and the third gives 23.3. All three are set to one em, which at 16 pixels is the 16 a row of this interface is. That is also why nothing states the cell: whatever needs it reads it off the face as `1ch` and `1lh`.
 
+## The board's logo
+
+The Info window wears the Raspberry Pi logo beside its readings. It is Raspberry Pi Ltd's registered trademark, and their rules ask that only the assets they publish on raspberrypi.com are used, so `raspberrypi.py` fetches the color symbol from the page that states those rules, holds it to the sum it was read at, cuts it to the symbol and writes it at 48 pixels as `admin/web/parts/raspberry-pi.png`. The window says at its foot that Raspberry Pi is a trademark of Raspberry Pi Ltd.
+
+```bash
+python3 raspberrypi.py
+python3 build.py
+```
+
+`fetched.py` is where `raspberrypi.py` and `fonts.py` fetch what they ship and hold it to its sum.
+
 ## The kit
 
 `kit/` is the interface, one source per part. Each part holds its element and its styles beside each other, `window.js` next to `window.css`, and `build.py` puts them together into the two files the admin serves and into this draft. So a part is edited in one place and cannot drift from itself.

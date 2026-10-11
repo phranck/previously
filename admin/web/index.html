@@ -79,15 +79,23 @@
   </div>
 </nx-window>
 
-<nx-window name="pi" data-t-title="window.info" fixed x="600" y="16" w="360" closed>
-  <div class="readings">
-    <nx-row><label data-t="pi.model"></label><nx-field id="pi-model">&mdash;</nx-field></nx-row>
-    <nx-row><label data-t="pi.uptime"></label><nx-field id="pi-uptime">&mdash;</nx-field></nx-row>
-    <nx-row><label data-t="pi.temperature"></label><div class="state" id="pi-temp">&mdash;</div></nx-row>
-    <nx-row><label data-t="pi.power"></label><div class="state" id="pi-power">&mdash;</div></nx-row>
-    <nx-row><label data-t="pi.sound"></label><div class="state" id="pi-sound">&mdash;</div></nx-row>
+<nx-window name="pi" data-t-title="window.info" fixed x="600" y="16" w="460" closed>
+  <div class="info-body">
+    <nx-portrait>
+      <i class="art icon" style="background-image: var(--raspberry-pi)"></i>
+      <span class="caption" id="pi-model">&mdash;</span>
+    </nx-portrait>
+    <div class="readings">
+      <nx-row><label data-t="pi.uptime"></label><nx-field id="pi-uptime">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="pi.temperature"></label><div class="state" id="pi-temp">&mdash;</div></nx-row>
+      <nx-row><label data-t="pi.power"></label><div class="state" id="pi-power">&mdash;</div></nx-row>
+      <nx-row><label data-t="pi.sound"></label><div class="state" id="pi-sound">&mdash;</div></nx-row>
 
-    <nx-row><label data-t="pi.crashes"></label><div class="state" id="pi-crashes">&mdash;</div></nx-row>
+      <nx-row><label data-t="pi.crashes"></label><div class="state" id="pi-crashes">&mdash;</div></nx-row>
+    </div>
+  </div>
+
+  <div class="readings">
     <nx-row><label data-t="pi.memory"></label><nx-field id="pi-memory">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="pi.card"></label><nx-field id="pi-disk">&mdash;</nx-field></nx-row>
 
@@ -117,6 +125,8 @@
 
     <button id="pi-update" data-t="button.update" hidden></button>
   </div>
+
+  <p class="trademark" data-t="pi.trademark"></p>
 </nx-window>
 
 <nx-window name="activity" data-t-title="app.activity-monitor" fixed

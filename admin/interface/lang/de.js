@@ -298,7 +298,7 @@ export const de = {
   "ask.board.loss": "Nicht gespeicherte Arbeit in laufenden Programmen geht dabei verloren.",
 
   /* --- the board underneath --------------------------------------------- */
-  "pi.model": "Maschine",
+  "pi.trademark": "Raspberry Pi ist eine Marke von Raspberry Pi Ltd.",
   "pi.uptime": "Läuft",
   "pi.temperature": "Temperatur",
   "pi.power": "Strom",
