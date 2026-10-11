@@ -110,6 +110,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
     #: a Content-Length, which is what this needs to be safe.
     protocol_version = "HTTP/1.1"
 
+    #: What the POST being answered carried, as `_taken` read it, and whether
+    #: it left a body on the connection that was not read. Both are set again
+    #: for every POST, because one handler answers every request on its
+    #: connection.
+    posted = None
+    unread = False
+
+    def end_headers(self):
+        """Ends the headers, closing the connection behind an unread body.
+
+        http.server keeps the connection open unless an answer says otherwise,
+        and sending `Connection: close` is what makes it close as well as what
+        tells the browser to open a new one for its next request.
+        """
+        if self.unread:
+            self.send_header("Connection", "close")
+        super().end_headers()
+
     def do_GET(self):
         """Routes a GET. The API first, then files, then a refusal."""
         route = self.path.split("?", 1)[0]
@@ -172,11 +190,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """Routes a POST.
 
         Everything that arrives this way changes something, so the session is
-        checked before anything looks at what was sent. The three routes about
-        the secret itself stand in front of that check, because they are how a
-        browser comes to have a session at all.
+        checked before anything is done with what was sent. The three routes
+        about the secret itself stand in front of that check, because they are
+        how a browser comes to have a session at all.
         """
         route = urllib.parse.urlparse(self.path).path
+        self.posted = self._taken()
 
         if not self._from_this_page():
             return self._json({"error": "another origin"}, status=403)
@@ -787,7 +806,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return self._json({"ok": gone}, status=200 if gone else 404)
 
     def _sent(self):
-        """What a POST carried.
+        """What a POST carried, as the object it is.
 
         @returns dict, empty where nothing was sent, and None where something
           was sent that cannot be read as an object.
@@ -795,17 +814,50 @@ class Handler(http.server.BaseHTTPRequestHandler):
         The two are kept apart because they are different mistakes: a request
         that names nothing is answered by whatever it asked of, and a request
         whose body is not JSON is the caller's error and is told so.
+
+        The bytes are the ones `_taken` read off the connection before the
+        request was routed, so nothing here touches the socket.
         """
-        length = int(self.headers.get("Content-Length") or 0)
-        if length == 0:
-            return {}
-        if length > LARGEST_BODY:
+        if self.posted is None:
             return None
+        if not self.posted:
+            return {}
         try:
-            found = json.loads(self.rfile.read(length))
-        except (ValueError, OSError):
+            found = json.loads(self.posted)
+        except ValueError:
             return None
         return found if isinstance(found, dict) else None
+
+    def _taken(self):
+        """Reads what a POST carried off the connection, before anything answers.
+
+        @returns bytes, empty where nothing was sent, and None where the
+          request declares a length this will not read: more than
+          LARGEST_BODY, a negative one, or one that is not a number.
+
+        Read before the request is routed, refusals included, because the
+        connection stays open for the next request and a body left in it would
+        be read as that request's first bytes. A refusal cannot simply close
+        the connection either: a socket closed with bytes still unread in it is
+        reset, and RFC 9112 section 9.6 says that reset can erase the answer
+        before the browser has read it.
+
+        A body this does not read leaves `unread` set, and `end_headers` closes
+        the connection behind the answer, because nothing could say where such
+        a body ends and the next request begins.
+        """
+        self.unread = False
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = -1
+        if 0 <= length <= LARGEST_BODY:
+            try:
+                return self.rfile.read(length)
+            except OSError:
+                pass
+        self.unread = True
+        return None
 
     def _picture(self):
         """Answers with one picture out of the folder pictures are kept in.

@@ -6,6 +6,7 @@ line, the headers and the body.
 """
 
 import json
+import socket
 import subprocess
 import threading
 import http.client
@@ -572,6 +573,69 @@ def test_a_post_from_this_page_is_not(service):
              session=server.Handler.sessions.open(), origin=service)
 
     assert raised.value.code == 404
+
+
+# -- what a POST leaves on the connection ---------------------------------
+
+
+@pytest.mark.parametrize("route,signed_in,origin,status", [
+    ("/api/machine", False, None, 403),
+    ("/api/machine", True, "http://somewhere.else", 403),
+    ("/api/anything", True, None, 404),
+])
+def test_an_answer_leaves_no_body_behind_for_the_next_request(
+        service, route, signed_in, origin, status):
+    """On the Pi a switch of machine was refused for want of a session, and the
+    next request on that connection arrived as
+    `{"machine":"nextcube-turbo-dimension"}GET` and was answered with 501.
+
+    The second request goes out on the same socket as the first, which is what
+    a browser does with a connection that was not closed."""
+    parsed = urllib.parse.urlparse(service)
+    connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=5)
+    headers = {"Content-Type": "application/json"}
+    if signed_in:
+        headers["Cookie"] = "%s=%s" % (COOKIE, server.Handler.sessions.open())
+    if origin:
+        headers["Origin"] = origin
+    try:
+        connection.request("POST", route, headers=headers,
+                           body=b'{"machine":"nextcube-turbo-dimension"}')
+        refused = connection.getresponse()
+        refused.read()
+        carried_by = connection.sock
+        connection.request("GET", "/api/health")
+        answer = connection.getresponse()
+        answer.read()
+        answered_on = connection.sock
+    finally:
+        connection.close()
+
+    assert refused.status == status
+    assert answer.status == 200
+    assert answered_on is carried_by
+
+
+@pytest.mark.parametrize("length", [str(server.LARGEST_BODY + 1), "-1", "many"])
+def test_a_body_that_is_not_read_closes_the_connection(service, length):
+    """Nothing could say where such a body ends and the next request begins, so
+    the answer is the last thing on that connection and says so.
+
+    Sent by hand, because http.client works out the length itself. The body is
+    never sent, so the connection holds nothing unread when it closes."""
+    parsed = urllib.parse.urlparse(service)
+    request = ("POST /api/machine HTTP/1.1\r\nHost: %s\r\nCookie: %s=%s\r\n"
+               "Content-Length: %s\r\n\r\n"
+               % (parsed.netloc, COOKIE, server.Handler.sessions.open(), length))
+    with socket.create_connection((parsed.hostname, parsed.port), timeout=5) as connection:
+        connection.sendall(request.encode("ascii"))
+        received = b""
+        while chunk := connection.recv(4096):
+            received += chunk
+
+    head = received.split(b"\r\n\r\n", 1)[0].split(b"\r\n")
+    assert head[0] == b"HTTP/1.1 400 Bad Request"
+    assert b"Connection: close" in head
 
 
 # -- what gets into the journal ------------------------------------------
