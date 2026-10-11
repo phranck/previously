@@ -85,17 +85,38 @@ function setDeskScale(scale) {
   gatherWindows();
 }
 
-/** Brings any window that is off the desk back onto it. */
+/**
+ * Brings any window that is off the desk back onto it, and makes any that is
+ * larger than the desk as large as the desk, starting at its edge, which is
+ * what keeps its resize bar where a pointer can reach it. A fixed window has
+ * no bar and keeps its size.
+ */
 function gatherWindows() {
   const room = deskRoom();
   for (const window_ of document.querySelectorAll("nx-window")) {
     if (window_.hidden) continue;
+    let changed = false;
+    if (!window_.hasAttribute("fixed")) {
+      const held = window_.sizeOnDesk(window_.offsetWidth, window_.offsetHeight);
+      if (held.width < window_.offsetWidth) {
+        window_.style.width = held.width + "px";
+        window_.style.left = "0px";
+        changed = true;
+      }
+      if (held.height < window_.offsetHeight) {
+        window_.style.height = held.height + "px";
+        window_.style.top = "0px";
+        changed = true;
+      }
+    }
     const left = Math.min(window_.offsetLeft, Math.max(0, room.width - 90));
     const top = Math.min(window_.offsetTop, Math.max(0, room.height - 40));
-    if (left === window_.offsetLeft && top === window_.offsetTop) continue;
-    window_.style.left = left + "px";
-    window_.style.top = top + "px";
-    window_.save?.();
+    if (left !== window_.offsetLeft || top !== window_.offsetTop) {
+      window_.style.left = left + "px";
+      window_.style.top = top + "px";
+      changed = true;
+    }
+    if (changed) window_.save?.();
   }
 }
 
@@ -583,10 +604,6 @@ class NxWindow extends HTMLElement {
       ? (_key, attribute) => Number(this.getAttribute(attribute))
       : number;
 
-    const room = deskRoom();
-    this.style.left = Math.min(number("x", "x"), Math.max(0, room.width - 90)) + "px";
-    this.style.top = Math.min(number("y", "y"), Math.max(0, room.height - 40)) + "px";
-
     /* Before the size, because the floor is read off these and a size saved
        when the window held something else has to be held to what it holds
        now. */
@@ -595,9 +612,19 @@ class NxWindow extends HTMLElement {
         this.style.setProperty(property, this.getAttribute(attribute) + "px");
       }
     }
-    const floor = this.floor;
+    const wanted = { width: size("w", "w"), height: size("h", "h") };
+    const held = this.sizeOnDesk(wanted.width, wanted.height);
 
-    this.style.width = Math.max(size("w", "w"), floor.width) + "px";
+    /* With at least a corner of its title bar on the desk. A window cut down
+       to the size of the desk starts at that edge, because anywhere further
+       along its resize bar would be off the desk again. */
+    const room = deskRoom();
+    this.style.left = (held.width < wanted.width
+      ? 0 : Math.min(number("x", "x"), Math.max(0, room.width - 90))) + "px";
+    this.style.top = (held.height < wanted.height
+      ? 0 : Math.min(number("y", "y"), Math.max(0, room.height - 40))) + "px";
+
+    this.style.width = held.width + "px";
 
     /* A fixed window is as tall as what is in it, unless its markup says
        otherwise. A height written by hand is a number that stops being right
@@ -606,7 +633,7 @@ class NxWindow extends HTMLElement {
        one. */
     this.style.height = fixed && !this.hasAttribute("h")
       ? "auto"
-      : Math.max(size("h", "h"), floor.height) + "px";
+      : held.height + "px";
     /* A window is open unless it says otherwise, and what was remembered
        beats what the markup starts it at. */
     this.hidden = !(saved.open ?? !this.hasAttribute("closed"));
@@ -614,6 +641,27 @@ class NxWindow extends HTMLElement {
 
   /** @returns {string} The name it is known by. */
   get name() { return this.getAttribute("name"); }
+
+  /**
+   * A size this window can have on the desk as it is now.
+   * @param {number} width - The width wanted, in the window's own units.
+   * @param {number} height - The height wanted.
+   * @returns {object} `width` and `height`, each at least the floor its
+   *   content needs and no larger than the desk.
+   *
+   * No larger than the desk, because the resize bar runs along the window's
+   * foot and its title bar cannot be taken above the top edge: a window taller
+   * than the desk has its bar out of reach for good, and the desk remembers it
+   * that way. The floor wins where the desk is smaller than the floor.
+   */
+  sizeOnDesk(width, height) {
+    const floor = this.floor;
+    const room = deskRoom();
+    return {
+      width: Math.max(floor.width, Math.min(width, room.width)),
+      height: Math.max(floor.height, Math.min(height, room.height)),
+    };
+  }
 
   /** The floor this window's content needs, read off the element itself. */
   get floor() {
@@ -751,13 +799,20 @@ class NxWindow extends HTMLElement {
       gesture(handle,
         (point, start) => {
           const floor = this.floor;
-          this.style.height = Math.max(floor.height, start.height + point.y) + "px";
+          const room = deskRoom();
+          /* No further than the desk's bottom and right edge, so the bar stays
+             where a pointer can take hold of it again. The pointer itself goes
+             further, because the gesture holds on to it outside the page. */
+          this.style.height = Math.max(floor.height,
+            Math.min(start.height + point.y, room.height - this.offsetTop)) + "px";
           if (corner === "right") {
-            this.style.width = Math.max(floor.width, start.width + point.x) + "px";
+            this.style.width = Math.max(floor.width,
+              Math.min(start.width + point.x, room.width - this.offsetLeft)) + "px";
           } else if (corner === "left") {
             /* Dragging the left end moves that edge and holds the right one
-               still, so the two have to change together. */
-            const left = Math.min(point.x - start.grabX, start.right - floor.width);
+               still, so the two have to change together. Not past the desk's
+               left edge either. */
+            const left = Math.max(0, Math.min(point.x - start.grabX, start.right - floor.width));
             this.style.left = left + "px";
             this.style.width = (start.right - left) + "px";
           }

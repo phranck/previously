@@ -60,17 +60,38 @@ function setDeskScale(scale) {
   gatherWindows();
 }
 
-/** Brings any window that is off the desk back onto it. */
+/**
+ * Brings any window that is off the desk back onto it, and makes any that is
+ * larger than the desk as large as the desk, starting at its edge, which is
+ * what keeps its resize bar where a pointer can reach it. A fixed window has
+ * no bar and keeps its size.
+ */
 function gatherWindows() {
   const room = deskRoom();
   for (const window_ of document.querySelectorAll("nx-window")) {
     if (window_.hidden) continue;
+    let changed = false;
+    if (!window_.hasAttribute("fixed")) {
+      const held = window_.sizeOnDesk(window_.offsetWidth, window_.offsetHeight);
+      if (held.width < window_.offsetWidth) {
+        window_.style.width = held.width + "px";
+        window_.style.left = "0px";
+        changed = true;
+      }
+      if (held.height < window_.offsetHeight) {
+        window_.style.height = held.height + "px";
+        window_.style.top = "0px";
+        changed = true;
+      }
+    }
     const left = Math.min(window_.offsetLeft, Math.max(0, room.width - 90));
     const top = Math.min(window_.offsetTop, Math.max(0, room.height - 40));
-    if (left === window_.offsetLeft && top === window_.offsetTop) continue;
-    window_.style.left = left + "px";
-    window_.style.top = top + "px";
-    window_.save?.();
+    if (left !== window_.offsetLeft || top !== window_.offsetTop) {
+      window_.style.left = left + "px";
+      window_.style.top = top + "px";
+      changed = true;
+    }
+    if (changed) window_.save?.();
   }
 }
 

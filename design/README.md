@@ -87,7 +87,7 @@ The NeXTSTEP draft is a set of custom elements that plug into one another:
 </nx-window>
 ```
 
-`nx-window` builds its own title bar, close button and resize bar, and remembers where it is, how big it is and whether it is open. `fixed` takes the resize bar away, `flush` lets content run to the frame, `drop` makes it a target for dragging, and `closed` starts it shut.
+`nx-window` builds its own title bar, close button and resize bar, and remembers where it is, how big it is and whether it is open. It never grows past the desk's edges, so its resize bar stays within reach, and one remembered larger than the desk comes back as large as the desk. `fixed` takes the resize bar away, `flush` lets content run to the frame, `drop` makes it a target for dragging, and `closed` starts it shut.
 
 `nx-scroller` is the only rule in the stylesheet that hands out `overflow`. Anything that can scroll therefore sits inside one and wears NeXT's own scroller on its left, and the browser's native scrollbar cannot appear.
 
