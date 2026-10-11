@@ -10,6 +10,7 @@ export declare class NxWindow extends HTMLElement {
   raise(...args: any[]): any;
   rename(...args: any[]): any;
   save(...args: any[]): any;
+  sizeOnDesk(...args: any[]): any;
   wire(...args: any[]): any;
   [held: string]: any;
 }
