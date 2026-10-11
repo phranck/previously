@@ -60,12 +60,13 @@ It changes one thing on the way, in metrics rather than in outlines. A font stat
 
 ## The board's picture
 
-The Info window wears a circuit board beside its readings. It is drawn here in `board.svg`, in a gray a shade darker than the NeXTstation's, with a pin header, a processor and its ports along two edges.
+The Info window wears a circuit board beside its readings. It is drawn by hand as `../admin/web/parts/board.svg`, in a gray a shade darker than the NeXTstation's, with a pin header, a processor and its ports along two edges. NeXT's logo sits on the processor's lid.
 
-It is drawn on the grid of pixels it is shown at, 60 by 48. Every edge falls between two pixels, so nothing in it is smoothed when it is rendered at that size. `rsvg-convert` renders it into `admin/web/parts/board.png`, and it comes with librsvg, which Homebrew installs as `librsvg`.
+The board is drawn on the grid of pixels it is shown at, 60 by 48, and every edge but the logo's falls between two pixels. At that size or at any whole multiple of it, nothing but the logo is smoothed. The logo is NeXT's own as a vector, so it stays sharp at whatever size the board is drawn at.
+
+The file is served as it is, so the browser draws it at the display's own resolution, and `build.py` bakes it into the mockup like the bitmaps. The website at previous.li draws its hero, its mark and its icons from the same file on `main`.
 
 ```bash
-rsvg-convert board.svg -o ../admin/web/parts/board.png
 python3 build.py
 ```
 
@@ -123,7 +124,7 @@ The pictures in `../admin/web/parts/` are NeXT's, and NeXT's assets belong to Ap
 
 Thirteen are read out of the Workspace Manager's own bundle in a NeXTSTEP 3.3 disk image, one out of Terminal.app and two out of Preferences.app in the same image. Three are cut from a screenshot of the running system, because NeXTSTEP drew its window buttons and dock marks in PostScript and they exist as no file at all. Two come from the boot ROM, through the emulator's own grab.
 
-The circuit board is not NeXT's. It is drawn here in `board.svg` and is this repository's own.
+The circuit board in `board.svg` is this repository's own, apart from the logo on its processor, which is NeXT's.
 
 The tools are ours and hold none of it. `extract.py`, `bootpicture.py`, `ufs.py` and `nxtiff.py` know how to read a NeXT filesystem, a NeXT TIFF and a NeXT screen, which is a description of formats rather than a copy of anything.
 

@@ -167,10 +167,11 @@
   --defaultUnixIcon: url("parts/defaultUnixIcon.png");
   --defaultAppIcon: url("parts/defaultAppIcon.png");
   --defaultIcon: url("parts/defaultIcon.png");
-  /* The board this runs on, which NeXTSTEP has no picture of. It is drawn for
-     this repository in ../../design/board.svg, and the design README says how
-     it becomes this file. */
-  --board: url("parts/board.png");
+  /* The board this runs on, which NeXTSTEP has no picture of, drawn for this
+     repository. A drawing rather than a bitmap, because the NeXT logo on its
+     processor is a vector and stays sharp only where the browser draws it at
+     the display's own resolution. */
+  --board: url("parts/board.svg");
   --Check: url("parts/Check.png");
   --dock-marks: url("parts/dock-marks.png");
   --floppy: url("parts/floppy.png");
