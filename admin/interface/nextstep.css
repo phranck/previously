@@ -519,6 +519,10 @@ nx-dock {
   grid-auto-rows: var(--dock-width);
   align-content: start;
   z-index: 50;
+  /* Above the windows, and only its tiles take the pointer. The column runs
+     the height of the screen whether or not there is a tile in it, and an
+     empty slot is desk: a window behind it has to be reachable there. */
+  pointer-events: none;
 }
 
 /* The slot a traveling tile would land on. Flat and pale, with none of a
@@ -538,6 +542,9 @@ nx-tile {
   cursor: default;
   flex: 0 0 auto;
   grid-column: 1;
+  /* The dock and the floor let the pointer through, and a tile is the part of
+     them that takes it. */
+  pointer-events: auto;
   /* The raised edge, whose colors nx-tile reads from base.css with every other
      raised surface, drawn two pixels wide rather than one, because that is the
      bevel the original gives a tile: the 68 of --dock-width is 64 of tile and
@@ -581,6 +588,10 @@ nx-floor {
   right: var(--dock-width);
   display: flex;
   z-index: 50;
+  /* A strip the width of the screen as soon as one icon lies on it, and the
+     rest of the strip is desk. A window reaching down into it keeps its
+     resize bar, which otherwise lay under the strip and took no pointer. */
+  pointer-events: none;
 }
 nx-tile .art { width: 56px; height: 56px; background-size: contain; }
 

@@ -66,6 +66,21 @@ test("a tile carried onto a free slot lands there and is remembered there", () =
   assert.equal(remembered().dock.places.terminal, 6);
 });
 
+test("the dock and the floor take the pointer on their tiles and nowhere else", () => {
+  /* Both lie above the windows and run the height or the width of the screen.
+     A window reaching into the strip along the foot had its resize bar under
+     the floor, which took the pointer although nothing lay there. */
+  lay(`<main>${MARKUP}<nx-floor><nx-tile icon="Preview" opens="preview"></nx-tile></nx-floor></main>`);
+
+  for (const holder of ["nx-dock", "nx-floor"]) {
+    const element = document.querySelector(holder);
+    assert.equal(getComputedStyle(element).pointerEvents, "none", holder);
+    for (const tile of element.querySelectorAll("nx-tile")) {
+      assert.equal(getComputedStyle(tile).pointerEvents, "auto", holder + " tile");
+    }
+  }
+});
+
 test("a tile carried onto a slot that is taken goes back where it came from", () => {
   const dock = lay(MARKUP);
   const terminal = dock.querySelector('nx-tile[name="terminal"]');

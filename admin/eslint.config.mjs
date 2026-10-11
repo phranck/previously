@@ -98,6 +98,7 @@ export default [
         PointerEvent: "readonly",
         KeyboardEvent: "readonly",
         URL: "readonly",
+        getComputedStyle: "readonly",
       },
     },
     rules,
