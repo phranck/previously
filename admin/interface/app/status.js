@@ -6,29 +6,16 @@ import { show } from "./page.js";
 import { askForPassword, askPanel } from "./panels.js";
 import { drawPi } from "./pi.js";
 import { Kiosk, ask, operate } from "./service.js";
+import { Needs, begin, end, heard, hold } from "./system.js";
 import { markCurrent } from "./viewer.js";
 import { Art, NOTHING, changedLine, cpuOf, machineArt, modelOf, nameOf, screenOf, since, writtenLine } from "./words.js";
-
-/** Everything on the page that changes something. */
-const ACTIONS = [
-  "kiosk-start", "kiosk-stop", "kiosk-restart",
-  "pi-reboot", "pi-poweroff",
-];
-
-/**
- * Turns every acting button off or lets the state decide again.
- * @param {boolean} reachable - Whether the service answered.
- */
-function allowActions(reachable) {
-  for (const id of ACTIONS) {
-    const button = /** @type {any} */ (document.getElementById(id));
-    if (button) button.disabled = !reachable;
-  }
-}
 
 /**
  * Draws the state of the machine into the info window.
  * @param {any} status - What /api/status answered, or null.
+ *
+ * And hands it to the system's state, which every control that changes
+ * something follows, in this window and in every other.
  */
 function drawStatus(status) {
   const state = /** @type {any} */ (document.getElementById("info-state"));
@@ -37,15 +24,12 @@ function drawStatus(status) {
 
   if (status === null) {
     /* Nothing can be asked of a machine that is not answering, and while it
-       restarts it will not answer for a minute or two. Leaving the buttons
-       live would collect requests that go nowhere. */
+       restarts it will not answer for a minute or two. */
     state.replaceChildren(document.createTextNode(t("state.unreachable")));
     show("info-caption", t("info.no-contact"));
-    allowActions(false);
+    heard(null);
     return;
   }
-
-  allowActions(true);
 
   /* The lamp carries the state as a shape as well as a color, because color
      alone asks the reader to compare two small squares. */
@@ -82,9 +66,7 @@ function drawStatus(status) {
     noteState = null;
   }
 
-  /** @type {any} */ (document.getElementById("kiosk-start")).disabled = working || status.running || isNew;
-  /** @type {any} */ (document.getElementById("kiosk-stop")).disabled = working || !status.running;
-  /** @type {any} */ (document.getElementById("kiosk-restart")).disabled = working || !status.running;
+  heard(status);
 
   /* A machine with nothing on it says so and is offered the one thing that can
      be done with it. Before the console, because that one is also missing on a
@@ -207,25 +189,20 @@ const JUST_WRITTEN = Symbol("just written");
  *  say once the machine has moved on from the state it was written in. */
 let noteState = null;
 
-/** Whether one of the operations is running, which holds the three buttons off
- *  and the busy line up whatever the machine does in the meantime. A change of
- *  machine takes it down and brings it back, and every status in between would
- *  otherwise switch the buttons on again and take the line away. */
-let working = false;
-
 /**
- * Turns the buttons off while something is happening, and says what.
+ * Starts or ends an operation on the emulated machine, and says what.
  * @param {boolean} busy
- * @param {string} words - While busy, what is happening, which stands in the
- *   busy line until the work ends. Afterwards, what came of it, which is a note
- *   under the readings and goes once the machine has moved on.
+ * @param {string} words - While busy, what is happening, which every busy line
+ *   on the page shows until the work ends. Afterwards, what came of it, which
+ *   is a note under the readings and goes once the machine has moved on.
+ *
+ * The system's state holds every control that changes something off for as
+ * long as it runs. A change of machine takes it down and brings it back, and
+ * the statuses in between say nothing about whether the change is over.
  */
 function setBusy(busy, words) {
-  working = busy;
-  for (const id of ["kiosk-start", "kiosk-stop", "kiosk-restart"]) {
-    /** @type {any} */ (document.getElementById(id)).disabled = busy;
-  }
-  show("kiosk-busy", busy ? words : "");
+  if (busy) begin(words);
+  else end();
   show("kiosk-note", busy ? "" : words);
   noteState = !busy && words ? JUST_WRITTEN : null;
 }
@@ -248,10 +225,20 @@ function warn(what) {
   });
 }
 
+/** Whether there is a machine to switch on at all, which a Pi with nothing
+ *  installed does not have. */
+function isSetUp() {
+  return lastStatus?.ready?.set_up !== false;
+}
+
 /** Wires the three buttons and the menu's own way to the password. */
 function wireButtons() {
   document.querySelector('nx-menu-item[name="password"]')
     ?.addEventListener("click", () => askForPassword());
+
+  hold("#kiosk-start", Needs.Quiet, () => !lastStatus?.running && isSetUp());
+  hold("#kiosk-stop", Needs.Quiet, () => Boolean(lastStatus?.running));
+  hold("#kiosk-restart", Needs.Quiet, () => Boolean(lastStatus?.running));
 
   /** @type {any} */ (document.getElementById("kiosk-start")).addEventListener("click",
     () => operate(Kiosk.Start, t("busy.starting")));
@@ -275,7 +262,6 @@ async function refresh() {
 }
 
 export {
-  allowActions,
   drawStatus,
   lastStatus,
   setBusy,

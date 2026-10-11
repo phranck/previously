@@ -70,7 +70,7 @@
     <nx-row><label data-t="info.written"></label><nx-field id="info-written">&mdash;</nx-field></nx-row>
   </div>
 
-  <p class="busy" id="kiosk-busy"></p>
+  <p class="busy"></p>
   <p class="note" id="kiosk-note"></p>
   <div class="buttons">
     <button id="kiosk-stop" data-t="button.power-off"></button>
@@ -109,7 +109,7 @@
   </div>
 
   <p class="note" id="pi-update-note"></p>
-  <p class="busy" id="pi-busy"></p>
+  <p class="busy"></p>
   <p class="note" id="pi-note"></p>
   <div class="buttons">
     <button id="pi-poweroff" data-t="button.power-off"></button>
@@ -133,6 +133,7 @@
 <nx-window name="files" title="Previously" x="180" y="330" w="470" h="480"
            min-w="340" min-h="340" closed>
   <nx-viewer id="file-viewer"></nx-viewer>
+  <p class="busy"></p>
   <p class="note" id="machine-note"></p>
 </nx-window>
 
@@ -281,6 +282,7 @@
   <div class="gauge" id="installer-gauge" hidden>
     <div class="gauge-fill" id="installer-fill"></div>
   </div>
+  <p class="busy"></p>
   <p class="note" id="installer-note"></p>
 </nx-window>
 

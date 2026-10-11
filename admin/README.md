@@ -335,7 +335,11 @@ Stopping writes that file, presses F10 and waits for the guest to go. Starting r
 
 **The warning before stopping is always shown and always says the same thing.** Previous exposes nothing about what the emulated machine is doing, so a warning that appeared only sometimes would teach the reader that its absence means safe, which cannot be known.
 
-**While it works, the window says so in a band of its own.** Changing the machine or its disk, putting a disc in or taking one out, and switching the emulator or the board off or on all hold the buttons off for as long as they run, which can be minutes. A pink band above the buttons names what is happening, with the state row's lamp blinking in it, and it stays until the service answers, whatever the machine does in between. What came of it is then a note under the readings. The pink is the one the newest version wears in the Raspberry Pi window when it is newer than the one running.
+**While something is under way, the whole interface knows it.** Changing the machine or its disk, putting a disc in or taking one out, switching the emulator or the board off or on, a job of the Installer and an update of this tool can each take minutes. For as long as one runs, every control that would change something is grey in every window. A gesture that has no button to grey, such as a double click in the File Viewer, says in that window's note why it does nothing, and the note goes once it would work again. A Pi that does not answer holds everything off as well, saving a configuration included.
+
+**What this page set going is named in a band of its own.** A pink band above the notes of the About, Info, File Viewer and Installer windows says what is happening, with the state row's lamp blinking in it. It stays until the service answers, whatever the machine does in between, and a restart of the board holds it until the Pi answers again. What came of it is then a note. The pink is the one the newest version wears in the Info window when it is newer than the one running.
+
+`app/system.js` is the one place that decides all of this, and every control that changes something says there what it needs. `tests/test_page.py` fails for a button that does not.
 
 ## Installing from the browser
 

@@ -234,6 +234,9 @@ export const sv = {
   "note.not-set-up": "På den här Pi:n är ingenting installerat än. Installer sätter dit emulatorn och ett system.",
   "note.no-service": "ingen förbindelse med tjänsten",
   "note.board-gone": "Inget svar längre. Det är väntat medan Pi:n stängs av.",
+  "hold.away": "Pi:n svarar inte, så ingenting kan ändras just nu.",
+  "hold.working": "Något ändras just nu. Det går när det är klart.",
+  "hold.helper": "Installer arbetar just nu. Det går när den är klar.",
 
   /* --- the panels ------------------------------------------------------- */
   "ask.password.title": "Lösenord",

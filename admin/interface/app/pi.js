@@ -2,7 +2,6 @@
 
 import { t } from "../strings.js";
 import { show, showState } from "./page.js";
-import { allowActions } from "./status.js";
 import { NOTHING, costOf, duration, named, released, when } from "./words.js";
 
 /** How often the status is fetched. A machine whose job is to sit there does
@@ -15,8 +14,9 @@ const REFRESH_MS = 5000;
  */
 function drawPi(pi) {
   if (pi === null) {
+    /* Whether the buttons can be used is the system's state, which the status
+       asked for at the same moment decides. */
     show("pi-model", t("state.unreachable"));
-    allowActions(false);
     return;
   }
 

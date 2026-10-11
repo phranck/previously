@@ -8,6 +8,7 @@ import { askPanel, askPanelFor } from "./panels.js";
 import { openPictureMenu } from "./preview.js";
 import { Saved, tell } from "./service.js";
 import { drawStatus, lastStatus, refresh, setBusy } from "./status.js";
+import { Needs, allowed, may } from "./system.js";
 import { catalogue, drawMachines, find, goTo, keepOnShelf, open, root, visitFromTheShelf } from "./viewer.js";
 import { Art, EDITOR, NOTHING, changedLine, chipsOf, cpuOf, fitted, machineArt, say, screenOf, writtenLine } from "./words.js";
 
@@ -64,6 +65,7 @@ function showMachineInfo(where) {
 async function changeTo(identifier) {
   const machine = catalogue.find((entry) => entry.id === identifier);
   if (!machine) return;
+  if (!allowed(Needs.Quiet, "machine-note")) return;
 
   const name = machine.name;
   /* What is in the file now is nobody's machine from this list, so saying it
@@ -256,11 +258,20 @@ function openMachineMenu(thing, x, y) {
      anything for the other three kinds of thing. */
   backup.hidden = !disk;
   restore.hidden = !copy;
+  /* Every entry that changes something follows the system's state, and is
+     greyed while it may not be used rather than taken away, so the menu keeps
+     its shape. The kit greys an entry and goes on calling its click, so each
+     one asks as well. */
+  const quiet = !may(Needs.Quiet);
+  for (const entry of [backup, restore, media]) entry.toggleAttribute("disabled", quiet);
+  for (const entry of [rename, remove]) entry.toggleAttribute("disabled", !may(Needs.Contact));
   backup.onclick = () => {
+    if (backup.hasAttribute("disabled")) return;
     menu.close();
     backUpTheDisk(disk);
   };
   restore.onclick = () => {
+    if (restore.hasAttribute("disabled")) return;
     menu.close();
     putTheCopyBack(copy);
   };
@@ -272,6 +283,7 @@ function openMachineMenu(thing, x, y) {
     media.dataset.t = disc.slot === null ? "menu.insert" : "menu.eject";
     writeWords(media, t(media.dataset.t));
     media.onclick = () => {
+      if (media.hasAttribute("disabled")) return;
       menu.close();
       useTheDisc(disc);
     };
@@ -297,7 +309,7 @@ function openMachineMenu(thing, x, y) {
     /* The one that is already running cannot be activated: it would shut
        NeXTSTEP down, write the same values back and start it again, for
        nothing. The entry stays, so the menu keeps its shape. */
-    activate.toggleAttribute("disabled", thing.hasAttribute("disabled"));
+    activate.toggleAttribute("disabled", thing.hasAttribute("disabled") || quiet);
 
     activate.onclick = () => {
       if (activate.hasAttribute("disabled")) return;
@@ -309,11 +321,13 @@ function openMachineMenu(thing, x, y) {
 
   if (machine) {
     rename.onclick = () => {
+      if (rename.hasAttribute("disabled")) return;
       menu.close();
       renameConfiguration(machine);
     };
 
     remove.onclick = () => {
+      if (remove.hasAttribute("disabled")) return;
       menu.close();
       removeConfiguration(machine);
     };

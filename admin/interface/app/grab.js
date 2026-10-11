@@ -4,6 +4,7 @@ import { theWindow } from "./page.js";
 import { askForPassword } from "./panels.js";
 import { KEPT_HEADER } from "./service.js";
 import { lastStatus } from "./status.js";
+import { Needs, allowed, hold, holdTheControls } from "./system.js";
 import { drawMachines } from "./viewer.js";
 import { t } from "../strings.js";
 
@@ -19,6 +20,9 @@ async function takeAPicture() {
   const view = /** @type {any} */ (document.getElementById("shot"));
   const button = /** @type {any} */ (document.getElementById("shot-take"));
   if (!view) return;
+  /* No screen to take while the emulator is down or being changed, and the
+     note says which of the two it is. */
+  if (!allowed(Needs.Screen, "shot-note")) return drawPicture("shot", null);
 
   button.disabled = true;
   try {
@@ -33,7 +37,9 @@ async function takeAPicture() {
   } catch {
     showTheScreen(null);
   } finally {
-    button.disabled = false;
+    /* Handed back to the system's state, which knows whether it may be pressed
+       again, rather than simply switched on. */
+    holdTheControls();
   }
 }
 
@@ -113,6 +119,8 @@ function wireGrab() {
   const button = /** @type {any} */ (document.getElementById("shot-take"));
   if (!window_ || !button) return;
 
+  hold("#shot-take", Needs.Screen);
+  hold('nx-menu-item[name="grab-take"]', Needs.Screen);
   button.addEventListener("click", takeAPicture);
   /* Opening it takes one straight away, because an empty window would ask
      somebody to press a button to find out what they opened it for. */

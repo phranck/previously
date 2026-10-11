@@ -237,6 +237,35 @@ def test_the_installer_asks_for_jobs_the_service_knows(page):
     assert asked <= set(setup.JOBS)
 
 
+#: How a control is put under the system's state, which `app/system.js` holds.
+HELD = re.compile(r'\bhold\(\s*"#([^"]+)"')
+
+#: The buttons that read something and change nothing, which the system's state
+#: leaves alone: what a release says about itself can be read in Preview whatever
+#: the machine is doing.
+READING_BUTTONS = {"pi-notes"}
+
+
+def test_every_button_that_changes_something_follows_the_system(page, markup):
+    """A button that decides for itself is how a machine could be double
+    clicked in the File Viewer while the About window was in the middle of a
+    change, and how the Installer kept its buttons while the board restarted.
+    Every one of them is held by the system's state, which knows what the whole
+    system is doing."""
+    buttons = set(re.findall(r'<button id="([^"]+)"', markup))
+    held = set(HELD.findall(page))
+
+    assert len(held) > 10
+    assert sorted(buttons - READING_BUTTONS - held) == []
+
+
+def test_every_window_that_starts_something_shows_what_is_under_way(markup):
+    """The busy line is written into every window that has one, so a window
+    that starts an operation without one says nothing while it runs."""
+    for window in ["info", "pi", "files", "installer"]:
+        assert '<p class="busy"></p>' in inside(markup, window), window
+
+
 def test_every_scale_in_the_editor_is_a_slider(page, markup):
     """A group whose values have an order is a knob in a trough. Drawn as a row
     of cells it would say they have none, and more memory being to the right is

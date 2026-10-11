@@ -234,6 +234,9 @@ export const es = {
   "note.not-set-up": "En este Pi todavía no hay nada instalado. El Installer le pone el emulador y un sistema.",
   "note.no-service": "sin conexión con el servicio",
   "note.board-gone": "Ya no hay respuesta. Es lo que cabe esperar mientras el Pi se apaga.",
+  "hold.away": "El Pi no responde, así que por ahora no se puede cambiar nada.",
+  "hold.working": "Ahora mismo se está cambiando algo. Será posible cuando haya terminado.",
+  "hold.helper": "El Installer está trabajando. Será posible cuando haya terminado.",
 
   /* --- the panels ------------------------------------------------------- */
   "ask.password.title": "Contraseña",
