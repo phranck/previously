@@ -43,6 +43,44 @@ test("a view that shows everything keeps its trough and loses its knob", () => {
   assert.equal(arrows.hidden, true);
 });
 
+test("a view one pixel over in either direction gets no knob, which is rounding", () => {
+  /* Both figures are rounded to whole pixels from fractions wherever the desk
+     is drawn at 125, 150 or 175 per cent, and WebKit then reports the content
+     one over a view it fits in: a File Viewer path that fills its band exactly,
+     and a folder far shorter than its band. */
+  const scroller = lay(`<nx-scroller bars="down across"><div class="list"></div></nx-scroller>`);
+  measure(scroller.view, { scrollHeight: 194, clientHeight: 193,
+                           scrollWidth: 324, clientWidth: 323 });
+
+  scroller.refresh();
+
+  assert.equal(scroller.bars.down.knob.hidden, true);
+  assert.equal(scroller.bars.down.arrows.hidden, true);
+  assert.equal(scroller.bars.across.knob.hidden, true);
+  assert.equal(scroller.bars.across.arrows.hidden, true);
+});
+
+test("padding that alone runs past the view is no reason for a knob", () => {
+  /* The window leaves the band a few pixels short of the padding under the
+     last row of icons. Everything in it shows, and a knob would say otherwise. */
+  const scroller = lay(`<nx-scroller><div class="list" style="padding-bottom: 8px"></div></nx-scroller>`);
+  measure(scroller.view, { scrollHeight: 189, clientHeight: 187 });
+
+  scroller.refresh();
+
+  assert.equal(scroller.bars.down.knob.hidden, true);
+});
+
+test("content past the padding by more than a rounding gets a knob", () => {
+  const scroller = lay(`<nx-scroller><div class="list" style="padding-bottom: 8px"></div></nx-scroller>`);
+  measure(scroller.view, { scrollHeight: 197, clientHeight: 187 });
+
+  scroller.refresh();
+
+  assert.equal(scroller.bars.down.knob.hidden, false);
+  assert.equal(scroller.bars.down.arrows.hidden, false);
+});
+
 test("the knob stands as far down its trough as the view is scrolled", () => {
   const scroller = lay(MARKUP);
   const { trough, knob } = scroller.bars.down;
