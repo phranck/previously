@@ -13,13 +13,14 @@ line() says why it is needed.
     python3 fonts.py
 """
 
-import hashlib
 import io
 import pathlib
 import urllib.request
 import zipfile
 
 from fontTools.ttLib import TTFont
+
+from fetched import checked, download
 
 HERE = pathlib.Path(__file__).parent
 SERVED = HERE.parent / "admin" / "web" / "fonts"
@@ -51,34 +52,6 @@ LICENCE_SUM = "5d362a6f8690517fd9a5573128a081d8bbbb2f92714cf00556e08fbbe9600426"
 #: rest of the em.
 ASCENT = 810
 DESCENT = 190
-
-
-def download(url, expected):
-    """Downloads one file and checks it.
-
-    @param url - Where it is.
-    @param expected - Its SHA-256, as hex.
-    @returns bytes of the file.
-    @raises SystemExit where what arrived is not what was measured.
-    """
-    with urllib.request.urlopen(url) as answer:
-        body = answer.read()
-    checked(url, body, expected)
-    return body
-
-
-def checked(name, body, expected):
-    """Holds one file to its sum.
-
-    @param name - What to call it in the complaint.
-    @param body - bytes of the file.
-    @param expected - Its SHA-256, as hex.
-    @raises SystemExit where the two differ.
-    """
-    got = hashlib.sha256(body).hexdigest()
-    if got != expected:
-        raise SystemExit("%s is not the file this was written against:\n"
-                         "  expected %s\n  got      %s" % (name, expected, got))
 
 
 def line(font):

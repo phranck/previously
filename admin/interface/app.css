@@ -497,6 +497,17 @@ nx-row .beside {
 
 nx-row .beside nx-field { flex: 1 1 auto; min-width: 0; }
 
+/* Who the logo beside the readings belongs to, at the foot of the window and in
+   the smaller type the interface says things about itself in, the way an Info
+   panel carried its copyright line. */
+.trademark {
+  margin: 12px 0 0;
+  flex: 0 0 auto;
+  font-size: var(--status-size);
+  line-height: var(--status-line);
+  color: var(--dark);
+}
+
 
 /* --- Activity Monitor ----------------------------------------------------- */
 

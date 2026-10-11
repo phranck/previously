@@ -298,7 +298,7 @@ export const fr = {
   "ask.board.loss": "Le travail non enregistré dans les programmes en cours sera perdu.",
 
   /* --- the board underneath --------------------------------------------- */
-  "pi.model": "Machine",
+  "pi.trademark": "Raspberry Pi est une marque de Raspberry Pi Ltd.",
   "pi.uptime": "En marche",
   "pi.temperature": "Température",
   "pi.power": "Alimentation",

@@ -125,18 +125,30 @@
   </div>
 </nx-window>
 
-<nx-window name="pi" data-t-title="window.info" fixed x="600" y="16" w="360" closed>
+<!-- The board's picture with its model under it, beside the readings, the way
+     the About window shows the machine it runs. Wider than that window, because
+     one of these rows holds a field and a button. -->
+<nx-window name="pi" data-t-title="window.info" fixed x="600" y="16" w="460" closed>
+  <div class="info-body">
+    <nx-portrait>
+      <i class="art icon" style="background-image: var(--raspberry-pi)"></i>
+      <span class="caption" id="pi-model">&mdash;</span>
+    </nx-portrait>
+    <div class="readings">
+      <nx-row><label data-t="pi.uptime"></label><nx-field id="pi-uptime">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="pi.temperature"></label><div class="state" id="pi-temp">&mdash;</div></nx-row>
+      <nx-row><label data-t="pi.power"></label><div class="state" id="pi-power">&mdash;</div></nx-row>
+      <nx-row><label data-t="pi.sound"></label><div class="state" id="pi-sound">&mdash;</div></nx-row>
+      <!-- Whether the emulator has ended badly since this board came up. The
+           console writes one line per crash into the service's runtime
+           directory, which is a tmpfs, so the file says what happened since the
+           boot and nothing here has to work out when. -->
+      <nx-row><label data-t="pi.crashes"></label><div class="state" id="pi-crashes">&mdash;</div></nx-row>
+    </div>
+  </div>
+  <!-- Under the picture, indented to the same column, so the list carries on
+       rather than starting again. The About window does the same. -->
   <div class="readings">
-    <nx-row><label data-t="pi.model"></label><nx-field id="pi-model">&mdash;</nx-field></nx-row>
-    <nx-row><label data-t="pi.uptime"></label><nx-field id="pi-uptime">&mdash;</nx-field></nx-row>
-    <nx-row><label data-t="pi.temperature"></label><div class="state" id="pi-temp">&mdash;</div></nx-row>
-    <nx-row><label data-t="pi.power"></label><div class="state" id="pi-power">&mdash;</div></nx-row>
-    <nx-row><label data-t="pi.sound"></label><div class="state" id="pi-sound">&mdash;</div></nx-row>
-    <!-- Whether the emulator has ended badly since this board came up. The
-         console writes one line per crash into the service's runtime
-         directory, which is a tmpfs, so the file says what happened since the
-         boot and nothing here has to work out when. -->
-    <nx-row><label data-t="pi.crashes"></label><div class="state" id="pi-crashes">&mdash;</div></nx-row>
     <nx-row><label data-t="pi.memory"></label><nx-field id="pi-memory">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="pi.card"></label><nx-field id="pi-disk">&mdash;</nx-field></nx-row>
     <!-- Which version of this tool is answering. A name rather than a
@@ -184,6 +196,9 @@
          this one does not. -->
     <button id="pi-update" data-t="button.update" hidden></button>
   </div>
+  <!-- What Raspberry Pi Ltd's trademark rules ask to stand beside every use of
+       its logo, and this window wears it. -->
+  <p class="trademark" data-t="pi.trademark"></p>
 </nx-window>
 
 <!-- Activity Monitor, which NeXTSTEP never had. The Raspberry Pi window above

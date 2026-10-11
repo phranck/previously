@@ -298,7 +298,7 @@ export const es = {
   "ask.board.loss": "El trabajo sin guardar en los programas en marcha se perderá.",
 
   /* --- the board underneath --------------------------------------------- */
-  "pi.model": "Máquina",
+  "pi.trademark": "Raspberry Pi es una marca de Raspberry Pi Ltd.",
   "pi.uptime": "En marcha",
   "pi.temperature": "Temperatura",
   "pi.power": "Corriente",
