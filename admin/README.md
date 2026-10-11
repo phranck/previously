@@ -187,15 +187,17 @@ It is themed to what NeXT's Terminal was, black on white with a blinking block c
 
 Choosing a NeXTcube Turbo is not one setting. It is a machine type, a processor level, a clock, whether the color board is seated, which slot it speaks from, and four memory banks, and getting one of them wrong gives a machine that will not boot or is not the one that was asked for. `machines.py` holds the eleven that can be chosen and what each is in the file.
 
-Those values come from Previous itself, out of the function its own dialog runs when the machine changes there. Forty-one keys make up a machine, two more in `[Screen]` say which of its screens the window shows, and everything else in `previous.cfg`, including the disk it boots from, belongs to the installation rather than to the machine and is passed through untouched.
+Those values come from Previous itself, out of the function its own dialog runs when the machine changes there. Forty-one keys make up a machine. Three more are written with it: `bADB`, which switches the Apple Desktop Bus on with a turbo board, and two in `[Screen]` that say which of its screens the window shows. Everything else in `previous.cfg`, including the disk it boots from, belongs to the installation rather than to the machine and is passed through untouched.
 
 **They have to be written together.** Seven of them follow from the machine type, the turbo board and the color board at once: the processor level, its clock, the floating point unit, the real-time clock chip, the SCSI controller, the bus interface chip and the DSP's expansion memory. A machine that gets some of them and keeps the rest is not a machine Previous can run, and it does not say so: it resets in a loop and shows a white screen with nothing in the log.
+
+**The three written beside them never decide which machine a file is.** `/api/status` names the running machine by matching the file against the forty-one keys, and every one of them has to be there for that. The machines window marks the running machine from that answer. `bADB` follows from the turbo board alone, and a file Previous's own dialog has not saved since does not hold it.
 
 **The order is fixed, because the risky part is not the writing.** Previous reads `previous.cfg` when it starts and never again, so a change made underneath a running emulator does nothing until it restarts and nobody watching can tell. And a machine it cannot run leaves a black screen with SSH as the only way back.
 
 **Previous never writes the file back by itself.** Not when it exits, and not when its own configuration dialog closes. The only thing that writes is "Save Config" in that dialog, which asks for a filename first. So what somebody sets behind F12 holds for that session and is gone at the next start unless they save it, and this tool cannot see it while it is only in the emulator's memory. What it does see, within five seconds, is a file somebody saved.
 
-That also decides what this tool overwrites, which is the keys that make up a machine and the two that say which screen the window shows, and nothing else. Sound, network and the rest of the screen settings are left exactly as the file has them, whoever put them there.
+That also decides what this tool overwrites, which is the keys that make up a machine and the three written with it, and nothing else. Sound, network and the rest of the screen settings are left exactly as the file has them, whoever put them there.
 
 **Disks are the one exception, and it is three keys wide.** Which disk the machine boots is `szImageName0`, `nDeviceType0` and `bDiskInserted0`, and those are written when somebody activates a disk and at no other time. The six further slots, the write protection and everything else in `[HardDisk]` stay exactly as the file has them, so a disc somebody put on the bus is still on the bus afterwards. What it points at is always one of the disks this tool put on the card and never a path from anywhere else.
 

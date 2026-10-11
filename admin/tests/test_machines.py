@@ -140,10 +140,40 @@ def test_the_window_shows_the_screen_the_console_is_on():
     assert machines.written_for(without)["Screen"] == {
         "nMode": "0", "nSingleModeSlot": "0"}
 
-    # Everything else written is what the machine is, unchanged.
+    # Everything else written is what the machine is, with the bus beside it.
     written = machines.written_for(with_board)
     del written["Screen"]
+    del written["System"]["bADB"]
     assert written == machines.settings_for(with_board)
+
+
+def test_a_turbo_board_brings_the_desktop_bus():
+    """Previous's own dialog switches `bADB` with the turbo board, and keyboard
+    and mouse go through the bus wherever both are set. Left unwritten, a turbo
+    machine runs on whatever the file held, which is Previous's default of
+    off."""
+    for machine in machines.CATALOGUE:
+        system = machines.written_for(machine)["System"]
+        assert system["bADB"] == ("TRUE" if machine.turbo else "FALSE"), \
+            machine.identifier
+
+
+def test_a_file_that_names_no_bus_is_still_its_machine(tmp_path):
+    """A file Previous's own dialog has not saved since holds no `bADB`, and
+    `/api/status` names the running machine by matching the file. So the bus is
+    written with a machine and never asked of a file."""
+    path = tmp_path / "previous.cfg"
+    every = [(machine.identifier, machines.settings_for(machine))
+             for machine in machines.CATALOGUE]
+
+    for machine in machines.CATALOGUE:
+        lines = []
+        for section, keys in machines.written_for(machine).items():
+            lines.append("[%s]" % section)
+            lines += ["%s = %s" % pair for pair in keys.items() if pair[0] != "bADB"]
+        path.write_text("\n".join(lines) + "\n")
+
+        assert config.matching(path, every) == machine.identifier
 
 
 def test_a_board_takes_a_size_it_can_have():
