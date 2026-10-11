@@ -379,13 +379,105 @@ def test_a_lookup_that_fails_leaves_the_reading_as_it_was(answering):
     assert release.published() is None
 
 
+# -- every release, for its notes ------------------------------------------
+
+
+#: What the list of every release holds, cut down to the fields this reads:
+#: two releases, a draft, a prerelease, a tag that names no version, and
+#: something that is not a release at all.
+EVERY_ANSWERED = [
+    {"tag_name": "v1.3.1", "body": "Two fixes."},
+    {"tag_name": "v1.4.0", "draft": True, "body": "Not out yet."},
+    {"tag_name": "v1.4.0-rc1", "prerelease": True, "body": "Trying it."},
+    {"tag_name": "nightly", "body": "Whatever."},
+    {"tag_name": "v1.3.0", "body": None},
+    "not a release",
+]
+
+
+def test_every_published_release_is_read_newest_first(answering):
+    """In the order GitHub lists them, which is newest first, and only the ones
+    somebody could have installed: a draft is not out and a prerelease is not
+    what an update brings."""
+    answering(EVERY_ANSWERED)
+
+    assert release.look_back() == [
+        {"version": "1.3.1", "notes": "Two fixes."},
+        {"version": "1.3.0", "notes": ""},
+    ]
+
+
+def test_a_list_that_is_not_a_list_is_no_answer(answering):
+    answering({"message": "rate limited"})
+
+    with pytest.raises(release.Unreachable):
+        release.look_back()
+
+
+def test_reading_the_list_asks_for_nothing(monkeypatch):
+    """A window redrawing notes it already has does not cost a request."""
+    monkeypatch.setattr(release, "_look_back_behind_this",
+                        lambda: pytest.fail("asked anyway"))
+
+    assert release.history() == []
+
+
+def test_the_list_is_asked_for_while_it_is_out_of_date(monkeypatch):
+    """Missing, or not holding the newest release there is. Once it holds that,
+    the notes in it are what they will be until the next release."""
+    asked = []
+    monkeypatch.setattr(release, "_look_back_behind_this",
+                        lambda: asked.append(True))
+    later = time.time() + release.SOONEST_SECONDS
+
+    release.history(check=True)
+    release._HISTORY = [{"version": "1.3.1", "notes": "Two fixes."}]
+    release._KNOWN = {"version": "1.3.1"}
+    release.history(check=True, now=later)
+    release._KNOWN = {"version": "1.3.2"}
+    release.history(check=True, now=later)
+
+    assert asked == [True, True]
+
+
+def test_the_list_keeps_the_same_floor(monkeypatch):
+    """However often notes are opened while it is out of date."""
+    asked = []
+    monkeypatch.setattr(release, "_look_back_behind_this",
+                        lambda: asked.append(True))
+
+    release.history(check=True)
+    release._HISTORY_ASKED_AT = time.time()
+    release.history(check=True)
+
+    assert asked == [True]
+
+
+def test_the_list_and_the_newest_are_asked_for_apart(answering):
+    """The update reads the newest release alone, and a list that could not be
+    read leaves it as it was."""
+    answering(ANSWERED)
+    release.look()
+    answering(OSError("no route to host"))
+
+    release._look_back_behind_this()
+    for _ in range(50):
+        if not release._LOOKING_BACK.locked():
+            break
+        time.sleep(0.02)
+
+    assert release.history() == []
+    assert release.published()["version"] == "1.0.0"
+
+
 # -- what this is released from -------------------------------------------
 
 
-def test_it_asks_about_this_repository_over_https():
-    assert release.NEWEST.startswith("https://api.github.com/repos/")
-    assert release.OWNER in release.NEWEST
-    assert release.REPOSITORY in release.NEWEST
+@pytest.mark.parametrize("address", [release.NEWEST, release.EVERY])
+def test_it_asks_about_this_repository_over_https(address):
+    assert address.startswith("https://api.github.com/repos/")
+    assert release.OWNER in address
+    assert release.REPOSITORY in address
 
 
 def test_the_hosts_are_the_three_a_download_actually_touches():

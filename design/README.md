@@ -95,7 +95,7 @@ The NeXTSTEP draft is a set of custom elements that plug into one another:
 
 The last two bands sit in scrollers, and each says which scrollers it has. The path only ever grows sideways, so it has the one along its foot; the contents have both. A trough is there whether or not there is anything to scroll, because in the original it is part of the view rather than something that appears when it is needed.
 
-The rest: `nx-menu` with `nx-menu-item`, `nx-dock` with `nx-tile`, `nx-floor` for the tiles that are not in the dock, `nx-shelf` with `nx-thing`, `nx-slider` for a value on a scale, `nx-leds` for a share drawn as a row of lamps, and `nx-portrait`, `nx-row` and `nx-field` for panels. They use the light DOM rather than a shadow root, so one stylesheet and one set of design tokens reach all of them.
+The rest: `nx-menu` with `nx-menu-item`, `nx-dock` with `nx-tile`, `nx-floor` for the tiles that are not in the dock, `nx-shelf` with `nx-thing`, `nx-slider` for a value on a scale, `nx-leds` for a share drawn as a row of lamps, `nx-popup` for one of several choices whose list comes up while its button is held, and `nx-portrait`, `nx-row` and `nx-field` for panels. They use the light DOM rather than a shadow root, so one stylesheet and one set of design tokens reach all of them.
 
 ## How a tile behaves
 

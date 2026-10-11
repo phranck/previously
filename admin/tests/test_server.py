@@ -38,10 +38,15 @@ def service(tmp_path, readable_config, monkeypatch):
     they would ask the package database of whatever runs this suite, at
     whatever speed that machine answers. A test about packages says what it
     needs with its own monkeypatch, which comes after this one and wins.
+
+    The list of every release is answered as empty for the same reason: two
+    routes ask for it behind their answer, and left real that would reach
+    GitHub from whatever runs this suite.
     """
     monkeypatch.setattr(server.setup, "installed", lambda package: False)
     monkeypatch.setattr(server.setup, "version_of", lambda package: None)
     monkeypatch.setattr(server.setup, "newest_of", lambda package: None)
+    monkeypatch.setattr(server.release, "history", lambda check=False: [])
     server.Handler.settings = settings_for(tmp_path)
     server.Handler.password = Password(tmp_path / "password")
     server.Handler.password.set(PASSWORD)
@@ -1930,7 +1935,8 @@ def test_what_a_release_says_about_itself_has_its_own_address(
     said = json.loads(body)
 
     assert status == 200
-    assert said == {"version": "1.0.2", "notes": "## Installing it"}
+    assert said == {"version": "1.0.2", "notes": "## Installing it",
+                    "versions": ["1.0.2"]}
 
 
 def test_the_notes_come_in_the_language_the_page_asks_for(service, monkeypatch):
@@ -1971,7 +1977,75 @@ def test_a_board_that_knows_of_no_release_says_so_rather_than_failing(
     status, _, body = fetch(service + "/api/update/notes")
 
     assert status == 200
-    assert json.loads(body) == {"version": None, "notes": ""}
+    assert json.loads(body) == {"version": None, "notes": "", "versions": []}
+
+
+@pytest.fixture
+def three_releases(monkeypatch):
+    """The newest release and the list of every one, as GitHub left them.
+
+    @returns list of what `history` was asked with, so a test can say whether
+      the route asked for the list.
+    """
+    asked = []
+    monkeypatch.setattr(server.release, "published", lambda check=False: {
+        "version": "1.3.1", "notes": "Two fixes."})
+
+    def history(check=False):
+        asked.append(check)
+        return [
+            {"version": "1.3.1", "notes": "Two fixes."},
+            {"version": "1.3.0", "notes": "Notes in your language.\n\n"
+                                          "<details lang=\"de\"><summary>Deutsch</summary>\n\n"
+                                          "Notes in deiner Sprache.\n\n</details>\n"},
+            {"version": "1.2.6", "notes": "One fix."},
+        ]
+    monkeypatch.setattr(server.release, "history", history)
+    return asked
+
+
+def test_the_notes_of_an_earlier_release_can_be_read(service, three_releases):
+    """Somebody who skipped a version wants to read what it brought, in the
+    language they read the newest in."""
+    _, _, body = fetch(service + "/api/update/notes?version=1.3.0&language=de")
+    said = json.loads(body)
+
+    assert said["version"] == "1.3.0"
+    assert said["notes"] == "Notes in deiner Sprache."
+    assert said["versions"] == ["1.3.1", "1.3.0", "1.2.6"]
+
+
+@pytest.mark.parametrize("asked", ["", "9.9.9", "../../etc"])
+def test_a_version_nobody_published_is_answered_with_the_newest(
+        service, three_releases, asked):
+    """Rather than with nothing, because the window is there to show notes."""
+    _, _, body = fetch(service + "/api/update/notes?version=" + asked)
+
+    assert json.loads(body)["version"] == "1.3.1"
+
+
+def test_asking_for_notes_asks_for_the_list_where_it_is_out_of_date(
+        service, three_releases):
+    """The list is fetched behind the answer, and `history` decides whether it
+    needs to be, so the route always hands that decision over."""
+    fetch(service + "/api/update/notes")
+
+    assert three_releases == [True]
+
+
+def test_the_newest_is_offered_before_the_list_knows_of_it(service, monkeypatch):
+    """A release published since the list was read is the newest one, and the
+    window offers it at the top while the list catches up."""
+    monkeypatch.setattr(server.release, "published", lambda check=False: {
+        "version": "1.3.2", "notes": "Newer."})
+    monkeypatch.setattr(server.release, "history", lambda check=False: [
+        {"version": "1.3.1", "notes": "Two fixes."}])
+
+    _, _, body = fetch(service + "/api/update/notes")
+    said = json.loads(body)
+
+    assert said["versions"] == ["1.3.2", "1.3.1"]
+    assert said["notes"] == "Newer."
 
 
 def test_asking_for_a_replacement_needs_a_session(service, tmp_path):

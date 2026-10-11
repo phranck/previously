@@ -421,7 +421,9 @@ The Raspberry Pi window says which version is here and which is published, and w
 
 **What the release says about itself** is read in Preview, through the Release Notes button beside that line. The notes come with the answer GitHub already gave, so nothing is fetched for them, and they have an address of their own because the answer the window polls is asked every two seconds and these are thousands of characters asked for once.
 
-**They are in the language the interface speaks.** A release carries its notes in English at the top of its description, where GitHub shows them, and in each other language in a `<details lang="xx">` block after them, which GitHub shows collapsed. `GET /api/update/notes?language=de` answers with the German block, and with the English notes where the release carries none in that language. Changing the language in Preferences fetches notes that are open again.
+**Earlier releases are read the same way.** A pop-up list titled Version above the notes offers every published release, newest first, and choosing one shows its notes; `GET /api/update/notes?version=1.3.0` answers with them, and with the newest where the version is not one there is. The list of every release is asked of GitHub apart from the newest, and only where it is missing or does not hold the newest yet, so it costs one request per release rather than one per reading, under the same floor. Opening the Info window asks for it, so it is there by the time somebody reaches for an earlier release.
+
+**They are in the language the interface speaks.** A release carries its notes in English at the top of its description, where GitHub shows them, and in each other language in a `<details lang="xx">` block after them, which GitHub shows collapsed. `GET /api/update/notes?language=de` answers with the German block, and with the English notes where the release carries none in that language. Changing the language in Preferences fetches the notes that are open again, of the release they are of.
 
 ## Preview and its renderers
 
@@ -441,7 +443,7 @@ Two of those paths are worth telling apart. `state_directory` is `/var/lib/previ
 
 ## The interface
 
-`interface/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-tile`, `nx-floor`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`, `nx-viewer`, `nx-slider`, `nx-leds`.
+`interface/` holds the same custom elements the draft in `../design/` is built from: `nx-window`, `nx-menu`, `nx-dock`, `nx-tile`, `nx-floor`, `nx-scroller`, `nx-shelf`, `nx-thing`, `nx-ask`, `nx-viewer`, `nx-slider`, `nx-leds`, `nx-popup`.
 
 **An application here is its window.** One is running when the window it opens is open, so closing that window is quitting it. NeXTSTEP kept an application alive without windows; this tool has nothing for such an application to be, and a light saying it was running would mean nothing.
 

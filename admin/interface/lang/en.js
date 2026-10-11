@@ -216,6 +216,7 @@ export const en = {
   /* --- the buttons ------------------------------------------------------ */
   "preview.empty": "Nothing to show.",
   "preview.notes.title": "Previously {version}",
+  "preview.version": "Version",
   "preview.no-notes": "That release says nothing about itself.",
   "grab.take": "Take a Picture",
   "grab.idle": "Nothing to photograph. The machine is not running.",

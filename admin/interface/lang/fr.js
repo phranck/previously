@@ -204,6 +204,7 @@ export const fr = {
   /* --- the buttons ------------------------------------------------------ */
   "preview.empty": "Rien à montrer.",
   "preview.notes.title": "Previously {version}",
+  "preview.version": "Version",
   "preview.no-notes": "Cette version ne dit rien d'elle-même.",
   "grab.take": "Prendre une image",
   "grab.idle": "Rien à photographier. La machine ne tourne pas.",
