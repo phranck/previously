@@ -4,13 +4,14 @@
        line runs along pixel centers at .5, and every other shape starts and ends
        on whole numbers. Light falls from the upper left, as on NeXT's icons. -->
 
-  <!-- The board, in the dark gray of the NeXTstation, with its corners cut. -->
+  <!-- The board, a shade darker than the NeXTstation's gray, with its corners
+       cut. -->
   <path d="M1 0H56V1H57V44H56V45H1V44H0V1H1Z" fill="#000"/>
   <rect x="1" y="1" width="55" height="43" fill="#aaa"/>
-  <rect x="2" y="2" width="54" height="42" fill="#555"/>
+  <rect x="2" y="2" width="54" height="42" fill="#4a4a4a"/>
 
-  <!-- Traces. -->
-  <path fill="none" stroke="#6c6c6c" d="
+  <!-- Traces, a step lighter than the board's gray. -->
+  <path fill="none" stroke="#616161" d="
     M15.5 7V13M17.5 7V13M19.5 7V13M21.5 7V13
     M29.5 7V14M31.5 7V14M33.5 7V14
     M24 16.5H27M24 18.5H27M24 20.5H27M24 22.5H27

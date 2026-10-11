@@ -60,7 +60,7 @@ It changes one thing on the way, in metrics rather than in outlines. A font stat
 
 ## The board's picture
 
-The Info window wears a circuit board beside its readings. It is drawn here in `board.svg`, in the dark gray of the NeXTstation, with a pin header, a processor and its ports along two edges.
+The Info window wears a circuit board beside its readings. It is drawn here in `board.svg`, in a gray a shade darker than the NeXTstation's, with a pin header, a processor and its ports along two edges.
 
 It is drawn on the grid of pixels it is shown at, 60 by 48. Every edge falls between two pixels, so nothing in it is smoothed when it is rendered at that size. `rsvg-convert` renders it into `admin/web/parts/board.png`, and it comes with librsvg, which Homebrew installs as `librsvg`.
 
