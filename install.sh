@@ -277,8 +277,10 @@ check_host() {
   done_line "Raspberry Pi OS, arm64, ${codename}"
 }
 
-# Asks for the sudo password once, on a line of its own, before any spinner
-# could draw over the prompt. A user the Imager created needs none.
+# Asks for the sudo password once, before anything else is printed. sudo
+# writes its prompt to the terminal itself, so a prompt that came later would
+# break into the banner and the lines below it, or have a spinner draw over it.
+# A user that needs no password sees nothing here at all.
 check_sudo() {
   sudo -n true 2>/dev/null && return 0
   printf '  %sThe next steps need sudo.%s\n' "$DIM" "$RESET"
@@ -596,9 +598,9 @@ main() {
   case "${1:-}" in
     --update-admin)
       LOG="$(mktemp -t previously-install.XXXXXX)"
+      check_sudo
       banner
       check_host
-      check_sudo
       update_admin
       COMPLETED=true
       rm -f "$LOG"
@@ -614,9 +616,9 @@ main() {
   esac
 
   LOG="$(mktemp -t previously-install.XXXXXX)"
+  check_sudo
   banner
   check_host
-  check_sudo
   install_admin
   set_up_the_machine
 

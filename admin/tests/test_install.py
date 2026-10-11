@@ -9,8 +9,10 @@ These tests are what keeps those in step with the side that decides them.
 """
 
 import json
+import os
 import pathlib
 import re
+import subprocess
 
 import pytest
 
@@ -18,8 +20,8 @@ from previously import kiosk, setup, systems
 from previously.settings import DEFAULTS
 from test_strings import catalogue
 
-SCRIPT = (pathlib.Path(__file__).resolve().parent.parent.parent
-          / "install.sh").read_text(encoding="utf-8")
+SCRIPT_PATH = pathlib.Path(__file__).resolve().parent.parent.parent / "install.sh"
+SCRIPT = SCRIPT_PATH.read_text(encoding="utf-8")
 
 
 def constant(name):
@@ -34,6 +36,31 @@ def labels(function):
     body = re.search(r"^%s\(\) \{\n(.*?)\n\}" % function, SCRIPT, re.M | re.S)
     assert body, "install.sh has no %s" % function
     return dict(re.findall(r'^\s+([a-z-]+)\) echo "([^"]*)" ;;$', body.group(1), re.M))
+
+
+@pytest.mark.parametrize("arguments", [[], ["--update-admin"]])
+def test_the_password_is_asked_before_anything_else_is_printed(tmp_path, arguments):
+    """sudo writes its prompt to the terminal itself, so a prompt that comes
+    after the banner breaks into what the script shows. Here sudo refuses,
+    which ends the run at the prompt, so whatever was printed by then is
+    everything that came before it."""
+    tools = tmp_path / "bin"
+    tools.mkdir()
+    sudo = tools / "sudo"
+    sudo.write_text("#!/bin/sh\nexit 1\n")
+    sudo.chmod(0o755)
+
+    ran = subprocess.run(
+        ["bash", str(SCRIPT_PATH), *arguments], capture_output=True, text=True,
+        timeout=30, check=False,
+        env=dict(os.environ, PATH="%s:%s" % (tools, os.environ["PATH"]),
+                 TMPDIR=str(tmp_path), NO_COLOR="1"))
+
+    assert ran.returncode == 1, ran.stdout + ran.stderr
+    assert ran.stdout.splitlines() == [
+        "  The next steps need sudo.",
+        "  ✗ sudo did not let this run.",
+    ]
 
 
 def test_the_request_goes_where_the_helper_is_started_from():

@@ -34,7 +34,7 @@ The second way in, and what the first one automates. It installs `cage` and `7zi
 
 These steps exist a second time, in `admin/previously/setup.py`, which is what the browser asks. Two copies of one thing is one too many, and this is the copy that goes: the browser cannot be the way in on a machine that has no admin tool yet, so the script stays until the other one has set a real machine up, and then shrinks to installing the package and asking for the rest.
 
-Run it as the user the machine will belong to, not under `sudo`. It writes the configuration and the startup line into your home directory and raises its own privileges where it needs them, asking for your password once. The pipe does not get in the way of that, because `sudo` reads the password from the terminal device rather than from stdin.
+Run it as the user the machine will belong to, not under `sudo`. It writes the configuration and the startup line into your home directory and raises its own privileges where it needs them, asking for your password once, before it prints anything else. The pipe does not get in the way of that, because `sudo` reads the password from the terminal device rather than from stdin.
 
 Running it a second time changes nothing that is already in place. An existing disk image, an existing configuration file and an autostart entry that is already there are all left alone.
 
