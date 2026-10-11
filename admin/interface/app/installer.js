@@ -5,6 +5,7 @@ import { fillWithChoices } from "./fittings.js";
 import { activateTheSystem, fetchTheSystem, forgetTheSystem, installTheEmulator, removeTheEmulator, updateTheEmulator } from "./jobs.js";
 import { explain, show, theWindow } from "./page.js";
 import { ask, tell } from "./service.js";
+import { Needs, helperIs, hold, holdTheControls } from "./system.js";
 import { say, sized } from "./words.js";
 
 /** Where the Installer asks and tells. One address for both, because what
@@ -97,8 +98,9 @@ async function refreshTheInstaller() {
  */
 function drawTheInstaller(state) {
   if (state === null) {
+    /* Whether the service answers is the system's to say, from the status it
+       asks for; one answer missing here is not a job of the helper's. */
     show("installer-caption", t("info.no-contact"));
-    allowInstalling(false);
     return;
   }
   setupState = state;
@@ -328,33 +330,44 @@ function drawWhatIsBeingInstalled(progress) {
 }
 
 /**
- * Lets the window's buttons decide again, or turns them all off.
+ * Tells the system whether the helper is free, and draws the buttons again.
  * @param {boolean} allowed - False while something is being installed, because
- *   the service takes one installation at a time and a second request would be
- *   refused rather than queued.
+ *   the helper takes one job at a time and a second request would be refused
+ *   rather than queued. That holds for every window, so it goes to the
+ *   system's state rather than to this window's buttons alone.
  */
 function allowInstalling(allowed) {
-  const state = setupState;
-  const here = Boolean(state?.emulator?.here);
-  const chosen = state?.systems.find((system) => system.identifier === chosenSystem);
-
-  /** @type {any} */ (document.getElementById("installer-install")).disabled = !allowed || here;
-  /** @type {any} */ (document.getElementById("installer-remove")).disabled = !allowed || !here;
   /* Not there at all where the archive has nothing newer, because a button
      that would bring the version that is already here is a button that does
      nothing. */
-  const update = /** @type {any} */ (document.getElementById("installer-update"));
-  update.hidden = !state?.emulator?.newer;
-  update.disabled = !allowed || !here;
+  /** @type {any} */ (document.getElementById("installer-update")).hidden =
+    !setupState?.emulator?.newer;
+  helperIs("installer", !allowed);
+  holdTheControls();
+}
 
-  /** @type {any} */ (document.getElementById("installer-fetch")).disabled =
-    !allowed || !chosen || chosen.here;
-  /** @type {any} */ (document.getElementById("installer-forget")).disabled =
-    !allowed || !chosen || !chosen.here;
+/** Whether the emulator is on this machine, as the last answer said. */
+function emulatorIsHere() {
+  return Boolean(setupState?.emulator?.here);
+}
+
+/** @returns {any} The system chosen in the list, as the last answer has it. */
+function theChosenSystem() {
+  return setupState?.systems.find((system) => system.identifier === chosenSystem);
+}
+
+/** Puts the six buttons under the system's state, each with what it asks on
+ *  top of that. */
+function holdTheButtons() {
+  hold("#installer-install", Needs.Quiet, () => !emulatorIsHere());
+  hold("#installer-remove", Needs.Quiet, emulatorIsHere);
+  hold("#installer-update", Needs.Quiet, emulatorIsHere);
+  hold("#installer-fetch", Needs.Quiet, () => Boolean(theChosenSystem() && !theChosenSystem().here));
+  hold("#installer-forget", Needs.Quiet, () => Boolean(theChosenSystem()?.here));
   /* A system that is not on the card cannot be started, and neither can the
      one the machine is already running. */
-  /** @type {any} */ (document.getElementById("installer-activate")).disabled =
-    !allowed || !chosen || !chosen.here || Boolean(chosen.booting);
+  hold("#installer-activate", Needs.Quiet,
+       () => Boolean(theChosenSystem()?.here && !theChosenSystem().booting));
 }
 
 /**
@@ -378,6 +391,9 @@ async function askTheInstaller(job, system) {
   waitingForTheHelper = Boolean(answer?.ok);
 
   if (answer === null) {
+    /* Nothing was left for the helper, so the window and the system stop
+       waiting for it. */
+    drawWhatIsBeingInstalled(setupState?.progress ?? null);
     show("installer-note", t("note.no-service"));
     return;
   }
@@ -395,6 +411,7 @@ function wireTheInstaller() {
   const window_ = theWindow("installer");
   if (!window_) return;
 
+  holdTheButtons();
   document.getElementById("installer-install")
     .addEventListener("click", installTheEmulator);
   document.getElementById("installer-update")

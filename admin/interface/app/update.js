@@ -15,6 +15,7 @@ import { t } from "../strings.js";
 import { show } from "./page.js";
 import { showTheReleaseNotes } from "./preview.js";
 import { ask, tell } from "./service.js";
+import { Needs, helperIs, hold, holdTheControls } from "./system.js";
 import { released, say, sized } from "./words.js";
 
 /** Where the update asks and tells. One address for both, because what comes
@@ -85,7 +86,7 @@ function drawTheUpdate(state) {
        by the package being installed. So the last reading is kept and the
        sentence says what is happening, and the poll carries on until the new
        service answers. */
-    offerTheUpdate(false);
+    offerTheUpdate(false, replacing());
     if (replacing()) show("pi-update-note", t("pi.update.away"));
     return;
   }
@@ -122,7 +123,7 @@ function drawWhatIsHappening(state) {
   }
   if (waitingForTheHelper) {
     const tooLong = Date.now() - askedAt > PATIENCE_MS;
-    offerTheUpdate(tooLong && state.newer);
+    offerTheUpdate(tooLong && state.newer, !tooLong);
     gauge.hidden = true;
     show("pi-update-note",
          t(tooLong ? "installer.not-started.why" : "pi.update.asked"));
@@ -131,7 +132,7 @@ function drawWhatIsHappening(state) {
 
   const running = Boolean(progress) && progress.finished_at === null;
   gauge.hidden = !running;
-  offerTheUpdate(!running && state.newer);
+  offerTheUpdate(!running && state.newer, running);
 
   if (running) return drawHowFarItHasGot(progress);
   if (progress && !progress.ok) return drawWhyItStopped(progress);
@@ -206,20 +207,28 @@ function replacing() {
 }
 
 /**
- * Shows the button or takes it away.
+ * Shows the button or takes it away, and tells the system whether a run is on.
  * @param {boolean} offered - Whether there is something newer to put in place
  *   and nothing in the way of doing it.
+ * @param {boolean} busy - Whether a run is going or about to: asked for, and
+ *   the helper has not started yet but still may.
  *
  * Away rather than disabled where there is nothing newer, because a button that
  * would put the version already here back is a button that does nothing.
  * Disabled while a run is on, because the helper takes one job at a time and a
- * second request is refused rather than queued.
+ * second request is refused rather than queued. That holds for every window,
+ * so a run on is the system's state rather than this button's alone.
  */
-function offerTheUpdate(offered) {
-  const button = /** @type {any} */ (document.getElementById("pi-update"));
-  button.hidden = !updateState?.newer;
-  button.disabled = !offered;
+function offerTheUpdate(offered, busy) {
+  /** @type {any} */ (document.getElementById("pi-update")).hidden = !updateState?.newer;
+  updateIsFree = offered;
+  helperIs("update", busy);
+  holdTheControls();
 }
+
+/** Whether the last draw found nothing in the way of an update, which is what
+ *  the button asks on top of the system's state. */
+let updateIsFree = false;
 
 /**
  * Asks the Pi to replace this tool with the newest release.
@@ -234,12 +243,14 @@ async function askForTheNewest() {
   theRunBefore = updateState?.progress?.started_at ?? null;
   askedAt = Date.now();
   show("pi-update-note", t("pi.update.asked"));
-  offerTheUpdate(false);
+  offerTheUpdate(false, true);
 
   const answer = await tell(UPDATE);
   waitingForTheHelper = Boolean(answer?.ok);
 
   if (answer === null) {
+    /* Nothing was left for the helper, so nothing is about to run. */
+    offerTheUpdate(Boolean(updateState?.newer), false);
     show("pi-update-note", t("note.no-service"));
     return;
   }
@@ -258,6 +269,7 @@ function wireTheUpdate() {
     document.querySelector('nx-window[name="pi"]'));
   if (!window_) return;
 
+  hold("#pi-update", Needs.Quiet, () => updateIsFree);
   /** @type {any} */ (document.getElementById("pi-update"))
     .addEventListener("click", askForTheNewest);
   /** @type {any} */ (document.getElementById("pi-notes"))

@@ -112,10 +112,11 @@
     <nx-row><label data-t="info.file"></label><nx-field id="info-file">&mdash;</nx-field></nx-row>
     <nx-row><label data-t="info.written"></label><nx-field id="info-written">&mdash;</nx-field></nx-row>
   </div>
-  <!-- What is happening while it happens, and the note afterwards says what
-       came of it. Two lines rather than one, because the first is the window's
-       state for minutes and the second is a remark. -->
-  <p class="busy" id="kiosk-busy"></p>
+  <!-- What the system is busy with, which every window holding a busy line
+       shows and app/system.js writes; the note afterwards says what came of
+       it. Two lines rather than one, because the first is the state for
+       minutes and the second is a remark. -->
+  <p class="busy"></p>
   <p class="note" id="kiosk-note"></p>
   <div class="buttons">
     <button id="kiosk-stop" data-t="button.power-off"></button>
@@ -172,7 +173,7 @@
        write into: a replacement takes minutes and is drawn again at every poll,
        so sharing one paragraph would wipe whatever the last press said. -->
   <p class="note" id="pi-update-note"></p>
-  <p class="busy" id="pi-busy"></p>
+  <p class="busy"></p>
   <p class="note" id="pi-note"></p>
   <div class="buttons">
     <button id="pi-poweroff" data-t="button.power-off"></button>
@@ -215,6 +216,7 @@
 <nx-window name="files" title="Previously" x="180" y="330" w="470" h="480"
            min-w="340" min-h="340" closed>
   <nx-viewer id="file-viewer"></nx-viewer>
+  <p class="busy"></p>
   <p class="note" id="machine-note"></p>
 </nx-window>
 
@@ -408,6 +410,7 @@
   <div class="gauge" id="installer-gauge" hidden>
     <div class="gauge-fill" id="installer-fill"></div>
   </div>
+  <p class="busy"></p>
   <p class="note" id="installer-note"></p>
 </nx-window>
 

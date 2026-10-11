@@ -7,6 +7,7 @@ import { show, theWindow } from "./page.js";
 import { askPanel } from "./panels.js";
 import { ask, tell } from "./service.js";
 import { setBusy } from "./status.js";
+import { Needs, allowed } from "./system.js";
 import { Art, say, sized } from "./words.js";
 
 /**
@@ -21,6 +22,7 @@ import { Art, say, sized } from "./words.js";
  */
 async function bootFromDisk(disk) {
   if (disk.booting) return;
+  if (!allowed(Needs.Quiet, "machine-note")) return;
 
   const agreed = await askPanel({
     name: t("ask.disk.title"),
@@ -57,6 +59,7 @@ async function bootFromDisk(disk) {
  * wherever something is in or out rather than one of several.
  */
 function useTheDisc(disc) {
+  if (!allowed(Needs.Quiet, "machine-note")) return;
   return disc.slot === null ? putTheDiscIn(disc) : takeTheDiscOut(disc);
 }
 
@@ -119,6 +122,7 @@ async function takeTheDiscOut(disc) {
  * the machine.
  */
 async function backUpTheDisk(disk) {
+  if (!allowed(Needs.Quiet, "machine-note")) return;
   const state = await ask(SETUP);
   const agreed = await askPanel({
     name: t("ask.backup.title", { name: disk.name }),
@@ -146,6 +150,7 @@ async function backUpTheDisk(disk) {
  * before it says anything else.
  */
 async function putTheCopyBack(copy) {
+  if (!allowed(Needs.Quiet, "machine-note")) return;
   const agreed = await askPanel({
     name: t("ask.restore.title", { name: copy.name }),
     text: [t("ask.restore.loss"), t("ask.backup.off"), t("ask.job.time")],

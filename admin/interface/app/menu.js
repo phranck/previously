@@ -5,6 +5,7 @@ import { applications } from "./dock.js";
 import { saveThePicture, shownPictures, takeAPicture } from "./grab.js";
 import { theWindow } from "./page.js";
 import { deleteThePicture } from "./preview.js";
+import { Needs, hold } from "./system.js";
 import { appName } from "./viewer.js";
 
 /**
@@ -55,8 +56,12 @@ function watchTheFrontWindow() {
     document.querySelector(`nx-menu-item[name="${entry}"]`)
       ?.addEventListener("click", () => saveThePicture(view));
   }
+  /* Taking a picture away touches neither the machine nor the board, so it
+     needs the service and nothing more. */
+  hold('nx-menu-item[name="preview-delete"]', Needs.Contact);
   document.querySelector('nx-menu-item[name="preview-delete"]')
-    ?.addEventListener("click", async () => {
+    ?.addEventListener("click", async (/** @type {any} */ event) => {
+      if (event.currentTarget.hasAttribute("disabled")) return;
       const showing = shownPictures["preview-picture"];
       if (!showing?.name) return;
       /* The window goes with the picture, because a window showing something

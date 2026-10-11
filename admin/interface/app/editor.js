@@ -8,6 +8,7 @@ import { explain, show, theWindow } from "./page.js";
 import { askPanelFor } from "./panels.js";
 import { Saved, ask, tell } from "./service.js";
 import { refresh } from "./status.js";
+import { Needs, allowed, hold } from "./system.js";
 import { drawMachines } from "./viewer.js";
 import { EDITOR, chipsOf, cpuOf, fitted, machineArt, nameOf, say, screenOf } from "./words.js";
 
@@ -397,6 +398,8 @@ function drawWhatSavingWillDo() {
  */
 async function saveTheDraft() {
   if (!drafted) return;
+  /* The menu entry calls this whether it is greyed or not. */
+  if (!allowed(Needs.Contact, "editor-note")) return;
 
   let name = replacing;
   if (name === null) {
@@ -429,6 +432,10 @@ async function saveTheDraft() {
 
 /** Wires the editor's button, its menu entry, and its tile. */
 function wireEditor() {
+  /* Keeping a configuration touches neither the machine nor the board, so it
+     needs the service and nothing more. */
+  hold("#editor-save", Needs.Contact);
+  hold('nx-menu-item[name="editor-save"]', Needs.Contact);
   document.getElementById("editor-save")
     ?.addEventListener("click", saveTheDraft);
   document.querySelector('nx-menu-item[name="editor-save"]')
