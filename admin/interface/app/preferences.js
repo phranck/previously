@@ -5,6 +5,7 @@ import { sampleActivity } from "./activity.js";
 import { redrawTheEditor } from "./editor.js";
 import { drawTheInstaller, drawTheTabs, setupState } from "./installer.js";
 import { drawTheMenu } from "./menu.js";
+import { showTheNotesAgain } from "./preview.js";
 import { drawSizes } from "./size.js";
 import { refresh } from "./status.js";
 import { drawPlace } from "./viewer.js";
@@ -113,6 +114,8 @@ function speak(code) {
     /* Activity Monitor names its cores itself, one row per core the board
        has, so it is asked again while it is open rather than a second later. */
     sampleActivity();
+    /* Release notes come from the service in one language at a time. */
+    showTheNotesAgain();
   });
 }
 

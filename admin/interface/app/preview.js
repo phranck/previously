@@ -11,7 +11,7 @@
  * would have three special cases by the third one.
  */
 
-import { t } from "../strings.js";
+import { currentLanguage, t } from "../strings.js";
 import { drawPicture } from "./grab.js";
 import { render } from "./markdown.js";
 import { askForPassword, askPanel } from "./panels.js";
@@ -200,14 +200,31 @@ function emptyThePreview(kind) {
  * Its own address rather than a field of the answer the Raspberry Pi window
  * polls, because that one is asked every two seconds and these are thousands of
  * characters asked for when somebody presses a button.
+ *
+ * In the language the interface speaks. A release carries its notes in each of
+ * them, and the service answers with English where one is missing.
  */
 async function showTheReleaseNotes() {
-  const answer = await ask("/api/update/notes");
+  const answer = await ask(
+    "/api/update/notes?language=" + encodeURIComponent(currentLanguage()));
   showInPreview({
     kind: "notes",
     name: t("preview.notes.title", { version: answer?.version ?? "" }).trim(),
     notes: answer?.notes ?? "",
   });
+}
+
+/**
+ * Asks for the notes again where Preview is showing them.
+ *
+ * For a change of language: the notes arrive in the language in force when
+ * they are asked for, and a window holding them would go on in the old one
+ * while everything around it spoke the new one.
+ */
+function showTheNotesAgain() {
+  const window_ = /** @type {any} */ (document.querySelector('nx-window[name="preview"]'));
+  if (!window_ || window_.hidden || whatItWasShowing()?.kind !== "notes") return;
+  showTheReleaseNotes();
 }
 
 /**
@@ -278,6 +295,7 @@ export {
   RENDERERS,
   showInPreview,
   showTheReleaseNotes,
+  showTheNotesAgain,
   deleteThePicture,
   openPictureMenu,
   wirePreview,
