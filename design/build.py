@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Puts the kit together, and bakes the bitmaps into the mockup.
+"""Puts the kit together, and bakes the pictures into the mockup.
 
 The kit is one source per component in kit/, each holding that component's
 element and that component's styles beside it. This writes the two files the
@@ -25,6 +25,9 @@ KIT = HERE / "kit"
 #: makepng.py and bootpicture.py write there, and the mockup is baked from
 #: there, as it is from the Terminal's face below.
 PARTS = HERE.parent / "admin" / "web" / "parts"
+#: What a picture in PARTS can be, by its file's suffix, and the media type it
+#: goes into the mockup as.
+PICTURE_KINDS = {".png": "image/png", ".svg": "image/svg+xml"}
 MOCKUP = HERE / "mockup-nextstep.html"
 #: Where the admin's interface is written. The kit goes there rather than into
 #: what is served, because admin/build_web.py is what puts the served files
@@ -280,11 +283,21 @@ def data_uri(path, kind):
     return 'url("data:%s;base64,%s")' % (kind, encoded)
 
 
+def pictures():
+    """@returns every picture in PARTS with its media type, sorted by name.
+
+    Bitmaps and the one drawing, board.svg, which is served as it is so the
+    browser draws it at the display's own resolution.
+    """
+    return sorted((path, PICTURE_KINDS[path.suffix]) for path in PARTS.iterdir()
+                  if path.suffix in PICTURE_KINDS)
+
+
 def properties():
     """One custom property per picture, named after its file."""
     lines = [PARTS_MARKER]
-    for path in sorted(PARTS.glob("*.png")):
-        lines.append("  --%s: %s;" % (path.stem, data_uri(path, "image/png")))
+    for path, kind in pictures():
+        lines.append("  --%s: %s;" % (path.stem, data_uri(path, kind)))
     return "\n".join(lines)
 
 
@@ -346,7 +359,7 @@ def main():
     print("wrote %d lines of stylesheet and %d of script from %d parts, "
           "and baked %d pictures and %d faces into %s"
           % (len(css.splitlines()), len(js.splitlines()), len(KIT_PARTS),
-             len(list(PARTS.glob("*.png"))), len(list(FONTS.glob("*.woff2"))),
+             len(pictures()), len(list(FONTS.glob("*.woff2"))),
              MOCKUP.name))
 
 
