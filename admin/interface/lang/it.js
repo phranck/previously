@@ -205,6 +205,7 @@ export const it = {
   "preview.empty": "Niente da mostrare.",
   "preview.notes.title": "Previously {version}",
   "preview.version": "Versione",
+  "preview.versions.run": "da {first} a {last}",
   "preview.no-notes": "Questa versione non dice niente di sé.",
   "grab.take": "Scatta un’immagine",
   "grab.idle": "Niente da fotografare. La macchina non è in funzione.",

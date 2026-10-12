@@ -81,7 +81,8 @@ const RENDERERS = {
     /**
      * @param {any} document_ - Carrying `notes` as the Markdown they were
      *   written in, `version` as the release they are of, and `versions` as
-     *   every release there is, newest first.
+     *   every entry there is, newest first, each with the `first` and the
+     *   `last` release it stands for.
      * @returns {Promise<string>} What to say where there are none.
      *
      * Turned into elements rather than into markup, which `markdown.js` is
@@ -89,12 +90,17 @@ const RENDERERS = {
      * string of markup.
      *
      * The releases go into the pop-up list above the notes, which is how
-     * somebody reaches the notes of one before the newest.
+     * somebody reaches the notes of one before the newest. An entry standing
+     * for several releases, whose notes are one page, is named by the first
+     * and the last of them and opens the notes of the last.
      */
     async show(document_) {
       const versions = document_.versions ?? [];
       /** @type {any} */ (document.getElementById("preview-version")).offer(
-        versions.map((version) => ({ value: version, label: version })),
+        versions.map(({ first, last }) => ({
+          value: last,
+          label: first === last ? last : t("preview.versions.run", { first, last }),
+        })),
         document_.version);
       /** @type {any} */ (document.getElementById("preview-versions")).hidden =
         versions.length === 0;

@@ -470,6 +470,58 @@ def test_the_list_and_the_newest_are_asked_for_apart(answering):
     assert release.published()["version"] == "1.0.0"
 
 
+# -- releases whose notes are one page --------------------------------------
+
+
+#: How every release from 1.0.0 to 1.2.1 opens its notes, cut down.
+WHOLE_TOOL = "Previously is a web admin for a NeXT machine."
+
+
+def test_neighbors_whose_notes_open_the_same_way_are_one_entry():
+    """Those releases each describe the whole tool, so offered one by one they
+    are the same page several times. The newest of them leads."""
+    every = [
+        {"version": "1.2.3", "notes": "Three fixes.\n\n## Fixed"},
+        {"version": "1.2.1", "notes": WHOLE_TOOL + "\n\n## Keeping it up to date"},
+        {"version": "1.2.0", "notes": WHOLE_TOOL + "\n\n## The Installer"},
+        {"version": "1.0.0", "notes": WHOLE_TOOL + "\n\n## Install"},
+        {"version": "0.1.3", "notes": "Two small things."},
+    ]
+
+    assert release.runs(every) == [["1.2.3"], ["1.2.1", "1.2.0", "1.0.0"], ["0.1.3"]]
+
+
+def test_the_same_opening_apart_is_not_one_entry():
+    """Only neighbors: a later release opening the way an old one did is its
+    own page, with a release between them that says something else."""
+    every = [
+        {"version": "1.3.0", "notes": "One fix."},
+        {"version": "1.2.0", "notes": "Two fixes."},
+        {"version": "1.1.0", "notes": "One fix."},
+    ]
+
+    assert release.runs(every) == [["1.3.0"], ["1.2.0"], ["1.1.0"]]
+
+
+def test_the_opening_is_read_in_english():
+    """The translations follow the English notes, so a release whose English
+    opening is its own is its own entry whatever its translations say."""
+    german = '\n\n<details lang="de"><summary>Deutsch</summary>\n\nGleich.\n\n</details>\n'
+    every = [
+        {"version": "1.3.1", "notes": "Two fixes." + german},
+        {"version": "1.3.0", "notes": "One fix." + german},
+    ]
+
+    assert release.runs(every) == [["1.3.1"], ["1.3.0"]]
+
+
+def test_releases_without_notes_are_not_one_entry():
+    """Nothing in common is not the same page."""
+    every = [{"version": "1.1.0", "notes": ""}, {"version": "1.0.0", "notes": ""}]
+
+    assert release.runs(every) == [["1.1.0"], ["1.0.0"]]
+
+
 # -- what this is released from -------------------------------------------
 
 

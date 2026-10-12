@@ -99,6 +99,9 @@ LONGEST_NOTES = 64 * 1024
 TRANSLATION = re.compile(
     r'<details lang="([a-z]{2})">\s*<summary>.*?</summary>(.*?)</details>', re.S)
 
+#: Where a paragraph ends in Markdown, which is at a blank line.
+PARAGRAPH_END = re.compile(r"\n[ \t]*\n")
+
 #: The least time between two lookups, whoever asks for one. Three a minute,
 #: which is what opening the Raspberry Pi window is allowed to cost.
 #:
@@ -265,6 +268,38 @@ def notes_in(notes, language):
         if code == language:
             return text.strip()
     return TRANSLATION.sub("", notes).strip()
+
+
+def runs(every):
+    """The releases as the notes window offers them, one entry per page of notes.
+
+    @param every - Releases as `history` answers them, newest first.
+    @returns list of lists of versions, newest first in both. A release is a
+      list of its own, and neighbors whose English notes open with the same
+      paragraph share one.
+
+    The releases from 1.0.0 to 1.2.1 each describe the whole tool rather than
+    what they changed, so their notes all open with the same paragraph about
+    what Previously is, and offered one by one they are the same page ten
+    times. They are found by that paragraph rather than listed here, because
+    the notes are what makes them alike and a list would be a second record of
+    it. The newest of them has the fullest notes, which is why it leads.
+    """
+    grouped = []
+    opening_before = None
+    for entry in every:
+        opening = _opening(entry["notes"])
+        if grouped and opening and opening == opening_before:
+            grouped[-1].append(entry["version"])
+        else:
+            grouped.append([entry["version"]])
+        opening_before = opening
+    return grouped
+
+
+def _opening(notes):
+    """@returns str, the first paragraph of a release's English notes, or ""."""
+    return PARAGRAPH_END.split(notes_in(notes, ""), maxsplit=1)[0].strip()
 
 
 def forget():
