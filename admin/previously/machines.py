@@ -905,10 +905,13 @@ def _system_for(machine):
         "n_FPUType": FPU_68882 if is_1988 else FPU_ON_CHIP,
         "bTurbo": _flag(machine.turbo),
         "bColor": _flag(machine.colour),
-        # The real-time clock. A turbo board carries the MCCS1850, and so does
-        # a color station, while everything else has the MC68HC68T1. Previous
-        # writes the choice as a boolean, and TRUE is the MCCS1850.
-        "nRTC": _flag(machine.turbo or (machine.kind == NEXTSTATION and machine.colour)),
+        # The real-time clock. The turbo board alone carries the MCCS1850, and
+        # every machine without it has the MC68HC68T1, color or not, which is
+        # what Configuration_SetSystemDefaults writes. Previous does not
+        # correct the value at start, and src/sysReg.c reports board revision 1
+        # for the MCCS1850, so a plain board given it says it is a later one.
+        # Previous writes the choice as a boolean, and TRUE is the MCCS1850.
+        "nRTC": _flag(machine.turbo),
         # The SCSI controller, as a boolean the same way: the 1988 machine has
         # the NCR53C90 and every 68040 the NCR53C90A.
         "nSCSI": _flag(not is_1988),
