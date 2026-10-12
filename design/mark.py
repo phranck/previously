@@ -2,11 +2,10 @@
 """Fetches the Previously mark from the website and writes the admin's copies.
 
 The mark is drawn for the website at previous.li, by site/logo.py in
-phranck/previous.li, and that is its one source. The admin shows it as the
-application's icon, in the dock and in the About panel, and in the browser's
-tab, and this writes both copies into admin/web/parts: Previously.png for the
-icon and favicon.ico for the tab. Run it again whenever the website's mark
-changes.
+phranck/previous.li, and that is its one source. The admin shows it in the
+About Previously panel and in the browser's tab, and this writes both copies
+into admin/web/parts: Previously.png for the panel and favicon.ico for the tab.
+Run it again whenever the website's mark changes.
 
     python3 mark.py
 """

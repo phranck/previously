@@ -73,7 +73,7 @@ python3 build.py
 
 ## The mark
 
-The mark the dock and the About panel show is the website's, drawn by `site/logo.py` in phranck/previous.li: NeXT's cube with the circuit board in place of the N. `mark.py` fetches its `site/logo.png` from `main` and writes it 192 pixels tall into `../admin/web/parts/Previously.png`, four times the 48 an icon is drawn at. It also copies the website's `site/favicon.ico` into `../admin/web/parts/favicon.ico`, which the admin's page names as the icon of its tab. Run it again whenever the website's mark changes:
+The mark the About Previously panel shows is the website's, drawn by `site/logo.py` in phranck/previous.li: NeXT's cube with the circuit board in place of the N. `mark.py` fetches its `site/logo.png` from `main` and writes it 192 pixels tall into `../admin/web/parts/Previously.png`, four times the 48 an icon is drawn at. It also copies the website's `site/favicon.ico` into `../admin/web/parts/favicon.ico`, which the admin's page names as the icon of its tab. Run it again whenever the website's mark changes:
 
 ```bash
 python3 mark.py
