@@ -95,6 +95,16 @@ def test_the_library_names_no_map():
         assert "sourceMappingURL" not in text, name
 
 
+def test_the_page_names_an_icon_the_service_has(markup):
+    """A page that names no icon has the browser ask for /favicon.ico by
+    itself, and every load then puts a 404 in the console and leaves the tab
+    without a mark. The page names the mark, and the file it names is served."""
+    icons = re.findall(r'<link rel="icon" href="([^"]+)"', markup)
+
+    assert icons == ["parts/favicon.ico"]
+    assert (WEB_ROOT / icons[0]).is_file()
+
+
 def test_the_page_asks_for_three_files(markup):
     """One stylesheet, the vendor library, and everything of ours."""
     assert re.findall(r'<link rel="stylesheet" href="([^"]+)"', markup) \
