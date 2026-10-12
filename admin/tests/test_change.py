@@ -204,9 +204,12 @@ def test_the_rest_of_the_file_is_untouched(settings, machine):
     run("next-computer", settings, machine)
     after = settings.previous_config.read_text().splitlines()
 
-    # One line more, and it is the bus, which the file on the Pi does not hold.
-    assert len(after) == len(before) + 1
+    # Two things more, which the file on the Pi does not hold: the bus, and a
+    # Boot section that leaves the ROM's Sound Out test out, with its header
+    # and the blank line before it.
+    assert len(after) == len(before) + 4
     assert "bADB = FALSE" in after
+    assert after[-2:] == ["[Boot]", "bEnableSoundTest = FALSE"]
     # The disk it boots from is not the machine's business and must survive.
     assert "szImageName0 = /home/next/nextstep/NS33.dd" in after
     assert "bDiskInserted0 = TRUE" in after
@@ -238,10 +241,11 @@ def test_the_previous_file_is_kept_beside_it(settings, machine):
 
 
 def test_choosing_what_is_already_set_changes_nothing(settings, machine):
-    # The machine as this tool writes it, which carries the bus the file on
-    # the Pi does not.
+    # The machine as this tool writes it, which carries the bus and the Boot
+    # key the file on the Pi does not.
     settings.previous_config.write_text(
-        REAL_SHAPE.replace("bTurbo = TRUE\n", "bTurbo = TRUE\nbADB = TRUE\n"))
+        REAL_SHAPE.replace("bTurbo = TRUE\n", "bTurbo = TRUE\nbADB = TRUE\n")
+        + "\n[Boot]\nbEnableSoundTest = FALSE\n")
     before = settings.previous_config.read_text()
     finished, told = run("nextcube-turbo-dimension", settings, machine)
 

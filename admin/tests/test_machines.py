@@ -145,11 +145,25 @@ def test_the_window_shows_the_screen_the_console_is_on():
     assert machines.written_for(without)["Screen"] == {
         "nMode": "0", "nSingleModeSlot": "0"}
 
-    # Everything else written is what the machine is, with the bus beside it.
+    # Everything else written is what the machine is, with the bus and the
+    # power-on test beside it.
     written = machines.written_for(with_board)
     del written["Screen"]
+    del written["Boot"]
     del written["System"]["bADB"]
     assert written == machines.settings_for(with_board)
+
+
+def test_every_machine_starts_without_the_sound_out_test():
+    """Previous runs the ROM's Sound Out power-on test unless told otherwise,
+    and paces the emulated sound to the host's playback, so a sound server
+    that takes its samples late fails it with "System test failed. Error code
+    e2". Without the ROM monitor's output the boot stops there. On next.local
+    on 12 October 2026, with PipeWire forced to a quantum of 8192, two boots of
+    two failed that way with the test and passed without it."""
+    for machine in machines.CATALOGUE:
+        assert machines.written_for(machine)["Boot"] == {"bEnableSoundTest": "FALSE"}, \
+            machine.identifier
 
 
 def test_a_turbo_board_brings_the_desktop_bus():
