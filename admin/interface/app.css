@@ -481,10 +481,13 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 
 /* --- the raspberry pi window --------------------------------------------- */
 
-/* The board, as tall as the cube and the station stand in the About window and
-   as wide as its own shape makes it: ../web/parts/board.svg is drawn 60 wide to
-   an icon's height of 48. */
-#pi-icon { width: 60px; }
+/* The board, in this window and in Activity Monitor, as tall as the cube and
+   the station stand in the About window and as wide as its own shape makes it:
+   ../web/parts/board.svg is drawn 60 wide to an icon's height of 48. */
+nx-portrait .icon.board-picture {
+  width: 60px;
+  background-image: var(--board);
+}
 
 /* The published version, where it is newer than the one answering. Marked here
    as well as by the Update button appearing, because the button is at the foot
@@ -516,10 +519,10 @@ nx-row .beside nx-field { flex: 1 1 auto; min-width: 0; }
 
 /* --- Activity Monitor ----------------------------------------------------- */
 
-/* The cores are one instrument and the readings under them another, so the
-   two stand apart by the step an info panel leaves between its picture and
-   the readings beside it. */
-#activity-cores + .readings { margin-top: var(--portrait-gap); }
+/* The cores beside the picture are one instrument and the readings under them
+   another, so the two stand apart by the step an info panel leaves between its
+   picture and the readings beside it, rather than by the step inside a list. */
+nx-window[name="activity"] .info-body + .readings { margin-top: var(--portrait-gap); }
 
 
 /* --- a document in preview ------------------------------------------------ */

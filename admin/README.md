@@ -127,7 +127,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/kiosk/stop` | Shuts it down properly and keeps it down |
 | `POST /api/kiosk/restart` | Both, in that order |
 | `GET /api/pi` | Temperature, power, sound, disk, what the emulator costs, whether it has crashed since the boot, and which version of this tool is answering |
-| `GET /api/activity` | What every core is doing, the load averages, memory, and what the emulator costs |
+| `GET /api/activity` | The board's model, what every core is doing, the load averages, memory, and what the emulator costs |
 | `GET /api/files` | Everything this tool holds, as a place with places in it |
 | `POST /api/machine` | Makes the emulated machine the one named, from either set |
 | `POST /api/machine/save` | Keeps a configuration under a name, without touching the running machine |
@@ -481,9 +481,11 @@ The module is the one NeXTSTEP called Localization, and it offers the six langua
 
 NeXTSTEP had no Activity Monitor, and a Pi that boots straight into an emulator needs one. Nobody watches such a machine, and the Raspberry Pi window answers how it is doing with a figure every five seconds. Activity Monitor draws it live.
 
+**The board in the upper left, the cores beside it.** The board's picture stands there with its model under it, as in the Raspberry Pi window, and both windows read the model from the same place.
+
 **One row of lamps per core.** Each core's load is a run of twenty small square lamps on a dark field, lit from the left, the way BeOS's Pulse drew a processor. One lamp is five per cent, and the figure stands beside the row. How many rows there are is the board's to say, so a Pi 5 draws four and a two-core board draws two.
 
-**Under the cores, the readings that are not the load of one core.** Memory is a row of lamps for what is in use, with what is free beside it in the words the Raspberry Pi window uses. The three load averages are figures, read against the number of cores, because 4.0 is a machine working flat out on four cores and one four times oversubscribed on one. The last line is what the emulator costs. Its percentage is of one core, so around 150 is ordinary with a NeXTdimension.
+**Under the cores, indented to their column, the readings that are not the load of one core.** Memory is a row of lamps for what is in use, with what is free beside it in the words the Raspberry Pi window uses. The three load averages are figures, read against the number of cores, because 4.0 is a machine working flat out on four cores and one four times oversubscribed on one. The last line is what the emulator costs. Its percentage is of one core, so around 150 is ordinary with a NeXTdimension.
 
 **It asks once a second while its window is open, and never while it is closed.** The answer comes from `GET /api/activity`, which reads `/proc` and forks nothing. Each figure is a difference between two readings, so the first answer after the window opens has none, and the rows stand dark for that one second.
 

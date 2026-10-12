@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from previously import activity, screen
+from previously import activity, pi, screen
 
 
 @pytest.fixture(autouse=True)
@@ -219,4 +219,15 @@ def test_every_reading_is_answered_even_where_none_can_be_had(monkeypatch, tmp_p
     monkeypatch.setattr(activity, "STAT", tmp_path / "gone")
     monkeypatch.setattr(activity, "LOADAVG", tmp_path / "gone")
 
-    assert set(activity.readings()) == {"cores", "load", "memory", "emulator"}
+    assert set(activity.readings()) == {"model", "cores", "load", "memory", "emulator"}
+
+
+def test_the_board_is_named_as_the_raspberry_pi_window_names_it(monkeypatch, tmp_path):
+    """The window shows the board's picture with its model under it, as the
+    Raspberry Pi window does, and both read the model from the one place."""
+    proc(monkeypatch, tmp_path, [(0, 1)])
+    (tmp_path / "model").write_bytes(b"Raspberry Pi 5 Model B Rev 1.1\x00")
+    monkeypatch.setattr(pi, "MODEL", tmp_path / "model")
+
+    assert activity.readings()["model"] == "Raspberry Pi 5 Model B Rev 1.1"
+    assert pi.readings()["model"] == "Raspberry Pi 5 Model B Rev 1.1"

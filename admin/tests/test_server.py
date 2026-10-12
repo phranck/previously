@@ -119,7 +119,7 @@ def test_what_every_core_is_doing_is_open(service):
     payload = json.loads(body)
 
     assert status == 200
-    assert set(payload) == {"cores", "load", "memory", "emulator"}
+    assert set(payload) == {"model", "cores", "load", "memory", "emulator"}
 
 
 def test_no_route_asks_the_package_database_of_the_machine_running_the_suite(
