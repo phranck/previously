@@ -387,15 +387,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         "running" is about the emulator, not about the unit, because that is
         what somebody means by the question. The unit stays active either way:
-        what it holds is a login shell, and the emulator is its grandchild.
+        what it holds is a login shell, and the emulator is its grandchild. The
+        running time is the emulator's own for the same reason, since the unit
+        outlives every emulator it starts.
         """
         unit = self.settings.kiosk_unit
         running = kiosk.emulator_is_running()
+        age = kiosk.emulator_uptime_seconds()
         answer = {
             "running": running,
             "held": kiosk.is_held(self.settings.runtime_directory),
             "console_active": kiosk.is_running(unit),
-            "uptime_seconds": kiosk.uptime_seconds(unit) if running else None,
+            "uptime_seconds": age if running else None,
         }
         try:
             answer["configuration"] = config.read(self.settings.previous_config)
@@ -411,7 +414,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # Whether the file has moved on since the emulator read it, which is
         # the one thing the configuration itself cannot say.
         answer["file"] = config.file_state(
-            self.settings.previous_config, kiosk.emulator_uptime_seconds(),
+            self.settings.previous_config, age,
             state_directory=self.settings.state_directory)
         answer["ready"] = self._ready(answer["configuration"] is not None)
         return answer

@@ -95,6 +95,18 @@ def test_status_carries_the_machine_and_whether_it_runs(service):
     assert payload["uptime_seconds"] is None
 
 
+def test_the_running_time_is_the_emulators_own(service, monkeypatch):
+    """The console unit holds a login shell that outlives any one emulator, so
+    after a change of machine the unit is hours old and the emulator seconds.
+    The Info window says how long the machine has been running."""
+    monkeypatch.setattr(server.kiosk, "emulator_is_running", lambda: True)
+    monkeypatch.setattr(server.kiosk, "emulator_uptime_seconds", lambda: 12)
+
+    _, _, body = fetch(service + "/api/status")
+
+    assert json.loads(body)["uptime_seconds"] == 12
+
+
 def test_the_board_readings_say_which_version_is_answering(service):
     """The window that shows what a Pi is running says what put it there.
 
