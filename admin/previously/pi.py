@@ -16,7 +16,7 @@ import re
 import shutil
 import subprocess
 
-from . import screen
+from . import hardware, screen
 
 #: How long to wait for vcgencmd. It answers in milliseconds, so anything
 #: slower than this has gone wrong rather than got busy.
@@ -52,10 +52,6 @@ SOUND_CARDS = pathlib.Path("/proc/asound")
 #: somewhere else, the way it can with the sound cards above.
 MEMINFO = pathlib.Path("/proc/meminfo")
 
-#: Where the device tree names the board. One read of a file the kernel holds
-#: in memory, which is why Activity Monitor can ask for it twice a second.
-MODEL = pathlib.Path("/proc/device-tree/model")
-
 #: What the console writes down when the emulator ends badly, inside the
 #: service's own runtime directory. One line each, and the whole file is gone
 #: at every boot because that directory is a tmpfs. `setup.py` writes the line
@@ -70,10 +66,13 @@ def readings(runtime_directory=None):
       console writes down an emulator that ended badly. None leaves that one
       reading out, which is what a test that is asking about the board wants.
     @returns dict. Any reading that could not be had is None, and the page
-      leaves that line empty rather than saying something untrue.
+      leaves that line empty rather than saying something untrue. `model` and
+      `board` say which board this is, as `hardware.py` reads them, and the page
+      shows the board's drawing over its model.
     """
     return {
-        "model": model(),
+        "model": hardware.model(),
+        "board": hardware.board(),
         "uptime_seconds": _uptime_seconds(),
         "temperature_c": _temperature(),
         "throttling": _throttling(),
@@ -118,18 +117,6 @@ def crashes(runtime_directory):
     if not when:
         return None
     return {"count": len(when), "last": max(when)}
-
-
-def model():
-    """@returns The board's own name, such as "Raspberry Pi 5 Model B Rev 1.1",
-      or None. The one place it is read, for this window and for Activity
-      Monitor, which both show it under the board's picture."""
-    try:
-        raw = MODEL.read_bytes()
-    except OSError:
-        return None
-    # The device tree writes its strings with a trailing null.
-    return raw.decode("ascii", "replace").rstrip("\x00").strip() or None
 
 
 def _uptime_seconds():

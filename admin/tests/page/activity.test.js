@@ -49,6 +49,7 @@ const { wireActivity } = await import("../../interface/app/activity.js");
 /** A reading as the service sends one. */
 const READING = {
   model: "Raspberry Pi 5 Model B Rev 1.1",
+  board: "pi5",
   cores: [12.5, 0, 50, 100],
   load: { one: 1.5, five: 1.6, fifteen: 1.7, cores: 4 },
   memory: { total_mb: 4049, available_mb: 3537 },
@@ -93,7 +94,7 @@ test("opening it again opens a new one", () => {
 
 test("a reading puts in the drawing of the board it names", () => {
   Stream.opened[1].send("message", JSON.stringify(
-    { ...READING, model: "Raspberry Pi Compute Module 4 Rev 1.1" }));
+    { ...READING, model: "Raspberry Pi Compute Module 4 Rev 1.1", board: "cm4" }));
 
   assert.equal(document.getElementById("activity-board").style.backgroundImage,
                "var(--board-cm4)");

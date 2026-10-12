@@ -25,14 +25,14 @@ function modelOf(answer) {
  * Puts the drawing of the board the service runs on into a picture, in this
  * window and in Activity Monitor alike.
  * @param {string} id - The picture's id.
- * @param {{model: string | null} | null} answer - What the service answered,
- *   carrying `model`, or null where it did not answer. No answer leaves the
+ * @param {{board: string | null} | null} answer - What the service answered,
+ *   carrying `board`, or null where it did not answer. No answer leaves the
  *   picture as it stands, because a board that stops answering is still the
  *   board it was.
  */
 function showBoard(id, answer) {
   if (answer === null) return;
-  byId(id).style.backgroundImage = `var(--${boardArt(answer.model)})`;
+  byId(id).style.backgroundImage = `var(--${boardArt(answer.board)})`;
 }
 
 /**

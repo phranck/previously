@@ -35,7 +35,7 @@ import os
 import pathlib
 import time
 
-from . import pi, screen
+from . import hardware, pi, screen
 
 #: Where the kernel reports itself. Named rather than written into each
 #: function, so a test points them at its own directory.
@@ -101,10 +101,11 @@ class Sampler:
     def readings(self):
         """Everything a monitor draws, in one answer.
 
-        @returns dict with `model`, `cores`, `load`, `memory` and `emulator`.
-          Anything that could not be read is None, and the window draws that as
-          empty rather than as zero. The model is the board's name, which the
-          window shows under its picture as the Raspberry Pi window does.
+        @returns dict with `model`, `board`, `cores`, `load`, `memory` and
+          `emulator`. Anything that could not be read is None, and the window
+          draws that as empty rather than as zero. `model` and `board` say which
+          board this is, read where the Raspberry Pi window reads them, and the
+          window shows the board's drawing over its model as that one does.
         """
         now = time.monotonic()
         cores = _cpu_times()
@@ -115,7 +116,8 @@ class Sampler:
 
         seconds = now - before[0] if before else 0
         return {
-            "model": pi.model(),
+            "model": hardware.model(),
+            "board": hardware.board(),
             "cores": _busy(cores, before[1] if before else None),
             "load": _load(),
             "memory": pi.memory(),
