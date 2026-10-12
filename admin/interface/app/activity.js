@@ -3,7 +3,7 @@
 import { NxLeds } from "../nextstep.js";
 import { t } from "../strings.js";
 import { byId, show, targetName, theWindow } from "./page.js";
-import { modelOf } from "./pi.js";
+import { modelOf, showBoard } from "./pi.js";
 import { NOTHING, costOf, decimal, memoryInUse } from "./words.js";
 
 /** @typedef {import("../answers.js").ActivityAnswer} ActivityAnswer */
@@ -81,6 +81,7 @@ function redrawActivity() {
 function drawActivity(activity) {
   show("activity-note", activity ? "" : t("note.no-service"));
   show("activity-model", modelOf(activity));
+  showBoard("activity-board", activity);
 
   /* One bar per core the service reports. The very first reading has no
      figures yet, since each one is a difference between two samples, and

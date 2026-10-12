@@ -55,6 +55,24 @@ def test_memory_that_was_not_read_is_said_as_nothing():
     assert said({"call": "memoryInUse", "with": [None, 4049]}) == "\N{EM DASH}"
 
 
+@pytest.mark.parametrize("model, drawing", [
+    # As the firmware names a running board, and as the device tree does.
+    ("Raspberry Pi 4 Model B Rev 1.5", "board-pi4"),
+    ("Raspberry Pi 5 Model B Rev 1.1", "board-pi5"),
+    ("Raspberry Pi Compute Module 4 Rev 1.1", "board-cm4"),
+    ("Raspberry Pi Compute Module 5 Rev 1.0", "board-cm5"),
+    ("Raspberry Pi Compute Module 5 Lite Rev 1.0", "board-cm5"),
+    # Boards none of the four drawings is of, which wear the Pi 5.
+    ("Raspberry Pi 400 Rev 1.0", "board-pi5"),
+    ("Raspberry Pi 500 Rev 1.0", "board-pi5"),
+    ("Raspberry Pi Compute Module 4S Rev 1.0", "board-pi5"),
+    ("Raspberry Pi 3 Model B Plus Rev 1.3", "board-pi5"),
+    (None, "board-pi5"),
+])
+def test_the_board_wears_the_drawing_of_its_model(model, drawing):
+    assert said({"call": "boardArt", "with": [model]}) == drawing
+
+
 def test_room_a_restart_gives_back_is_said_in_sizes_as_well():
     sentence = said({"reason": "setup.no-room-until-restart",
                      "name": "NeXTSTEP 3.3", "free": 2_076_180_480,

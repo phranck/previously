@@ -463,7 +463,7 @@ NeXTSTEP had one menu, and the Workspace's own is what stands there while no app
 
 **Info is about the machine this runs on**, which is the Raspberry Pi, and it is there whatever else is. **About NeXTcube Turbo is about the machine it runs**, and it carries that machine's own name, so its words are written by the page rather than taken from the catalog. On a Pi where nothing is installed there is no machine to be about, and the entry is not in the menu at all. Each window is titled the way its entry is: picking a name off the menu and reading a different one off the title bar is two windows as far as anybody looking at the screen is concerned.
 
-**Both show what they are about on the left, with its model underneath.** About wears the picture the boot ROM draws of the machine, and Info wears a circuit board over the board's own model, as `/proc/device-tree/model` gives it. The readings stand beside the picture and carry on under it in the same column. The circuit board is drawn for this repository in `web/parts/board.svg`, with NeXT's logo on its processor. Info names the board by Raspberry Pi's name, so it says at its foot that Raspberry Pi is a trademark of Raspberry Pi Ltd.
+**Both show what they are about on the left, with its model underneath.** About wears the picture the boot ROM draws of the machine, and Info wears a circuit board over the board's own model, as `/proc/device-tree/model` gives it. The readings stand beside the picture and carry on under it in the same column. The circuit board is the one the service runs on: a Raspberry Pi 4, a Raspberry Pi 5, a Compute Module 4 or a Compute Module 5, drawn for this repository in `web/parts/board-pi4.svg`, `board-pi5.svg`, `board-cm4.svg` and `board-cm5.svg` with NeXT's logo on each processor. Any other board, and a page that has not yet had an answer, shows the Pi 5. Info names the board by Raspberry Pi's name, so it says at its foot that Raspberry Pi is a trademark of Raspberry Pi Ltd.
 
 That entry says so with `away`, which is the page's word for something that is not in the menu just now. `hidden` belongs to the menu, which hides every entry owned by another application each time the front window changes, and a page writing into that one would have its work put back a moment later.
 
@@ -489,7 +489,7 @@ The module is the one NeXTSTEP called Localization, and it offers the six langua
 
 NeXTSTEP had no Activity Monitor, and a Pi that boots straight into an emulator needs one. Nobody watches such a machine, and the Raspberry Pi window answers how it is doing with a figure every five seconds. Activity Monitor draws it live.
 
-**The board in the upper left, the cores beside it.** The board's picture stands there with its model under it, as in the Raspberry Pi window, and both windows read the model from the same place.
+**The board in the upper left, the cores beside it.** The board's picture stands there with its model under it, as in the Raspberry Pi window, and both windows read the model from the same place and pick the drawing by it the same way.
 
 **One row of lamps per core.** Each core's load is a run of twenty narrow upright lamps on a dark field, lit from the left, the way BeOS's Pulse drew a processor. One lamp is five per cent, and the figure stands beside the row. How many rows there are is the board's to say, so a Pi 5 draws four and a two-core board draws two.
 
