@@ -92,11 +92,14 @@ function nextFrame() {
  * @param {Element} target - Where it happens.
  * @param {string} type - Which part of the drag.
  * @param {object} [where] - The pointer, as the viewport has it.
+ * @param {DataTransfer} [transfer] - What the drag carries. A browser hands
+ *   the same one to every event of one drag, so a test that reads what the
+ *   source offered beside what the target asked for passes one in.
  * @returns {Event} The event, so a test can read whether it was taken.
  */
-function drag(target, type, { x = 0, y = 0 } = {}) {
+function drag(target, type, { x = 0, y = 0 } = {}, transfer = new DataTransfer()) {
   const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
-  Object.defineProperty(event, "dataTransfer", { value: new DataTransfer() });
+  Object.defineProperty(event, "dataTransfer", { value: transfer });
   target.dispatchEvent(event);
   return event;
 }
@@ -229,6 +232,22 @@ test("an application dragged from the File Viewer asks for a tile on the free sl
   assert.deepEqual(asked, [{ value: "/Apps/Preview.app", slot: 6 }]);
   assert.ok(!dock.hasAttribute("receiving"));
   assert.ok(!dock.querySelector(".slot"), "the slot is still marked");
+});
+
+test("the dock asks a drag from the File Viewer for a copy, which is what Safari offers", () => {
+  /* Safari on a Mac offers a drag inside the page as a copy, a move or a
+     generic operation. A target that asks for anything else is refused the
+     drop, and the icon slides back where it came from. */
+  lay(`<main>${MARKUP}<nx-thing icon="Preview" value="/Apps/Preview.app" dockable></nx-thing></main>`);
+  const dock = placeTheDock(document.querySelector("nx-dock"));
+  const sixth = { x: DESK_WIDTH - dock.step / 2, y: 5 * dock.step + dock.step / 2 };
+  const transfer = new DataTransfer();
+
+  drag(document.querySelector("nx-thing"), "dragstart", {}, transfer);
+  drag(dock, "dragover", sixth, transfer);
+
+  assert.equal(transfer.dropEffect, "copy");
+  assert.equal(transfer.effectAllowed, "copy");
 });
 
 test("an occupied slot, something that is not an application, and one already docked are refused", () => {

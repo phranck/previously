@@ -84,9 +84,10 @@ class NxThing extends HTMLElement {
          switched off and on again while the page is up. */
       if (!this.canBeUsed || !event.dataTransfer) return event.preventDefault();
       event.dataTransfer.setData("text/plain", this.value);
-      /* A window and the shelf take a copy of what is handed over. The dock
-         takes a link: it keeps where the application is, not the application. */
-      event.dataTransfer.effectAllowed = "copyLink";
+      /* A copy, which is what every target here asks for. Safari on a Mac
+         offers a drag inside the page as a copy, a move or a generic
+         operation, and refuses the drop to a target that asks for a link. */
+      event.dataTransfer.effectAllowed = "copy";
       this.setAttribute("lifting", "");
     });
 
