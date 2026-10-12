@@ -317,8 +317,11 @@ function drawWhatIsBeingInstalled(progress) {
   }
 
   /* A failure says which step it was and what was put back, in the words the
-     rest of the interface uses rather than as a line of shell output. */
-  show("installer-caption", step);
+     rest of the interface uses rather than as a line of shell output. A
+     request the helper refused before its first step names no step, and was
+     not started, which is what the window says of a refusal by the service as
+     well. */
+  show("installer-caption", progress.step === null ? t("installer.not-started") : step);
   show("installer-note", [
     say(progress.failed),
     progress.undone?.length
