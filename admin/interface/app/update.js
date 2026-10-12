@@ -185,10 +185,13 @@ function drawHowFarItHasGot(progress) {
  * Always, whoever is reading. A failed replacement leaves the tool that is here
  * running, which is the safe direction and also the one nothing else on the page
  * would mention, so the reason stands until something else is asked for.
+ *
+ * A request the helper refused before its first step names no step, so the
+ * reason stands alone.
  */
 function drawWhyItStopped(progress) {
   show("pi-update-note", [
-    t(`setup.step.${progress.step}`),
+    progress.step === null ? "" : t(`setup.step.${progress.step}`),
     say(progress.failed),
   ].filter(Boolean).join(" "));
 }
