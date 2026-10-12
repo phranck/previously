@@ -205,6 +205,7 @@ export const sv = {
   "preview.empty": "Ingenting att visa.",
   "preview.notes.title": "Previously {version}",
   "preview.version": "Version",
+  "preview.versions.run": "{first} till {last}",
   "preview.no-notes": "Den här versionen säger ingenting om sig själv.",
   "grab.take": "Ta en bild",
   "grab.idle": "Ingenting att fotografera. Maskinen körs inte.",

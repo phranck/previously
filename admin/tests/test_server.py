@@ -1936,7 +1936,7 @@ def test_what_a_release_says_about_itself_has_its_own_address(
 
     assert status == 200
     assert said == {"version": "1.0.2", "notes": "## Installing it",
-                    "versions": ["1.0.2"]}
+                    "versions": [{"first": "1.0.2", "last": "1.0.2"}]}
 
 
 def test_the_notes_come_in_the_language_the_page_asks_for(service, monkeypatch):
@@ -2012,7 +2012,47 @@ def test_the_notes_of_an_earlier_release_can_be_read(service, three_releases):
 
     assert said["version"] == "1.3.0"
     assert said["notes"] == "Notes in deiner Sprache."
-    assert said["versions"] == ["1.3.1", "1.3.0", "1.2.6"]
+    assert said["versions"] == [{"first": version, "last": version}
+                                for version in ("1.3.1", "1.3.0", "1.2.6")]
+
+
+@pytest.fixture
+def a_run_of_releases(monkeypatch):
+    """Two releases whose notes describe the whole tool, between two that say
+    what they changed, as GitHub lists the releases from 0.1.3 to 1.2.3."""
+    whole_tool = "Previously is a web admin for a NeXT machine."
+    monkeypatch.setattr(server.release, "published", lambda check=False: {
+        "version": "1.2.3", "notes": "Three fixes."})
+    monkeypatch.setattr(server.release, "history", lambda check=False: [
+        {"version": "1.2.3", "notes": "Three fixes."},
+        {"version": "1.2.1", "notes": whole_tool + "\n\n## Keeping it up to date"},
+        {"version": "1.0.0", "notes": whole_tool + "\n\n## Install"},
+        {"version": "0.1.3", "notes": "Two small things."},
+    ])
+
+
+def test_releases_whose_notes_are_one_page_are_offered_once(service, a_run_of_releases):
+    """Named by the first and the last of them, so the window offers the page
+    once rather than once per release."""
+    _, _, body = fetch(service + "/api/update/notes")
+
+    assert json.loads(body)["versions"] == [
+        {"first": "1.2.3", "last": "1.2.3"},
+        {"first": "1.0.0", "last": "1.2.1"},
+        {"first": "0.1.3", "last": "0.1.3"},
+    ]
+
+
+@pytest.mark.parametrize("asked", ["1.2.1", "1.0.0"])
+def test_a_release_inside_such_a_run_shows_the_notes_of_its_last(
+        service, a_run_of_releases, asked):
+    """Which are the fullest, and what the entry in the pop-up list stands
+    for, so a version kept from an earlier visit lands on that entry."""
+    _, _, body = fetch(service + "/api/update/notes?version=" + asked)
+    said = json.loads(body)
+
+    assert said["version"] == "1.2.1"
+    assert said["notes"].endswith("## Keeping it up to date")
 
 
 @pytest.mark.parametrize("asked", ["", "9.9.9", "../../etc"])
@@ -2044,7 +2084,8 @@ def test_the_newest_is_offered_before_the_list_knows_of_it(service, monkeypatch)
     _, _, body = fetch(service + "/api/update/notes")
     said = json.loads(body)
 
-    assert said["versions"] == ["1.3.2", "1.3.1"]
+    assert said["versions"] == [{"first": "1.3.2", "last": "1.3.2"},
+                                {"first": "1.3.1", "last": "1.3.1"}]
     assert said["notes"] == "Newer."
 
 

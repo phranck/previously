@@ -205,6 +205,7 @@ export const de = {
   "preview.empty": "Nichts zu zeigen.",
   "preview.notes.title": "Previously {version}",
   "preview.version": "Version",
+  "preview.versions.run": "{first} bis {last}",
   "preview.no-notes": "Diese Version sagt nichts über sich selbst.",
   "grab.take": "Aufnehmen",
   "grab.idle": "Nichts zu fotografieren. Die Maschine läuft nicht.",

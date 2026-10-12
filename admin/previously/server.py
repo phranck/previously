@@ -673,7 +673,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         Of the release `?version=` names, and of the newest where it names none
         or one that is not known. The answer carries every version there is,
-        newest first, so the window can offer the others.
+        newest first, so the window can offer the others. Releases whose notes
+        are one page, as `release.runs` finds them, are one entry with the
+        first and the last of them, and a version inside one is answered with
+        the notes of its last.
 
         Nothing waits here either. The newest release's notes came with the
         answer GitHub gave about it, and the others come from the list of every
@@ -695,16 +698,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
         newest = release.published()
         every = release.history(check=True)
 
-        versions = [entry["version"] for entry in every]
-        if newest and newest["version"] not in versions:
-            versions.insert(0, newest["version"])
+        runs = release.runs(every)
+        if newest and newest["version"] not in {entry["version"] for entry in every}:
+            runs.insert(0, [newest["version"]])
 
-        chosen = (next((entry for entry in every if entry["version"] == wanted), None)
+        asked_for = next((run for run in runs if wanted in run), None)
+        chosen = (next((entry for entry in every
+                        if asked_for and entry["version"] == asked_for[0]), None)
                   or newest or (every[0] if every else None))
         return {
             "version": chosen["version"] if chosen else None,
             "notes": release.notes_in(chosen["notes"], language) if chosen else "",
-            "versions": versions,
+            "versions": [{"first": run[-1], "last": run[0]} for run in runs],
         }
 
     def _ask_to_update(self):
