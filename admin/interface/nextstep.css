@@ -161,8 +161,9 @@
      because in the mockup everything from it to the end of this block is
      replaced. */
   --Workspace: url("parts/Workspace.png");
-  /* This tool's own mark, which NeXT did not draw. It comes from the
-     Previously website, where phranck made it. */
+  /* This tool's own mark, which NeXT did not draw. It is the Previously
+     website's, where phranck made it, and ../../design/mark.py writes this
+     copy from the website's file. */
   --Previously: url("parts/Previously.png");
   --defaultUnixIcon: url("parts/defaultUnixIcon.png");
   --defaultAppIcon: url("parts/defaultAppIcon.png");

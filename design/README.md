@@ -8,9 +8,9 @@ Two other drafts were tried and not taken up, one showing the back of the cube a
 
 ## Where the pictures come from
 
-The NeXTSTEP draft draws nothing by hand but the board the Info window wears, which NeXTSTEP has no picture of. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
+The NeXTSTEP draft draws nothing by hand but the board the Info window wears, which NeXTSTEP has no picture of, and its own mark is the Previously website's. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
 
-Seven tools do that work:
+Eight tools do that work:
 
 | Tool | What it does |
 |---|---|
@@ -19,6 +19,7 @@ Seven tools do that work:
 | `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `../admin/web/parts/`. |
 | `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
 | `makepng.py` | Draws the icon a PNG file wears on NeXT's own TIFF sheet, because NeXTSTEP has none for a format that came later. |
+| `mark.py` | Fetches the Previously mark from the website and writes the admin's copy into `../admin/web/parts/`. |
 | `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their license, into `../admin/web/fonts/`. |
 | `build.py` | Puts the kit together, writes the two files the admin serves, and bakes the pictures and those faces into the mockup as data URIs so it stays one file. |
 
@@ -67,6 +68,15 @@ The board is drawn on the grid of pixels it is shown at, 60 by 48, and every edg
 The file is served as it is, so the browser draws it at the display's own resolution, and `build.py` bakes it into the mockup like the bitmaps. The website at previous.li draws its hero, its mark and its icons from the same file on `main`.
 
 ```bash
+python3 build.py
+```
+
+## The mark
+
+The mark the dock and the About panel show is the website's, drawn by `site/logo.py` in phranck/previous.li: NeXT's cube with the circuit board in place of the N. `mark.py` fetches its `site/logo.png` from `main` and writes it 192 pixels tall into `../admin/web/parts/Previously.png`, four times the 48 an icon is drawn at. Run it again whenever the website's mark changes:
+
+```bash
+python3 mark.py
 python3 build.py
 ```
 
@@ -124,7 +134,7 @@ The pictures in `../admin/web/parts/` are NeXT's, and NeXT's assets belong to Ap
 
 Thirteen are read out of the Workspace Manager's own bundle in a NeXTSTEP 3.3 disk image, one out of Terminal.app and two out of Preferences.app in the same image. Three are cut from a screenshot of the running system, because NeXTSTEP drew its window buttons and dock marks in PostScript and they exist as no file at all. Two come from the boot ROM, through the emulator's own grab.
 
-The circuit board in `board.svg` is this repository's own, apart from the logo on its processor, which is NeXT's.
+The circuit board in `board.svg` is this repository's own, apart from the logo on its processor, which is NeXT's. `Previously.png` is the website's mark, which is NeXT's cube logo with that board in place of the N.
 
 The tools are ours and hold none of it. `extract.py`, `bootpicture.py`, `ufs.py` and `nxtiff.py` know how to read a NeXT filesystem, a NeXT TIFF and a NeXT screen, which is a description of formats rather than a copy of anything.
 
