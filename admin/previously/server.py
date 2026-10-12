@@ -110,21 +110,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
     #: a Content-Length, which is what this needs to be safe.
     protocol_version = "HTTP/1.1"
 
-    #: What the POST being answered carried, as `_taken` read it, and whether
-    #: it left a body on the connection that was not read. Both are set again
-    #: for every POST, because one handler answers every request on its
+    #: What the POST being answered carried, as `_taken` read it. Set again for
+    #: every POST, because one handler answers every request on its
     #: connection.
     posted = None
-    unread = False
+
+    #: Whether the answer ends the connection: where a POST left a body this
+    #: did not read, and on the terminal's route, which no request follows.
+    closing = False
 
     def end_headers(self):
-        """Ends the headers, closing the connection behind an unread body.
+        """Ends the headers, and the connection with them where `closing` says.
 
         http.server keeps the connection open unless an answer says otherwise,
         and sending `Connection: close` is what makes it close as well as what
         tells the browser to open a new one for its next request.
         """
-        if self.unread:
+        if self.closing:
             self.send_header("Connection", "close")
         super().end_headers()
 
@@ -731,7 +733,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         says who they are and proves it to sshd the way they would at any other
         door into this machine. Our own password guards what this service does
         itself.
+
+        Whatever this answers ends the connection. A handshake that succeeds
+        turns it into a WebSocket, and a browser whose handshake is refused
+        fails the WebSocket and asks for nothing more on it, as RFC 6455
+        section 4.1 has it. Kept open after a refusal, the connection would be
+        read for a next request until the browser's close arrived, as a reset
+        where the answer was left unread, which http.server prints as a
+        traceback.
         """
+        self.closing = True
         if not websocket.wants_a_socket(self.headers):
             return self._json({"error": "not a websocket request"}, status=400)
 
@@ -862,11 +873,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         reset, and RFC 9112 section 9.6 says that reset can erase the answer
         before the browser has read it.
 
-        A body this does not read leaves `unread` set, and `end_headers` closes
-        the connection behind the answer, because nothing could say where such
-        a body ends and the next request begins.
+        A body this does not read sets `closing`, and `end_headers` closes the
+        connection behind the answer, because nothing could say where such a
+        body ends and the next request begins.
         """
-        self.unread = False
+        self.closing = False
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
@@ -876,7 +887,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.rfile.read(length)
             except OSError:
                 pass
-        self.unread = True
+        self.closing = True
         return None
 
     def _picture(self):

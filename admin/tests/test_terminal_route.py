@@ -110,6 +110,58 @@ def test_a_request_without_a_key_is_refused(service):
     assert "400" in status
 
 
+@pytest.mark.parametrize("protocols, upgrade, key", [
+    ([websocket.PROTOCOL], False, KEY),
+    (["chat"], True, KEY),
+    ([websocket.PROTOCOL], True, None),
+])
+def test_a_refused_handshake_ends_the_connection(service, protocols, upgrade, key):
+    """A browser whose handshake is refused fails the WebSocket and asks for
+    nothing more on that connection, as RFC 6455 section 4.1 has it. Kept
+    open, the connection is read for a next request until the browser's close
+    arrives, as a reset where the answer was left unread, and http.server
+    prints that as a traceback."""
+    address, _ = service
+
+    status, connection = ask(address, protocols, upgrade=upgrade, key=key)
+    headers = rest_of_the_headers(connection)
+
+    assert "400" in status
+    assert "Connection: close" in headers
+    assert ended_by_the_service(connection)
+
+
+def test_a_second_session_refused_ends_its_connection(service):
+    address, _ = service
+
+    _, first = ask(address, [websocket.PROTOCOL])
+    rest_of_the_headers(first)
+    status, second = ask(address, [websocket.PROTOCOL])
+    headers = rest_of_the_headers(second)
+    ended = ended_by_the_service(second)
+    first.close()
+
+    assert "409" in status
+    assert "Connection: close" in headers
+    assert ended
+
+
+def ended_by_the_service(connection, seconds=3):
+    """Reads what is left of an answer until the service closes its end.
+
+    @returns bool, False where the connection was still open after that long.
+    """
+    connection.settimeout(seconds)
+    try:
+        while connection.recv(1024):
+            pass
+    except OSError:
+        return False
+    finally:
+        connection.close()
+    return True
+
+
 def test_the_handshake_needs_no_password(service):
     """What is behind this socket is the machine's own SSH server, so whoever
     connects proves who they are to that rather than to this service."""
