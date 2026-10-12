@@ -514,4 +514,5 @@ export const de = {
   "told.setup.not-our-package": "Angekommen ist {found} und nicht dieses Werkzeug, also wurde es verworfen.",
   "told.setup.not-that-version": "Angekommen ist {found} und nicht {wanted}, also wurde es verworfen.",
   "told.setup.no-package-to-install": "Es gibt kein Paket zum Einspielen.",
+  "told.setup.file-error": "Eine Datei auf dem Pi liess sich nicht ändern: {error}",
 };

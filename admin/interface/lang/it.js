@@ -514,4 +514,5 @@ export const it = {
   "told.setup.not-our-package": "È arrivato {found} e non questo strumento, quindi è stato buttato.",
   "told.setup.not-that-version": "Quello che è arrivato dice di essere {found} e non {wanted}, quindi è stato buttato.",
   "told.setup.no-package-to-install": "Non c'è nessun pacchetto da installare.",
+  "told.setup.file-error": "Non è stato possibile modificare un file sul Pi: {error}",
 };
