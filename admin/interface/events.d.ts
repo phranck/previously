@@ -23,6 +23,11 @@ interface NextEvents {
   "nx-path": CustomEvent<{ index: number; value: string | null }>;
   /** Something was dropped on the File Viewer's shelf. */
   "nx-keep": CustomEvent<{ value: string }>;
+  /** An application was let go over a free slot of the dock, by its value and
+   *  that slot. */
+  "nx-dock": CustomEvent<{ value: string; slot: number }>;
+  /** A tile left the dock, by what it stood for. */
+  "nx-undock": CustomEvent<{ value: string }>;
   /** A pop-up list's choice changed. */
   "nx-pick": CustomEvent<{ value: string }>;
   /** A slider landed on another step. */

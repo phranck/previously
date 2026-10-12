@@ -150,6 +150,12 @@
   --dither: repeating-conic-gradient(var(--in-force) 0% 25%, var(--light) 0% 50%);
   --dither-size: 2px;
 
+  /* How faded a picture is that stands for something being carried: the copy
+     left where it was lifted from, and the ghost where it would land.
+     NeXTSTEP's figures show both faded and give no share, so this one is
+     chosen. */
+  --lifted: .45;
+
   /* PARTS: the pictures, which build.py bakes into the mockup as data URIs */
   /* As files rather than as data URIs here. A service that
      serves files should serve these as files too, so the browser caches

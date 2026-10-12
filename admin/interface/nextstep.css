@@ -152,6 +152,12 @@
   --dither: repeating-conic-gradient(var(--in-force) 0% 25%, var(--light) 0% 50%);
   --dither-size: 2px;
 
+  /* How faded a picture is that stands for something being carried: the copy
+     left where it was lifted from, and the ghost where it would land.
+     NeXTSTEP's figures show both faded and give no share, so this one is
+     chosen. */
+  --lifted: .45;
+
   /* PARTS: the pictures, which build.py bakes into the mockup as data URIs */
   /* As files rather than as data URIs here. A service that
      serves files should serve these as files too, so the browser caches
@@ -601,14 +607,23 @@ nx-dock {
   pointer-events: none;
 }
 
-/* The slot a traveling tile would land on. Flat and pale, with none of a
+/* While an application is dragged here from the File Viewer, the whole column
+   takes the pointer, so its empty slots answer the drag rather than whatever
+   window lies behind them. */
+nx-dock[receiving] { pointer-events: auto; }
+
+/* The slot something on its way would land on. Flat and pale, with none of a
    tile's bevel or diagonal face, so it reads as a place rather than as a
-   second tile. It is in the column only while something is being carried. */
+   second tile. It is in the column only while something is being carried,
+   and the ghost of that thing's icon stands in it faded. */
 nx-dock .slot {
   grid-column: 1;
+  display: grid;
+  place-items: center;
   background: var(--light);
   pointer-events: none;
 }
+nx-dock .slot .art { opacity: var(--lifted); }
 
 nx-tile {
   width: var(--dock-width); height: var(--dock-width);
@@ -638,19 +653,25 @@ nx-tile {
    What a tile does say is whether its application is running, which is the
    marks below. */
 
-/* Lifted out of the column and carried. Above the tiles it passes, so that it
-   is seen crossing them rather than behind them. */
-nx-tile[carried] { z-index: 60; }
+/* Carried. The tile stays where it stands, dimmed, while a picture of it
+   follows the pointer. Carried off the column where letting go takes it out
+   of the dock, it is gone from its slot already, which is how the original
+   says so before the hand lets go. */
+nx-tile[carried] { opacity: var(--lifted); }
+nx-tile[carried][leaving] { visibility: hidden; }
 
-/* An icon on its way to the floor. Above everything, because it passes over
-   the windows, and deaf to the pointer, because it is a picture of something
-   rather than the thing. The rectangles that draw the way from a folder to
-   its contents are in base.css, beside the rest of what the desk itself
-   draws. */
+/* A tile being carried, and an icon on its way to the floor. Above
+   everything, because they pass over the windows, and deaf to the pointer,
+   because each is a picture of something rather than the thing. The
+   rectangles that draw the way from a folder to its contents are in
+   base.css, beside the rest of what the desk itself draws. */
+nx-tile[picture],
 .flying {
   position: fixed;
   z-index: 80;
   pointer-events: none;
+  /* For the flying icon, which is a picture and nothing else. A tile's face
+     is a gradient, which fills the tile whatever these say. */
   background-size: contain;
   background-repeat: no-repeat;
 }
@@ -669,7 +690,8 @@ nx-floor {
      resize bar, which otherwise lay under the strip and took no pointer. */
   pointer-events: none;
 }
-nx-tile .art { width: 56px; height: 56px; background-size: contain; }
+nx-tile .art,
+nx-dock .slot .art { width: 56px; height: 56px; background-size: contain; }
 
 /* Three marks pressed into the corner said the application was not started. In
    the screenshot the Workspace Manager carries none of them, and it is the one
@@ -981,8 +1003,8 @@ nx-thing.current.untried .slot::after {
    the desk rather than to the machine that is chosen. */
 nx-thing[chosen] { --mark: var(--white); }
 
-/* While a machine is being carried, the thing it came from dims. */
-nx-thing[lifting] { opacity: .45; }
+/* While a thing is being carried, the one it came from dims. */
+nx-thing[lifting] { opacity: var(--lifted); }
 
 /* --- the panel that asks before it changes anything --------------------- */
 

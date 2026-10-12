@@ -153,6 +153,6 @@ nx-thing.current.untried .slot::after {
    the desk rather than to the machine that is chosen. */
 nx-thing[chosen] { --mark: var(--white); }
 
-/* While a machine is being carried, the thing it came from dims. */
-nx-thing[lifting] { opacity: .45; }
+/* While a thing is being carried, the one it came from dims. */
+nx-thing[lifting] { opacity: var(--lifted); }
 

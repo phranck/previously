@@ -138,7 +138,7 @@ def test_a_tile_that_can_be_carried_carries_a_name():
     without a name goes back to where the markup has it at every reload, and
     nothing says why."""
     markup = (INTERFACE / "index.html").read_text(encoding="utf-8")
-    dock = re.search(r"<nx-dock>(.*?)</nx-dock>", markup, re.S)
+    dock = re.search(r"<nx-dock\b[^>]*>(.*?)</nx-dock>", markup, re.S)
     assert dock, "the dock is not in the markup"
 
     for tile in re.findall(r"<nx-tile\b[^>]*>", dock.group(1), re.S):

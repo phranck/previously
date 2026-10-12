@@ -480,7 +480,8 @@ async function saveTheDraft() {
   refresh();
 }
 
-/** Wires the editor's button, its menu entry, and its tile. */
+/** Wires the editor's button and its menu entry. Its tile in the dock is the
+ *  dock's, and starts it the way the Apps folder does. */
 function wireEditor() {
   /* Keeping a configuration touches neither the machine nor the board, so it
      needs the service and nothing more. */
@@ -489,13 +490,6 @@ function wireEditor() {
   byId("editor-save").addEventListener("click", saveTheDraft);
   document.querySelector('nx-menu-item[name="editor-save"]')
     ?.addEventListener("click", saveTheDraft);
-
-  /* Two clicks, like every other tile. It carries no `opens`, because the window
-     is shown only once something has decided which machine it holds, and that is
-     what this and the Apps folder both go through. The icon starts its way to
-     the floor from the tile, as every other tile's does. */
-  const tile = document.querySelector('nx-tile[name="editor"]');
-  if (tile) tile.addEventListener("dblclick", () => editOnWhatIsRunning(tile));
 }
 
 /**
