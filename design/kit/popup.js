@@ -1,6 +1,13 @@
 /* --- nx-popup ----------------------------------------------------------- */
 
 /**
+ * One choice a pop-up list offers.
+ * @typedef {object} PopupChoice
+ * @property {string} value - What `nx-pick` carries when it is chosen.
+ * @property {string} label - What the list and the button show for it.
+ */
+
+/**
  * A pop-up list: a button labeled with what is chosen and marked with NeXT's
  * pop-up mark, and the list of choices that comes up while it is held.
  *
@@ -25,9 +32,11 @@ class NxPopup extends HTMLElement {
     this.ready = true;
     this.choices ??= [];
 
+    /** @type {HTMLButtonElement} */
     this.button = document.createElement("button");
     this.button.type = "button";
     this.button.className = "popup-button";
+    /** @type {HTMLSpanElement} */
     this.label = document.createElement("span");
     this.label.className = "popup-label";
     const mark = document.createElement("i");
@@ -41,15 +50,16 @@ class NxPopup extends HTMLElement {
 
   /**
    * Says what can be chosen, and which of it is.
-   * @param {{value: string, label: string}[]} choices - In the order the list
-   *   shows them.
-   * @param {string} [value] - The one chosen, the first where none is named or
-   *   the one named is not among them.
+   * @param {PopupChoice[]} choices - In the order the list shows them.
+   * @param {string | null} [value] - The one chosen, the first where none is
+   *   named or the one named is not among them.
    */
   offer(choices, value) {
+    /** @type {PopupChoice[]} */
     this.choices = choices;
-    this.value = choices.some((choice) => choice.value === value)
-      ? value : choices[0]?.value ?? "";
+    const named = choices.find((choice) => choice.value === value);
+    /** @type {string} */
+    this.value = named ? named.value : choices[0]?.value ?? "";
     this.drawLabel();
   }
 
@@ -88,20 +98,20 @@ class NxPopup extends HTMLElement {
     document.body.append(list);
     this.place(list);
 
-    const under = (pointer) => /** @type {any} */ (
-      document.elementFromPoint(pointer.clientX, pointer.clientY))
-      ?.closest?.(".popup-list nx-menu-item");
-    const follow = (pointer) => {
+    const under = (/** @type {PointerEvent} */ pointer) => document
+      .elementFromPoint(pointer.clientX, pointer.clientY)
+      ?.closest(".popup-list nx-menu-item");
+    const follow = (/** @type {PointerEvent} */ pointer) => {
       const item = under(pointer);
       for (const each of list.children) each.toggleAttribute("lit", each === item);
     };
-    const finish = (pointer) => {
+    const finish = (/** @type {PointerEvent} */ pointer) => {
       removeEventListener("pointermove", follow);
       removeEventListener("pointercancel", finish);
       const item = pointer.type === "pointerup" ? under(pointer) : null;
       list.remove();
-      if (item && item.dataset.value !== this.value) {
-        this.value = item.dataset.value;
+      if (item instanceof HTMLElement && item.dataset.value !== this.value) {
+        this.value = item.dataset.value ?? "";
         this.drawLabel();
         this.dispatchEvent(new CustomEvent("nx-pick", {
           detail: { value: this.value }, bubbles: true }));

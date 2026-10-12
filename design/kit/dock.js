@@ -23,6 +23,7 @@ class NxDock extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
+    /** @type {HTMLElement} */
     this.mark = document.createElement("i");
     this.mark.className = "slot";
 
@@ -38,7 +39,7 @@ class NxDock extends HTMLElement {
     addEventListener("resize", () => this.arrange());
   }
 
-  /** @returns {HTMLElement[]} The tiles in the column, in markup order. */
+  /** @returns {NxTile[]} The tiles in the column, in markup order. */
   get tiles() {
     return [...this.querySelectorAll("nx-tile")];
   }
@@ -63,12 +64,14 @@ class NxDock extends HTMLElement {
    */
   arrange() {
     const saved = recall("dock").places ?? {};
+    /** @type {Set<number>} */
     const taken = new Set();
-    const put = (tile, slot) => {
+    const put = (/** @type {HTMLElement} */ tile, /** @type {number} */ slot) => {
       taken.add(slot);
-      tile.style.gridRow = slot;
+      tile.style.gridRow = String(slot);
     };
-    const open = (slot) => slot >= 1 && slot <= this.slots && !taken.has(slot);
+    const open = (/** @type {number} */ slot) =>
+      slot >= 1 && slot <= this.slots && !taken.has(slot);
 
     const fixed = this.tiles.filter((tile) => tile.hasAttribute("fixed"));
     fixed.filter((tile) => !tile.hasAttribute("foot"))
@@ -76,10 +79,12 @@ class NxDock extends HTMLElement {
     const feet = fixed.filter((tile) => tile.hasAttribute("foot"));
     feet.forEach((tile, index) => put(tile, this.slots - feet.length + 1 + index));
 
+    /** @type {HTMLElement[]} */
     const waiting = [];
     for (const tile of this.tiles.filter((tile) => !tile.hasAttribute("fixed"))) {
-      const slot = saved[tile.getAttribute("name")];
-      if (Number.isInteger(slot) && open(slot)) put(tile, slot);
+      const name = tile.getAttribute("name");
+      const slot = name === null ? undefined : saved[name];
+      if (slot !== undefined && Number.isInteger(slot) && open(slot)) put(tile, slot);
       else waiting.push(tile);
     }
     for (const tile of waiting) {
@@ -125,7 +130,7 @@ class NxDock extends HTMLElement {
       this.mark.remove();
       return;
     }
-    this.mark.style.gridRow = slot;
+    this.mark.style.gridRow = String(slot);
     if (!this.mark.isConnected) this.append(this.mark);
   }
 
@@ -135,7 +140,7 @@ class NxDock extends HTMLElement {
    * @param {number} slot
    */
   settle(tile, slot) {
-    tile.style.gridRow = slot;
+    tile.style.gridRow = String(slot);
     const name = tile.getAttribute("name");
     if (!name) return;
     remember("dock", { places: { ...(recall("dock").places ?? {}), [name]: slot } });
@@ -203,18 +208,26 @@ class NxTile extends HTMLElement {
 
     const art = document.createElement("i");
     art.className = "art";
-    showArt(art, this.getAttribute("icon"));
+    showArt(art, this.getAttribute("icon") ?? "");
     this.append(art);
 
     const target = this.getAttribute("opens");
     if (target) {
       this.addEventListener("dblclick", () => {
         if (this.hasAttribute("disabled")) return;
-        document.querySelector(`nx-window[name="${target}"]`)?.open(this);
+        /** @type {NxWindow | null} */ (
+          document.querySelector(`nx-window[name="${target}"]`))?.open(this);
       });
     }
   }
 }
+
+/**
+ * An application's tile on the floor.
+ * @typedef {object} FloorTile
+ * @property {string} icon - Which picture it carries.
+ * @property {string} opens - The name of the window it stands for.
+ */
 
 /**
  * Where an application that is not in the dock puts its icon.
@@ -231,11 +244,11 @@ class NxTile extends HTMLElement {
 class NxFloor extends HTMLElement {
   /**
    * Puts the icons there, in the order they were started.
-   * @param {Array<object>} running - `{icon, opens}` for each.
-   * @param {object} [arriving] - The one that has just started, and where it
-   *   is coming from: `{opens, from}` with a DOMRect. Left out, everything is
+   * @param {FloorTile[]} running - One for each.
+   * @param {{opens: string, from: DeskRect | null}} [arriving] - The one that
+   *   has just started, and where it is coming from. Left out, everything is
    *   simply drawn.
-   * @returns {Promise} Settled once what arrived has landed.
+   * @returns {Promise<void>} Settled once what arrived has landed.
    */
   async show(running, arriving) {
     const tiles = running.map((application) => this.tile(application));
@@ -251,11 +264,14 @@ class NxFloor extends HTMLElement {
        will actually take: the tiles beside it decide that, not this one. */
     this.replaceChildren(...tiles);
     newcomer.style.visibility = "hidden";
-    await fly(newcomer.getAttribute("icon"), arriving.from, deskRect(newcomer));
+    await fly(newcomer.getAttribute("icon") ?? "", arriving.from, deskRect(newcomer));
     newcomer.style.visibility = "";
   }
 
-  /** @returns {HTMLElement} One tile for an application. */
+  /**
+   * @param {FloorTile} application - What to draw.
+   * @returns {NxTile} One tile for an application.
+   */
   tile(application) {
     const tile = document.createElement("nx-tile");
     tile.setAttribute("icon", application.icon);

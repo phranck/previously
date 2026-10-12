@@ -1,6 +1,17 @@
 /* --- nx-viewer ---------------------------------------------------------- */
 
 /**
+ * One icon in the viewer: a step of the path, a thing in the contents, or one
+ * kept on the shelf.
+ * @typedef {object} ViewerEntry
+ * @property {string} [label] - The name under it.
+ * @property {string} [icon] - Which picture, by the name showArt knows.
+ * @property {string} [value] - What choosing it hands over. Left out, it hands
+ *   nothing over.
+ * @property {boolean} [folder] - In the contents, that it has more inside.
+ */
+
+/**
  * NeXTSTEP's File Viewer, which is four bands stacked in one window.
  *
  * The shelf along the top keeps whatever is dropped on it and has nothing to
@@ -27,6 +38,7 @@ class NxViewer extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
+    /** @type {NxShelf} */
     this.keep = document.createElement("nx-shelf");
     this.keep.className = "keep";
 
@@ -35,7 +47,7 @@ class NxViewer extends HTMLElement {
        changes what the viewer shows, and that a drag must not do the same,
        which is why the shelf is the example they use for it. */
     this.keep.addEventListener("click", (event) => {
-      const thing = event.target.closest("nx-thing");
+      const thing = closestTo(event, "nx-thing");
       if (!thing || !this.keep.contains(thing)) return;
       /* Raised on the thing rather than on the viewer, so that whoever
          answers knows which icon was clicked and not merely that one was.
@@ -47,29 +59,34 @@ class NxViewer extends HTMLElement {
     });
     this.keep.addEventListener("dragover", (event) => {
       event.preventDefault();
-      event.dataTransfer.dropEffect = "copy";
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
       this.keep.setAttribute("droppable", "");
     });
     this.keep.addEventListener("dragleave", (event) => {
-      if (!this.keep.contains(event.relatedTarget)) this.keep.removeAttribute("droppable");
+      const into = event.relatedTarget;
+      if (!(into instanceof Node && this.keep.contains(into))) {
+        this.keep.removeAttribute("droppable");
+      }
     });
     this.keep.addEventListener("drop", (event) => {
       event.preventDefault();
       this.keep.removeAttribute("droppable");
       this.dispatchEvent(new CustomEvent("nx-keep", {
         bubbles: true,
-        detail: { value: event.dataTransfer.getData("text/plain") },
+        detail: { value: event.dataTransfer?.getData("text/plain") ?? "" },
       }));
     });
 
+    /** @type {HTMLParagraphElement} */
     this.status = document.createElement("p");
     this.status.className = "status";
     this.status.textContent = this.getAttribute("status") ?? "";
 
+    /** @type {HTMLDivElement} */
     this.path = document.createElement("div");
     this.path.className = "path";
     this.path.addEventListener("click", (event) => {
-      const thing = event.target.closest("nx-thing");
+      const thing = closestTo(event, "nx-thing");
       if (!thing || !this.path.contains(thing)) return;
       this.dispatchEvent(new CustomEvent("nx-path", {
         bubbles: true,
@@ -84,6 +101,7 @@ class NxViewer extends HTMLElement {
     way.className = "way";
     way.append(this.path);
 
+    /** @type {NxShelf} */
     this.contents = document.createElement("nx-shelf");
     this.contents.className = "contents";
     const scroller = document.createElement("nx-scroller");
@@ -96,12 +114,10 @@ class NxViewer extends HTMLElement {
   /**
    * Puts a place and its contents in the window.
    * @param {object} view
-   * @param {Array<object>} view.path - The way here, outermost first. Each is
-   *   `{label, icon, value}`.
-   * @param {Array<object>} view.contents - What the last step holds. Each is
-   *   `{label, icon, value}`, and `folder` marks one that has more inside.
-   * @param {Array<object>} [view.keeps] - What lies on the shelf, the same
-   *   shape. Left out, the shelf is not touched.
+   * @param {ViewerEntry[]} [view.path] - The way here, outermost first.
+   * @param {ViewerEntry[]} [view.contents] - What the last step holds.
+   * @param {ViewerEntry[]} [view.keeps] - What lies on the shelf. Left out,
+   *   the shelf is not touched.
    * @param {string} [view.status] - The line under the shelf.
    */
   show({ path = [], contents = [], keeps, status }) {
@@ -128,8 +144,8 @@ class NxViewer extends HTMLElement {
   }
 
   /**
-   * @param {object} entry - `{label, icon, value}`.
-   * @returns {HTMLElement} The icon with its name, ready to be appended.
+   * @param {ViewerEntry} entry - What to draw.
+   * @returns {NxThing} The icon with its name, ready to be appended.
    */
   thing(entry) {
     const thing = document.createElement("nx-thing");

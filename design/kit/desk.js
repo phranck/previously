@@ -3,16 +3,33 @@ const STORE = "nextstep-workspace:v4";
 
 /* --- what the desk remembers -------------------------------------------- */
 
-/** @returns {object} Everything saved about the desk, or an empty record. */
+/**
+ * What the desk keeps about one element, under that element's name. Each
+ * element writes the keys it uses and reads them back, so every key may be
+ * missing.
+ * @typedef {object} Remembered
+ * @property {boolean} [open] - A window: whether it is open.
+ * @property {number} [x] - A window or the menu: its left edge.
+ * @property {number} [y] - A window or the menu: its top edge.
+ * @property {number} [w] - A window: its width.
+ * @property {number} [h] - A window: its height.
+ * @property {string} [front] - The desk: the name of the window in front, or
+ *   "" where the desk itself is.
+ * @property {Record<string, number>} [places] - The dock: which slot each tile
+ *   stands in, by the tile's name.
+ */
+
+/** @returns {Record<string, Remembered>} Everything saved about the desk, or
+ *  an empty record. */
 function readState() {
-  try { return JSON.parse(localStorage.getItem(STORE)) ?? {}; }
+  try { return JSON.parse(localStorage.getItem(STORE) ?? "{}") ?? {}; }
   catch { return {}; }
 }
 
 /**
  * Writes one element's state, leaving every other one untouched.
  * @param {string} name - What the element calls itself.
- * @param {object} state - The keys to merge in.
+ * @param {Remembered} state - The keys to merge in.
  */
 function remember(name, state) {
   const all = readState();
@@ -20,7 +37,7 @@ function remember(name, state) {
   localStorage.setItem(STORE, JSON.stringify(all));
 }
 
-/** @param {string} name @returns {object} That element's saved state. */
+/** @param {string} name @returns {Remembered} That element's saved state. */
 function recall(name) {
   return readState()[name] ?? {};
 }
@@ -56,7 +73,7 @@ function deskScale() {
  * gathered in afterwards.
  */
 function setDeskScale(scale) {
-  document.body.style.zoom = scale;
+  document.body.style.zoom = String(scale);
   gatherWindows();
 }
 
@@ -109,6 +126,22 @@ function gatherWindows() {
    window itself. Nothing past them divides by anything. */
 
 /**
+ * A place on the desk, in the units the desk is laid out in.
+ * @typedef {{x: number, y: number}} DeskPoint
+ */
+
+/**
+ * A rectangle on the desk, in the same units. A DOMRect's shape, so it goes
+ * wherever one went.
+ * @typedef {{left: number, top: number, width: number, height: number}} DeskRect
+ */
+
+/**
+ * A size on the desk, in the same units.
+ * @typedef {{width: number, height: number}} DeskSize
+ */
+
+/**
  * @param {number} length - A viewport measurement.
  * @returns {number} The same length as the desk writes it.
  */
@@ -118,17 +151,26 @@ function onDesk(length) {
 
 /**
  * @param {PointerEvent} event
- * @returns {object} Where the pointer is, as `{x, y}` on the desk.
+ * @returns {DeskPoint} Where the pointer is.
  */
 function deskPoint(event) {
   return { x: onDesk(event.clientX), y: onDesk(event.clientY) };
 }
 
 /**
+ * @overload
+ * @param {Element} element
+ * @returns {DeskRect}
+ */
+/**
+ * @overload
+ * @param {Element | null | undefined} element
+ * @returns {DeskRect | null}
+ */
+/**
  * Where an element is, on the desk.
- * @param {HTMLElement} [element] - Anything drawn there.
- * @returns {?object} Its `left`, `top`, `width` and `height`, or null where
- *   there is no element. A DOMRect's shape, so it goes wherever one went.
+ * @param {Element | null} [element] - Anything drawn there.
+ * @returns {DeskRect | null} Where it is, or null where there is no element.
  *
  * What draws a picture of something moving puts that picture against the
  * viewport, and anything put there is still a child of the body and carries
@@ -144,10 +186,23 @@ function deskRect(element) {
   };
 }
 
-/** @returns {object} How much room there is for windows, in the units a
+/** @returns {DeskSize} How much room there is for windows, in the units a
  *  window's own left and top are written in, which zoom does not change. */
 function deskRoom() {
   return { width: onDesk(innerWidth), height: onDesk(innerHeight) };
+}
+
+/**
+ * The element of one kind an event happened in, such as the nx-thing under a
+ * click.
+ * @template {keyof HTMLElementTagNameMap} Tag
+ * @param {Event} event - What happened.
+ * @param {Tag} tag - Which kind.
+ * @returns {HTMLElementTagNameMap[Tag] | null} The nearest one around where it
+ *   happened, or null where it happened in none, or not in an element at all.
+ */
+function closestTo(event, tag) {
+  return event.target instanceof Element ? event.target.closest(tag) : null;
 }
 
 /**
@@ -161,12 +216,13 @@ function showArt(el, name) {
 
 /**
  * Runs a pointer gesture and reports the result when it ends.
+ * @template Start
  * @param {HTMLElement} handle - Where the gesture starts.
- * @param {(point: object, start: object) => void} onMove - Given where the
- *   pointer is now, as `{x, y}` on the desk.
- * @param {(point: object) => object} onStart - Whatever the mover needs to
+ * @param {(point: DeskPoint, start: Start) => void} onMove - Given where the
+ *   pointer is now.
+ * @param {(point: DeskPoint) => Start} onStart - Whatever the mover needs to
  *   know about the moment the gesture began, given the same.
- * @param {(start: object) => void} [onEnd] - Given what onStart returned,
+ * @param {(start: Start) => void} [onEnd] - Given what onStart returned,
  *   which by then carries whatever the moves wrote into it.
  *
  * The pointer is converted here, so what a gesture hands on is already in the
@@ -185,15 +241,16 @@ function gesture(handle, onMove, onStart, onEnd) {
     /* A pointer reports faster than the screen redraws, so the moves are
        coalesced into one update per frame. Everything beyond the last one in
        a frame is work whose result is painted over before anybody sees it. */
+    /** @type {PointerEvent | null} */
     let latest = null;
     let frame = 0;
 
     const apply = () => {
       frame = 0;
-      onMove(deskPoint(latest), start);
+      if (latest) onMove(deskPoint(latest), start);
     };
 
-    const move = (moveEvent) => {
+    const move = (/** @type {PointerEvent} */ moveEvent) => {
       latest = moveEvent;
       if (!frame) frame = requestAnimationFrame(apply);
     };
@@ -225,7 +282,7 @@ function gesture(handle, onMove, onStart, onEnd) {
  *
  * @param {HTMLElement} element - What moves.
  * @param {HTMLElement} handle - What is grabbed.
- * @param {object} hooks
+ * @param {object} [hooks]
  * @param {() => void} [hooks.onGrab] - Called as the gesture begins.
  * @param {() => void} [hooks.onSettled] - Called once the position is written.
  */
@@ -278,7 +335,9 @@ addEventListener("contextmenu", (event) => event.preventDefault());
    browser makes of the property. A terminal is the exception: reading
    something out of it is the point of having one. */
 addEventListener("selectstart", (event) => {
-  if (!event.target.closest?.(".terminal")) event.preventDefault();
+  if (!(event.target instanceof Element && event.target.closest(".terminal"))) {
+    event.preventDefault();
+  }
 });
 
 /* --- the letters beside the menu entries ---------------------------------
@@ -296,12 +355,13 @@ addEventListener("keydown", (event) => {
   if (document.querySelector("nx-ask[data-open]")) return;
 
   const focused = document.activeElement;
-  if (focused?.matches?.("input, textarea, select") || focused?.isContentEditable) return;
+  if (focused?.matches("input, textarea, select")
+      || (focused instanceof HTMLElement && focused.isContentEditable)) return;
 
   const pressed = event.key.toLowerCase();
   const item = [...document.querySelectorAll("nx-menu:not([context]) nx-menu-item[key]")]
-    .find((entry) => entry.getAttribute("key").toLowerCase() === pressed);
-  if (!item || item.hasAttribute("disabled")) return;
+    .find((entry) => entry.getAttribute("key")?.toLowerCase() === pressed);
+  if (!(item instanceof HTMLElement) || item.hasAttribute("disabled")) return;
 
   event.preventDefault();
   item.click();
@@ -366,7 +426,8 @@ function deskIsNew() {
  * far it is dragged afterwards.
  */
 addEventListener("pointerdown", (event) => {
-  if (event.target.closest("nx-window, nx-menu, nx-dock, nx-floor, nx-ask")) return;
+  if (event.target instanceof Element
+      && event.target.closest("nx-window, nx-menu, nx-dock, nx-floor, nx-ask")) return;
   for (const window_ of document.querySelectorAll("nx-window")) {
     window_.setAttribute("inactive", "");
   }
@@ -410,12 +471,12 @@ function stillness() {
 /**
  * Sends a picture of an icon from one place to another.
  * @param {string} icon - Which picture.
- * @param {object} from - Where it starts, as deskRect answers.
- * @param {object} to - Where it lands, as deskRect answers.
- * @param {number} howLong - How long it takes, in milliseconds. The default
+ * @param {DeskRect} from - Where it starts.
+ * @param {DeskRect} to - Where it lands.
+ * @param {number} [howLong] - How long it takes, in milliseconds. The default
  *   is the way across the screen; a way inside one window is shorter and is
  *   given NEAR_FLIGHT_MS.
- * @returns {Promise} Settled when it has landed.
+ * @returns {Promise<void>} Settled when it has landed.
  *
  * A transform and nothing else, so this costs the compositor and not the
  * layout. Where the reader has asked for less movement there is no flight at
@@ -442,18 +503,17 @@ function fly(icon, from, to, howLong = FLIGHT_MS) {
     { transform: "translate(0, 0) scale(1)" },
   ], { duration: howLong, easing: "ease-out" });
 
-  return flight.finished.catch(() => {}).finally(() => ghost.remove());
+  return flight.finished.then(() => {}, () => {}).finally(() => ghost.remove());
 }
 
 
 
 /**
  * Draws the way from one place to another, as a run of rectangles.
- * @param {object} from - Where it starts, which is the mark around an icon,
- *   as deskRect answers.
- * @param {object} to - Where it ends, which is the box about to hold what was
- *   in that folder, in the same units.
- * @returns {Promise} Settled when they have gone.
+ * @param {DeskRect} from - Where it starts, which is the mark around an icon.
+ * @param {DeskRect} to - Where it ends, which is the box about to hold what
+ *   was in that folder.
+ * @returns {Promise<void>} Settled when they have gone.
  *
  * Several, and none of them is rubbed out: each is drawn at its own size a
  * moment after the last, so what stands on the screen is a run of nested
@@ -466,7 +526,9 @@ function fly(icon, from, to, howLong = FLIGHT_MS) {
 function zoom(from, to) {
   if (stillness()) return Promise.resolve();
 
+  /** @type {HTMLElement[]} */
   const drawn = [];
+  /** @type {Animation | null} */
   let last = null;
   for (let step = 1; step <= ZOOM_RECTANGLES; step += 1) {
     const part = step / ZOOM_RECTANGLES;
@@ -488,8 +550,8 @@ function zoom(from, to) {
     });
   }
 
-  return last.finished
-    .catch(() => {})
+  return (last ? last.finished : Promise.resolve())
+    .then(() => {}, () => {})
     .finally(() => drawn.forEach((box) => box.remove()));
 }
 

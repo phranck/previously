@@ -65,9 +65,12 @@ lint-interface:
 
 # And what the documentation comments say, read as types. The interface stays
 # JavaScript: this compiles nothing and writes nothing, it only reads what is
-# already written down beside each function and holds the code to it.
+# already written down beside each function and holds the code to it. The kit
+# is read twice, once as part of the interface and once under the strict rules
+# of its own tsconfig.
 types:
 	$(TSC) -p tsconfig.json
+	$(TSC) -p tsconfig.kit.json
 
 check: lint test
 

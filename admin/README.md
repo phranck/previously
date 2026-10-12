@@ -34,7 +34,7 @@ npm install                                          # eslint, tsc and happy-dom
 brew install esbuild                                 # or npm install --global esbuild
 ```
 
-**The interface is JavaScript and stays JavaScript.** `tsc` compiles nothing here: with `checkJs` it reads the documentation comment on each function as the types of that function and holds the code to what is already written down beside it. That is most of what TypeScript would give this project, because the comments are there anyway, and it costs no build step and no rename of every file. `interface/nextstep.d.ts` is generated with the kit and is the one thing the checker cannot work out for itself: that `nx-window` carries `open` and `close` and `rename`.
+**The interface is JavaScript and stays JavaScript.** `tsc` compiles nothing here: with `checkJs` it reads the documentation comment on each function as the types of that function and holds the code to what is already written down beside it. That is most of what TypeScript would give this project, because the comments are there anyway, and it costs no build step and no rename of every file. The kit is read the same way, out of `interface/nextstep.js`, so every type the interface sees on a window or a slider comes from the kit's own comments. `tsconfig.kit.json` checks the kit under the strict rules, where every value has a type, and `make types` runs it beside the interface's `tsconfig.json`. `interface/elements.d.ts` is generated with the kit and holds the one thing the checker cannot read out of it: that `querySelector("nx-window")` answers an `NxWindow`.
 
 Homebrew's are their own programs rather than modules of the system Python, which the Makefile calls as `$(PYTHON) -m`. So on a Mac it is a virtual environment that works with it:
 
@@ -535,9 +535,9 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
 
 A thing with a `value` can be lifted and carried, and a window with `drop` takes what lands on it. A menu with `context` is the same menu put where the pointer is and taken away again, and an item in one can carry an `icon` and be `disabled`. Both raise `nx-choose` carrying that value, so double clicking a thing and dragging it somewhere mean the same to whoever answers, and a page answers once. They are split into files here rather than baked into one page, and the pictures are files rather than data URIs.
 
-`interface/nextstep.css`, `interface/nextstep.js` and `interface/nextstep.d.ts` are generated. The kit is one source per part in `../design/kit/`, each holding its element and its styles beside each other, and `../design/build.py` puts them together into those files and into the draft. Edit a part there and run `make kit`; `tests/test_kit.py` fails when either of the first two has been edited by hand instead.
+`interface/nextstep.css`, `interface/nextstep.js` and `interface/elements.d.ts` are generated. The kit is one source per part in `../design/kit/`, each holding its element and its styles beside each other, and `../design/build.py` puts them together into those files and into the draft. Edit a part there and run `make kit`; `tests/test_kit.py` fails when any of the three has been edited by hand instead.
 
-The third is for the type checker, and it is read out of the same sources: every element the kit brings, the methods on it, and which tag answers to which. Without it a call to `open` on a window looks like a mistake in every one of the places that makes one.
+The third is for the type checker: which tag answers to which element, out of the same table the elements are defined from. Everything else about an element, its methods and what they take, the checker reads out of `nextstep.js` itself. A declaration file named after the kit would be read instead of the kit, which is why this one is named for what it holds.
 
 ## What is written and what ships
 

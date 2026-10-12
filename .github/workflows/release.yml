@@ -73,6 +73,7 @@ jobs:
           python3 -m flake8 --max-line-length=100 previously tests browser build_web.py
           node_modules/.bin/eslint interface tests/kit --no-warn-ignored
           node_modules/.bin/tsc -p tsconfig.json
+          node_modules/.bin/tsc -p tsconfig.kit.json
           # The kit's elements against a DOM, with what `npm install` brought.
           node --test tests/kit/*.test.js
           # Named and timed, because a test that waits here and not on a laptop

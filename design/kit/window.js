@@ -24,6 +24,7 @@ class NxWindow extends HTMLElement {
     const content = [...this.childNodes];
     this.replaceChildren();
 
+    /** @type {HTMLElement} */
     this.bar = this.build("div", "titlebar");
     this.bar.append(this.build("i", "art wbtn mini"));
     const title = this.build("div", "title");
@@ -32,6 +33,7 @@ class NxWindow extends HTMLElement {
     const close = this.build("i", "art wbtn close");
     this.bar.append(title, close);
 
+    /** @type {HTMLElement} */
     this.pane = this.build("div", "pane");
     this.pane.append(...content);
     this.append(this.bar, this.pane);
@@ -54,7 +56,11 @@ class NxWindow extends HTMLElement {
     if (title) title.textContent = text;
   }
 
-  /** @returns {HTMLElement} A child element, appended nowhere yet. */
+  /**
+   * @param {string} tag - Which element.
+   * @param {string} className - What the stylesheet knows it by.
+   * @returns {HTMLElement} A child element, appended nowhere yet.
+   */
   build(tag, className) {
     const el = document.createElement(tag);
     el.className = className;
@@ -64,11 +70,13 @@ class NxWindow extends HTMLElement {
   /** Puts the window where it was left, or where its attributes say. */
   place() {
     const saved = recall(this.name);
+    /** @type {(key: "x" | "y" | "w" | "h", attribute: string) => number} */
     const number = (key, attribute) => saved[key] ?? Number(this.getAttribute(attribute));
     /* A window nobody can resize has no size of its own to remember, so its
        markup decides. Otherwise a size saved before it was fixed, or before
        its contents changed, would outlive both. */
     const fixed = this.hasAttribute("fixed");
+    /** @type {typeof number} */
     const size = fixed
       ? (_key, attribute) => Number(this.getAttribute(attribute))
       : number;
@@ -108,15 +116,15 @@ class NxWindow extends HTMLElement {
     this.hidden = !(saved.open ?? !this.hasAttribute("closed"));
   }
 
-  /** @returns {string} The name it is known by. */
-  get name() { return this.getAttribute("name"); }
+  /** @returns {string} The name it is known by, which every window carries. */
+  get name() { return this.getAttribute("name") ?? ""; }
 
   /**
    * A size this window can have on the desk as it is now.
    * @param {number} width - The width wanted, in the window's own units.
    * @param {number} height - The height wanted.
-   * @returns {object} `width` and `height`, each at least the floor its
-   *   content needs and no larger than the desk.
+   * @returns {DeskSize} Each side at least the floor its content needs and no
+   *   larger than the desk.
    *
    * No larger than the desk, because the resize bar runs along the window's
    * foot and its title bar cannot be taken above the top edge: a window taller
@@ -132,7 +140,8 @@ class NxWindow extends HTMLElement {
     };
   }
 
-  /** The floor this window's content needs, read off the element itself. */
+  /** @returns {DeskSize} The floor this window's content needs, read off the
+   *  element itself. */
   get floor() {
     const style = getComputedStyle(this);
     return {
@@ -149,6 +158,7 @@ class NxWindow extends HTMLElement {
    * would come back in the corner at no size at all.
    */
   save() {
+    /** @type {Remembered} */
     const state = { open: !this.hidden };
     if (!this.hidden) {
       Object.assign(state, {
@@ -175,7 +185,7 @@ class NxWindow extends HTMLElement {
       highest = Math.max(highest, Number(other.style.zIndex) || 10);
       other.setAttribute("inactive", "");
     }
-    this.style.zIndex = highest + 1;
+    this.style.zIndex = String(highest + 1);
     this.removeAttribute("inactive");
     remember("desk", { front: this.name });
     /* The main menu belongs to whatever is in front, so the one thing that
@@ -188,7 +198,7 @@ class NxWindow extends HTMLElement {
 
   /**
    * Shows it, in front.
-   * @param {HTMLElement} [asker] - What was used to open it, if anything was.
+   * @param {Element | null} [asker] - What was used to open it, if anything was.
    *   It rides along as a rectangle, because an application whose icon has to
    *   travel to the foot of the screen has to know where it is traveling
    *   from, and only whoever was clicked knows that.
@@ -232,14 +242,15 @@ class NxWindow extends HTMLElement {
   acceptDrops() {
     this.addEventListener("dragover", (event) => {
       event.preventDefault();
-      event.dataTransfer.dropEffect = "copy";
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
       this.setAttribute("droppable", "");
     });
 
     /* Moving onto a child fires dragleave on the parent, so only a pointer
        that has actually left the window counts. */
     this.addEventListener("dragleave", (event) => {
-      if (!this.contains(event.relatedTarget)) this.removeAttribute("droppable");
+      const into = event.relatedTarget;
+      if (!(into instanceof Node && this.contains(into))) this.removeAttribute("droppable");
     });
 
     this.addEventListener("drop", (event) => {
@@ -247,7 +258,7 @@ class NxWindow extends HTMLElement {
       this.removeAttribute("droppable");
       this.dispatchEvent(new CustomEvent("nx-choose", {
         bubbles: true,
-        detail: { value: event.dataTransfer.getData("text/plain") },
+        detail: { value: event.dataTransfer?.getData("text/plain") ?? "" },
       }));
     });
   }
@@ -257,13 +268,14 @@ class NxWindow extends HTMLElement {
   addResizer() {
     const bar = this.build("div", "resizer");
     const left = this.build("div", "end");
+    const middle = this.build("div", "middle");
     const right = this.build("div", "end");
     left.dataset.corner = "left";
     right.dataset.corner = "right";
-    bar.append(left, this.build("div", "middle"), right);
+    bar.append(left, middle, right);
     this.append(bar);
 
-    for (const handle of bar.children) {
+    for (const handle of [left, middle, right]) {
       const corner = handle.dataset.corner;
       gesture(handle,
         (point, start) => {
@@ -299,7 +311,8 @@ class NxWindow extends HTMLElement {
     }
   }
 
-  /** Dragging by the bar, closing by the button, raising by a click anywhere. */
+  /** Dragging by the bar, closing by the button, raising by a click anywhere.
+   *  @param {HTMLElement} close - The close button. */
   wire(close) {
     draggable(this, this.bar, {
       onGrab: () => this.raise(),

@@ -6,7 +6,7 @@ class NxShelf extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
     this.addEventListener("click", (event) => {
-      const thing = event.target.closest("nx-thing");
+      const thing = closestTo(event, "nx-thing");
       if (!thing || !this.contains(thing)) return;
       if (thing.hasAttribute("disabled")) return;
       this.choose(thing);
@@ -35,7 +35,7 @@ class NxThing extends HTMLElement {
     slot.className = "slot art";
     const art = document.createElement("i");
     art.className = "art icon";
-    showArt(art, this.getAttribute("icon"));
+    showArt(art, this.getAttribute("icon") ?? "");
     slot.append(art);
 
     const name = document.createElement("span");
@@ -56,8 +56,9 @@ class NxThing extends HTMLElement {
     if (this.ready) this.draggable = this.canBeUsed;
   }
 
-  /** @returns {string} What this thing hands over when it is used. */
-  get value() { return this.getAttribute("value"); }
+  /** @returns {string} What this thing hands over when it is used, which is
+   *  "" for a thing that hands nothing over. */
+  get value() { return this.getAttribute("value") ?? ""; }
 
   /** @returns {boolean} Whether it hands anything over at all. A thing can be
    *  switched off because using it would do nothing, which is different from
@@ -77,7 +78,7 @@ class NxThing extends HTMLElement {
     this.addEventListener("dragstart", (event) => {
       /* Checked here rather than when this was wired, because a thing is
          switched off and on again while the page is up. */
-      if (!this.canBeUsed) return event.preventDefault();
+      if (!this.canBeUsed || !event.dataTransfer) return event.preventDefault();
       event.dataTransfer.setData("text/plain", this.value);
       event.dataTransfer.effectAllowed = "copy";
       this.setAttribute("lifting", "");
