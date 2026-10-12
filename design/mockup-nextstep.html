@@ -3961,8 +3961,18 @@ class NxViewer extends HTMLElement {
  * @attr fixed - Set where there is only one step, so the control reads as a
  *   statement rather than as a choice.
  * @fires nx-slide - `{ value }` of the step landed on, whenever that changes.
+ *
+ * Its steps, its unit and its value are kept from whenever they are given and
+ * drawn once it is on the page, so whoever builds one can fill it in before or
+ * after putting it somewhere.
  */
 class NxSlider extends HTMLElement {
+  /** @type {SliderStep[]} The steps, in the order they sit on the scale. */
+  steps = [];
+
+  /** @type {string} What the figures are counted in, as last given. */
+  words = "";
+
   connectedCallback() {
     if (this.ready) return;
     this.ready = true;
@@ -3992,20 +4002,22 @@ class NxSlider extends HTMLElement {
     /** @type {HTMLSpanElement} */
     this.unit = document.createElement("span");
     this.unit.className = "unit";
+    this.unit.textContent = this.words;
 
     this.append(this.unit, scale);
-    /** @type {SliderStep[]} */
-    this.steps = [];
 
     this.tabIndex = 0;
     this.setAttribute("role", "slider");
     this.wire();
+    this.drawTheTicks();
+    this.draw();
   }
 
   /** @param {string} unit - What the figures on this scale are counted in,
    *  such as MHz or MB. Stated once, to the left of the scale. */
   set says(unit) {
-    this.unit.textContent = unit;
+    this.words = unit;
+    if (this.ready) this.unit.textContent = unit;
   }
 
   /**
@@ -4032,6 +4044,7 @@ class NxSlider extends HTMLElement {
    *  A scale of one step draws none, because there is nothing to choose
    *  between and a lone tick would read as a mark somebody could aim at. */
   drawTheTicks() {
+    if (!this.ready) return;
     const last = Math.max(this.steps.length - 1, 1);
     this.ticks.replaceChildren(...(this.steps.length < 2 ? [] :
       this.steps.map((step, at) => {
@@ -4065,6 +4078,7 @@ class NxSlider extends HTMLElement {
 
   /** Puts the knob where its step is and says what that step is called. */
   draw() {
+    if (!this.ready) return;
     const at = this.at ?? 0;
     const last = Math.max(this.steps.length - 1, 1);
     /* In per cent of the room the knob has to travel, which is the trough less
