@@ -1,11 +1,14 @@
 /**
- * What the Config Editor asks when somebody presses faster than the Pi
- * answers.
+ * What the Config Editor draws from an answer, and what it asks when somebody
+ * presses faster than the Pi answers.
  *
  * Every press asks the service what the machine is now, and the window is
  * drawn again only once it says. A second press before that answer builds on
  * the first, so a bank pressed twice moves on two sizes and a board pressed
  * twice is back where it was, as two presses on the machine itself would be.
+ *
+ * A NeXTdimension board that is in gets a group of its own for its memory,
+ * built before it is on the page, and the rest of the window is drawn after it.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -41,23 +44,26 @@ const NEXTCUBE = {
   },
 };
 
-/** The NeXTcube as the File Viewer hands it over. */
-const ENTRY = {
-  kind: "machine", set: "system", id: "nextcube", name: "NeXTcube",
-  path: "/Machines/System/NeXTcube", configuration: NEXTCUBE.configuration,
+/** The same NeXTcube with a board of 32 MB in its first NeXTdimension slot. */
+const WITH_A_BOARD = {
+  ...NEXTCUBE,
+  configuration: { ...NEXTCUBE.configuration, dimensions: [32, 0, 0] },
+  machine: { ...NEXTCUBE.machine, dimension: true },
 };
 
 answering(() => never());
 
 const editor = await import("../../interface/app/editor.js");
+const { t } = await import("../../interface/strings.js");
 
 /**
- * Opens the editor on the NeXTcube, answers its first question, and from then
+ * Opens the editor on a NeXTcube, answers its first question, and from then
  * on writes down every question and answers none.
+ * @param {object} [answer] - What the service settles the machine as.
  * @returns {Promise<URLSearchParams[]>} What each later question asked, filled
  *   in as they are asked.
  */
-async function openWithoutFurtherAnswers() {
+async function openWithoutFurtherAnswers(answer = NEXTCUBE) {
   layThePage();
   /** @type {URLSearchParams[]} */
   const asked = [];
@@ -65,12 +71,16 @@ async function openWithoutFurtherAnswers() {
   answering((route) => {
     if (!answered) {
       answered = true;
-      return Promise.resolve(json(NEXTCUBE));
+      return Promise.resolve(json(answer));
     }
     asked.push(new URL(route, "http://next.local").searchParams);
     return never();
   });
-  editor.editConfiguration(ENTRY);
+  /* As the File Viewer hands the machine over. */
+  editor.editConfiguration({
+    kind: "machine", set: "system", id: "nextcube", name: "NeXTcube",
+    path: "/Machines/System/NeXTcube", configuration: answer.configuration,
+  });
   await settled();
   return asked;
 }
@@ -98,4 +108,17 @@ test("a board pressed twice before the answer is back where it was", async () =>
   assert.equal(asked.length, 2);
   assert.equal(asked[0].get("turbo"), "1");
   assert.equal(asked[1].get("turbo"), "0");
+});
+
+test("a machine with a NeXTdimension board is drawn whole", async () => {
+  await openWithoutFurtherAnswers(WITH_A_BOARD);
+  const memory = document.querySelector("#editor-dimension-memory nx-slider");
+
+  assert.ok(memory, "the board has no group for its memory");
+  assert.deepEqual([...memory.querySelectorAll(".tick[chosen]")].map((tick) => tick.textContent),
+                   ["32"]);
+  /* What saving will do is drawn after the boards, so it is what a fault in
+     them leaves undone. */
+  assert.equal(document.getElementById("editor-note").textContent,
+               t("editor.into-a-new-one"));
 });
