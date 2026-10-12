@@ -122,16 +122,15 @@ nx-ask .lines p:last-child { margin: 0; }
 nx-ask .lines a { color: inherit; }
 
 /* The line a panel takes an answer on, which is a name or a password. NeXT's
-   text fields are white, sunken and one line tall, and this is the same field
-   the readings use, made editable. */
+   text fields are white, sunken and one line tall. Its edge is the `sunken`
+   class in base.css, the one nx-field wears, so the field a panel asks in and
+   the field a reading stands in are drawn by one rule. */
 nx-ask .entry {
   width: 100%;
   margin-top: 10px;
   font: 12px var(--mono);
   color: var(--black);
   background: var(--white);
-  border: 1px solid var(--dark);
-  box-shadow: var(--sunken-inside);
   padding: 3px 5px;
 }
 nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
