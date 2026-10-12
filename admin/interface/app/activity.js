@@ -1,9 +1,12 @@
 /* Activity Monitor: what every core of the board is doing, twice a second. */
 
+import { NxLeds } from "../nextstep.js";
 import { t } from "../strings.js";
-import { show, theWindow } from "./page.js";
+import { byId, show, targetName, theWindow } from "./page.js";
 import { modelOf } from "./pi.js";
 import { NOTHING, costOf, decimal, memoryInUse } from "./words.js";
+
+/** @typedef {import("../answers.js").ActivityAnswer} ActivityAnswer */
 
 /** Where the readings come from while the window is open: a stream of
  *  Server-Sent Events, one reading every half second, each the object
@@ -25,7 +28,7 @@ const ACTIVITY = "activity";
 let stream = null;
 
 /** The last reading, so a change of language redraws it at once rather than
- *  at the next one. @type {any} */
+ *  at the next one. @type {ActivityAnswer | null} */
 let lastReading = null;
 
 /**
@@ -43,8 +46,10 @@ function openTheStream() {
   const opened = new EventSource(STREAM);
   stream = opened;
   opened.addEventListener("message", (event) => {
-    lastReading = JSON.parse(event.data);
-    drawActivity(lastReading);
+    /** @type {ActivityAnswer} */
+    const reading = JSON.parse(event.data);
+    lastReading = reading;
+    drawActivity(reading);
   });
   opened.addEventListener("error", () => {
     drawActivity(null);
@@ -69,9 +74,9 @@ function redrawActivity() {
 
 /**
  * Draws one reading into the window.
- * @param {any} activity - The reading, or null where the service is not
- *   answering. Every figure inside it may be null as well, and a figure that
- *   is null is drawn as nothing rather than as zero.
+ * @param {ActivityAnswer | null} activity - The reading, or null where the
+ *   service is not answering. Every figure inside it may be null as well, and
+ *   a figure that is null is drawn as nothing rather than as zero.
  */
 function drawActivity(activity) {
   show("activity-note", activity ? "" : t("note.no-service"));
@@ -96,23 +101,27 @@ function drawActivity(activity) {
         five: decimal(load.five),
         fifteen: decimal(load.fifteen),
         cores: load.cores,
-      }, load.cores)
+      }, load.cores ?? undefined)
     : NOTHING);
 
   /* The bar and the first figure are both what is in use, so the words read
      the bar out. */
   const memory = activity?.memory;
-  const used = memory ? memory.total_mb - memory.available_mb : null;
-  showShare(document.getElementById("activity-memory"),
-    memory ? used * 100 / memory.total_mb : null,
-    () => memoryInUse(used, memory.total_mb));
+  const meter = byId("activity-memory", NxLeds);
+  if (memory) {
+    const used = memory.total_mb - memory.available_mb;
+    showShare(meter, used * 100 / memory.total_mb,
+      () => memoryInUse(used, memory.total_mb));
+  } else {
+    showShare(meter, null, () => NOTHING);
+  }
 
   show("activity-emulator", activity ? costOf(activity.emulator) : NOTHING);
 }
 
 /**
  * Puts one share into one row of lamps.
- * @param {any} meter - An nx-leds.
+ * @param {NxLeds} meter - The row.
  * @param {number|null} share - How full, in per cent, or null where there is
  *   no reading.
  * @param {(share: number) => string} words - What the share is called, asked
@@ -127,7 +136,7 @@ function showShare(meter, share, words) {
  * Makes sure there is one row for each core, and names them.
  * @param {number|null|undefined} count - How many cores the service reports.
  *   Anything that is not a count keeps the rows that are there.
- * @returns {any[]} The rows of lamps, one per core, in the kernel's order.
+ * @returns {NxLeds[]} The rows of lamps, one per core, in the kernel's order.
  *
  * Built here rather than written into the markup, because how many cores a
  * board has is the board's to say: a Pi 5 has four, and a two-core board
@@ -135,8 +144,9 @@ function showShare(meter, share, words) {
  * reaches them with the next reading.
  */
 function drawTheCores(count) {
-  const cores = /** @type {any} */ (document.getElementById("activity-cores"));
-  if (Number.isInteger(count) && cores.children.length !== count) {
+  const cores = byId("activity-cores");
+  if (typeof count === "number" && Number.isInteger(count)
+      && cores.children.length !== count) {
     cores.replaceChildren(...Array.from({ length: count }, () => {
       const row = document.createElement("nx-row");
       row.append(document.createElement("label"), document.createElement("nx-leds"));
@@ -144,20 +154,22 @@ function drawTheCores(count) {
     }));
   }
 
-  return [...cores.children].map((row, index) => {
-    row.querySelector("label").textContent = t("activity.core", { number: index + 1 });
-    return row.querySelector("nx-leds");
+  return [...cores.children].flatMap((row, index) => {
+    const label = row.querySelector("label");
+    if (label) label.textContent = t("activity.core", { number: index + 1 });
+    const meter = row.querySelector("nx-leds");
+    return meter ? [meter] : [];
   });
 }
 
 /** Opens the stream with the window and closes it with the window, and opens
  *  it at once where the desk came back with the window open. Wired once. */
 function wireActivity() {
-  document.addEventListener("nx-open", (/** @type {any} */ event) => {
-    if (event.target.getAttribute("name") === ACTIVITY) openTheStream();
+  document.addEventListener("nx-open", (event) => {
+    if (targetName(event.target) === ACTIVITY) openTheStream();
   });
-  document.addEventListener("nx-close", (/** @type {any} */ event) => {
-    if (event.target.getAttribute("name") === ACTIVITY) closeTheStream();
+  document.addEventListener("nx-close", (event) => {
+    if (targetName(event.target) === ACTIVITY) closeTheStream();
   });
   openTheStream();
 }

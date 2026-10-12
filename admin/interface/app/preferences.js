@@ -5,6 +5,7 @@ import { redrawActivity } from "./activity.js";
 import { redrawTheEditor } from "./editor.js";
 import { drawTheInstaller, drawTheTabs, setupState } from "./installer.js";
 import { drawTheMenu } from "./menu.js";
+import { byId } from "./page.js";
 import { showTheNotesAgain } from "./preview.js";
 import { drawSizes } from "./size.js";
 import { refresh } from "./status.js";
@@ -18,7 +19,7 @@ import { drawPlace } from "./viewer.js";
  * the catalog's own, so it does not move about as the interface changes.
  */
 function drawLanguages() {
-  const list = /** @type {any} */ (document.getElementById("languages"));
+  const list = byId("languages");
   list.replaceChildren(...Object.entries(LANGUAGE_NAMES).map(([code, name]) => {
     const option = document.createElement("div");
     option.className = "option";
@@ -29,21 +30,8 @@ function drawLanguages() {
   }));
 }
 
-/* --- how large the interface is drawn -------------------------------------
-
-   NeXTSTEP's own measurements are what everything here is built from, and on
-   a large panel at a low resolution they are small. So the same desk is drawn
-   larger rather than measured again.
-
-   In quarters, which is a finer choice than the bitmaps are exact at. Measured
-   against the sizes they are actually drawn at: a quarter step puts five of
-   them on half pixels, a half step puts two there, and only 1 and 2 leave
-   every one whole. They carry image-rendering: pixelated, so a row of their
-   own pixels is doubled rather than smeared. Somebody at a large panel needs a
-   size between too small and too large more than they need a picture that is
-   exact at two settings out of five. */
-
-/** What each module of Preferences is called and which panel it shows. */
+/** What each module of Preferences is called and which panel it shows.
+ *  @type {Record<string, {name: string, panel: string}>} */
 const MODULES = {
   localization: { name: "preferences.localization", panel: "languages" },
   monitor: { name: "preferences.monitor", panel: "sizes" },
@@ -65,19 +53,19 @@ function showModule(which) {
     cell.toggleAttribute("chosen", cell.getAttribute("value") === which);
   }
   for (const [name, one] of Object.entries(MODULES)) {
-    document.getElementById(one.panel).hidden = name !== which;
+    byId(one.panel).hidden = name !== which;
   }
-  writeWords(document.getElementById("module-name"), t(module.name));
+  writeWords(byId("module-name"), t(module.name));
 }
 
 /** Wires the row of modules, and draws the one that starts up chosen. */
 function wirePreferences() {
-  const row = /** @type {any} */ (document.querySelector("nx-window[name='preferences'] .modules"));
+  const row = document.querySelector("nx-window[name='preferences'] .modules");
   if (!row) return;
 
-  row.addEventListener("click", (/** @type {any} */ event) => {
-    const cell = event.target.closest(".module");
-    if (cell) showModule(cell.getAttribute("value"));
+  row.addEventListener("click", (event) => {
+    const cell = event.target instanceof Element ? event.target.closest(".module") : null;
+    if (cell) showModule(cell.getAttribute("value") ?? "");
   });
   showModule("localization");
   drawSizes();

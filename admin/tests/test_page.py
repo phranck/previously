@@ -16,15 +16,20 @@ from conftest import INTERFACE, page_source
 #: How the page reaches an element. getElementById is the plain way, and the rest
 #: are this page's own helpers, which take an id and write into it.
 BY_ID = re.compile(
-    r'(?:getElementById|show|explain|fillWithChoices|fillWithBanks'
+    r'(?:getElementById|byId|show|explain|fillWithChoices|fillWithBanks'
     r'|fillWithScale|drawPicture)\(\s*"([^"]+)"')
 
 #: What the markup calls its elements.
 IN_MARKUP = re.compile(r'\bid="([^"]+)"')
 
 #: A window or a menu the page asks for by name, which the kit builds from the
-#: markup and which answers nothing where the markup has no such thing.
-BY_NAME = re.compile(r'nx-(?:window|menu|menu-item|tile)\[name="([^"]+)"\]')
+#: markup and which answers nothing where the markup has no such thing. Asked
+#: through a selector, or through the page's own theWindow, theMenu and
+#: menuEntry, which build that selector.
+BY_NAME = re.compile(
+    r'(?:nx-(?:window|menu|menu-item|tile)\[name="'
+    r'|\b(?:theWindow|theMenu)\(\s*"'
+    r'|\bmenuEntry\(\s*\w+,\s*")([^"]+)"')
 
 #: What the editor reads off one entry of `offers.kinds`. That group is the one
 #: place a cell takes its label from the service instead of from this page's own
@@ -58,6 +63,31 @@ def inside(markup, window):
     at = markup.index('<nx-window name="%s"' % window)
     after = markup.find("<nx-window ", at + 1)
     return markup[at:after if after > 0 else len(markup)]
+
+
+#: An event the kit or the page raises, by its name.
+RAISED = re.compile(r'new CustomEvent\(\s*"([\w-]+)"')
+
+#: An event `interface/events.d.ts` describes.
+DESCRIBED = re.compile(r'^\s*"([\w-]+)": CustomEvent<', re.M)
+
+
+def test_every_event_raised_is_described():
+    """The checker reads what an event carries out of events.d.ts, which is
+    written by hand beside the code that raises them. An event raised and not
+    described reaches its listener as a plain Event with no detail on it, and
+    one described and no longer raised is a listener waiting for nothing."""
+    kit = INTERFACE.parent.parent / "design" / "kit"
+    sources = [*sorted(kit.glob("*.js")), INTERFACE / "terminal.js",
+               *sorted((INTERFACE / "app").glob("*.js"))]
+    raised = set()
+    for source in sources:
+        raised.update(RAISED.findall(source.read_text(encoding="utf-8")))
+    described = set(DESCRIBED.findall(
+        (INTERFACE / "events.d.ts").read_text(encoding="utf-8")))
+
+    assert raised, "nothing raised was found"
+    assert sorted(raised) == sorted(described)
 
 
 def test_every_element_the_page_writes_into_is_in_the_markup(page, markup):
@@ -215,8 +245,10 @@ def test_the_installer_holds_no_list_of_systems(page):
 
 
 #: What the Installer names as a job, which is one table in the page written
-#: out one entry per line.
-A_JOB = re.compile(r"^const Install = \{(.*?)^\};", re.M | re.S)
+#: out one entry per line, and marked `const` so the checker reads each value as
+#: the name it is rather than as any string.
+A_JOB = re.compile(
+    r"^const Install = (?:/\*\* @type \{const\} \*/ \()?\{(.*?)^\}\)?;", re.M | re.S)
 
 
 def test_the_installer_asks_for_jobs_the_service_knows(page):

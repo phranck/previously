@@ -1,17 +1,17 @@
 {
   "//": [
     "What checks the interface without changing the language it is written in.",
-    "Every exported function here already says in its documentation comment what",
-    "it takes and what it answers with, and this is what reads those as types.",
-    "Nothing is compiled: noEmit, because what ships is built by esbuild out of",
-    "the same sources.",
+    "Every function here says in its documentation comment what it takes and what",
+    "it answers with, and this is what reads those as types. Nothing is compiled:",
+    "noEmit, because what ships is built by esbuild out of the same sources.",
     "",
-    "strict is off for now. The interface talks to a service whose answers are",
-    "read as objects, and turning it on would mean a type for every one of those",
-    "before a single real mistake is caught. What is on is the part that finds",
-    "mistakes in code that is already written: a name that does not exist on a",
-    "thing, a call with the wrong number of arguments, a function that returns",
-    "nothing where something is expected."
+    "strict, so a value with no type of its own is refused rather than read as",
+    "any. What the service answers is typed in interface/answers.d.ts, and the",
+    "kit is read out of interface/nextstep.js, which the interface imports, so",
+    "the kit is held to the same rules as everything that uses it.",
+    "",
+    "The two ways around those rules are a type written as any and a comment",
+    "that tells the checker to look away. tests/test_types.py refuses both."
   ],
   "compilerOptions": {
     "target": "ES2022",
@@ -21,10 +21,9 @@
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,
-    "strict": false,
-    "noImplicitAny": false,
+    "strict": true,
     "skipLibCheck": true
   },
   "include": ["interface/**/*.js", "interface/**/*.d.ts"],
-  "exclude": ["interface/vendor", "interface/nextstep.js"]
+  "exclude": ["interface/vendor"]
 }

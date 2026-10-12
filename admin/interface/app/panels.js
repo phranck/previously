@@ -1,14 +1,19 @@
 /* The panels that ask before something changes, and the one that signs in. */
 
+import { NxAsk } from "../nextstep.js";
 import { t } from "../strings.js";
+import { byId } from "./page.js";
 import { ask, send } from "./service.js";
 import { Art } from "./words.js";
+
+/** @typedef {import("../nextstep.js").Question} Question */
+/** @typedef {import("../answers.js").SessionAnswer} SessionAnswer */
 
 /**
  * The one word and the one assumption every panel needs, put in front of what
  * the caller says.
- * @param {any} question - As the kit's ask takes it.
- * @returns {any} The same, with the safe button named and the acting one
+ * @param {Question} question - As the kit's ask takes it.
+ * @returns {Question} The same, with the safe button named and the acting one
  *   treated as dangerous until the caller says otherwise.
  *
  * The kit holds no words of its own, so they are named here and nowhere else.
@@ -32,20 +37,33 @@ function worded(question) {
 
 /**
  * Puts a question.
- * @param {any} question
+ * @param {Question} question
  * @returns {Promise<boolean>} Whether the acting button was pressed.
  */
 function askPanel(question) {
-  return /** @type {any} */ (document.getElementById("ask")).ask(worded(question));
+  return byId("ask", NxAsk).ask(worded(question));
 }
 
 /**
  * Puts a question that needs something typed.
- * @param {any} question
+ * @param {Question} question
  * @returns {Promise<string|null>} What was typed, or null.
  */
 function askPanelFor(question) {
-  return /** @type {any} */ (document.getElementById("ask")).askFor(worded(question));
+  return byId("ask", NxAsk).askFor(worded(question));
+}
+
+/**
+ * The lines of a panel that have something to say.
+ * @param {(string | false | null | undefined)[]} parts - Each line, or
+ *   nothing where a line does not apply.
+ * @returns {string[]} The lines there are, in their order.
+ */
+function linesOf(parts) {
+  /** @type {string[]} */
+  const lines = [];
+  for (const part of parts) if (part) lines.push(part);
+  return lines;
 }
 
 /**
@@ -62,8 +80,8 @@ function askPanelFor(question) {
 async function askForPassword(why) {
   const state = await ask("/api/session");
   if (state === null) return false;
-  if (!state.claimed) return chooseThePassword(why, "ask.password.unclaimed", state);
-  if (state.signed_in) return chooseThePassword(why, "ask.password.change", state);
+  if (!state.claimed) return chooseThePassword(why ?? "", "ask.password.unclaimed", state);
+  if (state.signed_in) return chooseThePassword(why ?? "", "ask.password.change", state);
   return signIn(why);
 }
 
@@ -79,7 +97,7 @@ async function signIn(why) {
   for (;;) {
     const typed = await askPanelFor({
       name: t("ask.password.title"),
-      text: [complaint, t("ask.password.sign-in")].filter(Boolean),
+      text: linesOf([complaint, t("ask.password.sign-in")]),
       icon: Art.Computer,
       confirm: t("button.use"),
       secret: true,
@@ -102,9 +120,9 @@ async function signIn(why) {
  *   empty rather than absent where there is none. Not optional, because two
  *   required parameters follow it.
  * @param {string} what - Which sentence explains the question, by its key.
- * @param {any} state - What /api/session answered, which says how short a
- *   password may be. Read from the service rather than stated here, so the
- *   rule lives where it is enforced.
+ * @param {SessionAnswer} state - What /api/session answered, which says how
+ *   short a password may be. Read from the service rather than stated here,
+ *   so the rule lives where it is enforced.
  * @returns {Promise<boolean>} Whether one was set.
  */
 async function chooseThePassword(why, what, state) {
@@ -113,8 +131,8 @@ async function chooseThePassword(why, what, state) {
   for (;;) {
     const typed = await askPanelFor({
       name: t("ask.password.title"),
-      text: [complaint, t(what),
-             t("ask.password.length", { least: state.smallest })].filter(Boolean),
+      text: linesOf([complaint, t(what),
+                     t("ask.password.length", { least: state.smallest })]),
       icon: Art.Computer,
       confirm: t("button.use"),
       secret: true,
@@ -136,8 +154,8 @@ async function chooseThePassword(why, what, state) {
 /**
  * Says which end of the rule a refused password missed.
  * @param {string} typed - What was typed.
- * @param {any} state - What /api/session answered, which says how short and
- *   how long a password may be.
+ * @param {SessionAnswer} state - What /api/session answered, which says how
+ *   short and how long a password may be.
  * @returns {string} The sentence for it.
  *
  * Counted in characters as the service counts them, which is by code point,
@@ -153,5 +171,6 @@ export {
   askPanel,
   askPanelFor,
   askForPassword,
+  linesOf,
   tooShortOrTooLong,
 };

@@ -95,6 +95,31 @@ def test_the_library_names_no_map():
         assert "sourceMappingURL" not in text, name
 
 
+#: Each vendored file of the library, and where the package that package.json
+#: brings keeps the same file, which is the release its types are read from.
+VENDORED = {
+    "xterm.js": "@xterm/xterm/lib/xterm.js",
+    "xterm-addon-fit.js": "@xterm/addon-fit/lib/addon-fit.js",
+}
+
+
+@pytest.mark.parametrize("name", sorted(VENDORED))
+def test_the_library_is_the_release_its_types_come_from(name):
+    """The checker reads the library's types out of node_modules, and the page
+    runs the copy in web/vendor/. Two copies of one release drift the day one
+    is upgraded without the other, and the types would then describe a library
+    that does not ship. The copy is the package's own file with the line
+    naming its map taken off, so that is what it is held to."""
+    packaged = INTERFACE.parent / "node_modules" / VENDORED[name]
+    if not packaged.is_file():
+        pytest.skip("npm install has not run")
+    theirs = re.sub(r"\n?//# sourceMappingURL=\S+\s*$", "",
+                    packaged.read_text(encoding="utf-8"))
+    ours = (WEB_ROOT / "vendor" / name).read_text(encoding="utf-8")
+
+    assert ours.rstrip("\n") == theirs.rstrip("\n"), "package.json and web/vendor differ"
+
+
 def test_the_page_names_an_icon_the_service_has(markup):
     """A page that names no icon has the browser ask for /favicon.ico by
     itself, and every load then puts a 404 in the console and leaves the tab

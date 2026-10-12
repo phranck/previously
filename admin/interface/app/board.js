@@ -2,7 +2,7 @@
 
 import { t } from "../strings.js";
 import { wasTaken } from "./outcome.js";
-import { show } from "./page.js";
+import { byId, show } from "./page.js";
 import { askPanel } from "./panels.js";
 import { Board, tell } from "./service.js";
 import { refresh } from "./status.js";
@@ -27,7 +27,7 @@ function warnAboutTheBoard(what, question) {
 
 /**
  * Runs one of the board's two actions and reports what came of it.
- * @param {string} route - One of Board.
+ * @param {typeof Board[keyof typeof Board]} route - One of Board.
  * @param {string} working - What to say while it happens.
  *
  * The operation lasts until the board has gone and answered again, rather than
@@ -59,13 +59,13 @@ function wireBoard() {
   hold("#pi-reboot", Needs.Quiet);
   hold("#pi-poweroff", Needs.Quiet);
 
-  /** @type {any} */ (document.getElementById("pi-reboot")).addEventListener("click", async () => {
+  byId("pi-reboot").addEventListener("click", async () => {
     if (await warnAboutTheBoard(t("button.restart"), "ask.board.reboot")) {
       operateBoard(Board.Reboot, t("busy.board-restart"));
     }
   });
 
-  /** @type {any} */ (document.getElementById("pi-poweroff")).addEventListener("click", async () => {
+  byId("pi-poweroff").addEventListener("click", async () => {
     if (await warnAboutTheBoard(t("button.power-off"), "ask.board.poweroff")) {
       operateBoard(Board.PowerOff, t("busy.board-poweroff"));
     }

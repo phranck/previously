@@ -56,7 +56,7 @@ const STARTING_SIZE = { rows: 24, cols: 80 };
  *   `detail.columns`, which is what the far side has to be told so that
  *   anything drawing itself is drawn in the right place.
  */
-class NxTerminal extends HTMLElement {
+export class NxTerminal extends HTMLElement {
   connectedCallback() {
     if (this.ready) return;
     this.ready = true;
@@ -72,6 +72,8 @@ class NxTerminal extends HTMLElement {
        rest of the session, which on a first visit is every session. So the
        view is built once the face is here, and anything the far side says in
        the meantime waits in line rather than being lost. */
+    /** @type {(Uint8Array | string)[]} What the far side said before the
+     *  view was built, in the order it said it. */
     this.waiting = [];
     document.fonts.load(`${this.token("--terminal-size")} `
                         + this.token("--terminal-font"))
@@ -81,7 +83,7 @@ class NxTerminal extends HTMLElement {
 
   /**
    * Reads one of the kit's values.
-   * @param name - The custom property, such as "--terminal-size".
+   * @param {string} name - The custom property, such as "--terminal-size".
    * @returns {string} What the desk says it is now.
    */
   token(name) {
@@ -164,7 +166,8 @@ class NxTerminal extends HTMLElement {
     this.terminal?.focus();
   }
 
-  /** @returns {any} How large it is now, in rows and columns. */
+  /** @returns {{rows: number, columns: number}} How large it is now, in rows
+   *  and columns. */
   get size() {
     return this.terminal
       ? { rows: this.terminal.rows, columns: this.terminal.cols }

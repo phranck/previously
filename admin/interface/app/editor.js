@@ -4,7 +4,8 @@ import { t, writeWords } from "../strings.js";
 import { drawTheDimensionBoards, fillWithBanks, fillWithChoices, fillWithFittings, fillWithScale } from "./fittings.js";
 import { editOnWhatIsRunning } from "./machines.js";
 import { DSP_WORDS, KIND_NOTES, SOCKET_WORDS, bankNotes, noteFor, switchNote } from "./notes.js";
-import { explain, show, theWindow } from "./page.js";
+import { wasTaken } from "./outcome.js";
+import { byId, explain, show, theWindow } from "./page.js";
 import { askPanelFor } from "./panels.js";
 import { Saved, ask, tell } from "./service.js";
 import { refresh } from "./status.js";
@@ -12,17 +13,39 @@ import { Needs, allowed, hold } from "./system.js";
 import { drawMachines } from "./viewer.js";
 import { EDITOR, chipsOf, cpuOf, fitted, machineArt, nameOf, say, screenOf } from "./words.js";
 
+/** @typedef {import("../answers.js").MachineDescription} MachineDescription */
+/** @typedef {import("../answers.js").MachineEntry} MachineEntry */
+/** @typedef {import("../answers.js").Offers} Offers */
+/** @typedef {import("../answers.js").SavedConfiguration} SavedConfiguration */
+/** @typedef {import("../answers.js").SettledAnswer} SettledAnswer */
+/** @typedef {import("./notes.js").Switch} Switch */
+
+/**
+ * A machine the service has settled, as the editor's controls hold it: the
+ * configuration it handed back, with the clock and the total memory as its
+ * description of that machine gives them.
+ * @typedef {SavedConfiguration & {memory: number}} Settled
+ */
+
+/**
+ * What the editor asks the service about. A control that is left out is
+ * answered with what the machine has.
+ * @typedef {Partial<Settled>} Draft
+ */
+
 /** What the editor is showing: the controls, and nothing derived.
  *
  *  Whatever is not known is left out of the question rather than filled in here,
  *  so a fresh window is answered with the service's own idea of a machine and
- *  there is no second copy of that here. */
+ *  there is no second copy of that here.
+ *  @type {Draft} */
 let drafting = {};
 
 /** Which controls the service writes afresh whenever the machine type or a
  *  board changes, so that changing one of those sends none of them. Named here
  *  rather than at each cell, because a control this forgets to name is one that
- *  quietly carries a value from the machine that has been left behind. */
+ *  quietly carries a value from the machine that has been left behind.
+ *  @type {(keyof Settled)[]} */
 const FOLLOWS_THE_MACHINE = ["mhz", "dsp", "dsp_memory", "banks"];
 
 /** How much memory a NeXTdimension board gets when it is first put in, which is
@@ -49,13 +72,15 @@ let showing = Object.keys(SUBJECTS)[0];
 
 /** Which saved configuration is being written over, or null where what comes out
  *  of this is a new one. A System machine cannot be changed, so editing one
- *  leaves this null and saving asks for a name. */
+ *  leaves this null and saving asks for a name.
+ *  @type {string | null} */
 let replacing = null;
 
 /** The last answer about the draft, so saving posts what was shown rather than
  *  asking again for something that may meanwhile read differently. Null while
  *  an answer is still on its way, which is what stops the button saving the
- *  machine that was in the window a moment ago. */
+ *  machine that was in the window a moment ago.
+ *  @type {SettledAnswer | null} */
 let drafted = null;
 
 /** Which question about the draft is the current one. Every click asks one, and
@@ -65,39 +90,44 @@ let asking = 0;
 
 /**
  * Opens the editor on a machine.
- * @param {any} machine - An entry of the tree, or what /api/status says is
- *   configured now. Both carry the same facts, because one function describes
- *   them.
- * @param {HTMLElement} [asker] - What was used to open it, so its icon can
- *   travel to the floor of the screen.
+ * @param {MachineEntry | MachineDescription | null | undefined} machine - An
+ *   entry of the tree, or what /api/status says is configured now, or nothing
+ *   where the file could not be read. Both carry the same facts, because one
+ *   function describes them.
+ * @param {Element} [asker] - What was used to open it, so its icon can travel
+ *   to the floor of the screen.
  *
  * A configuration of somebody's own is edited in place, and one of the eleven is
  * the starting point for a new one. That is the whole difference between the two
  * sets, and it is decided here by which folder the machine came from.
  */
 function editConfiguration(machine, asker) {
-  replacing = machine?.set === "user" ? machine.id : null;
-  /* The configuration a tree entry carries beside the words a person reads,
-     which is the same shape saving takes. The description alone would not do:
-     it leaves out everything two machines do not differ by in words, and its
-     `kind` says what sort of entry this is rather than what machine it is. */
-  drafting = machine?.configuration
-    ? { ...machine.configuration }
-    : whatTheDescriptionSays(machine);
+  if (machine?.kind === "machine") {
+    replacing = machine.set === "user" ? machine.id : null;
+    /* The configuration a tree entry carries beside the words a person reads,
+       which is the same shape saving takes. The description alone would not do:
+       it leaves out everything two machines do not differ by in words, and its
+       `kind` says what sort of entry this is rather than what machine it is. */
+    drafting = { ...machine.configuration };
+  } else {
+    replacing = null;
+    drafting = whatTheDescriptionSays(machine);
+  }
   /* Nothing to save until the service has said what this is, so the button
      cannot send the machine the window held before. */
   drafted = null;
 
   drawTheTitle();
-  theWindow(EDITOR).open(asker);
+  theWindow(EDITOR)?.open(asker);
   drawTheDraft();
 }
 
 /**
  * As much of a machine as a description holds.
- * @param {any} machine - What /api/status says is configured now, which is a
- *   description rather than a configuration.
- * @returns {any} A draft of what can be read off it.
+ * @param {MachineDescription | null | undefined} machine - What /api/status
+ *   says is configured now, which is a description rather than a
+ *   configuration, or nothing.
+ * @returns {Draft} What can be read off it.
  *
  * For the machine that is running while being none of the ones this tool
  * knows. What a description does not carry is left out rather than guessed, so
@@ -125,23 +155,25 @@ function drawTheTitle() {
 
 /** Asks the service what the draft is, and draws the answer. */
 async function drawTheDraft() {
-  const asked = new URLSearchParams();
+  /** @type {Record<string, string>} */
+  const asked = {};
   for (const [control, value] of Object.entries(drafting)) {
-    if (value === undefined || value === null) continue;
+    if (value === undefined) continue;
     if (typeof value === "boolean") {
       /* As "1" and "0", because a query string carries text and a flag that is
          absent has to read as off rather than as a word. */
-      asked.set(control, value ? "1" : "0");
+      asked[control] = value ? "1" : "0";
     } else if (Array.isArray(value)) {
-      /* The four memory banks, in one field, in the order they sit in. */
-      asked.set(control, value.join(","));
+      /* The memory banks and the boards, each in one field, in the order they
+         sit in. */
+      asked[control] = value.join(",");
     } else {
-      asked.set(control, value);
+      asked[control] = String(value);
     }
   }
 
   const mine = ++asking;
-  const answer = await ask("/api/machine/settled?" + asked);
+  const answer = await ask("/api/machine/settled", asked);
   /* A click while this was on its way asked a newer question, and that one's
      answer is the one the window belongs to. */
   if (mine !== asking) return;
@@ -154,28 +186,41 @@ async function drawTheDraft() {
   /* What came back may differ from what was asked for, because Previous refuses
      some of it. The draft follows the answer, so the next question is asked
      about the machine that actually exists. */
-  drafting = {
-    kind: answer.configuration.kind,
-    turbo: answer.configuration.turbo,
-    colour: answer.configuration.colour,
-    dimensions: answer.configuration.dimensions,
-    mhz: answer.machine.mhz,
-    memory: answer.machine.memory_mb,
-    dsp: answer.configuration.dsp,
-    dsp_memory: answer.configuration.dsp_memory,
-    /* Carried on, so a bank chosen on its own is asked about again rather than
-       being laid out afresh from the total the next question would send. The
-       total goes back in charge when a cell in its group is pressed, which
-       sends no banks at all. */
-    banks: answer.configuration.banks,
-    floppy: answer.configuration.floppy,
-    optical: answer.configuration.optical,
-    ethernet: answer.configuration.ethernet,
-    socket: answer.configuration.socket,
-    printer: answer.configuration.printer,
-  };
+  drafting = settledOf(answer);
 
   redrawTheEditor();
+}
+
+/**
+ * The machine an answer describes, as the controls hold it.
+ * @param {SettledAnswer} answer - What /api/machine/settled said.
+ * @returns {Settled} Its configuration, with the clock and the total memory
+ *   as the description gives them.
+ *
+ * Every control is carried on, the banks included, so a bank chosen on its own
+ * is asked about again rather than being laid out afresh from the total the
+ * next question would send. The total goes back in charge when a cell in its
+ * group is pressed, which sends no banks at all.
+ */
+function settledOf(answer) {
+  return { ...answer.configuration, mhz: answer.machine.mhz, memory: answer.machine.memory_mb };
+}
+
+/**
+ * What a control holds now.
+ * @template {keyof Settled} Control
+ * @param {Control} control - Which one.
+ * @param {Settled} settled - The machine the window shows.
+ * @returns {Settled[Control]} What the draft says, which a press since the
+ *   last answer may have changed already, or what the machine shows where the
+ *   draft leaves it out.
+ *
+ * What a press builds on, so two presses before an answer arrives are two
+ * steps rather than the same step twice: a bank pressed twice moves on two
+ * sizes, and a board pressed twice is back where it was.
+ */
+function holding(control, settled) {
+  return drafting[control] ?? settled[control];
 }
 
 /** Draws the window from the last answer, without asking for it again.
@@ -185,18 +230,18 @@ async function drawTheDraft() {
 function redrawTheEditor() {
   if (!drafted) return;
   drawTheMachineInTheEditor(drafted.machine);
-  drawTheChoices(drafted.offers);
+  drawTheChoices(drafted.offers, settledOf(drafted));
   drawWhatSavingWillDo();
 }
 
 /**
  * Draws what the drafted machine is, in the words the rest of the interface
  * uses for a machine.
- * @param {any} machine - The facts, as config.describe answers them.
+ * @param {MachineDescription} machine - The facts, as config.describe answers
+ *   them.
  */
 function drawTheMachineInTheEditor(machine) {
-  /** @type {any} */ (document.getElementById("editor-icon")).style.backgroundImage =
-    `var(--${machineArt(machine.enclosure)})`;
+  byId("editor-icon").style.backgroundImage = `var(--${machineArt(machine.enclosure)})`;
   show("editor-caption", nameOf(machine));
   show("editor-cpu", cpuOf(machine));
   show("editor-ram", t("machine.memory-banks",
@@ -208,8 +253,10 @@ function drawTheMachineInTheEditor(machine) {
 /**
  * Draws the cells of every group from what the service says may be chosen, and
  * under each group the sentence about what is chosen there.
- * @param {any} offers - Its answer: the machine types, which boards may be
+ * @param {Offers} offers - Its answer: the machine types, which boards may be
  *   seated, which clocks there are and which totals of memory.
+ * @param {Settled} settled - The machine the answer is about, which is what
+ *   each group shows as chosen.
  *
  * A group with nothing to offer is taken away rather than shown empty, which is
  * what Previous does with its own board options on a machine that takes none.
@@ -219,40 +266,42 @@ function drawTheMachineInTheEditor(machine) {
  * it is in. What holds for every value of a group, such as the machine type
  * setting three other groups afresh, is one sentence appended to all of them.
  */
-function drawTheChoices(offers) {
+function drawTheChoices(offers, settled) {
   drawTheSubjects();
 
   fillWithChoices("editor-kinds", offers.kinds.map((kind) => ({
     label: kind.model,
-    chosen: kind.kind === drafting.kind,
+    chosen: kind.kind === settled.kind,
     choose: () => changeTheMachine({ kind: kind.kind }),
   })));
   explain("editor-kinds-note",
-    KIND_NOTES[drafting.kind] ? t(KIND_NOTES[drafting.kind]) : "",
+    KIND_NOTES[settled.kind] ? t(KIND_NOTES[settled.kind]) : "",
     t("editor.machine.note.resets"));
 
+  /** @type {[Switch, string][]} */
   const boards = [
     ["turbo", t("editor.turbo")],
     ["colour", t("editor.colour")],
-  ].filter(([which]) => offers[which]);
-  fillWithChoices("editor-boards", boards.map(([which, label]) => ({
+  ];
+  const seatable = boards.filter(([which]) => offers[which]);
+  fillWithChoices("editor-boards", seatable.map(([which, label]) => ({
     label,
-    chosen: drafting[which],
+    chosen: settled[which],
     /* A board is seated or it is not, so its cell answers a second click by
        taking it out again. */
-    choose: () => changeTheMachine({ [which]: !drafting[which] }),
+    choose: () => changeTheMachine({ [which]: !holding(which, settled) }),
   })));
-  /** @type {any} */ (document.getElementById("editor-boards-group")).hidden = !boards.length;
+  byId("editor-boards-group").hidden = !seatable.length;
   explain("editor-boards-note",
-    ...boards.map(([which]) => switchNote(which)),
+    ...seatable.map(([which]) => switchNote(which, settled)),
     t("editor.boards.note.resets"));
 
   fillWithScale("editor-clocks", t("editor.unit.mhz"),
     offers.clocks.map((mhz) => ({
       value: mhz, label: t("editor.mhz", { mhz }), tick: String(mhz),
     })),
-    drafting.mhz, (mhz) => change({ mhz }));
-  explain("editor-clocks-note", noteFor("clock", drafting.mhz));
+    settled.mhz, (mhz) => change({ mhz }));
+  explain("editor-clocks-note", noteFor("clock", settled.mhz));
 
   fillWithScale("editor-memory", t("editor.unit.mb"),
     offers.memory.map((mb) => ({
@@ -260,62 +309,61 @@ function drawTheChoices(offers) {
     })),
     /* The banks below may add up to a total the scale does not carry, and then
        the knob stands at the start rather than pretending to a step. */
-    drafting.memory,
+    settled.memory,
     /* A total lays the banks out again, so whatever they were is let go. */
     (mb) => change({ memory: mb, banks: undefined }));
   /* Banks set one at a time can add up to a total no cell offers, and then the
      sentence says so rather than describing a cell nobody chose. */
   explain("editor-memory-note",
-    offers.memory.includes(drafting.memory)
-      ? noteFor("memory", drafting.memory)
-      : t("editor.memory.note.by-hand", { mb: drafting.memory }),
+    offers.memory.includes(settled.memory)
+      ? noteFor("memory", settled.memory)
+      : t("editor.memory.note.by-hand", { mb: settled.memory }),
     t("editor.memory.note.lays-out"));
 
-  fillWithBanks("editor-banks", offers.banks);
+  fillWithBanks("editor-banks", offers.banks, settled);
   explain("editor-banks-note", ...bankNotes(offers.banks));
 
   fillWithChoices("editor-dsps", offers.dsps.map((dsp) => ({
     /* A chip this page has no word for is shown as the service named it, so a
        service that learns a fourth still draws a cell somebody can press. */
     label: DSP_WORDS[dsp] ? t(DSP_WORDS[dsp]) : dsp,
-    chosen: dsp === drafting.dsp,
+    chosen: dsp === settled.dsp,
     choose: () => change({ dsp }),
   })));
-  explain("editor-dsps-note", noteFor("dsp", drafting.dsp));
+  explain("editor-dsps-note", noteFor("dsp", settled.dsp));
 
   fillWithChoices("editor-dsp-memory", offers.dsp_memory.map((kb) => ({
     label: t("editor.kilobytes", { kb }),
-    chosen: kb === drafting.dsp_memory,
+    chosen: kb === settled.dsp_memory,
     choose: () => change({ dsp_memory: kb }),
   })));
-  /** @type {any} */ (document.getElementById("editor-dsp-memory-group")).hidden =
-    !offers.dsp_memory.length;
-  explain("editor-dsp-memory-note", noteFor("dsp-memory", drafting.dsp_memory));
+  byId("editor-dsp-memory-group").hidden = !offers.dsp_memory.length;
+  explain("editor-dsp-memory-note", noteFor("dsp-memory", settled.dsp_memory));
 
 
   /* What the machine has, which is a drive or a port being there rather than
      anything in it. The same cells as the boards group: one press puts it in and
      the next takes it out. */
-  const drives = fillWithFittings("editor-drives", offers, [
+  const drives = fillWithFittings("editor-drives", offers, settled, [
     ["floppy", t("editor.floppy")],
     ["optical", t("editor.optical")],
   ]);
-  explain("editor-drives-note", ...drives.map(switchNote));
-  const ports = fillWithFittings("editor-ports", offers, [
+  explain("editor-drives-note", ...drives.map((which) => switchNote(which, settled)));
+  const ports = fillWithFittings("editor-ports", offers, settled, [
     ["ethernet", t("editor.ethernet")],
     ["printer", t("editor.printer")],
   ]);
-  explain("editor-ports-note", ...ports.map(switchNote));
+  explain("editor-ports-note", ...ports.map((which) => switchNote(which, settled)));
 
   fillWithChoices("editor-sockets", offers.sockets.map((socket) => ({
     label: SOCKET_WORDS[socket] ? t(SOCKET_WORDS[socket]) : socket,
-    chosen: socket === drafting.socket,
+    chosen: socket === settled.socket,
     choose: () => change({ socket }),
   })));
-  /** @type {any} */ (document.getElementById("editor-socket-group")).hidden = !offers.sockets.length;
-  explain("editor-sockets-note", noteFor("socket", drafting.socket));
+  byId("editor-socket-group").hidden = !offers.sockets.length;
+  explain("editor-sockets-note", noteFor("socket", settled.socket));
 
-  drawTheDimensionBoards(offers);
+  drawTheDimensionBoards(offers, settled);
 }
 
 /**
@@ -356,7 +404,8 @@ function showSubject(subject) {
 
 /**
  * Changes one control and asks what that machine is now.
- * @param {any} what - The one that moved.
+ * @param {Draft} what - The one that moved, and any it lets go of, which are
+ *   given as undefined.
  */
 function change(what) {
   drafting = { ...drafting, ...what };
@@ -366,7 +415,7 @@ function change(what) {
 /**
  * Changes what the machine itself is, and lets what follows from it follow
  * again.
- * @param {any} what - The machine type or the board that moved.
+ * @param {Draft} what - The machine type or the board that moved.
  *
  * Previous writes every one of FOLLOWS_THE_MACHINE afresh whenever one of those
  * two changes in its own dialog, and the service does the same. Sending the
@@ -381,9 +430,10 @@ function changeTheMachine(what) {
 
 /** Says what the button will do, and puts that on the button. */
 function drawWhatSavingWillDo() {
-  const button = /** @type {any} */ (document.getElementById("editor-save"));
-  button.dataset.t = replacing ? "button.save" : "button.save-as";
-  writeWords(button, t(button.dataset.t));
+  const button = byId("editor-save");
+  const key = replacing ? "button.save" : "button.save-as";
+  button.dataset.t = key;
+  writeWords(button, t(key));
   show("editor-note", replacing
     ? t("editor.over-this-one", { name: replacing })
     : t("editor.into-a-new-one"));
@@ -419,7 +469,7 @@ async function saveTheDraft() {
     replacing,
   });
   show("editor-note", answer === null ? t("note.no-service") : say(answer));
-  if (!answer?.ok) return;
+  if (!wasTaken(answer)) return;
 
   /* It is a configuration of its own from now on, so saving again writes over
      it rather than asking for another name, and the window carries its name. */
@@ -436,16 +486,16 @@ function wireEditor() {
      needs the service and nothing more. */
   hold("#editor-save", Needs.Contact);
   hold('nx-menu-item[name="editor-save"]', Needs.Contact);
-  document.getElementById("editor-save")
-    ?.addEventListener("click", saveTheDraft);
+  byId("editor-save").addEventListener("click", saveTheDraft);
   document.querySelector('nx-menu-item[name="editor-save"]')
     ?.addEventListener("click", saveTheDraft);
 
   /* Two clicks, like every other tile. It carries no `opens`, because the window
      is shown only once something has decided which machine it holds, and that is
-     what this and the Apps folder both go through. */
-  document.querySelector('nx-tile[name="editor"]')
-    ?.addEventListener("dblclick", (/** @type {any} */ event) => editOnWhatIsRunning(event.target));
+     what this and the Apps folder both go through. The icon starts its way to
+     the floor from the tile, as every other tile's does. */
+  const tile = document.querySelector('nx-tile[name="editor"]');
+  if (tile) tile.addEventListener("dblclick", () => editOnWhatIsRunning(tile));
 }
 
 /**
@@ -462,8 +512,8 @@ function fillTheEditorIfItCameBackOpen() {
 }
 
 export {
-  drafting,
   DIMENSION_DEFAULT_MEMORY,
+  holding,
   editConfiguration,
   redrawTheEditor,
   change,

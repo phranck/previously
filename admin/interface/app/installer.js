@@ -1,25 +1,42 @@
-/* The Installer: what is on this Pi, and what can be put on it. */
+/* The Installer: what is on this Pi, and what can be put on it.
+ *
+ * What NeXT called the application that puts things on a machine and takes
+ * them off again. Here there are two kinds of thing: the emulator, which is a
+ * package and a handful of steps around it, and a system, which is a two
+ * gigabyte disk that arrives as an archive of a few tens of megabytes.
+ *
+ * The work is none of this window's. It asks the service, the service leaves a
+ * request, and a program running as root does it and says how far it has got.
+ * So what is drawn here comes from the Pi on every look, and a reload shows
+ * the same thing a moment later.
+ */
 
 import { t } from "../strings.js";
 import { fillWithChoices } from "./fittings.js";
 import { activateTheSystem, fetchTheSystem, forgetTheSystem, installTheEmulator, removeTheEmulator, updateTheEmulator } from "./jobs.js";
-import { explain, show, theWindow } from "./page.js";
+import { wasTaken } from "./outcome.js";
+import { byId, explain, show, theWindow } from "./page.js";
 import { ask, tell } from "./service.js";
 import { Needs, helperIs, hold, holdTheControls } from "./system.js";
 import { say, sized } from "./words.js";
+
+/** @typedef {import("../answers.js").SetupAnswer} SetupAnswer */
+/** @typedef {import("../answers.js").SetupProgress} SetupProgress */
+/** @typedef {import("../answers.js").EmulatorPackage} EmulatorPackage */
+/** @typedef {import("../answers.js").SystemOffer} SystemOffer */
 
 /** Where the Installer asks and tells. One address for both, because what
  *  comes back from asking is what the window shows anyway. */
 const SETUP = "/api/setup";
 
 /** What the service may be asked to do, by the name it takes. */
-const Install = {
+const Install = /** @type {const} */ ({
   Emulator: "install",
   Newest: "update",
   Away: "remove",
   Fetch: "fetch",
   Forget: "forget",
-};
+});
 
 /** How often the Installer looks. Faster than the desk's own poll, because a
  *  download says something new every second and this is a window somebody sits
@@ -29,15 +46,17 @@ const WATCHING_MS = 500;
 const EVERY_FOURTH = 4;
 
 /** The last thing /api/setup said, so the window can be drawn again in another
- *  language without asking for it. */
+ *  language without asking for it. @type {SetupAnswer | null} */
 let setupState = null;
 
-/** Which system is chosen in the list, by identifier, or null. */
+/** Which system is chosen in the list, by identifier, or null.
+ *  @type {string | null} */
 let chosenSystem = null;
 
 /** What the Installer shows one of at a time, and what each is called. Two
  *  subjects in one window, because the emulator is a package and a system is a
- *  two gigabyte disk: they belong together and want to be apart. */
+ *  two gigabyte disk: they belong together and want to be apart.
+ *  @type {Record<string, string>} */
 const INSTALLER_TABS = {
   emulator: "installer.emulator.title",
   systems: "installer.systems",
@@ -57,7 +76,8 @@ let showingInTheInstaller = Object.keys(INSTALLER_TABS)[0];
 let waitingForTheHelper = false;
 
 /** Which run was showing when that request was left, by the moment it started,
- *  so the one that follows it can be told apart from it. */
+ *  so the one that follows it can be told apart from it.
+ *  @type {number | null} */
 let theRunBefore = null;
 
 /** When that request was left, by this browser's clock, so waiting for ever is
@@ -94,7 +114,8 @@ async function refreshTheInstaller() {
 
 /**
  * Draws the whole window.
- * @param {any} state - What /api/setup answered, or null on no contact.
+ * @param {SetupAnswer | null} state - What /api/setup answered, or null on no
+ *   contact.
  */
 function drawTheInstaller(state) {
   if (state === null) {
@@ -144,7 +165,8 @@ function drawTheTabs() {
 
 /**
  * What the readings say about the emulator.
- * @param {any} emulator - What the service says: whether it is here, which
+ * @param {EmulatorPackage | null | undefined} emulator - What the service says:
+ *   whether it is here, which
  *   version, and what the archive offers.
  * @returns {string} The version where there is one, because that is the fact
  *   somebody wants, and the bare word where there is not.
@@ -158,7 +180,8 @@ function emulatorLine(emulator) {
 
 /**
  * A line per button, so that what each one does is read rather than guessed.
- * @param {any} emulator - What the service says about it.
+ * @param {EmulatorPackage | null | undefined} emulator - What the service says
+ *   about it.
  * @returns {string} The lines, one per button that is there, parted by
  *   newlines, which the stylesheet keeps.
  *
@@ -182,11 +205,11 @@ function whatTheButtonsDo(emulator) {
 
 /**
  * Draws the six systems, with the one chosen marked.
- * @param {any[]} systems - What the service offers, each saying what it
+ * @param {SystemOffer[]} systems - What the service offers, each saying what it
  *   costs and whether it is already here.
  */
 function drawTheSystems(systems) {
-  /** @type {any} */ (document.getElementById("installer-systems")).replaceChildren(
+  byId("installer-systems").replaceChildren(
     ...systems.map((system) => {
       const row = document.createElement("div");
       row.className = "system";
@@ -220,8 +243,8 @@ function drawTheSystems(systems) {
 
 /**
  * Says what is being installed, how far it has got, and how it went.
- * @param {any} progress - What the privileged helper wrote, or null
- *   where it has never run on this machine since it last started.
+ * @param {SetupProgress | null} progress - What the privileged helper wrote,
+ *   or null where it has never run on this machine since it last started.
  *
  * The step is named in words out of the catalog, because the helper sends a
  * name rather than a sentence for the same reason everything else here does.
@@ -229,13 +252,13 @@ function drawTheSystems(systems) {
  * empty gauge is a window claiming to be busy.
  */
 function drawWhatIsBeingInstalled(progress) {
-  const gauge = /** @type {any} */ (document.getElementById("installer-gauge"));
+  const gauge = byId("installer-gauge");
 
   /* Anything the Pi is still showing from before the request is the run
      before this one, so the window keeps saying it was asked rather than
      reading out that one's ending. */
   if (waitingForTheHelper
-      && Boolean(progress) && progress.started_at !== theRunBefore) {
+      && progress !== null && progress.started_at !== theRunBefore) {
     waitingForTheHelper = false;
   }
   if (waitingForTheHelper) {
@@ -252,7 +275,7 @@ function drawWhatIsBeingInstalled(progress) {
     return;
   }
 
-  const running = Boolean(progress) && progress.finished_at === null;
+  const running = progress !== null && progress.finished_at === null;
 
   /* A request the service refused never reached the Pi, so the newest run
      there is still the one from before it. The refusal is the whole answer to
@@ -298,7 +321,7 @@ function drawWhatIsBeingInstalled(progress) {
     const through = progress.part?.of
       ? progress.part.done / progress.part.of : 0;
     const done = (progress.done - 1 + Math.min(1, through)) / progress.of;
-    /** @type {any} */ (document.getElementById("installer-fill")).style.width =
+    byId("installer-fill").style.width =
       `${Math.round(done * 100)}%`;
     return;
   }
@@ -343,7 +366,7 @@ function allowInstalling(allowed) {
   /* Not there at all where the archive has nothing newer, because a button
      that would bring the version that is already here is a button that does
      nothing. */
-  /** @type {any} */ (document.getElementById("installer-update")).hidden =
+  byId("installer-update").hidden =
     !setupState?.emulator?.newer;
   helperIs("installer", !allowed);
   holdTheControls();
@@ -354,7 +377,8 @@ function emulatorIsHere() {
   return Boolean(setupState?.emulator?.here);
 }
 
-/** @returns {any} The system chosen in the list, as the last answer has it. */
+/** @returns {SystemOffer | undefined} The system chosen in the list, as the
+ *  last answer has it. */
 function theChosenSystem() {
   return setupState?.systems.find((system) => system.identifier === chosenSystem);
 }
@@ -365,12 +389,18 @@ function holdTheButtons() {
   hold("#installer-install", Needs.Quiet, () => !emulatorIsHere());
   hold("#installer-remove", Needs.Quiet, emulatorIsHere);
   hold("#installer-update", Needs.Quiet, emulatorIsHere);
-  hold("#installer-fetch", Needs.Quiet, () => Boolean(theChosenSystem() && !theChosenSystem().here));
+  hold("#installer-fetch", Needs.Quiet, () => {
+    const chosen = theChosenSystem();
+    return Boolean(chosen && !chosen.here);
+  });
   hold("#installer-forget", Needs.Quiet, () => Boolean(theChosenSystem()?.here));
   /* A system that is not on the card cannot be started, and neither can the
      one the machine is already running. */
   hold("#installer-activate", Needs.Quiet,
-       () => Boolean(theChosenSystem()?.here && !theChosenSystem().booting));
+       () => {
+         const chosen = theChosenSystem();
+         return Boolean(chosen?.here && !chosen.booting);
+       });
 }
 
 /**
@@ -391,7 +421,7 @@ async function askTheInstaller(job, system) {
   drawWhatIsBeingInstalled(setupState?.progress ?? null);
 
   const answer = await tell(SETUP, { do: job, system: system ?? null });
-  waitingForTheHelper = Boolean(answer?.ok);
+  waitingForTheHelper = wasTaken(answer);
 
   if (answer === null) {
     /* Nothing was left for the helper, so the window and the system stop
@@ -403,9 +433,9 @@ async function askTheInstaller(job, system) {
   /* What the service said, kept for as long as the window is waiting, because
      the draw that follows would otherwise wipe it before anybody reads it. */
   whilstWaiting = say(answer);
-  if (!answer.ok) refusedWith = whilstWaiting;
+  if (!wasTaken(answer)) refusedWith = whilstWaiting;
   show("installer-note", whilstWaiting);
-  drawTheInstaller(answer.systems ? answer : setupState);
+  drawTheInstaller("systems" in answer ? answer : setupState);
   refreshTheInstaller();
 }
 
@@ -415,18 +445,12 @@ function wireTheInstaller() {
   if (!window_) return;
 
   holdTheButtons();
-  document.getElementById("installer-install")
-    .addEventListener("click", installTheEmulator);
-  document.getElementById("installer-update")
-    .addEventListener("click", updateTheEmulator);
-  document.getElementById("installer-remove")
-    .addEventListener("click", removeTheEmulator);
-  document.getElementById("installer-fetch")
-    .addEventListener("click", fetchTheSystem);
-  document.getElementById("installer-forget")
-    .addEventListener("click", forgetTheSystem);
-  document.getElementById("installer-activate")
-    .addEventListener("click", activateTheSystem);
+  byId("installer-install").addEventListener("click", installTheEmulator);
+  byId("installer-update").addEventListener("click", updateTheEmulator);
+  byId("installer-remove").addEventListener("click", removeTheEmulator);
+  byId("installer-fetch").addEventListener("click", fetchTheSystem);
+  byId("installer-forget").addEventListener("click", forgetTheSystem);
+  byId("installer-activate").addEventListener("click", activateTheSystem);
 
   /* Opening it asks straight away, because a window that filled itself at the
      next poll would stand empty for a moment first. */

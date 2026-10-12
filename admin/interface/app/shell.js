@@ -1,14 +1,18 @@
 /* The Terminal window and the shell session behind it. */
 
 import { t } from "../strings.js";
+import { NxTerminal } from "../terminal.js";
+import { byId, theWindow } from "./page.js";
 import { TERMINAL } from "./service.js";
 
 /** The shell session behind the terminal window, or null when none is open.
- *  One at a time, which is also all the service hands out. */
+ *  One at a time, which is also all the service hands out.
+ *  @type {WebSocket | null} */
 let shell = null;
 
 /** What has been typed at the login prompt, or null while a session runs and
- *  every key belongs to the far side. */
+ *  every key belongs to the far side.
+ *  @type {string | null} */
 let typedAtThePrompt = null;
 
 /**
@@ -24,8 +28,7 @@ let typedAtThePrompt = null;
  * told who is connecting before it connects at all.
  */
 function askAtTheTerminal(complaint) {
-  const view = /** @type {any} */ (document.getElementById("session"));
-  if (!view.write) return;
+  const view = byId("session", NxTerminal);
 
   typedAtThePrompt = "";
   if (complaint) view.write("\r\n" + complaint + "\r\n");
@@ -42,7 +45,8 @@ function askAtTheTerminal(complaint) {
  * echoes nothing itself.
  */
 function typeAtThePrompt(data) {
-  const view = /** @type {any} */ (document.getElementById("session"));
+  if (typedAtThePrompt === null) return;
+  const view = byId("session", NxTerminal);
   for (const character of data) {
     if (character === "\r" || character === "\n") {
       const said = typedAtThePrompt.trim();
@@ -76,8 +80,8 @@ function typeAtThePrompt(data) {
  * moment later.
  */
 function openShell(login) {
-  const view = /** @type {any} */ (document.getElementById("session"));
-  if (shell || !view.write) return;
+  const view = byId("session", NxTerminal);
+  if (shell) return;
 
   const where = location.origin.replace(/^http/, "ws") + TERMINAL;
   const opening = new WebSocket(where, ["previously"]);
@@ -92,7 +96,11 @@ function openShell(login) {
     opening.send(JSON.stringify({ login, size: [size.rows, size.columns] }));
     view.focus();
   };
-  opening.onmessage = (/** @type {any} */ event) => view.write(new Uint8Array(event.data));
+  /* What the shell says arrives as binary frames, which this socket hands over
+     as buffers. */
+  opening.onmessage = (event) => {
+    if (event.data instanceof ArrayBuffer) view.write(new Uint8Array(event.data));
+  };
   opening.onclose = () => {
     const wasRunning = shell === opening;
     shell = null;
@@ -113,7 +121,7 @@ function closeShell() {
 
 /**
  * Tells the shell how large the window has become.
- * @param {any} size - `{rows, columns}`.
+ * @param {{rows: number, columns: number}} size - In rows and columns.
  *
  * A text frame, which the service reads as being about the session. Anything
  * binary is what the shell itself sees.
@@ -125,24 +133,24 @@ function tellTheShellItsSize(size) {
 
 /** Wires the terminal window to the session behind it. */
 function wireTerminal() {
-  const window_ = /** @type {any} */ (document.querySelector('nx-window[name="terminal"]'));
-  const view = /** @type {any} */ (document.getElementById("session"));
-  if (!window_ || !view) return;
+  const window_ = theWindow("terminal");
+  const view = byId("session", NxTerminal);
+  if (!window_) return;
 
   /* Opening the window is not opening a session. The login is. */
   window_.addEventListener("nx-open", () => {
-    /** @type {any} */ (document.getElementById("session")).clear();
+    view.clear();
     askAtTheTerminal();
   });
   window_.addEventListener("nx-close", closeShell);
 
-  view.addEventListener("nx-typed", (/** @type {any} */ event) => {
+  view.addEventListener("nx-typed", (event) => {
     if (typedAtThePrompt !== null) return typeAtThePrompt(event.detail.data);
     if (shell?.readyState === WebSocket.OPEN) {
       shell.send(new TextEncoder().encode(event.detail.data));
     }
   });
-  view.addEventListener("nx-sized", (/** @type {any} */ event) => tellTheShellItsSize(event.detail));
+  view.addEventListener("nx-sized", (event) => tellTheShellItsSize(event.detail));
 
   /* A browser that goes away without closing the window would otherwise leave
      the service holding a session nobody is looking at until the socket times
@@ -155,13 +163,6 @@ function wireTerminal() {
      it did. */
   if (!window_.hidden) askAtTheTerminal();
 }
-
-/* --- Grab, which takes a picture of the emulated screen --------------------------------
-
-   The picture is the machine's own framebuffer, taken at the moment it is
-   asked for. Nothing here polls: a screen that redrew itself every few seconds
-   would be a window that costs the emulator something for as long as it is
-   open, and what a person wants is to look now. */
 
 export {
   wireTerminal,

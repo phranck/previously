@@ -4,6 +4,10 @@ import { t } from "../strings.js";
 import { askForPassword } from "./panels.js";
 import { endOperation, refresh, setBusy } from "./status.js";
 
+/** @typedef {import("../answers.js").GetAnswers} GetAnswers */
+/** @typedef {import("../answers.js").PostAnswers} PostAnswers */
+/** @typedef {import("../answers.js").PasswordNotGiven} PasswordNotGiven */
+
 /** What the service names a screenshot it filed, so the viewer can be redrawn
  *  without asking for the whole tree to find out whether it should be. */
 const KEPT_HEADER = "X-Previously-Kept";
@@ -15,18 +19,18 @@ const KEPT_HEADER = "X-Previously-Kept";
 const TERMINAL = "/api/terminal";
 
 /** What the buttons ask the service to do, by the route that does it. */
-const Kiosk = {
+const Kiosk = /** @type {const} */ ({
   Start: "/api/kiosk/start",
   Stop: "/api/kiosk/stop",
   Restart: "/api/kiosk/restart",
-};
+});
 
 /** And what the board itself can be asked. Separate from the emulator's,
  *  because these two take the whole machine with them. */
-const Board = {
+const Board = /** @type {const} */ ({
   Reboot: "/api/pi/reboot",
   PowerOff: "/api/pi/poweroff",
-};
+});
 
 /** What can be asked about the configurations somebody saved. Not one of these
  *  touches the running machine: keeping a configuration and running one are two
@@ -35,11 +39,11 @@ const Board = {
  *  Keep is the Config Editor's, which is the one window that puts a
  *  configuration together. The other two are in the context menu on a saved
  *  machine. */
-const Saved = {
+const Saved = /** @type {const} */ ({
   Keep: "/api/machine/save",
   Rename: "/api/machine/rename",
   Remove: "/api/machine/remove",
-};
+});
 
 /** How long an operation may take before the page stops waiting for the
  *  answer. Longer than the longest change of machine, which is
@@ -50,14 +54,18 @@ const OPERATION_TIMEOUT_MS = 240000;
 
 /**
  * Fetches one of the service's answers.
- * @param {string} route - The path, such as "/api/status".
- * @returns {Promise<any>} The parsed answer, or null when the service
- *   cannot be reached, because a page that throws tells the reader less than
- *   one that says it has lost contact.
+ * @template {keyof GetAnswers} Route
+ * @param {Route} route - The path, such as "/api/status".
+ * @param {Record<string, string>} [query] - What to ask with, which goes onto
+ *   the address.
+ * @returns {Promise<GetAnswers[Route] | null>} The parsed answer, or null when
+ *   the service cannot be reached, because a page that throws tells the reader
+ *   less than one that says it has lost contact.
  */
-async function ask(route) {
+async function ask(route, query) {
+  const address = query ? `${route}?${new URLSearchParams(query)}` : route;
   try {
-    const answer = await fetch(route, { cache: "no-store" });
+    const answer = await fetch(address, { cache: "no-store" });
     return answer.ok ? await answer.json() : null;
   } catch {
     return null;
@@ -67,7 +75,7 @@ async function ask(route) {
 /**
  * Sends something to the service and reads its answer.
  * @param {string} route - The path.
- * @param {any} [body] - What to send, where the route takes something.
+ * @param {object} [body] - What to send, where the route takes something.
  * @returns {Promise<Response|null>} The answer, or null when the service
  *   cannot be reached.
  *
@@ -89,10 +97,14 @@ async function send(route, body) {
 }
 
 /**
- * Asks the service to do something to the emulator.
- * @param {string} route - Where to send it.
- * @param {any} [body] - What to send, where the route takes something.
- * @returns {Promise<any>} What it answered, or null on no contact.
+ * Asks the service to do something, and asks for the password where it is
+ * wanted.
+ * @template {keyof PostAnswers} Route
+ * @param {Route} route - Where to send it.
+ * @param {object} [body] - What to send, where the route takes something.
+ * @returns {Promise<PostAnswers[Route] | PasswordNotGiven | null>} What it
+ *   answered, whatever the status, or what this says itself where nobody gave
+ *   the password, or null on no contact.
  */
 async function tell(route, body) {
   let answer = await send(route, body);
@@ -116,7 +128,7 @@ async function tell(route, body) {
 
 /**
  * Runs one of the three operations and reports what came of it.
- * @param {string} route - One of Kiosk.
+ * @param {typeof Kiosk[keyof typeof Kiosk]} route - One of Kiosk.
  * @param {string} working - What to say while it happens.
  */
 async function operate(route, working) {

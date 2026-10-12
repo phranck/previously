@@ -82,13 +82,19 @@ def script():
     nothing outside needs any of these names, because the elements define
     themselves, the listeners are added in code, and the markup carries no
     handler of its own.
+
+    `tsconfig.json` beside the sources is the type checker's, and esbuild reads
+    it unless told otherwise. Its `strict` would put a "use strict" in front of
+    the bundle, which changes nothing in code made of modules, so the build is
+    given an empty one and ships the same whatever the checker is set to.
     """
     if shutil.which("esbuild") is None:
         raise SystemExit("esbuild is not here: brew install esbuild, or "
                          "npm install --global esbuild")
     answer = subprocess.run(
         ["esbuild", str(SOURCE / ENTRY), "--bundle", "--minify",
-         "--format=iife", "--legal-comments=eof", "--charset=utf8"],
+         "--format=iife", "--legal-comments=eof", "--charset=utf8",
+         "--tsconfig-raw={}"],
         capture_output=True, text=True, check=True)
     return answer.stdout
 

@@ -1,21 +1,28 @@
 /* The sentence under a group in the Config Editor, which says what the choice above it means. */
 
 import { currentLocale, t } from "../strings.js";
-import { drafting } from "./editor.js";
 import { isAbsent } from "./fittings.js";
+
+/** @typedef {import("../answers.js").DspKind} DspKind */
+/** @typedef {import("./editor.js").Settled} Settled */
+
+/** A switch of the Config Editor, which is on or off.
+ *  @typedef {"turbo" | "colour" | "floppy" | "optical" | "ethernet" | "printer"} Switch */
 
 /** What each DSP is called. The service answers the three by name, because the
  *  numbers Previous writes are not in the order a person would read them in, and
  *  these are this page's words for those names. Written out one by one rather
  *  than built from the name, so that a key nothing answers is caught by the
- *  strings test instead of appearing as an empty cell. */
+ *  strings test instead of appearing as an empty cell.
+ *  @type {Record<DspKind, string>} */
 const DSP_WORDS = {
   none: "editor.dsp.none",
   plain: "editor.dsp.plain",
   "with-rom": "editor.dsp.with-rom",
 };
 
-/** What each ethernet socket is called, written out for the same reason. */
+/** What each ethernet socket is called, written out for the same reason.
+ *  @type {Record<string, string>} */
 const SOCKET_WORDS = {
   "thin-wire": "editor.thin-wire",
   "twisted-pair": "editor.twisted-pair",
@@ -25,24 +32,20 @@ const SOCKET_WORDS = {
  *  gives the type. Written out rather than built from the number, because a
  *  sentence keyed by a name can be found in the catalog and one keyed by 1
  *  cannot. The strings test holds these numbers to the types the service
- *  offers. */
+ *  offers.
+ *  @type {Record<number, string>} */
 const KIND_NOTES = {
   0: "editor.machine.note.next-computer",
   1: "editor.machine.note.nextcube",
   2: "editor.machine.note.nextstation",
 };
 
-/** The least the first memory bank may hold for the machine to boot, in
- *  megabytes. Previous says so on its own memory dialog and does not raise a
- *  smaller bank itself, so the note under the banks is the one place somebody
- *  is told before the machine fails to come up. */
-
 /**
  * The sentence about one value of a group.
  * @param {string} group - The group's name in the catalog, such as `clock`.
  * @param {string|number} value - What is chosen there, which is the last part
  *   of the key.
- * @param {any} [values] - What fills the sentence's places.
+ * @param {object} [values] - What fills the sentence's places.
  * @returns {string}
  *
  * Built from the value rather than written out per value, so a clock or a size
@@ -55,12 +58,13 @@ function noteFor(group, value, values) {
 
 /**
  * The sentence about a switch, for the state it is in.
- * @param {string} which - The switch, such as `turbo` or `floppy`, which is
- *   both the control's name in the draft and its name in the catalog.
+ * @param {Switch} which - The switch, which is both the control's name in the
+ *   draft and its name in the catalog.
+ * @param {Settled} settled - The machine the window shows.
  * @returns {string}
  */
-function switchNote(which) {
-  return noteFor(which, drafting[which] ? "in" : "out");
+function switchNote(which, settled) {
+  return noteFor(which, settled[which] ? "in" : "out");
 }
 
 /**
