@@ -61,3 +61,21 @@ test("an entry with a letter is pressed by that letter", () => {
 
   assert.equal(pressed, 1);
 });
+
+test("a letter two applications share presses the entry of the one in front", () => {
+  /* Every application's Quit carries the same letter, and the menu holds all
+     of them. The first one in the markup belongs to Grab. */
+  const menu = lay(`<nx-menu name="main" title="Workspace" x="0" y="0">
+    <nx-menu-item for="grab" key="q">Quit</nx-menu-item>
+    <nx-menu-item for="terminal" key="q">Quit</nx-menu-item>
+  </nx-menu>`);
+  menu.showFor("terminal", "Terminal");
+  const pressed = [];
+  for (const entry of menu.querySelectorAll("nx-menu-item")) {
+    entry.addEventListener("click", () => pressed.push(entry.getAttribute("for")));
+  }
+
+  dispatchEvent(new KeyboardEvent("keydown", { key: "q" }));
+
+  assert.deepEqual(pressed, ["terminal"]);
+});

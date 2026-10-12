@@ -8,8 +8,9 @@
 export const en = {
   /* --- the menus ------------------------------------------------------- */
   /* The letter beside each main-menu entry, which is a letter of the
-     word that entry shows. Distinct within the language, because the page
-     acts on the first entry whose letter matches. */
+     word that entry shows. Distinct within each application's entries,
+     because the page acts on the first showing entry whose letter matches,
+     and only one application's entries show at a time. */
   "menu.about-previously": "About Previously...",
   "menu.about-previously.key": "v",
   "menu.about-app": "About {app}...",

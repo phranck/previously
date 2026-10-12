@@ -2089,7 +2089,11 @@ addEventListener("selectstart", (event) => {
    two answers to give with it.
 
    A context menu is left out. Its entries act on whatever was right clicked,
-   and a key press has nothing under the pointer. */
+   and a key press has nothing under the pointer.
+
+   So is every entry the menu is not showing. The one menu holds every
+   application's entries and shows those of the application in front, and two
+   applications use the same letter: every Quit is a q. */
 addEventListener("keydown", (event) => {
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   if (document.querySelector("nx-ask[data-open]")) return;
@@ -2099,7 +2103,8 @@ addEventListener("keydown", (event) => {
       || (focused instanceof HTMLElement && focused.isContentEditable)) return;
 
   const pressed = event.key.toLowerCase();
-  const item = [...document.querySelectorAll("nx-menu:not([context]) nx-menu-item[key]")]
+  const item = [...document.querySelectorAll(
+    "nx-menu:not([context]) nx-menu-item[key]:not([hidden])")]
     .find((entry) => entry.getAttribute("key")?.toLowerCase() === pressed);
   if (!(item instanceof HTMLElement) || item.hasAttribute("disabled")) return;
 
