@@ -619,16 +619,16 @@ def written_for(machine):
 
     @param machine - A Machine.
     @returns dict of section name to dict of key to value, as `settings_for`
-      answers, with `bADB` in the System section and the Screen section from
-      `screen_for` beside it.
+      answers, with `bADB` in the System section, the Screen section from
+      `screen_for`, and a Boot section that leaves the ROM's Sound Out test out.
 
     Two answers rather than one, because `settings_for` is also what a file is
     matched against to say which machine it is, and every key it holds has to
-    be in the file for that. Neither of these makes a machine a different one.
-    Which screen the window shows is about the window, and the Apple Desktop
-    Bus follows from the turbo board alone. A file Previous's own dialog has
-    not saved since holds no `bADB` at all, and matching on it would name no
-    machine for that file.
+    be in the file for that. None of these makes a machine a different one.
+    Which screen the window shows is about the window, the Apple Desktop Bus
+    follows from the turbo board alone, and the power-on test is about the
+    host. A file Previous's own dialog has not saved since holds no `bADB` at
+    all, and matching on it would name no machine for that file.
     """
     written = settings_for(machine)
     # The Apple Desktop Bus came with the turbo board, and Previous's own dialog
@@ -636,6 +636,12 @@ def written_for(machine):
     # and mouse go through it wherever both are set.
     written["System"]["bADB"] = _flag(machine.turbo)
     written["Screen"] = screen_for(machine)
+    # The ROM's Sound Out power-on test, which Previous runs unless told not
+    # to. `SND_Out_Handler` in its src/snd.c paces the emulated sound to the
+    # host's playback, so a sound server that takes its samples late fails the
+    # test, and the boot stops at "System test failed" with error e2. Previous's
+    # readme says its Monitor/Sound diagnostics may fail through timing.
+    written["Boot"] = {"bEnableSoundTest": _flag(False)}
     return written
 
 

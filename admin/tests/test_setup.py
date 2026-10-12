@@ -429,6 +429,19 @@ def test_a_fresh_machine_boots_without_the_rom_printing_its_tests(tmp_path, comm
     assert written["Boot"]["bVerbose"] == "FALSE"
 
 
+def test_a_fresh_machine_boots_without_the_sound_out_test():
+    """The machine's Boot key goes beside the kiosk's two rather than in place
+    of them, as its Screen keys do."""
+    written = configparser.ConfigParser()
+    written.optionxform = str
+    written.read_string(setup._written(
+        machines.find("nextcube-turbo"),
+        pathlib.Path("/home/next/nextstep/nextstep-3.3.dd")))
+
+    assert dict(written["Boot"]) == {"nBootDevice": "1", "bVerbose": "FALSE",
+                                     "bEnableSoundTest": "FALSE"}
+
+
 def test_a_fresh_machine_with_a_board_is_shown_on_it():
     """The kiosk's Screen keys and the machine's share one section, and the
     machine's must not take the kiosk's place."""
