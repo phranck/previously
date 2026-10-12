@@ -309,7 +309,9 @@ class NxDock extends HTMLElement {
       this.aimAt(slot, this.offered.getAttribute("icon") ?? "");
       if (!slot) return;
       event.preventDefault();
-      if (event.dataTransfer) event.dataTransfer.dropEffect = "link";
+      /* The effect NxThing offers. Safari refuses the drop to a target that
+         asks for one the source does not offer, and the icon slides back. */
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
     });
 
     this.addEventListener("dragleave", (event) => {
