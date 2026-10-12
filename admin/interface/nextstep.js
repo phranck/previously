@@ -29,16 +29,33 @@ const STORE = "nextstep-workspace:v4";
 
 /* --- what the desk remembers -------------------------------------------- */
 
-/** @returns {object} Everything saved about the desk, or an empty record. */
+/**
+ * What the desk keeps about one element, under that element's name. Each
+ * element writes the keys it uses and reads them back, so every key may be
+ * missing.
+ * @typedef {object} Remembered
+ * @property {boolean} [open] - A window: whether it is open.
+ * @property {number} [x] - A window or the menu: its left edge.
+ * @property {number} [y] - A window or the menu: its top edge.
+ * @property {number} [w] - A window: its width.
+ * @property {number} [h] - A window: its height.
+ * @property {string} [front] - The desk: the name of the window in front, or
+ *   "" where the desk itself is.
+ * @property {Record<string, number>} [places] - The dock: which slot each tile
+ *   stands in, by the tile's name.
+ */
+
+/** @returns {Record<string, Remembered>} Everything saved about the desk, or
+ *  an empty record. */
 function readState() {
-  try { return JSON.parse(localStorage.getItem(STORE)) ?? {}; }
+  try { return JSON.parse(localStorage.getItem(STORE) ?? "{}") ?? {}; }
   catch { return {}; }
 }
 
 /**
  * Writes one element's state, leaving every other one untouched.
  * @param {string} name - What the element calls itself.
- * @param {object} state - The keys to merge in.
+ * @param {Remembered} state - The keys to merge in.
  */
 function remember(name, state) {
   const all = readState();
@@ -46,7 +63,7 @@ function remember(name, state) {
   localStorage.setItem(STORE, JSON.stringify(all));
 }
 
-/** @param {string} name @returns {object} That element's saved state. */
+/** @param {string} name @returns {Remembered} That element's saved state. */
 function recall(name) {
   return readState()[name] ?? {};
 }
@@ -82,7 +99,7 @@ function deskScale() {
  * gathered in afterwards.
  */
 function setDeskScale(scale) {
-  document.body.style.zoom = scale;
+  document.body.style.zoom = String(scale);
   gatherWindows();
 }
 
@@ -135,6 +152,22 @@ function gatherWindows() {
    window itself. Nothing past them divides by anything. */
 
 /**
+ * A place on the desk, in the units the desk is laid out in.
+ * @typedef {{x: number, y: number}} DeskPoint
+ */
+
+/**
+ * A rectangle on the desk, in the same units. A DOMRect's shape, so it goes
+ * wherever one went.
+ * @typedef {{left: number, top: number, width: number, height: number}} DeskRect
+ */
+
+/**
+ * A size on the desk, in the same units.
+ * @typedef {{width: number, height: number}} DeskSize
+ */
+
+/**
  * @param {number} length - A viewport measurement.
  * @returns {number} The same length as the desk writes it.
  */
@@ -144,17 +177,26 @@ function onDesk(length) {
 
 /**
  * @param {PointerEvent} event
- * @returns {object} Where the pointer is, as `{x, y}` on the desk.
+ * @returns {DeskPoint} Where the pointer is.
  */
 function deskPoint(event) {
   return { x: onDesk(event.clientX), y: onDesk(event.clientY) };
 }
 
 /**
+ * @overload
+ * @param {Element} element
+ * @returns {DeskRect}
+ */
+/**
+ * @overload
+ * @param {Element | null | undefined} element
+ * @returns {DeskRect | null}
+ */
+/**
  * Where an element is, on the desk.
- * @param {HTMLElement} [element] - Anything drawn there.
- * @returns {?object} Its `left`, `top`, `width` and `height`, or null where
- *   there is no element. A DOMRect's shape, so it goes wherever one went.
+ * @param {Element | null} [element] - Anything drawn there.
+ * @returns {DeskRect | null} Where it is, or null where there is no element.
  *
  * What draws a picture of something moving puts that picture against the
  * viewport, and anything put there is still a child of the body and carries
@@ -170,10 +212,23 @@ function deskRect(element) {
   };
 }
 
-/** @returns {object} How much room there is for windows, in the units a
+/** @returns {DeskSize} How much room there is for windows, in the units a
  *  window's own left and top are written in, which zoom does not change. */
 function deskRoom() {
   return { width: onDesk(innerWidth), height: onDesk(innerHeight) };
+}
+
+/**
+ * The element of one kind an event happened in, such as the nx-thing under a
+ * click.
+ * @template {keyof HTMLElementTagNameMap} Tag
+ * @param {Event} event - What happened.
+ * @param {Tag} tag - Which kind.
+ * @returns {HTMLElementTagNameMap[Tag] | null} The nearest one around where it
+ *   happened, or null where it happened in none, or not in an element at all.
+ */
+function closestTo(event, tag) {
+  return event.target instanceof Element ? event.target.closest(tag) : null;
 }
 
 /**
@@ -187,12 +242,13 @@ function showArt(el, name) {
 
 /**
  * Runs a pointer gesture and reports the result when it ends.
+ * @template Start
  * @param {HTMLElement} handle - Where the gesture starts.
- * @param {(point: object, start: object) => void} onMove - Given where the
- *   pointer is now, as `{x, y}` on the desk.
- * @param {(point: object) => object} onStart - Whatever the mover needs to
+ * @param {(point: DeskPoint, start: Start) => void} onMove - Given where the
+ *   pointer is now.
+ * @param {(point: DeskPoint) => Start} onStart - Whatever the mover needs to
  *   know about the moment the gesture began, given the same.
- * @param {(start: object) => void} [onEnd] - Given what onStart returned,
+ * @param {(start: Start) => void} [onEnd] - Given what onStart returned,
  *   which by then carries whatever the moves wrote into it.
  *
  * The pointer is converted here, so what a gesture hands on is already in the
@@ -211,15 +267,16 @@ function gesture(handle, onMove, onStart, onEnd) {
     /* A pointer reports faster than the screen redraws, so the moves are
        coalesced into one update per frame. Everything beyond the last one in
        a frame is work whose result is painted over before anybody sees it. */
+    /** @type {PointerEvent | null} */
     let latest = null;
     let frame = 0;
 
     const apply = () => {
       frame = 0;
-      onMove(deskPoint(latest), start);
+      if (latest) onMove(deskPoint(latest), start);
     };
 
-    const move = (moveEvent) => {
+    const move = (/** @type {PointerEvent} */ moveEvent) => {
       latest = moveEvent;
       if (!frame) frame = requestAnimationFrame(apply);
     };
@@ -251,7 +308,7 @@ function gesture(handle, onMove, onStart, onEnd) {
  *
  * @param {HTMLElement} element - What moves.
  * @param {HTMLElement} handle - What is grabbed.
- * @param {object} hooks
+ * @param {object} [hooks]
  * @param {() => void} [hooks.onGrab] - Called as the gesture begins.
  * @param {() => void} [hooks.onSettled] - Called once the position is written.
  */
@@ -304,7 +361,9 @@ addEventListener("contextmenu", (event) => event.preventDefault());
    browser makes of the property. A terminal is the exception: reading
    something out of it is the point of having one. */
 addEventListener("selectstart", (event) => {
-  if (!event.target.closest?.(".terminal")) event.preventDefault();
+  if (!(event.target instanceof Element && event.target.closest(".terminal"))) {
+    event.preventDefault();
+  }
 });
 
 /* --- the letters beside the menu entries ---------------------------------
@@ -322,12 +381,13 @@ addEventListener("keydown", (event) => {
   if (document.querySelector("nx-ask[data-open]")) return;
 
   const focused = document.activeElement;
-  if (focused?.matches?.("input, textarea, select") || focused?.isContentEditable) return;
+  if (focused?.matches("input, textarea, select")
+      || (focused instanceof HTMLElement && focused.isContentEditable)) return;
 
   const pressed = event.key.toLowerCase();
   const item = [...document.querySelectorAll("nx-menu:not([context]) nx-menu-item[key]")]
-    .find((entry) => entry.getAttribute("key").toLowerCase() === pressed);
-  if (!item || item.hasAttribute("disabled")) return;
+    .find((entry) => entry.getAttribute("key")?.toLowerCase() === pressed);
+  if (!(item instanceof HTMLElement) || item.hasAttribute("disabled")) return;
 
   event.preventDefault();
   item.click();
@@ -392,7 +452,8 @@ function deskIsNew() {
  * far it is dragged afterwards.
  */
 addEventListener("pointerdown", (event) => {
-  if (event.target.closest("nx-window, nx-menu, nx-dock, nx-floor, nx-ask")) return;
+  if (event.target instanceof Element
+      && event.target.closest("nx-window, nx-menu, nx-dock, nx-floor, nx-ask")) return;
   for (const window_ of document.querySelectorAll("nx-window")) {
     window_.setAttribute("inactive", "");
   }
@@ -436,12 +497,12 @@ function stillness() {
 /**
  * Sends a picture of an icon from one place to another.
  * @param {string} icon - Which picture.
- * @param {object} from - Where it starts, as deskRect answers.
- * @param {object} to - Where it lands, as deskRect answers.
- * @param {number} howLong - How long it takes, in milliseconds. The default
+ * @param {DeskRect} from - Where it starts.
+ * @param {DeskRect} to - Where it lands.
+ * @param {number} [howLong] - How long it takes, in milliseconds. The default
  *   is the way across the screen; a way inside one window is shorter and is
  *   given NEAR_FLIGHT_MS.
- * @returns {Promise} Settled when it has landed.
+ * @returns {Promise<void>} Settled when it has landed.
  *
  * A transform and nothing else, so this costs the compositor and not the
  * layout. Where the reader has asked for less movement there is no flight at
@@ -468,18 +529,17 @@ function fly(icon, from, to, howLong = FLIGHT_MS) {
     { transform: "translate(0, 0) scale(1)" },
   ], { duration: howLong, easing: "ease-out" });
 
-  return flight.finished.catch(() => {}).finally(() => ghost.remove());
+  return flight.finished.then(() => {}, () => {}).finally(() => ghost.remove());
 }
 
 
 
 /**
  * Draws the way from one place to another, as a run of rectangles.
- * @param {object} from - Where it starts, which is the mark around an icon,
- *   as deskRect answers.
- * @param {object} to - Where it ends, which is the box about to hold what was
- *   in that folder, in the same units.
- * @returns {Promise} Settled when they have gone.
+ * @param {DeskRect} from - Where it starts, which is the mark around an icon.
+ * @param {DeskRect} to - Where it ends, which is the box about to hold what
+ *   was in that folder.
+ * @returns {Promise<void>} Settled when they have gone.
  *
  * Several, and none of them is rubbed out: each is drawn at its own size a
  * moment after the last, so what stands on the screen is a run of nested
@@ -492,7 +552,9 @@ function fly(icon, from, to, howLong = FLIGHT_MS) {
 function zoom(from, to) {
   if (stillness()) return Promise.resolve();
 
+  /** @type {HTMLElement[]} */
   const drawn = [];
+  /** @type {Animation | null} */
   let last = null;
   for (let step = 1; step <= ZOOM_RECTANGLES; step += 1) {
     const part = step / ZOOM_RECTANGLES;
@@ -514,8 +576,8 @@ function zoom(from, to) {
     });
   }
 
-  return last.finished
-    .catch(() => {})
+  return (last ? last.finished : Promise.resolve())
+    .then(() => {}, () => {})
     .finally(() => drawn.forEach((box) => box.remove()));
 }
 
@@ -556,6 +618,7 @@ class NxWindow extends HTMLElement {
     const content = [...this.childNodes];
     this.replaceChildren();
 
+    /** @type {HTMLElement} */
     this.bar = this.build("div", "titlebar");
     this.bar.append(this.build("i", "art wbtn mini"));
     const title = this.build("div", "title");
@@ -564,6 +627,7 @@ class NxWindow extends HTMLElement {
     const close = this.build("i", "art wbtn close");
     this.bar.append(title, close);
 
+    /** @type {HTMLElement} */
     this.pane = this.build("div", "pane");
     this.pane.append(...content);
     this.append(this.bar, this.pane);
@@ -586,7 +650,11 @@ class NxWindow extends HTMLElement {
     if (title) title.textContent = text;
   }
 
-  /** @returns {HTMLElement} A child element, appended nowhere yet. */
+  /**
+   * @param {string} tag - Which element.
+   * @param {string} className - What the stylesheet knows it by.
+   * @returns {HTMLElement} A child element, appended nowhere yet.
+   */
   build(tag, className) {
     const el = document.createElement(tag);
     el.className = className;
@@ -596,11 +664,13 @@ class NxWindow extends HTMLElement {
   /** Puts the window where it was left, or where its attributes say. */
   place() {
     const saved = recall(this.name);
+    /** @type {(key: "x" | "y" | "w" | "h", attribute: string) => number} */
     const number = (key, attribute) => saved[key] ?? Number(this.getAttribute(attribute));
     /* A window nobody can resize has no size of its own to remember, so its
        markup decides. Otherwise a size saved before it was fixed, or before
        its contents changed, would outlive both. */
     const fixed = this.hasAttribute("fixed");
+    /** @type {typeof number} */
     const size = fixed
       ? (_key, attribute) => Number(this.getAttribute(attribute))
       : number;
@@ -640,15 +710,15 @@ class NxWindow extends HTMLElement {
     this.hidden = !(saved.open ?? !this.hasAttribute("closed"));
   }
 
-  /** @returns {string} The name it is known by. */
-  get name() { return this.getAttribute("name"); }
+  /** @returns {string} The name it is known by, which every window carries. */
+  get name() { return this.getAttribute("name") ?? ""; }
 
   /**
    * A size this window can have on the desk as it is now.
    * @param {number} width - The width wanted, in the window's own units.
    * @param {number} height - The height wanted.
-   * @returns {object} `width` and `height`, each at least the floor its
-   *   content needs and no larger than the desk.
+   * @returns {DeskSize} Each side at least the floor its content needs and no
+   *   larger than the desk.
    *
    * No larger than the desk, because the resize bar runs along the window's
    * foot and its title bar cannot be taken above the top edge: a window taller
@@ -664,7 +734,8 @@ class NxWindow extends HTMLElement {
     };
   }
 
-  /** The floor this window's content needs, read off the element itself. */
+  /** @returns {DeskSize} The floor this window's content needs, read off the
+   *  element itself. */
   get floor() {
     const style = getComputedStyle(this);
     return {
@@ -681,6 +752,7 @@ class NxWindow extends HTMLElement {
    * would come back in the corner at no size at all.
    */
   save() {
+    /** @type {Remembered} */
     const state = { open: !this.hidden };
     if (!this.hidden) {
       Object.assign(state, {
@@ -707,7 +779,7 @@ class NxWindow extends HTMLElement {
       highest = Math.max(highest, Number(other.style.zIndex) || 10);
       other.setAttribute("inactive", "");
     }
-    this.style.zIndex = highest + 1;
+    this.style.zIndex = String(highest + 1);
     this.removeAttribute("inactive");
     remember("desk", { front: this.name });
     /* The main menu belongs to whatever is in front, so the one thing that
@@ -720,7 +792,7 @@ class NxWindow extends HTMLElement {
 
   /**
    * Shows it, in front.
-   * @param {HTMLElement} [asker] - What was used to open it, if anything was.
+   * @param {Element | null} [asker] - What was used to open it, if anything was.
    *   It rides along as a rectangle, because an application whose icon has to
    *   travel to the foot of the screen has to know where it is traveling
    *   from, and only whoever was clicked knows that.
@@ -764,14 +836,15 @@ class NxWindow extends HTMLElement {
   acceptDrops() {
     this.addEventListener("dragover", (event) => {
       event.preventDefault();
-      event.dataTransfer.dropEffect = "copy";
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
       this.setAttribute("droppable", "");
     });
 
     /* Moving onto a child fires dragleave on the parent, so only a pointer
        that has actually left the window counts. */
     this.addEventListener("dragleave", (event) => {
-      if (!this.contains(event.relatedTarget)) this.removeAttribute("droppable");
+      const into = event.relatedTarget;
+      if (!(into instanceof Node && this.contains(into))) this.removeAttribute("droppable");
     });
 
     this.addEventListener("drop", (event) => {
@@ -779,7 +852,7 @@ class NxWindow extends HTMLElement {
       this.removeAttribute("droppable");
       this.dispatchEvent(new CustomEvent("nx-choose", {
         bubbles: true,
-        detail: { value: event.dataTransfer.getData("text/plain") },
+        detail: { value: event.dataTransfer?.getData("text/plain") ?? "" },
       }));
     });
   }
@@ -789,13 +862,14 @@ class NxWindow extends HTMLElement {
   addResizer() {
     const bar = this.build("div", "resizer");
     const left = this.build("div", "end");
+    const middle = this.build("div", "middle");
     const right = this.build("div", "end");
     left.dataset.corner = "left";
     right.dataset.corner = "right";
-    bar.append(left, this.build("div", "middle"), right);
+    bar.append(left, middle, right);
     this.append(bar);
 
-    for (const handle of bar.children) {
+    for (const handle of [left, middle, right]) {
       const corner = handle.dataset.corner;
       gesture(handle,
         (point, start) => {
@@ -831,7 +905,8 @@ class NxWindow extends HTMLElement {
     }
   }
 
-  /** Dragging by the bar, closing by the button, raising by a click anywhere. */
+  /** Dragging by the bar, closing by the button, raising by a click anywhere.
+   *  @param {HTMLElement} close - The close button. */
   wire(close) {
     draggable(this, this.bar, {
       onGrab: () => this.raise(),
@@ -882,7 +957,7 @@ class NxMenu extends HTMLElement {
       return;
     }
 
-    const name = this.getAttribute("name");
+    const name = this.getAttribute("name") ?? "";
     const saved = recall(name);
     this.style.left = (saved.x ?? Number(this.getAttribute("x"))) + "px";
     this.style.top = (saved.y ?? Number(this.getAttribute("y"))) + "px";
@@ -908,8 +983,11 @@ class NxMenu extends HTMLElement {
     const bar = this.querySelector(":scope > .title");
     if (bar) bar.textContent = title;
 
+    /** @type {NxMenuItem | null} */
     let last = null;
-    for (const entry of this.querySelectorAll(":scope > nx-menu-item")) {
+    const entries = /** @type {NodeListOf<NxMenuItem>} */ (
+      this.querySelectorAll(":scope > nx-menu-item"));
+    for (const entry of entries) {
       /* `away` is an entry that is not in this menu at all just now, which is
          the page's to say: an entry about a machine, on a desk where none is
          installed, is a question with no answer. `hidden` stays this menu's
@@ -944,15 +1022,16 @@ class NxMenu extends HTMLElement {
     this.style.left = Math.min(onDesk(x), room.width - own.width - 2) + "px";
     this.style.top = Math.min(onDesk(y), room.height - own.height - 2) + "px";
 
-    const away = (event) => {
-      if (this.contains(event.target)) return;
+    const away = (/** @type {PointerEvent} */ event) => {
+      if (event.target instanceof Node && this.contains(event.target)) return;
       this.close();
     };
+    /** @type {(() => void) | null} */
     this.dismiss = () => {
       removeEventListener("pointerdown", away, true);
       removeEventListener("keydown", escape);
     };
-    const escape = (event) => {
+    const escape = (/** @type {KeyboardEvent} */ event) => {
       if (event.key === "Escape") this.close();
     };
     addEventListener("pointerdown", away, true);
@@ -982,7 +1061,8 @@ class NxMenuItem extends HTMLElement {
        the words all begin at the same column. */
     const art = document.createElement("i");
     art.className = "art mark";
-    if (this.hasAttribute("icon")) showArt(art, this.getAttribute("icon"));
+    const icon = this.getAttribute("icon");
+    if (icon !== null) showArt(art, icon);
     this.prepend(art);
     if (this.hasAttribute("key")) {
       const key = document.createElement("span");
@@ -994,13 +1074,21 @@ class NxMenuItem extends HTMLElement {
     if (target) {
       this.addEventListener("click", () => {
         if (this.hasAttribute("disabled")) return;
-        document.querySelector(`nx-window[name="${target}"]`)?.open(this);
+        /** @type {NxWindow | null} */ (
+          document.querySelector(`nx-window[name="${target}"]`))?.open(this);
       });
     }
   }
 }
 
 /* --- nx-popup ----------------------------------------------------------- */
+
+/**
+ * One choice a pop-up list offers.
+ * @typedef {object} PopupChoice
+ * @property {string} value - What `nx-pick` carries when it is chosen.
+ * @property {string} label - What the list and the button show for it.
+ */
 
 /**
  * A pop-up list: a button labeled with what is chosen and marked with NeXT's
@@ -1027,9 +1115,11 @@ class NxPopup extends HTMLElement {
     this.ready = true;
     this.choices ??= [];
 
+    /** @type {HTMLButtonElement} */
     this.button = document.createElement("button");
     this.button.type = "button";
     this.button.className = "popup-button";
+    /** @type {HTMLSpanElement} */
     this.label = document.createElement("span");
     this.label.className = "popup-label";
     const mark = document.createElement("i");
@@ -1043,15 +1133,16 @@ class NxPopup extends HTMLElement {
 
   /**
    * Says what can be chosen, and which of it is.
-   * @param {{value: string, label: string}[]} choices - In the order the list
-   *   shows them.
-   * @param {string} [value] - The one chosen, the first where none is named or
-   *   the one named is not among them.
+   * @param {PopupChoice[]} choices - In the order the list shows them.
+   * @param {string | null} [value] - The one chosen, the first where none is
+   *   named or the one named is not among them.
    */
   offer(choices, value) {
+    /** @type {PopupChoice[]} */
     this.choices = choices;
-    this.value = choices.some((choice) => choice.value === value)
-      ? value : choices[0]?.value ?? "";
+    const named = choices.find((choice) => choice.value === value);
+    /** @type {string} */
+    this.value = named ? named.value : choices[0]?.value ?? "";
     this.drawLabel();
   }
 
@@ -1090,20 +1181,20 @@ class NxPopup extends HTMLElement {
     document.body.append(list);
     this.place(list);
 
-    const under = (pointer) => /** @type {any} */ (
-      document.elementFromPoint(pointer.clientX, pointer.clientY))
-      ?.closest?.(".popup-list nx-menu-item");
-    const follow = (pointer) => {
+    const under = (/** @type {PointerEvent} */ pointer) => document
+      .elementFromPoint(pointer.clientX, pointer.clientY)
+      ?.closest(".popup-list nx-menu-item");
+    const follow = (/** @type {PointerEvent} */ pointer) => {
       const item = under(pointer);
       for (const each of list.children) each.toggleAttribute("lit", each === item);
     };
-    const finish = (pointer) => {
+    const finish = (/** @type {PointerEvent} */ pointer) => {
       removeEventListener("pointermove", follow);
       removeEventListener("pointercancel", finish);
       const item = pointer.type === "pointerup" ? under(pointer) : null;
       list.remove();
-      if (item && item.dataset.value !== this.value) {
-        this.value = item.dataset.value;
+      if (item instanceof HTMLElement && item.dataset.value !== this.value) {
+        this.value = item.dataset.value ?? "";
         this.drawLabel();
         this.dispatchEvent(new CustomEvent("nx-pick", {
           detail: { value: this.value }, bubbles: true }));
@@ -1165,6 +1256,7 @@ class NxDock extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
+    /** @type {HTMLElement} */
     this.mark = document.createElement("i");
     this.mark.className = "slot";
 
@@ -1180,7 +1272,7 @@ class NxDock extends HTMLElement {
     addEventListener("resize", () => this.arrange());
   }
 
-  /** @returns {HTMLElement[]} The tiles in the column, in markup order. */
+  /** @returns {NxTile[]} The tiles in the column, in markup order. */
   get tiles() {
     return [...this.querySelectorAll("nx-tile")];
   }
@@ -1205,12 +1297,14 @@ class NxDock extends HTMLElement {
    */
   arrange() {
     const saved = recall("dock").places ?? {};
+    /** @type {Set<number>} */
     const taken = new Set();
-    const put = (tile, slot) => {
+    const put = (/** @type {HTMLElement} */ tile, /** @type {number} */ slot) => {
       taken.add(slot);
-      tile.style.gridRow = slot;
+      tile.style.gridRow = String(slot);
     };
-    const open = (slot) => slot >= 1 && slot <= this.slots && !taken.has(slot);
+    const open = (/** @type {number} */ slot) =>
+      slot >= 1 && slot <= this.slots && !taken.has(slot);
 
     const fixed = this.tiles.filter((tile) => tile.hasAttribute("fixed"));
     fixed.filter((tile) => !tile.hasAttribute("foot"))
@@ -1218,10 +1312,12 @@ class NxDock extends HTMLElement {
     const feet = fixed.filter((tile) => tile.hasAttribute("foot"));
     feet.forEach((tile, index) => put(tile, this.slots - feet.length + 1 + index));
 
+    /** @type {HTMLElement[]} */
     const waiting = [];
     for (const tile of this.tiles.filter((tile) => !tile.hasAttribute("fixed"))) {
-      const slot = saved[tile.getAttribute("name")];
-      if (Number.isInteger(slot) && open(slot)) put(tile, slot);
+      const name = tile.getAttribute("name");
+      const slot = name === null ? undefined : saved[name];
+      if (slot !== undefined && Number.isInteger(slot) && open(slot)) put(tile, slot);
       else waiting.push(tile);
     }
     for (const tile of waiting) {
@@ -1267,7 +1363,7 @@ class NxDock extends HTMLElement {
       this.mark.remove();
       return;
     }
-    this.mark.style.gridRow = slot;
+    this.mark.style.gridRow = String(slot);
     if (!this.mark.isConnected) this.append(this.mark);
   }
 
@@ -1277,7 +1373,7 @@ class NxDock extends HTMLElement {
    * @param {number} slot
    */
   settle(tile, slot) {
-    tile.style.gridRow = slot;
+    tile.style.gridRow = String(slot);
     const name = tile.getAttribute("name");
     if (!name) return;
     remember("dock", { places: { ...(recall("dock").places ?? {}), [name]: slot } });
@@ -1345,18 +1441,26 @@ class NxTile extends HTMLElement {
 
     const art = document.createElement("i");
     art.className = "art";
-    showArt(art, this.getAttribute("icon"));
+    showArt(art, this.getAttribute("icon") ?? "");
     this.append(art);
 
     const target = this.getAttribute("opens");
     if (target) {
       this.addEventListener("dblclick", () => {
         if (this.hasAttribute("disabled")) return;
-        document.querySelector(`nx-window[name="${target}"]`)?.open(this);
+        /** @type {NxWindow | null} */ (
+          document.querySelector(`nx-window[name="${target}"]`))?.open(this);
       });
     }
   }
 }
+
+/**
+ * An application's tile on the floor.
+ * @typedef {object} FloorTile
+ * @property {string} icon - Which picture it carries.
+ * @property {string} opens - The name of the window it stands for.
+ */
 
 /**
  * Where an application that is not in the dock puts its icon.
@@ -1373,11 +1477,11 @@ class NxTile extends HTMLElement {
 class NxFloor extends HTMLElement {
   /**
    * Puts the icons there, in the order they were started.
-   * @param {Array<object>} running - `{icon, opens}` for each.
-   * @param {object} [arriving] - The one that has just started, and where it
-   *   is coming from: `{opens, from}` with a DOMRect. Left out, everything is
+   * @param {FloorTile[]} running - One for each.
+   * @param {{opens: string, from: DeskRect | null}} [arriving] - The one that
+   *   has just started, and where it is coming from. Left out, everything is
    *   simply drawn.
-   * @returns {Promise} Settled once what arrived has landed.
+   * @returns {Promise<void>} Settled once what arrived has landed.
    */
   async show(running, arriving) {
     const tiles = running.map((application) => this.tile(application));
@@ -1393,11 +1497,14 @@ class NxFloor extends HTMLElement {
        will actually take: the tiles beside it decide that, not this one. */
     this.replaceChildren(...tiles);
     newcomer.style.visibility = "hidden";
-    await fly(newcomer.getAttribute("icon"), arriving.from, deskRect(newcomer));
+    await fly(newcomer.getAttribute("icon") ?? "", arriving.from, deskRect(newcomer));
     newcomer.style.visibility = "";
   }
 
-  /** @returns {HTMLElement} One tile for an application. */
+  /**
+   * @param {FloorTile} application - What to draw.
+   * @returns {NxTile} One tile for an application.
+   */
   tile(application) {
     const tile = document.createElement("nx-tile");
     tile.setAttribute("icon", application.icon);
@@ -1409,8 +1516,10 @@ class NxFloor extends HTMLElement {
 /* --- nx-scroller -------------------------------------------------------- */
 
 /** What differs between the two directions, so that everything else does not
- *  have to know there are two. */
-const WAYS = {
+ *  have to know there are two. Each value names a property of an element, a
+ *  style or a point, so the checker holds every lookup below to one that
+ *  exists. */
+const WAYS = /** @type {const} */ ({
   down: {
     steps: ["up", "down"],
     length: "scrollHeight", showing: "clientHeight", along: "scrollTop",
@@ -1423,7 +1532,20 @@ const WAYS = {
     edge: "left", size: "width", pointer: "x", offset: "offsetLeft",
     room: "clientWidth", trailing: "paddingRight",
   },
-};
+});
+
+/** One of the two directions. @typedef {keyof typeof WAYS} Way */
+
+/** What one direction differs in. @typedef {typeof WAYS[Way]} WayParts */
+
+/**
+ * One scroller, as addBar builds it.
+ * @typedef {object} Bar
+ * @property {HTMLDivElement} trough - The checkered track.
+ * @property {HTMLDivElement} knob - What a person drags.
+ * @property {HTMLDivElement} arrows - Both arrows, at the far end.
+ * @property {WayParts} how - Which direction it scrolls in.
+ */
 
 /**
  * A view with NeXT's scroller on its left: a checkered trough, a knob that
@@ -1442,6 +1564,13 @@ const WAYS = {
  * empty trough is what the original shows.
  */
 class NxScroller extends HTMLElement {
+  /** @type {HTMLElement | undefined} What the bars move, once there is one. */
+  view;
+
+  /** @type {(() => void) | undefined} What the view's scrolling calls, made
+   *  once so that it can be taken off again. */
+  onScroll;
+
   connectedCallback() {
     if (this.ready) return;
     this.ready = true;
@@ -1451,8 +1580,9 @@ class NxScroller extends HTMLElement {
     const view = this.firstElementChild;
 
     const wanted = (this.getAttribute("bars") || "down").split(/\s+/);
+    /** @type {Partial<Record<Way, Bar>>} */
     this.bars = {};
-    for (const way of ["down", "across"]) {
+    for (const way of /** @type {Way[]} */ (["down", "across"])) {
       if (wanted.includes(way)) this.bars[way] = this.addBar(way);
     }
 
@@ -1461,7 +1591,8 @@ class NxScroller extends HTMLElement {
 
   /**
    * Points the bars at whatever actually scrolls.
-   * @param {HTMLElement} view - The element whose scrollTop the knob moves.
+   * @param {Element | null} view - The element whose scrollTop the knob
+   *   moves. Nothing happens where there is none.
    *
    * The child of this element, ordinarily. Some views scroll something of
    * their own further in, because a library built the markup: a terminal
@@ -1470,14 +1601,14 @@ class NxScroller extends HTMLElement {
    * follow it from then on.
    */
   drive(view) {
-    if (!view || view === this.view) return;
+    if (!(view instanceof HTMLElement) || view === this.view) return;
 
     this.watch?.forEach((observer) => observer.disconnect());
+    this.onScroll ??= () => this.refresh();
     this.view?.removeEventListener("scroll", this.onScroll);
 
     this.view = view;
-    this.onScroll ??= () => this.refresh();
-    this.view.addEventListener("scroll", this.onScroll);
+    view.addEventListener("scroll", this.onScroll);
 
     /* What there is to scroll is the content's size against the view's, so
        both sizes are watched: the view's own, and that of every child it
@@ -1493,16 +1624,16 @@ class NxScroller extends HTMLElement {
     const sized = new ResizeObserver(() => this.refresh());
     const watchTheContent = () => {
       sized.disconnect();
-      sized.observe(this.view);
-      for (const child of this.view.children) sized.observe(child);
+      sized.observe(view);
+      for (const child of view.children) sized.observe(child);
     };
     watchTheContent();
     const changed = new MutationObserver((records) => {
-      if (records.some((record) => record.target === this.view
+      if (records.some((record) => record.target === view
                        && record.type === "childList")) watchTheContent();
       this.refresh();
     });
-    changed.observe(this.view, { childList: true, subtree: true, characterData: true });
+    changed.observe(view, { childList: true, subtree: true, characterData: true });
     this.watch = [sized, changed];
 
     /* Says in the markup that the child is not what scrolls, so the stylesheet
@@ -1515,8 +1646,8 @@ class NxScroller extends HTMLElement {
 
   /**
    * Builds one scroller.
-   * @param {string} way - "down" or "across".
-   * @returns {object} Its trough, its knob and its arrows.
+   * @param {Way} way - Which direction it scrolls in.
+   * @returns {Bar} Its trough, its knob and its arrows.
    */
   addBar(way) {
     const how = WAYS[way];
@@ -1536,6 +1667,7 @@ class NxScroller extends HTMLElement {
       one.append(document.createElement("i"));
       one.addEventListener("pointerdown", (event) => {
         event.stopPropagation();
+        if (!this.view) return;
         const back = step === "up" || step === "left";
         this.view[how.along] += (back ? -1 : 1) * NxScroller.LINE;
       });
@@ -1546,46 +1678,51 @@ class NxScroller extends HTMLElement {
 
     gesture(knob,
       (point, start) => {
+        const view = this.view;
+        if (!view) return;
         const room = trough[how.room] - knob[how.size === "height" ? "offsetHeight" : "offsetWidth"];
         const at = Math.max(0, Math.min(point[how.pointer] - start.grab, room));
-        this.view[how.along] =
-          (at / room) * (this.view[how.length] - this.view[how.showing]);
+        view[how.along] = (at / room) * (view[how.length] - view[how.showing]);
       },
       (point) => ({ grab: point[how.pointer] - knob[how.offset] }));
 
     return { trough, knob, arrows, how };
   }
 
-  /** Redraws both bars from the view's current state. */
+  /** Redraws both bars from the view's current state, where there is a view. */
   refresh() {
-    for (const bar of Object.values(this.bars)) this.fit(bar);
+    const view = this.view;
+    if (!view) return;
+    for (const bar of Object.values(this.bars)) this.fit(bar, view);
   }
 
   /**
    * Draws one bar.
-   * @param {object} bar - What addBar returned.
+   * @param {Bar} bar - What addBar returned.
+   * @param {HTMLElement} view - What it scrolls.
    *
    * A bar with nothing to scroll keeps its trough and loses its knob and its
    * arrows, which is what the original shows: the trough is part of the view
    * rather than a thing that appears when it is needed.
    */
-  fit({ trough, knob, arrows, how }) {
-    const more = this.holdsMore(how);
+  fit({ trough, knob, arrows, how }, view) {
+    const more = this.holdsMore(how, view);
     knob.hidden = !more;
     arrows.hidden = !more;
     if (!more) return;
 
-    const overflow = this.view[how.length] - this.view[how.showing];
+    const overflow = view[how.length] - view[how.showing];
     const room = trough[how.room];
     const size = Math.max(NxScroller.SMALLEST_KNOB,
-                          room * this.view[how.showing] / this.view[how.length]);
+                          room * view[how.showing] / view[how.length]);
     knob.style[how.size] = size + "px";
-    knob.style[how.edge] = (this.view[how.along] / overflow) * (room - size) + "px";
+    knob.style[how.edge] = (view[how.along] / overflow) * (room - size) + "px";
   }
 
   /**
    * Whether the view hides anything a reader could scroll to.
-   * @param {object} how - One of WAYS.
+   * @param {WayParts} how - One of WAYS.
+   * @param {HTMLElement} view - What scrolls.
    * @returns {boolean}
    *
    * The two figures cannot be compared as they come. Both are whole pixels
@@ -1597,9 +1734,9 @@ class NxScroller extends HTMLElement {
    * of it still shows everything in it. So what counts is how far the content
    * runs past that padding, and only by more than one rounding.
    */
-  holdsMore(how) {
-    const trailing = parseFloat(getComputedStyle(this.view)[how.trailing]) || 0;
-    const past = this.view[how.length] - this.view[how.showing] - trailing;
+  holdsMore(how, view) {
+    const trailing = parseFloat(getComputedStyle(view)[how.trailing]) || 0;
+    const past = view[how.length] - view[how.showing] - trailing;
     return past > NxScroller.ROUNDING;
   }
 }
@@ -1615,7 +1752,7 @@ class NxShelf extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
     this.addEventListener("click", (event) => {
-      const thing = event.target.closest("nx-thing");
+      const thing = closestTo(event, "nx-thing");
       if (!thing || !this.contains(thing)) return;
       if (thing.hasAttribute("disabled")) return;
       this.choose(thing);
@@ -1644,7 +1781,7 @@ class NxThing extends HTMLElement {
     slot.className = "slot art";
     const art = document.createElement("i");
     art.className = "art icon";
-    showArt(art, this.getAttribute("icon"));
+    showArt(art, this.getAttribute("icon") ?? "");
     slot.append(art);
 
     const name = document.createElement("span");
@@ -1665,8 +1802,9 @@ class NxThing extends HTMLElement {
     if (this.ready) this.draggable = this.canBeUsed;
   }
 
-  /** @returns {string} What this thing hands over when it is used. */
-  get value() { return this.getAttribute("value"); }
+  /** @returns {string} What this thing hands over when it is used, which is
+   *  "" for a thing that hands nothing over. */
+  get value() { return this.getAttribute("value") ?? ""; }
 
   /** @returns {boolean} Whether it hands anything over at all. A thing can be
    *  switched off because using it would do nothing, which is different from
@@ -1686,7 +1824,7 @@ class NxThing extends HTMLElement {
     this.addEventListener("dragstart", (event) => {
       /* Checked here rather than when this was wired, because a thing is
          switched off and on again while the page is up. */
-      if (!this.canBeUsed) return event.preventDefault();
+      if (!this.canBeUsed || !event.dataTransfer) return event.preventDefault();
       event.dataTransfer.setData("text/plain", this.value);
       event.dataTransfer.effectAllowed = "copy";
       this.setAttribute("lifting", "");
@@ -1710,6 +1848,47 @@ class NxThing extends HTMLElement {
 }
 
 /* --- nx-ask ------------------------------------------------------------- */
+
+/**
+ * What a panel asks, says and offers.
+ * @typedef {object} Question
+ * @property {string} name - What the panel calls itself, after the command
+ *   that brought it up. It stands beside the icon above the groove, because
+ *   an attention panel's title bar is empty.
+ * @property {string} [subtitle] - A line under the name, above the groove, in
+ *   the panel's ordinary type. Left out, the name stands alone.
+ * @property {(string | Node)[]} text - One paragraph per entry, below the
+ *   groove, as a sentence or as an element where the caller had to build the
+ *   line itself.
+ * @property {string} [icon] - Which picture, by the name showArt knows.
+ * @property {string} confirm - The wording on the acting button. The kit holds
+ *   no words of its own, in any language, so both buttons are named by
+ *   whoever asks.
+ * @property {string | null} [cancel] - The wording on the safe one. Left out,
+ *   the panel has one button.
+ * @property {boolean} [field] - Show a line to type into.
+ * @property {boolean} [secret] - Draw that line as a password field, so what
+ *   is typed into it is not read over the typist's shoulder.
+ * @property {boolean} [dangerous] - Whether the acting button costs something
+ *   that does not come back. Such a button takes no Return and carries no
+ *   Return-key symbol, so it has to be clicked. The chapter puts it the other
+ *   way round, in "The default button in an attention panel should normally
+ *   be operable by pressing the Return key... However, if the button has
+ *   dangerous side effects, it's acceptable to require that the user press
+ *   the button", so normal here is that Return presses.
+ */
+
+/**
+ * The parts of the panel it writes into.
+ * @typedef {object} AskParts
+ * @property {HTMLElement} name - The panel's name beside the icon.
+ * @property {HTMLElement} subtitle - The line under the name.
+ * @property {HTMLElement} lines - The paragraphs below the groove.
+ * @property {HTMLElement} icon - The picture.
+ * @property {HTMLInputElement} entry - The line to type into.
+ * @property {HTMLButtonElement} acting - The button that does it.
+ * @property {HTMLButtonElement} safe - The button that does not.
+ */
 
 /**
  * The panel that asks before anything changes.
@@ -1755,9 +1934,21 @@ class NxAsk extends HTMLElement {
         </div>
       </div>`;
 
+    /** @type {AskParts} The parts the panel writes into, found once. */
+    this.parts = {
+      name: this.ownPart(".name", HTMLElement),
+      subtitle: this.ownPart(".subtitle", HTMLElement),
+      lines: this.ownPart(".lines", HTMLElement),
+      icon: this.ownPart(".icon", HTMLElement),
+      entry: this.ownPart(".entry", HTMLInputElement),
+      acting: this.ownPart('[data-answer="yes"]', HTMLButtonElement),
+      safe: this.ownPart('[data-answer="no"]', HTMLButtonElement),
+    };
+
+    /** @type {((answer: boolean) => void) | null} */
     this.settle = null;
     this.returns = true;
-    for (const button of this.querySelectorAll("button")) {
+    for (const button of [this.parts.safe, this.parts.acting]) {
       button.addEventListener("click", () => this.close(button.dataset.answer === "yes"));
     }
 
@@ -1768,6 +1959,7 @@ class NxAsk extends HTMLElement {
        for the default button should be operable by the Return key." Where the
        panel said its default is dangerous, Return presses nothing at all and
        the answer has to be clicked. */
+    /** @type {(event: KeyboardEvent) => void} */
     this.keys = (event) => {
       if (event.key === "Escape") this.close(false);
       if (event.key === "Enter" && this.returns) this.close(true);
@@ -1777,43 +1969,39 @@ class NxAsk extends HTMLElement {
        the moment Return would not. In a browser that is the document losing
        focus, which is this desk's version of the panel not being the key
        window. */
+    /** @type {() => void} */
     this.focusChanged = () => this.markTheReturnKey();
   }
 
   /**
+   * One part of the panel's own markup.
+   * @template {Element} Kind
+   * @param {string} selector - Where it is.
+   * @param {new () => Kind} kind - What it is.
+   * @returns {Kind}
+   *
+   * The markup is the panel's own, written a few lines above, so a part that
+   * is missing or of another kind is a mistake in this file and says so at once
+   * rather than as a null somewhere later.
+   */
+  ownPart(selector, kind) {
+    const found = this.querySelector(selector);
+    if (!(found instanceof kind)) throw new Error(`nx-ask has no ${selector}`);
+    return found;
+  }
+
+  /**
    * Puts the question and waits for an answer.
-   * @param {object} question
-   * @param {string} question.name - What the panel calls itself, after the
-   *   command that brought it up. It stands beside the icon above the groove,
-   *   because an attention panel's title bar is empty.
-   * @param {string} [question.subtitle] - A line under the name, above the
-   *   groove, in the panel's ordinary type. Left out, the name stands alone.
-   * @param {(string|Node)[]} question.text - One paragraph per entry, below
-   *   the groove.
-   * @param {string} [question.icon] - Which picture, by the name showArt knows.
-   * @param {string} question.confirm - The wording on the acting button. The
-   *   kit holds no words of its own, in any language, so both buttons are
-   *   named by whoever asks.
-   * @param {string} question.cancel - The wording on the safe one.
-   * @param {boolean} [question.field] - Show a line to type into.
-   * @param {boolean} [question.secret] - Draw that line as a password field, so
-   *   what is typed into it is not read over the typist's shoulder.
-   * @param {boolean} [question.dangerous] - Whether the acting button costs
-   *   something that does not come back. Such a button takes no Return and
-   *   carries no Return-key symbol, so it has to be clicked. The chapter puts
-   *   it the other way round, in "The default button in an attention panel
-   *   should normally be operable by pressing the Return key... However, if
-   *   the button has dangerous side effects, it's acceptable to require that
-   *   the user press the button", so normal here is that Return presses.
+   * @param {Question} question
    * @returns {Promise<boolean>} True where the acting button was pressed.
    */
   ask({ name, subtitle, text, icon, confirm, cancel, field = false,
         secret = false, dangerous = false }) {
-    this.querySelector(".name").textContent = name;
-    const under = this.querySelector(".subtitle");
-    under.hidden = !subtitle;
-    under.textContent = subtitle ?? "";
-    this.querySelector(".lines").replaceChildren(
+    const parts = this.parts;
+    parts.name.textContent = name;
+    parts.subtitle.hidden = !subtitle;
+    parts.subtitle.textContent = subtitle ?? "";
+    parts.lines.replaceChildren(
       ...text.map((line) => {
         /* A line is a sentence, or an element where the caller had to build
            it: a copyright carrying a link is still one line, and the kit has
@@ -1823,19 +2011,19 @@ class NxAsk extends HTMLElement {
         paragraph.textContent = line;
         return paragraph;
       }));
-    if (icon) showArt(this.querySelector(".icon"), icon);
+    if (icon) showArt(parts.icon, icon);
 
-    const acting = this.querySelector('[data-answer="yes"]');
+    const acting = parts.acting;
     acting.textContent = confirm;
 
     /* A panel that only says something has one button, and the safe answer is
        the same as the acting one. Left standing and empty it would be a second
        button offering nothing, which is worse than none. */
-    const safe = this.querySelector('[data-answer="no"]');
+    const safe = parts.safe;
     safe.hidden = !cancel;
     safe.textContent = cancel ?? "";
 
-    const entry = this.querySelector(".entry");
+    const entry = parts.entry;
     entry.hidden = !field;
     entry.type = secret ? "password" : "text";
     entry.value = "";
@@ -1854,21 +2042,13 @@ class NxAsk extends HTMLElement {
 
   /** Puts the Return-key symbol on the acting button, or takes it off. */
   markTheReturnKey() {
-    this.querySelector('[data-answer="yes"]')
-      .classList.toggle("returns", this.returns && document.hasFocus());
+    this.parts.acting.classList.toggle("returns", this.returns && document.hasFocus());
   }
 
   /**
    * Says something and waits for it to be read.
-   * @param {object} panel
-   * @param {string} panel.name - What the panel calls itself.
-   * @param {string} [panel.subtitle] - A line under the name, as ask takes it.
-   * @param {(string|Node)[]} panel.text - One paragraph per entry, as a
-   *   sentence or as an element where the caller had to build the line
-   *   itself.
-   * @param {string} [panel.icon] - Which picture, by the name showArt knows.
-   * @param {string} panel.confirm - The wording on the one button. The kit
-   *   holds no words of its own, in any language.
+   * @param {Pick<Question, "name" | "subtitle" | "text" | "icon" | "confirm">} panel
+   *   What it says, as ask takes it, with the one button's wording.
    * @returns {Promise<boolean>} Always true, so the caller can wait for it to
    *   be dismissed without reading the answer.
    *
@@ -1882,14 +2062,14 @@ class NxAsk extends HTMLElement {
 
   /**
    * Puts a question that needs something typed.
-   * @param {object} question - As ask, and the field is shown.
+   * @param {Question} question - As ask, and the field is shown.
    * @returns {Promise<string|null>} What was typed, or null where the panel was
    *   dismissed. Empty counts as dismissed, because a blank answer is not one.
    */
   async askFor(question) {
     const answered = await this.ask({ ...question, field: true });
     if (!answered) return null;
-    const typed = this.querySelector(".entry").value.trim();
+    const typed = this.parts.entry.value.trim();
     return typed || null;
   }
 
@@ -1908,6 +2088,17 @@ class NxAsk extends HTMLElement {
 }
 
 /* --- nx-viewer ---------------------------------------------------------- */
+
+/**
+ * One icon in the viewer: a step of the path, a thing in the contents, or one
+ * kept on the shelf.
+ * @typedef {object} ViewerEntry
+ * @property {string} [label] - The name under it.
+ * @property {string} [icon] - Which picture, by the name showArt knows.
+ * @property {string} [value] - What choosing it hands over. Left out, it hands
+ *   nothing over.
+ * @property {boolean} [folder] - In the contents, that it has more inside.
+ */
 
 /**
  * NeXTSTEP's File Viewer, which is four bands stacked in one window.
@@ -1936,6 +2127,7 @@ class NxViewer extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
+    /** @type {NxShelf} */
     this.keep = document.createElement("nx-shelf");
     this.keep.className = "keep";
 
@@ -1944,7 +2136,7 @@ class NxViewer extends HTMLElement {
        changes what the viewer shows, and that a drag must not do the same,
        which is why the shelf is the example they use for it. */
     this.keep.addEventListener("click", (event) => {
-      const thing = event.target.closest("nx-thing");
+      const thing = closestTo(event, "nx-thing");
       if (!thing || !this.keep.contains(thing)) return;
       /* Raised on the thing rather than on the viewer, so that whoever
          answers knows which icon was clicked and not merely that one was.
@@ -1956,29 +2148,34 @@ class NxViewer extends HTMLElement {
     });
     this.keep.addEventListener("dragover", (event) => {
       event.preventDefault();
-      event.dataTransfer.dropEffect = "copy";
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
       this.keep.setAttribute("droppable", "");
     });
     this.keep.addEventListener("dragleave", (event) => {
-      if (!this.keep.contains(event.relatedTarget)) this.keep.removeAttribute("droppable");
+      const into = event.relatedTarget;
+      if (!(into instanceof Node && this.keep.contains(into))) {
+        this.keep.removeAttribute("droppable");
+      }
     });
     this.keep.addEventListener("drop", (event) => {
       event.preventDefault();
       this.keep.removeAttribute("droppable");
       this.dispatchEvent(new CustomEvent("nx-keep", {
         bubbles: true,
-        detail: { value: event.dataTransfer.getData("text/plain") },
+        detail: { value: event.dataTransfer?.getData("text/plain") ?? "" },
       }));
     });
 
+    /** @type {HTMLParagraphElement} */
     this.status = document.createElement("p");
     this.status.className = "status";
     this.status.textContent = this.getAttribute("status") ?? "";
 
+    /** @type {HTMLDivElement} */
     this.path = document.createElement("div");
     this.path.className = "path";
     this.path.addEventListener("click", (event) => {
-      const thing = event.target.closest("nx-thing");
+      const thing = closestTo(event, "nx-thing");
       if (!thing || !this.path.contains(thing)) return;
       this.dispatchEvent(new CustomEvent("nx-path", {
         bubbles: true,
@@ -1993,6 +2190,7 @@ class NxViewer extends HTMLElement {
     way.className = "way";
     way.append(this.path);
 
+    /** @type {NxShelf} */
     this.contents = document.createElement("nx-shelf");
     this.contents.className = "contents";
     const scroller = document.createElement("nx-scroller");
@@ -2005,12 +2203,10 @@ class NxViewer extends HTMLElement {
   /**
    * Puts a place and its contents in the window.
    * @param {object} view
-   * @param {Array<object>} view.path - The way here, outermost first. Each is
-   *   `{label, icon, value}`.
-   * @param {Array<object>} view.contents - What the last step holds. Each is
-   *   `{label, icon, value}`, and `folder` marks one that has more inside.
-   * @param {Array<object>} [view.keeps] - What lies on the shelf, the same
-   *   shape. Left out, the shelf is not touched.
+   * @param {ViewerEntry[]} [view.path] - The way here, outermost first.
+   * @param {ViewerEntry[]} [view.contents] - What the last step holds.
+   * @param {ViewerEntry[]} [view.keeps] - What lies on the shelf. Left out,
+   *   the shelf is not touched.
    * @param {string} [view.status] - The line under the shelf.
    */
   show({ path = [], contents = [], keeps, status }) {
@@ -2037,8 +2233,8 @@ class NxViewer extends HTMLElement {
   }
 
   /**
-   * @param {object} entry - `{label, icon, value}`.
-   * @returns {HTMLElement} The icon with its name, ready to be appended.
+   * @param {ViewerEntry} entry - What to draw.
+   * @returns {NxThing} The icon with its name, ready to be appended.
    */
   thing(entry) {
     const thing = document.createElement("nx-thing");
@@ -2057,6 +2253,19 @@ class NxViewer extends HTMLElement {
 }
 
 /* --- nx-slider ----------------------------------------------------------- */
+
+/** What a step stands for, as whoever uses the slider counts it.
+ *  @typedef {string | number} SliderValue */
+
+/**
+ * One step on the scale.
+ * @typedef {object} SliderStep
+ * @property {SliderValue} value - What landing on it hands back.
+ * @property {string} label - What it is called, read out to assistive
+ *   technology.
+ * @property {string} [tick] - What stands over it on the scale, which is the
+ *   figure alone.
+ */
 
 /**
  * A knob in a trough, moving between the steps it is given.
@@ -2077,8 +2286,10 @@ class NxSlider extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
+    /** @type {HTMLDivElement} */
     this.trough = document.createElement("div");
     this.trough.className = "trough";
+    /** @type {HTMLDivElement} */
     this.knob = document.createElement("div");
     this.knob.className = "knob";
     this.trough.append(this.knob);
@@ -2086,6 +2297,7 @@ class NxSlider extends HTMLElement {
     /* The ticks stand over the trough, each above the place its step puts the
        knob, so the scale is read before the hand reaches it rather than from
        under the hand that is on it. */
+    /** @type {HTMLDivElement} */
     this.ticks = document.createElement("div");
     this.ticks.className = "ticks";
 
@@ -2096,10 +2308,12 @@ class NxSlider extends HTMLElement {
     /* The unit, once, to the left of the scale. The ticks carry figures alone
        and the one in force is the black one, so the unit is the only thing left
        to say and saying it beside every tick would crowd them out. */
+    /** @type {HTMLSpanElement} */
     this.unit = document.createElement("span");
     this.unit.className = "unit";
 
     this.append(this.unit, scale);
+    /** @type {SliderStep[]} */
     this.steps = [];
 
     this.tabIndex = 0;
@@ -2107,23 +2321,22 @@ class NxSlider extends HTMLElement {
     this.wire();
   }
 
-  /**
-   * The steps this slider offers.
-   * @param {Array<object>} steps - `{value, label, tick}` for each, in the order
-   *   they sit on the scale. `tick` is what stands under that step, which is the
-   *   figure alone: the field beside the slider carries the unit, and five of
-   *   those along one trough would not fit.
-   *
-   * Set every time the answer changes, because which steps exist depends on the
-   * machine: a clock gains one with a turbo board, and memory loses two without
-   * it.
-   */
   /** @param {string} unit - What the figures on this scale are counted in,
    *  such as MHz or MB. Stated once, to the left of the scale. */
   set says(unit) {
     this.unit.textContent = unit;
   }
 
+  /**
+   * The steps this slider offers.
+   * @param {SliderStep[]} steps - In the order they sit on the scale. A tick
+   *   is the figure alone: the unit stands once to the left of the scale, and
+   *   five of them along one trough would not fit.
+   *
+   * Set every time the answer changes, because which steps exist depends on the
+   * machine: a clock gains one with a turbo board, and memory loses two without
+   * it.
+   */
   set options(steps) {
     this.steps = steps;
     this.toggleAttribute("fixed", steps.length < 2);
@@ -2152,17 +2365,20 @@ class NxSlider extends HTMLElement {
       })));
   }
 
-  /** @returns {*} The value of the step the knob is on. */
+  /** @returns {SliderValue | undefined} The value of the step the knob is on,
+   *  or nothing before one has been chosen. */
   get value() {
-    return this.steps[this.at]?.value;
+    return this.at === undefined ? undefined : this.steps[this.at]?.value;
   }
 
-  /** @param {*} value - Which step to stand on. One that is not a step leaves
-   *  the knob at the start, which is what a machine that has just changed
-   *  answers with. */
+  /** @param {SliderValue | undefined} value - Which step to stand on. One that
+   *  is not a step leaves the knob at the start, which is what a machine that
+   *  has just changed answers with. */
   set value(value) {
-    const at = this.steps.findIndex((step) => step.value === value);
-    this.at = at < 0 ? 0 : at;
+    const found = this.steps.findIndex((step) => step.value === value);
+    /** @type {number | undefined} Which step the knob is on, from 0, once one
+     *  has been chosen. */
+    this.at = found < 0 ? 0 : found;
     this.draw();
   }
 
@@ -2337,7 +2553,8 @@ class NxLeds extends HTMLElement {
  * has put the words on the page before the first element is built.
  */
 export function defineTheKit() {
-  for (const [tag, type] of [
+  /** @type {[string, CustomElementConstructor][]} */
+  const elements = [
   ["nx-window", NxWindow],
   ["nx-menu", NxMenu],
   ["nx-menu-item", NxMenuItem],
@@ -2352,7 +2569,8 @@ export function defineTheKit() {
   ["nx-viewer", NxViewer],
   ["nx-slider", NxSlider],
   ["nx-leds", NxLeds],
-  ]) {
+  ];
+  for (const [tag, type] of elements) {
     customElements.define(tag, type);
   }
 
@@ -2388,6 +2606,7 @@ export {
   ZOOM_MS,
   ZOOM_RECTANGLES,
   between,
+  closestTo,
   deskIsNew,
   deskPoint,
   deskRect,

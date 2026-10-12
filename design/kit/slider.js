@@ -1,5 +1,18 @@
 /* --- nx-slider ----------------------------------------------------------- */
 
+/** What a step stands for, as whoever uses the slider counts it.
+ *  @typedef {string | number} SliderValue */
+
+/**
+ * One step on the scale.
+ * @typedef {object} SliderStep
+ * @property {SliderValue} value - What landing on it hands back.
+ * @property {string} label - What it is called, read out to assistive
+ *   technology.
+ * @property {string} [tick] - What stands over it on the scale, which is the
+ *   figure alone.
+ */
+
 /**
  * A knob in a trough, moving between the steps it is given.
  *
@@ -19,8 +32,10 @@ class NxSlider extends HTMLElement {
     if (this.ready) return;
     this.ready = true;
 
+    /** @type {HTMLDivElement} */
     this.trough = document.createElement("div");
     this.trough.className = "trough";
+    /** @type {HTMLDivElement} */
     this.knob = document.createElement("div");
     this.knob.className = "knob";
     this.trough.append(this.knob);
@@ -28,6 +43,7 @@ class NxSlider extends HTMLElement {
     /* The ticks stand over the trough, each above the place its step puts the
        knob, so the scale is read before the hand reaches it rather than from
        under the hand that is on it. */
+    /** @type {HTMLDivElement} */
     this.ticks = document.createElement("div");
     this.ticks.className = "ticks";
 
@@ -38,10 +54,12 @@ class NxSlider extends HTMLElement {
     /* The unit, once, to the left of the scale. The ticks carry figures alone
        and the one in force is the black one, so the unit is the only thing left
        to say and saying it beside every tick would crowd them out. */
+    /** @type {HTMLSpanElement} */
     this.unit = document.createElement("span");
     this.unit.className = "unit";
 
     this.append(this.unit, scale);
+    /** @type {SliderStep[]} */
     this.steps = [];
 
     this.tabIndex = 0;
@@ -49,23 +67,22 @@ class NxSlider extends HTMLElement {
     this.wire();
   }
 
-  /**
-   * The steps this slider offers.
-   * @param {Array<object>} steps - `{value, label, tick}` for each, in the order
-   *   they sit on the scale. `tick` is what stands under that step, which is the
-   *   figure alone: the field beside the slider carries the unit, and five of
-   *   those along one trough would not fit.
-   *
-   * Set every time the answer changes, because which steps exist depends on the
-   * machine: a clock gains one with a turbo board, and memory loses two without
-   * it.
-   */
   /** @param {string} unit - What the figures on this scale are counted in,
    *  such as MHz or MB. Stated once, to the left of the scale. */
   set says(unit) {
     this.unit.textContent = unit;
   }
 
+  /**
+   * The steps this slider offers.
+   * @param {SliderStep[]} steps - In the order they sit on the scale. A tick
+   *   is the figure alone: the unit stands once to the left of the scale, and
+   *   five of them along one trough would not fit.
+   *
+   * Set every time the answer changes, because which steps exist depends on the
+   * machine: a clock gains one with a turbo board, and memory loses two without
+   * it.
+   */
   set options(steps) {
     this.steps = steps;
     this.toggleAttribute("fixed", steps.length < 2);
@@ -94,17 +111,20 @@ class NxSlider extends HTMLElement {
       })));
   }
 
-  /** @returns {*} The value of the step the knob is on. */
+  /** @returns {SliderValue | undefined} The value of the step the knob is on,
+   *  or nothing before one has been chosen. */
   get value() {
-    return this.steps[this.at]?.value;
+    return this.at === undefined ? undefined : this.steps[this.at]?.value;
   }
 
-  /** @param {*} value - Which step to stand on. One that is not a step leaves
-   *  the knob at the start, which is what a machine that has just changed
-   *  answers with. */
+  /** @param {SliderValue | undefined} value - Which step to stand on. One that
+   *  is not a step leaves the knob at the start, which is what a machine that
+   *  has just changed answers with. */
   set value(value) {
-    const at = this.steps.findIndex((step) => step.value === value);
-    this.at = at < 0 ? 0 : at;
+    const found = this.steps.findIndex((step) => step.value === value);
+    /** @type {number | undefined} Which step the knob is on, from 0, once one
+     *  has been chosen. */
+    this.at = found < 0 ? 0 : found;
     this.draw();
   }
 

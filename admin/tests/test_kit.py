@@ -1,4 +1,4 @@
-"""The two files the interface is built from are the kit, put together.
+"""The files the interface is built and checked from are the kit, put together.
 
 They are generated, and a generated file that somebody edits by hand is a
 change that the next build throws away without saying so. This is what says
@@ -40,6 +40,14 @@ def test_the_script_is_what_the_kit_says(build):
     served = (INTERFACE / "nextstep.js").read_text(encoding="utf-8")
 
     assert served == build.script(), "run design/build.py"
+
+
+def test_the_tag_map_is_what_the_kit_says(build):
+    """Which tag is which element, for the type checker. A tag the kit defines
+    that is missing here is one `querySelector` answers as a bare Element."""
+    served = (INTERFACE / "elements.d.ts").read_text(encoding="utf-8")
+
+    assert served == build.elements(), "run design/build.py"
 
 
 #: A picture the kit's stylesheet points at, by the name of its file.

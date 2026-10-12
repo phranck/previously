@@ -30,7 +30,7 @@ class NxMenu extends HTMLElement {
       return;
     }
 
-    const name = this.getAttribute("name");
+    const name = this.getAttribute("name") ?? "";
     const saved = recall(name);
     this.style.left = (saved.x ?? Number(this.getAttribute("x"))) + "px";
     this.style.top = (saved.y ?? Number(this.getAttribute("y"))) + "px";
@@ -56,8 +56,11 @@ class NxMenu extends HTMLElement {
     const bar = this.querySelector(":scope > .title");
     if (bar) bar.textContent = title;
 
+    /** @type {NxMenuItem | null} */
     let last = null;
-    for (const entry of this.querySelectorAll(":scope > nx-menu-item")) {
+    const entries = /** @type {NodeListOf<NxMenuItem>} */ (
+      this.querySelectorAll(":scope > nx-menu-item"));
+    for (const entry of entries) {
       /* `away` is an entry that is not in this menu at all just now, which is
          the page's to say: an entry about a machine, on a desk where none is
          installed, is a question with no answer. `hidden` stays this menu's
@@ -92,15 +95,16 @@ class NxMenu extends HTMLElement {
     this.style.left = Math.min(onDesk(x), room.width - own.width - 2) + "px";
     this.style.top = Math.min(onDesk(y), room.height - own.height - 2) + "px";
 
-    const away = (event) => {
-      if (this.contains(event.target)) return;
+    const away = (/** @type {PointerEvent} */ event) => {
+      if (event.target instanceof Node && this.contains(event.target)) return;
       this.close();
     };
+    /** @type {(() => void) | null} */
     this.dismiss = () => {
       removeEventListener("pointerdown", away, true);
       removeEventListener("keydown", escape);
     };
-    const escape = (event) => {
+    const escape = (/** @type {KeyboardEvent} */ event) => {
       if (event.key === "Escape") this.close();
     };
     addEventListener("pointerdown", away, true);
@@ -130,7 +134,8 @@ class NxMenuItem extends HTMLElement {
        the words all begin at the same column. */
     const art = document.createElement("i");
     art.className = "art mark";
-    if (this.hasAttribute("icon")) showArt(art, this.getAttribute("icon"));
+    const icon = this.getAttribute("icon");
+    if (icon !== null) showArt(art, icon);
     this.prepend(art);
     if (this.hasAttribute("key")) {
       const key = document.createElement("span");
@@ -142,7 +147,8 @@ class NxMenuItem extends HTMLElement {
     if (target) {
       this.addEventListener("click", () => {
         if (this.hasAttribute("disabled")) return;
-        document.querySelector(`nx-window[name="${target}"]`)?.open(this);
+        /** @type {NxWindow | null} */ (
+          document.querySelector(`nx-window[name="${target}"]`))?.open(this);
       });
     }
   }

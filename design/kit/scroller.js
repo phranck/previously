@@ -1,8 +1,10 @@
 /* --- nx-scroller -------------------------------------------------------- */
 
 /** What differs between the two directions, so that everything else does not
- *  have to know there are two. */
-const WAYS = {
+ *  have to know there are two. Each value names a property of an element, a
+ *  style or a point, so the checker holds every lookup below to one that
+ *  exists. */
+const WAYS = /** @type {const} */ ({
   down: {
     steps: ["up", "down"],
     length: "scrollHeight", showing: "clientHeight", along: "scrollTop",
@@ -15,7 +17,20 @@ const WAYS = {
     edge: "left", size: "width", pointer: "x", offset: "offsetLeft",
     room: "clientWidth", trailing: "paddingRight",
   },
-};
+});
+
+/** One of the two directions. @typedef {keyof typeof WAYS} Way */
+
+/** What one direction differs in. @typedef {typeof WAYS[Way]} WayParts */
+
+/**
+ * One scroller, as addBar builds it.
+ * @typedef {object} Bar
+ * @property {HTMLDivElement} trough - The checkered track.
+ * @property {HTMLDivElement} knob - What a person drags.
+ * @property {HTMLDivElement} arrows - Both arrows, at the far end.
+ * @property {WayParts} how - Which direction it scrolls in.
+ */
 
 /**
  * A view with NeXT's scroller on its left: a checkered trough, a knob that
@@ -34,6 +49,13 @@ const WAYS = {
  * empty trough is what the original shows.
  */
 class NxScroller extends HTMLElement {
+  /** @type {HTMLElement | undefined} What the bars move, once there is one. */
+  view;
+
+  /** @type {(() => void) | undefined} What the view's scrolling calls, made
+   *  once so that it can be taken off again. */
+  onScroll;
+
   connectedCallback() {
     if (this.ready) return;
     this.ready = true;
@@ -43,8 +65,9 @@ class NxScroller extends HTMLElement {
     const view = this.firstElementChild;
 
     const wanted = (this.getAttribute("bars") || "down").split(/\s+/);
+    /** @type {Partial<Record<Way, Bar>>} */
     this.bars = {};
-    for (const way of ["down", "across"]) {
+    for (const way of /** @type {Way[]} */ (["down", "across"])) {
       if (wanted.includes(way)) this.bars[way] = this.addBar(way);
     }
 
@@ -53,7 +76,8 @@ class NxScroller extends HTMLElement {
 
   /**
    * Points the bars at whatever actually scrolls.
-   * @param {HTMLElement} view - The element whose scrollTop the knob moves.
+   * @param {Element | null} view - The element whose scrollTop the knob
+   *   moves. Nothing happens where there is none.
    *
    * The child of this element, ordinarily. Some views scroll something of
    * their own further in, because a library built the markup: a terminal
@@ -62,14 +86,14 @@ class NxScroller extends HTMLElement {
    * follow it from then on.
    */
   drive(view) {
-    if (!view || view === this.view) return;
+    if (!(view instanceof HTMLElement) || view === this.view) return;
 
     this.watch?.forEach((observer) => observer.disconnect());
+    this.onScroll ??= () => this.refresh();
     this.view?.removeEventListener("scroll", this.onScroll);
 
     this.view = view;
-    this.onScroll ??= () => this.refresh();
-    this.view.addEventListener("scroll", this.onScroll);
+    view.addEventListener("scroll", this.onScroll);
 
     /* What there is to scroll is the content's size against the view's, so
        both sizes are watched: the view's own, and that of every child it
@@ -85,16 +109,16 @@ class NxScroller extends HTMLElement {
     const sized = new ResizeObserver(() => this.refresh());
     const watchTheContent = () => {
       sized.disconnect();
-      sized.observe(this.view);
-      for (const child of this.view.children) sized.observe(child);
+      sized.observe(view);
+      for (const child of view.children) sized.observe(child);
     };
     watchTheContent();
     const changed = new MutationObserver((records) => {
-      if (records.some((record) => record.target === this.view
+      if (records.some((record) => record.target === view
                        && record.type === "childList")) watchTheContent();
       this.refresh();
     });
-    changed.observe(this.view, { childList: true, subtree: true, characterData: true });
+    changed.observe(view, { childList: true, subtree: true, characterData: true });
     this.watch = [sized, changed];
 
     /* Says in the markup that the child is not what scrolls, so the stylesheet
@@ -107,8 +131,8 @@ class NxScroller extends HTMLElement {
 
   /**
    * Builds one scroller.
-   * @param {string} way - "down" or "across".
-   * @returns {object} Its trough, its knob and its arrows.
+   * @param {Way} way - Which direction it scrolls in.
+   * @returns {Bar} Its trough, its knob and its arrows.
    */
   addBar(way) {
     const how = WAYS[way];
@@ -128,6 +152,7 @@ class NxScroller extends HTMLElement {
       one.append(document.createElement("i"));
       one.addEventListener("pointerdown", (event) => {
         event.stopPropagation();
+        if (!this.view) return;
         const back = step === "up" || step === "left";
         this.view[how.along] += (back ? -1 : 1) * NxScroller.LINE;
       });
@@ -138,46 +163,51 @@ class NxScroller extends HTMLElement {
 
     gesture(knob,
       (point, start) => {
+        const view = this.view;
+        if (!view) return;
         const room = trough[how.room] - knob[how.size === "height" ? "offsetHeight" : "offsetWidth"];
         const at = Math.max(0, Math.min(point[how.pointer] - start.grab, room));
-        this.view[how.along] =
-          (at / room) * (this.view[how.length] - this.view[how.showing]);
+        view[how.along] = (at / room) * (view[how.length] - view[how.showing]);
       },
       (point) => ({ grab: point[how.pointer] - knob[how.offset] }));
 
     return { trough, knob, arrows, how };
   }
 
-  /** Redraws both bars from the view's current state. */
+  /** Redraws both bars from the view's current state, where there is a view. */
   refresh() {
-    for (const bar of Object.values(this.bars)) this.fit(bar);
+    const view = this.view;
+    if (!view) return;
+    for (const bar of Object.values(this.bars)) this.fit(bar, view);
   }
 
   /**
    * Draws one bar.
-   * @param {object} bar - What addBar returned.
+   * @param {Bar} bar - What addBar returned.
+   * @param {HTMLElement} view - What it scrolls.
    *
    * A bar with nothing to scroll keeps its trough and loses its knob and its
    * arrows, which is what the original shows: the trough is part of the view
    * rather than a thing that appears when it is needed.
    */
-  fit({ trough, knob, arrows, how }) {
-    const more = this.holdsMore(how);
+  fit({ trough, knob, arrows, how }, view) {
+    const more = this.holdsMore(how, view);
     knob.hidden = !more;
     arrows.hidden = !more;
     if (!more) return;
 
-    const overflow = this.view[how.length] - this.view[how.showing];
+    const overflow = view[how.length] - view[how.showing];
     const room = trough[how.room];
     const size = Math.max(NxScroller.SMALLEST_KNOB,
-                          room * this.view[how.showing] / this.view[how.length]);
+                          room * view[how.showing] / view[how.length]);
     knob.style[how.size] = size + "px";
-    knob.style[how.edge] = (this.view[how.along] / overflow) * (room - size) + "px";
+    knob.style[how.edge] = (view[how.along] / overflow) * (room - size) + "px";
   }
 
   /**
    * Whether the view hides anything a reader could scroll to.
-   * @param {object} how - One of WAYS.
+   * @param {WayParts} how - One of WAYS.
+   * @param {HTMLElement} view - What scrolls.
    * @returns {boolean}
    *
    * The two figures cannot be compared as they come. Both are whole pixels
@@ -189,9 +219,9 @@ class NxScroller extends HTMLElement {
    * of it still shows everything in it. So what counts is how far the content
    * runs past that padding, and only by more than one rounding.
    */
-  holdsMore(how) {
-    const trailing = parseFloat(getComputedStyle(this.view)[how.trailing]) || 0;
-    const past = this.view[how.length] - this.view[how.showing] - trailing;
+  holdsMore(how, view) {
+    const trailing = parseFloat(getComputedStyle(view)[how.trailing]) || 0;
+    const past = view[how.length] - view[how.showing] - trailing;
     return past > NxScroller.ROUNDING;
   }
 }
