@@ -3,55 +3,84 @@
 import { t } from "../strings.js";
 import { show, theWindow } from "./page.js";
 import { modelOf } from "./pi.js";
-import { ask } from "./service.js";
 import { NOTHING, costOf, decimal, memoryInUse } from "./words.js";
 
-/** How often the window asks while it is open. The service reads `/proc` and
- *  forks nothing for this, and a whole answer costs it 1.5 ms of a core on a
- *  Pi 5, so twice a second is three tenths of one per cent of one core. A bar
- *  that moves more slowly reads as a figure rather than as a monitor. */
-const ACTIVITY_MS = 500;
+/** Where the readings come from while the window is open: a stream of
+ *  Server-Sent Events, one reading every half second, each the object
+ *  `/api/activity` answers with. A request per reading would cost the service
+ *  more than the readings themselves. */
+const STREAM = "/api/activity/stream";
+
+/** How long to wait before opening the stream again where the service closed
+ *  it for good, such as one that refused it for having too many open. A stream
+ *  that only broke is opened again by the browser itself. */
+const AGAIN_MS = 5000;
 
 /** Which window this is, as the markup and the Apps folder name it. */
 const ACTIVITY = "activity";
 
-/** Whether an answer is still on its way, so a service that is slow to reply
- *  is not asked again on top of itself at every tick until it does. */
-let asking = false;
+/** The stream while the window is open, and null while it is closed, so a
+ *  window nobody is looking at costs the Pi nothing.
+ *  @type {EventSource | null} */
+let stream = null;
+
+/** The last reading, so a change of language redraws it at once rather than
+ *  at the next one. @type {any} */
+let lastReading = null;
 
 /**
- * Asks what the board is doing and draws it, while the window is open.
+ * Opens the stream, where the window is open and none is.
  *
- * Nothing at all while it is closed: the timer still fires, finds the window
- * hidden and goes back to sleep, so a window nobody is looking at costs the
- * Pi nothing. That is the same test the Raspberry Pi window's readings pass
- * through on their slower poll.
+ * A reading is drawn the moment it arrives. A stream that breaks says so in
+ * the window and is opened again by the browser on its own; one the service
+ * closed for good is opened again from here a few seconds later, for as long
+ * as the window stays open.
  */
-async function sampleActivity() {
+function openTheStream() {
   const window_ = theWindow(ACTIVITY);
-  if (!window_ || window_.hidden || asking) return;
-  asking = true;
-  try {
-    drawActivity(await ask("/api/activity"));
-  } finally {
-    asking = false;
-  }
+  if (!window_ || window_.hidden || stream) return;
+
+  const opened = new EventSource(STREAM);
+  stream = opened;
+  opened.addEventListener("message", (event) => {
+    lastReading = JSON.parse(event.data);
+    drawActivity(lastReading);
+  });
+  opened.addEventListener("error", () => {
+    drawActivity(null);
+    if (opened.readyState !== EventSource.CLOSED || stream !== opened) return;
+    stream = null;
+    setTimeout(openTheStream, AGAIN_MS);
+  });
+}
+
+/** Closes the stream, which is what the service is waiting for to stop. */
+function closeTheStream() {
+  stream?.close();
+  stream = null;
+}
+
+/** Draws the last reading again, where the window is open. For a change of
+ *  language, because the window writes its own words. */
+function redrawActivity() {
+  const window_ = theWindow(ACTIVITY);
+  if (window_ && !window_.hidden && lastReading) drawActivity(lastReading);
 }
 
 /**
- * Draws one answer of `/api/activity` into the window.
- * @param {any} activity - The answer, or null where the service did not give
- *   one. Every reading inside it may be null as well, and a reading that is
- *   null is drawn as nothing rather than as zero.
+ * Draws one reading into the window.
+ * @param {any} activity - The reading, or null where the service is not
+ *   answering. Every figure inside it may be null as well, and a figure that
+ *   is null is drawn as nothing rather than as zero.
  */
 function drawActivity(activity) {
   show("activity-note", activity ? "" : t("note.no-service"));
   show("activity-model", modelOf(activity));
 
-  /* One bar per core the service reports. The very first answer has no
-     figures yet, since each one is a difference between two readings, and
+  /* One bar per core the service reports. The very first reading has no
+     figures yet, since each one is a difference between two samples, and
      the load averages already say how many cores there are, so the bars are
-     there from the first moment and light up at the next answer. */
+     there from the first moment and light up with the next reading. */
   const meters = drawTheCores(activity?.cores?.length ?? activity?.load?.cores);
   for (const [index, meter] of meters.entries()) {
     showShare(meter, activity?.cores?.[index] ?? null,
@@ -103,7 +132,7 @@ function showShare(meter, share, words) {
  * Built here rather than written into the markup, because how many cores a
  * board has is the board's to say: a Pi 5 has four, and a two-core board
  * draws two. The names are written every time, so a change of language
- * reaches them at the next answer.
+ * reaches them with the next reading.
  */
 function drawTheCores(count) {
   const cores = /** @type {any} */ (document.getElementById("activity-cores"));
@@ -121,17 +150,19 @@ function drawTheCores(count) {
   });
 }
 
-/** Starts the sampling, and fills the window the moment it is opened rather
- *  than at the next tick. Wired once. */
+/** Opens the stream with the window and closes it with the window, and opens
+ *  it at once where the desk came back with the window open. Wired once. */
 function wireActivity() {
   document.addEventListener("nx-open", (/** @type {any} */ event) => {
-    if (event.target.getAttribute("name") === ACTIVITY) sampleActivity();
+    if (event.target.getAttribute("name") === ACTIVITY) openTheStream();
   });
-  setInterval(sampleActivity, ACTIVITY_MS);
-  sampleActivity();
+  document.addEventListener("nx-close", (/** @type {any} */ event) => {
+    if (event.target.getAttribute("name") === ACTIVITY) closeTheStream();
+  });
+  openTheStream();
 }
 
 export {
-  sampleActivity,
+  redrawActivity,
   wireActivity,
 };
