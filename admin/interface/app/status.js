@@ -2,13 +2,14 @@
 
 import { t, writeTitle, writeWords } from "../strings.js";
 import { drawTheMenu } from "./menu.js";
+import { isAStatus } from "./outcome.js";
 import { show } from "./page.js";
 import { askForPassword, askPanel } from "./panels.js";
 import { drawPi } from "./pi.js";
 import { Kiosk, ask, operate } from "./service.js";
 import { Needs, begin, end, heard, hold } from "./system.js";
 import { markCurrent } from "./viewer.js";
-import { Art, NOTHING, changedLine, cpuOf, machineArt, modelOf, nameOf, screenOf, since, writtenLine } from "./words.js";
+import { Art, NOTHING, changedLine, cpuOf, machineArt, modelOf, nameOf, say, screenOf, since, writtenLine } from "./words.js";
 
 /**
  * Draws the state of the machine into the info window.
@@ -208,6 +209,19 @@ function setBusy(busy, words) {
 }
 
 /**
+ * Ends an operation on the machine with what the service said about it.
+ * @param {any} answer - What `tell` handed over, or null on no contact.
+ *
+ * The status rides along with every answer to a change of the machine, so it
+ * is drawn at once rather than at the next poll. Only where it is there: a
+ * refusal carries none, and drawing it would say the machine had stopped.
+ */
+function endOperation(answer) {
+  setBusy(false, answer === null ? t("note.no-service") : say(answer));
+  if (isAStatus(answer)) drawStatus(answer);
+}
+
+/**
  * The warning before the emulator goes away.
  *
  * Always asked and always worded the same, because Previous tells us nothing
@@ -263,6 +277,7 @@ async function refresh() {
 
 export {
   drawStatus,
+  endOperation,
   lastStatus,
   setBusy,
   wireButtons,

@@ -71,11 +71,12 @@ jobs:
           # somebody presses the thing that needs it.
           npm install --silent
           python3 -m flake8 --max-line-length=100 previously tests browser build_web.py
-          node_modules/.bin/eslint interface tests/kit --no-warn-ignored
+          node_modules/.bin/eslint interface tests/kit tests/page --no-warn-ignored
           node_modules/.bin/tsc -p tsconfig.json
           node_modules/.bin/tsc -p tsconfig.kit.json
-          # The kit's elements against a DOM, with what `npm install` brought.
-          node --test tests/kit/*.test.js
+          # The kit's elements and the page's own modules against a DOM, with
+          # what `npm install` brought.
+          node --test tests/kit/*.test.js tests/page/*.test.js
           # Named and timed, because a test that waits here and not on a laptop
           # is waiting for something this machine does not have, and a suite
           # that stops without saying which test it stopped in says nothing at

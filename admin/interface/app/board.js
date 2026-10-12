@@ -1,6 +1,7 @@
 /* Switching the board itself off, which takes the emulator down first. */
 
 import { t } from "../strings.js";
+import { wasTaken } from "./outcome.js";
 import { show } from "./page.js";
 import { askPanel } from "./panels.js";
 import { Board, tell } from "./service.js";
@@ -41,8 +42,11 @@ async function operateBoard(route, working) {
 
   const answer = await tell(route);
 
-  /* Refused, so nothing is going away and the operation is over now. */
-  if (answer?.ok === false) end();
+  /* Not taken, so nothing is going away and the operation is over now. That
+     is any answer but the one saying it was taken: a refusal carries no `ok`
+     at all, and waiting on it for a board that comes back would hold every
+     control until the page is reloaded. */
+  if (answer !== null && !wasTaken(answer)) end();
 
   /* A board that is going down answers nothing, and that is the ordinary case
      rather than a failure. Saying so beats a page that claims no contact. */

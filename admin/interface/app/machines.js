@@ -7,7 +7,7 @@ import { show, theWindow } from "./page.js";
 import { askPanel, askPanelFor } from "./panels.js";
 import { openPictureMenu } from "./preview.js";
 import { Saved, tell } from "./service.js";
-import { drawStatus, lastStatus, refresh, setBusy } from "./status.js";
+import { endOperation, lastStatus, refresh, setBusy } from "./status.js";
 import { Needs, allowed, may } from "./system.js";
 import { catalogue, drawMachines, find, goTo, keepOnShelf, open, root, visitFromTheShelf } from "./viewer.js";
 import { Art, EDITOR, NOTHING, changedLine, chipsOf, cpuOf, fitted, machineArt, say, screenOf, writtenLine } from "./words.js";
@@ -86,9 +86,7 @@ async function changeTo(identifier) {
   if (!agreed) return;
 
   setBusy(true, t("busy.changing", { machine: name }));
-  const answer = await tell("/api/machine", { machine: identifier });
-  setBusy(false, answer === null ? t("note.no-service") : say(answer));
-  if (answer) drawStatus(answer);
+  endOperation(await tell("/api/machine", { machine: identifier }));
   refresh();
 }
 
@@ -100,8 +98,7 @@ async function changeTo(identifier) {
  * comes out of the same file that has just been written.
  */
 function reportAboutTheMachine(answer) {
-  setBusy(false, answer === null ? t("note.no-service") : say(answer));
-  if (answer) drawStatus(answer);
+  endOperation(answer);
   drawMachines();
   refresh();
 }
