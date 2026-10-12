@@ -17,6 +17,12 @@
 # Nothing here puts anything from an event into a command. The only expressions
 # are github.ref in two conditions, which decide whether a step runs and are
 # never interpolated into a shell.
+#
+# Every action is pinned to the commit of a release, with that release beside
+# it. A tag can be moved to other code by whoever owns the action, and this
+# job's token can rewrite releases, so only a change in this file changes what
+# runs here. Raising an action means reading the commit of its new release off
+# its own repository and writing both down.
 
 name: Release
 
@@ -37,7 +43,7 @@ jobs:
     # ceiling rather than a budget.
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The whole history and every tag, because the package is numbered
           # from what `git describe` says and the default checkout takes one
@@ -47,7 +53,7 @@ jobs:
       # The Node the interface is checked with, which .nvmrc names for every
       # machine that checks it, so the runner does not decide it by whatever
       # its image happens to carry.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           # No cache in a job whose token can write releases, because what a
@@ -95,7 +101,7 @@ jobs:
       # existing release's draft flag as it found it.
       - name: Put it on a draft release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           draft: true
           files: admin/packaging/build/previously_all.deb
@@ -103,7 +109,7 @@ jobs:
 
       - name: Keep it on the run, where there is no tag
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: previously_all.deb
           path: admin/packaging/build/previously_all.deb
