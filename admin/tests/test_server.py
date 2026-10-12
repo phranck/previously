@@ -124,14 +124,121 @@ def test_the_board_readings_say_which_version_is_answering(service):
 
 
 def test_what_every_core_is_doing_is_open(service):
-    """A monitor asks twice a second while its window is open, so this route
-    reads `/proc` and forks nothing. It is a reading, so it needs no password,
-    the way the board's own readings do not."""
+    """This route reads `/proc` and forks nothing. It is a reading, so it needs
+    no password, the way the board's own readings do not."""
     status, _, body = fetch(service + "/api/activity")
     payload = json.loads(body)
 
     assert status == 200
     assert set(payload) == {"model", "cores", "load", "memory", "emulator"}
+
+
+def open_a_stream(service):
+    """@returns (http.client.HTTPConnection, HTTPResponse) of a stream of
+    readings, open until `close_a_stream` is given both."""
+    connection = http.client.HTTPConnection(
+        urllib.parse.urlparse(service).netloc, timeout=5)
+    connection.request("GET", "/api/activity/stream")
+    return connection, connection.getresponse()
+
+
+def close_a_stream(connection, answer):
+    """Closes a stream as a browser closing the window does. Both, because the
+    answer holds the socket open on its own after the connection lets go."""
+    answer.close()
+    connection.close()
+
+
+def events(answer, count):
+    """@returns list of the first `count` readings a stream sent, parsed."""
+    found = []
+    while len(found) < count:
+        line = answer.fp.readline().decode("utf-8")
+        if line.startswith("data: "):
+            found.append(json.loads(line[len("data: "):]))
+    return found
+
+
+@pytest.fixture
+def quick_readings(monkeypatch):
+    """A stream that sends a reading every hundredth of a second, so a test
+    reads several without waiting half a second for each."""
+    monkeypatch.setattr(server.activity, "EVERY_SECONDS", 0.01)
+    monkeypatch.setattr(server.Handler, "streams", server.StreamCount())
+
+
+def test_the_readings_stream_while_somebody_listens(service, quick_readings):
+    """Activity Monitor is sent its readings rather than asking for each,
+    because a request costs the service more than the reading in it. Each one
+    is the object `/api/activity` answers with, and it needs no password."""
+    connection, answer = open_a_stream(service)
+    try:
+        sent = events(answer, 3)
+    finally:
+        close_a_stream(connection, answer)
+
+    assert answer.status == 200
+    assert answer.headers["Content-Type"].startswith("text/event-stream")
+    assert answer.headers["Cache-Control"] == "no-store"
+    assert all(set(reading) == {"model", "cores", "load", "memory", "emulator"}
+               for reading in sent)
+
+
+def test_a_stream_ends_with_its_connection(service, quick_readings):
+    """It has no length, so nothing can follow it on the same connection, and
+    the answer says so."""
+    connection, answer = open_a_stream(service)
+    try:
+        events(answer, 1)
+    finally:
+        close_a_stream(connection, answer)
+
+    assert answer.headers["Connection"] == "close"
+    assert answer.headers["Content-Length"] is None
+
+
+def test_streams_from_one_address_are_bounded(service, quick_readings, monkeypatch):
+    """Each holds a thread for as long as it is open, so a machine opening them
+    in a loop is answered 503 rather than given one more, and one that closes
+    gives its place back."""
+    monkeypatch.setattr(server.Handler, "streams", server.StreamCount(per_source=1))
+    first, answer = open_a_stream(service)
+    events(answer, 1)
+
+    second, refused = open_a_stream(service)
+    status = refused.status
+    close_a_stream(second, refused)
+    close_a_stream(first, answer)
+
+    assert status == 503
+    # The thread that was sending notices the next time it writes.
+    for _ in range(100):
+        if not server.Handler.streams.open:
+            break
+        threading.Event().wait(0.02)
+    third, again = open_a_stream(service)
+    try:
+        assert again.status == 200
+    finally:
+        close_a_stream(third, again)
+
+
+def test_a_stream_nobody_reads_gives_its_thread_back(service, monkeypatch):
+    """A browser that holds the connection and stops reading would otherwise
+    hold the thread for good. Once the socket is full, a write that waits past
+    its limit ends the stream."""
+    monkeypatch.setattr(server.activity, "EVERY_SECONDS", 0)
+    monkeypatch.setattr(server, "STREAM_WRITE_SECONDS", 0.2)
+    monkeypatch.setattr(server.Handler, "streams", server.StreamCount())
+    connection, answer = open_a_stream(service)
+    try:
+        for _ in range(300):
+            if not server.Handler.streams.open:
+                break
+            threading.Event().wait(0.05)
+        assert server.Handler.streams.open == {}
+    finally:
+        close_a_stream(connection, answer)
 
 
 def test_no_route_asks_the_package_database_of_the_machine_running_the_suite(

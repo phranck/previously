@@ -1,7 +1,7 @@
 /* Preferences, which is the size, the language and nothing else. */
 
 import { LANGUAGE_NAMES, currentLanguage, setLanguage, t, writeWords } from "../strings.js";
-import { sampleActivity } from "./activity.js";
+import { redrawActivity } from "./activity.js";
 import { redrawTheEditor } from "./editor.js";
 import { drawTheInstaller, drawTheTabs, setupState } from "./installer.js";
 import { drawTheMenu } from "./menu.js";
@@ -112,8 +112,9 @@ function speak(code) {
     drawTheMenu();
     refresh();
     /* Activity Monitor names its cores itself, one row per core the board
-       has, so it is asked again while it is open rather than a second later. */
-    sampleActivity();
+       has, so its last reading is drawn again rather than waiting for the
+       next. */
+    redrawActivity();
     /* Release notes come from the service in one language at a time. */
     showTheNotesAgain();
   });

@@ -66,6 +66,7 @@ export default [
         Intl: "readonly",
         URL: "readonly",
         WebSocket: "readonly",
+        EventSource: "readonly",
         AbortController: "readonly",
         ResizeObserver: "readonly",
         MutationObserver: "readonly",

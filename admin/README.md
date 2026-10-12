@@ -128,6 +128,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/kiosk/restart` | Both, in that order |
 | `GET /api/pi` | Temperature, power, sound, disk, what the emulator costs, whether it has crashed since the boot, and which version of this tool is answering |
 | `GET /api/activity` | The board's model, what every core is doing, the load averages, memory, and what the emulator costs |
+| `GET /api/activity/stream` | The same, as Server-Sent Events twice a second for as long as the connection stays open |
 | `GET /api/files` | Everything this tool holds, as a place with places in it |
 | `POST /api/machine` | Makes the emulated machine the one named, from either set |
 | `POST /api/machine/save` | Keeps a configuration under a name, without touching the running machine |
@@ -156,7 +157,7 @@ The one route with no check of ours at all is the terminal, and the section belo
 
 **Every answer from the API is `no-store`**, because each one is about right now and a kept copy is a wrong one. Files are the opposite and say so: each carries an `ETag` and a `Last-Modified`, and a browser that already has one is told `304` rather than sent it again. The pictures, the faces and the one vendor library also carry a day's `max-age`, since they change when a package is installed and at no other time. The page, the script and the stylesheet carry `no-cache`, which means the browser asks every time and is told `304` when nothing changed, so a new build is picked up at once.
 
-**The connection stays open.** `http.server` speaks HTTP/1.0 unless it is told otherwise, which closes the socket after every answer. That was costing a page load thirty connections, and on a Pi joined by Wi-Fi each of those took two seconds to open: measured on 2026-09-29, an icon of 1232 bytes arrived 8.7 seconds after it was asked for, of which 1 millisecond was the data. Every answer here carries a `Content-Length`, which is what lets the handler speak 1.1 and keep the socket.
+**The connection stays open.** `http.server` speaks HTTP/1.0 unless it is told otherwise, which closes the socket after every answer. That was costing a page load thirty connections, and on a Pi joined by Wi-Fi each of those took two seconds to open: measured on 2026-09-29, an icon of 1232 bytes arrived 8.7 seconds after it was asked for, of which 1 millisecond was the data. Every answer here carries a `Content-Length`, which is what lets the handler speak 1.1 and keep the socket. The stream of readings is the one answer without a length, and it closes its connection when it ends.
 
 **A POST's body is read before it is answered, a refusal included.** Whatever an answer left in the socket would be read as the start of the next request on it. A body the service will not read closes the connection, and the answer says so with `Connection: close`: that is one larger than 64 KB, or one whose declared length is not a length at all.
 
@@ -490,7 +491,9 @@ NeXTSTEP had no Activity Monitor, and a Pi that boots straight into an emulator 
 
 **Under the cores, indented to their column, the readings that are not the load of one core.** Memory is a row of lamps for what is in use, with what is in use and what there is beside it, such as `1.2/4.0 GB`. A gigabyte of memory is 1024 MB here, so a 4 GB board reads as 4.0 GB. The three load averages are figures, read against the number of cores, because 4.0 is a machine working flat out on four cores and one four times oversubscribed on one. The last line is what the emulator costs. Its percentage is of one core, so around 150 is ordinary with a NeXTdimension.
 
-**It asks twice a second while its window is open, and never while it is closed.** The answer comes from `GET /api/activity`, which reads `/proc` and forks nothing, and one answer costs the service 1.5 ms of a core on a Pi 5. Each figure is a difference between two readings, so the first answer after the window opens has none, and the rows stand dark for that half second.
+**It listens to a stream while its window is open, and to nothing while it is closed.** Opening the window opens `GET /api/activity/stream`, which sends a reading twice a second as a Server-Sent Event, and closing the window closes it. A request per reading would cost the service 1.5 ms of a core on a Pi 5, most of it HTTP, where the reading itself costs 0.4. Each stream keeps its own last sample, so two browsers watching at once do not shorten each other's measure. Each figure is a difference between two samples, so the first reading after the window opens has none, and the rows stand dark for that half second.
+
+**A stream that breaks is opened again.** The browser's `EventSource` does that on its own after two seconds, which the stream asks for, and the window says that the service is not answering in the meantime. A stream the service refuses is tried again after five seconds. The service holds a thread for every open stream, so it allows four from one address and eight in all, and a stream whose reader has stopped reading ends after its next write has waited ten seconds.
 
 **The row of lamps is `nx-leds`, a part of the kit.** It takes a share in per cent and the words for it, and it knows nothing about processors or memory. Its lamps are whole pixels at a size the part states, because a lamp sized as a share of the row's width blends into its neighbor at every edge. A lit lamp is the green and an unlit one the gray of the lamp beside "running" in the Info window, so lit means the same thing in both places.
 

@@ -1,4 +1,4 @@
-"""What every core is doing, cheap enough to ask twice a second.
+"""What every core is doing, cheap enough to send twice a second.
 
 `pi.py` answers the question a person asks when they open a window to check on
 the board, and it may fork for it: `vcgencmd` twice and `ps` once. That is the
@@ -9,25 +9,26 @@ takes 1.5 ms, and a whole answer to `/api/pi` takes 9.9 ms.
 
 So nothing here forks. Everything is a file under `/proc`, which is the kernel
 answering out of memory it already holds. A whole reading costs 0.42 ms on that
-same Pi while the emulator runs, and 0.13 ms while it does not. With the HTTP
-request around it, one answer costs the service 1.5 ms of a core, measured on
-2026-10-12, which at two a second is three tenths of one per cent of one core.
+same Pi while the emulator runs, and 0.13 ms while it does not. Asked for as a
+request of its own, one answer costs the service 1.5 ms of a core, measured on
+2026-10-12, and most of that is HTTP. That is why Activity Monitor is sent its
+readings on one stream rather than asking for each.
 
 **Every figure here is a difference between two moments.** The counters in
 `/proc/stat` are totals since the board started, and a total says nothing about
 now: a machine that was busy for an hour this morning carries that hour for as
-long as it stays up. So this keeps the last sample and reports what has changed
-since, which is what a load monitor has always done.
+long as it stays up. So a `Sampler` keeps the last sample and reports what has
+changed since, which is what a load monitor has always done.
 
-That has three consequences worth knowing. The first answer after the service
-starts has nothing to compare against and says `None` rather than a figure it
-cannot have. So does the first answer after nobody has asked for a while,
-because a difference across an hour is the average of that hour, and a window
-opened now would show it as what the board is doing now. And two browsers
-asking at once shorten each other's window, since each call takes the sample
-the one before it left; the percentages stay right, because they are measured
-against the real time between the two samples rather than against an interval
-anybody assumed.
+That has three consequences worth knowing. The first reading has nothing to
+compare against and says `None` rather than a figure it cannot have. So does
+the first after nobody has asked for a while, because a difference across an
+hour is the average of that hour, and a window opened now would show it as
+what the board is doing now. And whoever asks keeps a sampler of their own: a
+stream has its own, and `/api/activity` shares one among everybody who asks it,
+so two browsers asking there shorten each other's window. The percentages stay
+right either way, because they are measured against the real time between the
+two samples rather than against an interval anybody assumed.
 """
 
 import os
@@ -60,13 +61,13 @@ UTIME_FIELD = 11
 STIME_FIELD = 12
 STARTTIME_FIELD = 19
 
-#: The last sample, as (when, cores, emulator ticks), or None before the first
-#: one. `when` is the monotonic clock, because the wall clock can step.
-_LAST = None
+#: How often a stream sends a reading. Twice a second, because a bar that
+#: moves more slowly reads as a figure rather than as a monitor, and on a
+#: stream each reading costs what the reading costs and no more.
+EVERY_SECONDS = 0.5
 
-#: How old that sample may be and still be compared against. Activity Monitor
-#: asks twice a second while its window is open, so a sample older than this
-#: was left by a window that has since been closed, and what changed since
+#: How old a sample may be and still be compared against. A sample older than
+#: this was left by a window that has since been closed, and what changed since
 #: then is not what the board is doing now.
 COMPARABLE_FOR_SECONDS = 5
 
@@ -88,37 +89,58 @@ LOOK_EVERY_SECONDS = 5
 _LOOKED_AT = None
 
 
+class Sampler:
+    """One caller's last sample, so what it is told is what changed since it
+    last asked."""
+
+    def __init__(self):
+        #: The last sample, as (when, cores, emulator ticks), or None before the
+        #: first. `when` is the monotonic clock, because the wall clock can step.
+        self.last = None
+
+    def readings(self):
+        """Everything a monitor draws, in one answer.
+
+        @returns dict with `model`, `cores`, `load`, `memory` and `emulator`.
+          Anything that could not be read is None, and the window draws that as
+          empty rather than as zero. The model is the board's name, which the
+          window shows under its picture as the Raspberry Pi window does.
+        """
+        now = time.monotonic()
+        cores = _cpu_times()
+        ticks = _emulator_ticks()
+        before = (self.last if self.last and now - self.last[0] <= COMPARABLE_FOR_SECONDS
+                  else None)
+        self.last = (now, cores, ticks)
+
+        seconds = now - before[0] if before else 0
+        return {
+            "model": pi.model(),
+            "cores": _busy(cores, before[1] if before else None),
+            "load": _load(),
+            "memory": pi.memory(),
+            "emulator": _emulator(ticks, before[2] if before else None, seconds),
+        }
+
+
+#: The sampler `/api/activity` answers from, which everybody asking that route
+#: shares.
+_SHARED = Sampler()
+
+
 def readings():
-    """Everything a monitor draws, in one answer.
+    """Everything a monitor draws, against the last sample anybody asked for.
 
-    @returns dict with `model`, `cores`, `load`, `memory` and `emulator`.
-      Anything that could not be read is None, and the window draws that as
-      empty rather than as zero. The model is the board's name, which the
-      window shows under its picture as the Raspberry Pi window does.
+    @returns dict as `Sampler.readings` describes it.
     """
-    global _LAST
-
-    now = time.monotonic()
-    cores = _cpu_times()
-    ticks = _emulator_ticks()
-    before = _LAST if _LAST and now - _LAST[0] <= COMPARABLE_FOR_SECONDS else None
-    _LAST = (now, cores, ticks)
-
-    seconds = now - before[0] if before else 0
-    return {
-        "model": pi.model(),
-        "cores": _busy(cores, before[1] if before else None),
-        "load": _load(),
-        "memory": pi.memory(),
-        "emulator": _emulator(ticks, before[2] if before else None, seconds),
-    }
+    return _SHARED.readings()
 
 
 def forget():
-    """Throws the last sample and the process number away, so a test starts
+    """Throws the shared sample and the process number away, so a test starts
     from the state a service that has just come up is in."""
-    global _LAST, _PID, _LOOKED_AT
-    _LAST = None
+    global _PID, _LOOKED_AT
+    _SHARED.last = None
     _PID = None
     _LOOKED_AT = None
 

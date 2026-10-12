@@ -105,14 +105,30 @@ def test_a_sample_left_long_ago_is_not_compared_against(monkeypatch, tmp_path):
     average of that hour, drawn as what the board is doing now."""
     proc(monkeypatch, tmp_path, [(100, 900)])
     activity.readings()
-    when, cores, ticks = activity._LAST
-    activity._LAST = (when - activity.COMPARABLE_FOR_SECONDS - 1, cores, ticks)
+    when, cores, ticks = activity._SHARED.last
+    activity._SHARED.last = (when - activity.COMPARABLE_FOR_SECONDS - 1, cores, ticks)
     proc(monkeypatch, tmp_path, [(150, 950)])
 
     assert activity.readings()["cores"] is None
     # And the answer after that compares against this one, as it should.
     proc(monkeypatch, tmp_path, [(200, 1000)])
     assert activity.readings()["cores"] == [50.0]
+
+
+def test_every_stream_measures_against_its_own_last_sample(monkeypatch, tmp_path):
+    """Two windows open at once each keep their own window of time, so one
+    reading in between does not shorten the other's."""
+    proc(monkeypatch, tmp_path, [(100, 900)])
+    first, second = activity.Sampler(), activity.Sampler()
+    first.readings()
+    proc(monkeypatch, tmp_path, [(200, 900)])
+    second.readings()
+    proc(monkeypatch, tmp_path, [(200, 1000)])
+
+    # Busy for half of what passed since the first one looked, and idle for
+    # all of what passed since the second did.
+    assert first.readings()["cores"] == [50.0]
+    assert second.readings()["cores"] == [0.0]
 
 
 def test_a_core_that_appears_keeps_the_shape_of_the_answer(monkeypatch, tmp_path):

@@ -16,6 +16,7 @@ import json
 import mimetypes
 import pathlib
 import threading
+import time
 import urllib.parse
 
 from . import (activity, change, config, files, grab, kiosk, machines, pi,
@@ -77,6 +78,64 @@ COPY_OPERATIONS = {
     "/api/disk/restore": "restore",
 }
 
+#: How many streams of readings may be open at once, from one address and in
+#: all. Each holds a thread for as long as it is open, and a page opens one per
+#: Activity Monitor, so a few browsers on one desk are well inside this while a
+#: machine opening streams in a loop is not.
+STREAMS_PER_SOURCE = 4
+STREAMS_IN_ALL = 8
+
+#: How long one event may wait to be written before the stream gives up. A
+#: reader that has stopped reading would otherwise hold its thread for good.
+STREAM_WRITE_SECONDS = 10
+
+#: How long a browser waits before connecting a stream again after it broke,
+#: which EventSource takes from the stream itself.
+STREAM_RETRY_MS = 2000
+
+
+class StreamCount:
+    """Which streams are open, by the address they were opened from.
+
+    One for the whole server, because http.server makes a handler per request
+    and the bound is about all of them.
+    """
+
+    def __init__(self, per_source=STREAMS_PER_SOURCE, in_all=STREAMS_IN_ALL):
+        """
+        @param per_source - How many one address may hold.
+        @param in_all - How many there may be together.
+        """
+        self.per_source = per_source
+        self.in_all = in_all
+        self.open = {}
+        self.lock = threading.Lock()
+
+    def take(self, source):
+        """Counts one more stream for an address, where that is allowed.
+
+        @param source - The address it comes from.
+        @returns bool, whether it was counted. One that was must be given back.
+        """
+        with self.lock:
+            held = self.open.get(source, 0)
+            if held >= self.per_source or sum(self.open.values()) >= self.in_all:
+                return False
+            self.open[source] = held + 1
+            return True
+
+    def give_back(self, source):
+        """Counts one stream from an address as closed.
+
+        @param source - The address it came from.
+        """
+        with self.lock:
+            left = self.open.get(source, 0) - 1
+            if left > 0:
+                self.open[source] = left
+            else:
+                self.open.pop(source, None)
+
 
 class Handler(http.server.BaseHTTPRequestHandler):
     """Answers one request.
@@ -98,6 +157,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
     #: attribute because there is one server, and http.server makes a handler
     #: per request.
     terminals = threading.Lock()
+    #: The streams of readings that are open, for the same reason.
+    streams = StreamCount()
     server_version = "previously/" + VERSION
     #: Without this the base class announces the Python version to the network.
     sys_version = ""
@@ -107,7 +168,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
     #: and on a Pi joined by Wi-Fi opening the next one costs two seconds:
     #: measured on 2026-09-29, thirty requests each paying it again, with a
     #: 1232-byte icon taking 8.7 seconds to arrive. Every answer here carries
-    #: a Content-Length, which is what this needs to be safe.
+    #: a Content-Length or closes the connection behind it, as the stream of
+    #: readings does, which is what this needs to be safe.
     protocol_version = "HTTP/1.1"
 
     #: What the POST being answered carried, as `_taken` read it. Set again for
@@ -116,7 +178,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
     posted = None
 
     #: Whether the answer ends the connection: where a POST left a body this
-    #: did not read, and on the terminal's route, which no request follows.
+    #: did not read, and on the routes of the terminal and of the stream,
+    #: which no request follows.
     closing = False
 
     def end_headers(self):
@@ -148,10 +211,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "version": VERSION,
                 **pi.readings(self.settings.runtime_directory)})
         if route == "/api/activity":
-            # Its own route rather than more of the one above, because this one
-            # is asked twice a second while a monitor is open and that one
-            # forks three times to answer.
+            # Its own route rather than more of the one above, because a
+            # monitor draws this twice a second and that one forks three times
+            # to answer.
             return self._json(activity.readings())
+        if route == "/api/activity/stream":
+            return self._activity_stream()
         if route == "/api/files":
             return self._json(files.tree(
                 self.settings.machines_file, self.settings.documents,
@@ -795,6 +860,51 @@ class Handler(http.server.BaseHTTPRequestHandler):
             terminal.attach(session, connection)
         finally:
             self.terminals.release()
+
+    def _activity_stream(self):
+        """Sends Activity Monitor its readings for as long as it is listening.
+
+        Server-Sent Events: one reading every `activity.EVERY_SECONDS`, each as
+        an event carrying the same object `/api/activity` answers with. Open
+        without a session for the same reason that route is. What it sends is
+        about the board, and nothing about whoever is sitting at the machine.
+
+        A stream rather than a request per reading, because a request costs
+        the service 1.5 ms of a core where the reading in it costs 0.4. The
+        stream keeps a sampler of its own, so its figures are about the time
+        since it last sent, whoever else is asking.
+
+        The answer has no length and ends with the connection, so the
+        connection closes behind it. It ends when the browser goes: a write to
+        a connection nobody holds fails, and one nobody reads stops after
+        `STREAM_WRITE_SECONDS`.
+        """
+        self.closing = True
+        source = self.client_address[0]
+        if not self.streams.take(source):
+            return self._json({"error": "too many streams"}, status=503)
+
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.connection.settimeout(STREAM_WRITE_SECONDS)
+            self.wfile.write(b"retry: %d\n\n" % STREAM_RETRY_MS)
+
+            sampler = activity.Sampler()
+            while True:
+                reading = json.dumps(sampler.readings(), ensure_ascii=False)
+                self.wfile.write(("data: %s\n\n" % reading).encode("utf-8"))
+                self.wfile.flush()
+                time.sleep(activity.EVERY_SECONDS)
+        except OSError:
+            # The browser closed the window or went away, or stopped reading.
+            # Either way there is nobody left to send to.
+            pass
+        finally:
+            self.close_connection = True
+            self.streams.give_back(source)
 
     def _screen(self):
         """Answers with a picture of what the emulated machine is showing.
