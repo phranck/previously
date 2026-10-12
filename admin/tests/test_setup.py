@@ -12,6 +12,7 @@ list for everything root would have done.
 """
 
 import configparser
+import errno
 import json
 import os
 import pathlib
@@ -289,6 +290,35 @@ def test_an_undo_that_is_refused_still_lets_the_run_end(tmp_path, monkeypatch):
     assert said["failed"]["reason"] == "setup.no-room"
     assert said["undone"] == ["host"]
     assert undone == ["host"]
+
+
+def test_a_step_that_fails_with_a_file_error_is_reversed_and_ends(tmp_path, monkeypatch):
+    """A card that fills up fails a step that writes, and what it raises is a
+    file error rather than a refusal. Let through, it ended the program before
+    the run wrote its end, nothing was put back, and every later request was
+    refused as one too many until the next boot."""
+    undone = []
+
+    def records(work):
+        work.undoes(lambda step=work.step: undone.append(step))
+
+    def fails(work):
+        work.undoes(lambda: undone.append("half of sound"))
+        raise OSError(errno.ENOSPC, "No space left on device",
+                      "/etc/wireplumber/wireplumber.conf.d/50-nextstep.conf")
+
+    monkeypatch.setattr(setup, "STEPS", {"host": records, "sound": fails})
+    work = work_in(tmp_path, steps=("host", "sound"))
+
+    assert setup.carry_out(work) is False
+    said = json.loads((work.into / setup.PROGRESS).read_text(encoding="utf-8"))
+
+    assert said["finished_at"] is not None
+    assert said["failed"]["step"] == "sound"
+    assert said["failed"]["reason"] == "setup.file-error"
+    assert "No space left on device" in said["failed"]["error"]
+    assert said["undone"] == ["sound", "host"]
+    assert undone == ["half of sound", "host"]
 
 
 def test_a_run_says_which_steps_actually_did_something(tmp_path, monkeypatch):

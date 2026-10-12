@@ -530,4 +530,5 @@ export const en = {
   "told.setup.not-our-package": "What arrived is {found} rather than this tool, so it was thrown away.",
   "told.setup.not-that-version": "What arrived says it is {found} rather than {wanted}, so it was thrown away.",
   "told.setup.no-package-to-install": "There is no package to put in place.",
+  "told.setup.file-error": "A file on the Pi could not be changed: {error}",
 };

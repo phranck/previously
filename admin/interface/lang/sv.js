@@ -514,4 +514,5 @@ export const sv = {
   "told.setup.not-our-package": "Det som kom är {found} och inte det här verktyget, så det kastades.",
   "told.setup.not-that-version": "Det som kom säger att det är {found} och inte {wanted}, så det kastades.",
   "told.setup.no-package-to-install": "Det finns inget paket att lägga in.",
+  "told.setup.file-error": "En fil på Pi:n kunde inte ändras: {error}",
 };

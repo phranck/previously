@@ -1932,17 +1932,34 @@ def carry_out(work):
 
     @param work - The run.
     @returns bool, whether it finished.
+
+    A step fails by refusing, and also by a file it could not write, move or
+    copy, which is what a card that has filled up does to every step that
+    writes. That error is the step failing like any refusal, with its own text
+    beside the reason. Let through, it would end this program before the run
+    wrote its end, nothing would be put back, and the service would refuse
+    every later request as one too many until the next boot.
     """
     for done, name in enumerate(work.steps, start=1):
         work.at(name, done)
         try:
             STEPS[name](work)
-        except Refused as refusal:
+        except (Refused, OSError) as failure:
             work.reverse()
-            work.ends(False, {"step": name, **refusal.told})
+            work.ends(False, {"step": name, **_said_of(failure)})
             return False
     work.ends(True)
     return True
+
+
+def _said_of(failure):
+    """@returns dict, what a step that failed says, as `told` answers it.
+
+    @param failure - The Refused or the OSError it raised.
+    """
+    if isinstance(failure, Refused):
+        return failure.told
+    return told("setup.file-error", error=str(failure))
 
 
 def main(argv=None):
