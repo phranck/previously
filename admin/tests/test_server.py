@@ -512,8 +512,9 @@ def test_the_session_route_says_what_this_machine_is(service):
     assert said["claimed"] is True
     assert said["signed_in"] is False
     # The rule that decides what may be set travels with the answer, so the
-    # panel says the one that will actually be applied.
+    # panel says the one that will actually be applied, at both ends.
     assert said["smallest"] > 0
+    assert said["largest"] > said["smallest"]
 
 
 def test_the_session_route_says_when_a_browser_is_signed_in(service):

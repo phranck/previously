@@ -249,6 +249,7 @@ export const it = {
   "ask.password.length": "Almeno {least} caratteri.",
   "ask.password.wrong": "Quella non era la password di questa macchina.",
   "ask.password.too-short": "È più corta di quanto questa macchina accetti.",
+  "ask.password.too-long": "È più lunga dei {most} caratteri che questa macchina accetta.",
   "ask.password.too-often": "Troppi tentativi. Aspetta qualche minuto e riprova.",
   "ask.password.not-kept": "La password non è stata salvata sul Pi.",
 

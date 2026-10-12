@@ -21,7 +21,8 @@ import urllib.parse
 
 from . import (activity, change, config, files, grab, kiosk, machines, pi,
                release, saved, setup, systems, terminal, websocket)
-from .password import COOKIE, SESSION_SECONDS, SMALLEST, Attempts, Sessions, acceptable
+from .password import (COOKIE, LARGEST, SESSION_SECONDS, SMALLEST, Attempts, Sessions,
+                       acceptable)
 
 #: The release this tool belongs to. The one place it is written down, and
 #: what packaging/build.py reads to number a package.
@@ -237,13 +238,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if route == "/api/update/notes":
             return self._json(self._release_notes())
         if route == "/api/session":
-            # How short a password may be travels with the answer, so the panel
-            # that asks for one says the rule that will actually be applied
-            # rather than a copy of it.
+            # How short and how long a password may be travel with the answer,
+            # so the panel that asks for one says the rule that will actually be
+            # applied rather than a copy of it.
             return self._json({
                 "claimed": bool(self.password and self.password.claimed),
                 "signed_in": self._signed_in(),
                 "smallest": SMALLEST,
+                "largest": LARGEST,
             })
         if route == "/api/terminal":
             return self._terminal()

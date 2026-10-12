@@ -249,6 +249,7 @@ export const sv = {
   "ask.password.length": "Minst {least} tecken.",
   "ask.password.wrong": "Det var inte den här maskinens lösenord.",
   "ask.password.too-short": "Det är kortare än maskinen godtar.",
+  "ask.password.too-long": "Det är längre än de {most} tecken som maskinen godtar.",
   "ask.password.too-often": "För många försök. Vänta några minuter och försök igen.",
   "ask.password.not-kept": "Lösenordet kunde inte sparas på Pi:n.",
 

@@ -128,13 +128,30 @@ async function chooseThePassword(why, what, state) {
     /* Somebody else claimed this machine while the panel stood open, so what
        is due now is the password they chose rather than one of ours. */
     if (answer.status === 403) return signIn(t("ask.password.needed"));
-    complaint = t(answer.status === 400
-      ? "ask.password.too-short" : "ask.password.not-kept");
+    complaint = answer.status === 400 ? tooShortOrTooLong(typed, state)
+      : t("ask.password.not-kept");
   }
+}
+
+/**
+ * Says which end of the rule a refused password missed.
+ * @param {string} typed - What was typed.
+ * @param {any} state - What /api/session answered, which says how short and
+ *   how long a password may be.
+ * @returns {string} The sentence for it.
+ *
+ * Counted in characters as the service counts them, which is by code point,
+ * so a password of emoji is measured the way it is judged.
+ */
+function tooShortOrTooLong(typed, state) {
+  return [...typed].length > state.largest
+    ? t("ask.password.too-long", { most: state.largest })
+    : t("ask.password.too-short");
 }
 
 export {
   askPanel,
   askPanelFor,
   askForPassword,
+  tooShortOrTooLong,
 };
