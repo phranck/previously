@@ -5,6 +5,11 @@
  * second, and the row is the whole of what somebody reads off it. A row that
  * lights from the wrong end, rounds the wrong way or keeps lamps lit from the
  * last reading shows a machine doing something it is not.
+ *
+ * A row follows a new share over a moment rather than jumping to it, and
+ * shows it at once where the reader has asked for less movement. Every test
+ * here but the last two asks for less movement, because what they look at is
+ * where the row ends up.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -16,6 +21,22 @@ function litLamps(row) {
   return [...row.querySelectorAll(".led")]
     .flatMap((lamp, index) => (lamp.hasAttribute("lit") ? [index] : []));
 }
+
+/**
+ * Says whether the reader has asked for less movement, as a browser's setting
+ * would.
+ * @param {boolean} less
+ */
+function askForLessMovement(less) {
+  window.happyDOM.settings.device.prefersReducedMotion = less ? "reduce" : "no-preference";
+}
+
+/** @param {number} ms @returns {Promise<void>} Once that long has passed. */
+function after(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+askForLessMovement(true);
 
 test("a row is as long as it says, and twenty where it does not", () => {
   assert.equal(lay(`<nx-leds lamps="4"></nx-leds>`).querySelectorAll(".led").length, 4);
@@ -83,4 +104,38 @@ test("a row filled in before it is on the page is drawn when it arrives", () => 
 
   assert.deepEqual(litLamps(row), [0, 1, 2, 3]);
   assert.equal(row.querySelector(".says").textContent, "100 %");
+});
+
+test("a new share is followed rather than jumped to", async (context) => {
+  askForLessMovement(false);
+  context.after(() => askForLessMovement(true));
+  const row = lay(`<nx-leds lamps="10"></nx-leds>`);
+
+  row.value = 100;
+
+  /* Nothing moves before the first frame, and the reading is stated at once. */
+  assert.deepEqual(litLamps(row), []);
+  assert.equal(row.getAttribute("aria-valuenow"), "100");
+  /* A third of the way and more within the first time constant, and not all
+     of it. */
+  await after(60);
+  const underway = litLamps(row).length;
+  assert.ok(underway > 0 && underway < 10, `${underway} of 10 lamps lit after 60 ms`);
+  await after(1000);
+  assert.equal(litLamps(row).length, 10);
+});
+
+test("a falling share is followed down as well", async (context) => {
+  const row = lay(`<nx-leds lamps="10"></nx-leds>`);
+  row.value = 100;
+  askForLessMovement(false);
+  context.after(() => askForLessMovement(true));
+
+  row.value = 0;
+
+  await after(60);
+  const underway = litLamps(row).length;
+  assert.ok(underway > 0 && underway < 10, `${underway} of 10 lamps lit after 60 ms`);
+  await after(1000);
+  assert.deepEqual(litLamps(row), []);
 });

@@ -96,6 +96,7 @@ export default [
       ecmaVersion: 2023,
       sourceType: "module",
       globals: {
+        window: "readonly",
         document: "readonly",
         localStorage: "readonly",
         dispatchEvent: "readonly",
