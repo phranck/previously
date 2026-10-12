@@ -60,13 +60,18 @@ def test_everything_after_it_is_a_68040_with_the_unit_on_the_chip():
         assert system["nSCSI"] == "TRUE", machine.identifier
 
 
-def test_only_a_turbo_or_a_color_station_carries_the_later_clock_chip():
-    """The MCCS1850 came with the turbo board and with the color station, and
-    a plain machine given it is the machine that would not boot."""
+def test_only_a_turbo_board_carries_the_later_clock_chip():
+    """The MCCS1850 came with the turbo board, which is what
+    Configuration_SetSystemDefaults gives it to, color or not. A machine
+    without that board given it reports board revision 1 instead of 0."""
     for machine in machines.CATALOGUE:
         system = machines.settings_for(machine)["System"]
-        expected = machine.turbo or (machine.kind == machines.NEXTSTATION and machine.colour)
-        assert system["nRTC"] == ("TRUE" if expected else "FALSE"), machine.identifier
+        assert system["nRTC"] == ("TRUE" if machine.turbo else "FALSE"), machine.identifier
+
+
+def test_the_color_station_has_the_clock_chip_of_a_plain_board():
+    system = machines.settings_for(machines.find("nextstation-color"))["System"]
+    assert system["nRTC"] == "FALSE"
 
 
 def test_the_bus_chip_is_in_the_cubes_and_not_in_the_station():
