@@ -4,7 +4,7 @@ import { NEAR_FLIGHT_MS, NxViewer, deskRect, fly, zoom } from "../nextstep.js";
 import { t } from "../strings.js";
 import { bootFromDisk, putTheCopyBack, useTheDisc } from "./disks.js";
 import { noticeTheApplications } from "./dock.js";
-import { readPaths, writePaths } from "./kept.js";
+import { readPath, readPaths, writeDown } from "./kept.js";
 import { changeTo, editOnWhatIsRunning, notYet } from "./machines.js";
 import { byId, show, targetName, theWindow } from "./page.js";
 import { showInPreview } from "./preview.js";
@@ -27,6 +27,11 @@ let root = { name: "Previously", icon: "home", path: "/", kind: "folder", writab
 /** The way to the place being shown, outermost first.
  *  @type {TreeFolder[]} */
 let at = [root];
+
+/** Where the folder the viewer shows is kept between visits, by its path, so
+ *  a reload finds the viewer where it was left, the way its window comes back
+ *  where it stood. */
+const PLACE_KEY = "previously:place";
 
 /** Every machine anywhere in that tree. Kept because the info window says what
  *  a machine is without anything having to run.
@@ -66,10 +71,20 @@ async function drawMachines() {
      once it has arrived. */
   noticeTheApplications();
   /* Stay where the reader was, by path rather than by object, because the
-     tree they are looking at was fetched again. */
-  at = at.map((step) => folderAt(step.path)).filter((step) => step !== null);
-  if (!at.length) at = [root];
+     tree they are looking at was fetched again. Where they were is what was
+     written down, which after a reload is the folder the page was left on. */
+  standAt(chainTo(readPath(PLACE_KEY, root.path)));
   drawPlace();
+}
+
+/**
+ * Moves the viewer to a place and writes down where it is.
+ * @param {TreeFolder[]} steps - The way there, the root first, as chainTo
+ *   gives it.
+ */
+function standAt(steps) {
+  at = steps;
+  writeDown(PLACE_KEY, steps[steps.length - 1].path);
 }
 
 /**
@@ -169,7 +184,7 @@ function open(path, asker) {
   if (entry.kind === "folder") {
     /* Built from the path rather than by adding a step, because a folder on
        the shelf can be anywhere and the way there is not the way from here. */
-    at = chainTo(entry.path);
+    standAt(chainTo(entry.path));
     return openFolder(asker);
   }
   if (entry.kind === "application") {
@@ -241,7 +256,7 @@ async function visitFromTheShelf(where, thing) {
   if (at.at(-1)?.path === entry.path) return;
 
   const from = deskRect(thing);
-  at = chainTo(entry.path);
+  standAt(chainTo(entry.path));
   drawPlace();
 
   const steps = document.querySelectorAll("#file-viewer .path nx-thing");
@@ -276,7 +291,7 @@ function chainTo(where) {
  * @param {number} index - Which step, counted from the root.
  */
 function goTo(index) {
-  at = at.slice(0, index + 1);
+  standAt(at.slice(0, index + 1));
   drawPlace();
 }
 
@@ -318,7 +333,7 @@ function folderAt(path) {
 function keepOnShelf(where, onto) {
   kept = kept.filter((entry) => entry !== where);
   if (onto) kept.push(where);
-  writePaths(KEPT_KEY, kept);
+  writeDown(KEPT_KEY, kept);
   drawMachines();
 }
 

@@ -1,5 +1,18 @@
-/* What somebody put somewhere, such as the shelf or the dock, kept in this
-   browser by the paths of what was put there. */
+/* What somebody put somewhere, such as the shelf or the dock, and where they
+   were, such as the folder the File Viewer shows, kept in this browser by the
+   paths of those things. */
+
+/**
+ * @param {string} key - Which, as localStorage knows it.
+ * @returns {unknown} What is kept under it, or null where nothing readable is.
+ */
+function stored(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? "null");
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Reads one list of paths back.
@@ -9,23 +22,29 @@
  *   list is one somebody emptied, and is read back as itself.
  */
 function readPaths(key, first) {
-  try {
-    /** @type {unknown} */
-    const saved = JSON.parse(localStorage.getItem(key) ?? "null");
-    return Array.isArray(saved)
-      ? saved.filter((path) => typeof path === "string")
-      : [...first];
-  } catch {
-    return [...first];
-  }
+  const saved = stored(key);
+  return Array.isArray(saved)
+    ? saved.filter((path) => typeof path === "string")
+    : [...first];
 }
 
 /**
- * Writes one list of paths down.
- * @param {string} key - Which list.
- * @param {string[]} paths - All of them, in order.
+ * Reads one path back.
+ * @param {string} key - Which, as localStorage knows it.
+ * @param {string} first - What it is before anybody has moved.
+ * @returns {string} The path.
  */
-function writePaths(key, paths) {
+function readPath(key, first) {
+  const saved = stored(key);
+  return typeof saved === "string" ? saved : first;
+}
+
+/**
+ * Writes a path, or a list of them, down.
+ * @param {string} key - Which, as localStorage knows it.
+ * @param {string | string[]} paths - The path, or all of them in order.
+ */
+function writeDown(key, paths) {
   try {
     localStorage.setItem(key, JSON.stringify(paths));
   } catch {
@@ -34,6 +53,7 @@ function writePaths(key, paths) {
 }
 
 export {
+  readPath,
   readPaths,
-  writePaths,
+  writeDown,
 };

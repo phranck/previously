@@ -3,7 +3,7 @@
 
 import { NxDock, NxFloor } from "../nextstep.js";
 import { t, writeTitle } from "../strings.js";
-import { readPaths, writePaths } from "./kept.js";
+import { readPaths, writeDown } from "./kept.js";
 import { byId, targetName, theWindow } from "./page.js";
 import { find, open, root } from "./viewer.js";
 
@@ -166,7 +166,7 @@ function putIntoTheDock(event) {
   const paths = docked();
   if (!application || paths.includes(application.path)) return;
 
-  writePaths(DOCKED_KEY, [...paths, application.path]);
+  writeDown(DOCKED_KEY, [...paths, application.path]);
   byId("dock", NxDock).take(dockTile(application), slot);
   drawWhatIsRunning();
 }
@@ -179,7 +179,7 @@ function putIntoTheDock(event) {
  * running and no longer in the dock.
  */
 function takeOutOfTheDock(event) {
-  writePaths(DOCKED_KEY, docked().filter((path) => path !== event.detail.value));
+  writeDown(DOCKED_KEY, docked().filter((path) => path !== event.detail.value));
   drawWhatIsRunning();
 }
 
