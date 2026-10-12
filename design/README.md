@@ -19,7 +19,7 @@ Eight tools do that work:
 | `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `../admin/web/parts/`. |
 | `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
 | `makepng.py` | Draws the icon a PNG file wears on NeXT's own TIFF sheet, because NeXTSTEP has none for a format that came later. |
-| `mark.py` | Fetches the Previously mark from the website and writes the admin's copy into `../admin/web/parts/`. |
+| `mark.py` | Fetches the Previously mark and the icon of its tab from the website and writes the admin's copies into `../admin/web/parts/`. |
 | `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their license, into `../admin/web/fonts/`. |
 | `build.py` | Puts the kit together, writes the two files the admin serves, and bakes the pictures and those faces into the mockup as data URIs so it stays one file. |
 
@@ -73,7 +73,7 @@ python3 build.py
 
 ## The mark
 
-The mark the dock and the About panel show is the website's, drawn by `site/logo.py` in phranck/previous.li: NeXT's cube with the circuit board in place of the N. `mark.py` fetches its `site/logo.png` from `main` and writes it 192 pixels tall into `../admin/web/parts/Previously.png`, four times the 48 an icon is drawn at. Run it again whenever the website's mark changes:
+The mark the dock and the About panel show is the website's, drawn by `site/logo.py` in phranck/previous.li: NeXT's cube with the circuit board in place of the N. `mark.py` fetches its `site/logo.png` from `main` and writes it 192 pixels tall into `../admin/web/parts/Previously.png`, four times the 48 an icon is drawn at. It also copies the website's `site/favicon.ico` into `../admin/web/parts/favicon.ico`, which the admin's page names as the icon of its tab. Run it again whenever the website's mark changes:
 
 ```bash
 python3 mark.py
