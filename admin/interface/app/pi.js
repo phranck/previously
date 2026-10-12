@@ -9,18 +9,26 @@ import { NOTHING, costOf, duration, named, released, when } from "./words.js";
 const REFRESH_MS = 5000;
 
 /**
+ * What stands under the board's picture, in this window and in Activity
+ * Monitor alike.
+ * @param {any} answer - What the service answered, carrying `model`, or null
+ *   where it did not answer.
+ * @returns {string} The board's model, or that the Pi cannot be reached.
+ */
+function modelOf(answer) {
+  return answer === null ? t("state.unreachable") : (answer.model ?? NOTHING);
+}
+
+/**
  * Draws what the board underneath is doing.
  * @param {any} pi - What /api/pi answered, or null.
  */
 function drawPi(pi) {
-  if (pi === null) {
-    /* Whether the buttons can be used is the system's state, which the status
-       asked for at the same moment decides. */
-    show("pi-model", t("state.unreachable"));
-    return;
-  }
+  show("pi-model", modelOf(pi));
+  /* Whether the buttons can be used is the system's state, which the status
+     asked for at the same moment decides. */
+  if (pi === null) return;
 
-  show("pi-model", pi.model ?? NOTHING);
   show("pi-uptime", duration(pi.uptime_seconds));
 
   /* Above 80 degrees a Pi 5 begins to slow itself down, so that is where the
@@ -79,4 +87,5 @@ function drawPi(pi) {
 export {
   REFRESH_MS,
   drawPi,
+  modelOf,
 };

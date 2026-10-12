@@ -135,7 +135,7 @@
 <nx-window name="pi" data-t-title="window.info" fixed x="600" y="16" w="460" closed>
   <div class="info-body">
     <nx-portrait>
-      <i class="art icon" id="pi-icon" style="background-image: var(--board)"></i>
+      <i class="art icon board-picture"></i>
       <span class="caption" id="pi-model">&mdash;</span>
     </nx-portrait>
     <div class="readings">
@@ -209,13 +209,21 @@
      answers "how is it now" with a figure every five seconds. This one draws
      the board live, once a second, and asks nothing while it is closed.
 
-     One row of lamps per core, the way BeOS's Pulse drew a processor, and the
-     page builds those rows because how many cores there are is the board's to
-     say. Under them comes memory, which is a share and a figure at once, and
-     then the two readings that are figures alone. -->
+     The board's picture with its model under it, the way the Raspberry Pi
+     window shows it, and beside it one row of lamps per core, the way BeOS's
+     Pulse drew a processor. The page builds those rows because how many cores
+     there are is the board's to say. Under them, indented to the same column,
+     comes memory, which is a share and a figure at once, and then the two
+     readings that are figures alone. -->
 <nx-window name="activity" data-t-title="app.activity-monitor" fixed
            x="620" y="300" w="470" closed>
-  <div class="readings" id="activity-cores"></div>
+  <div class="info-body">
+    <nx-portrait>
+      <i class="art icon board-picture"></i>
+      <span class="caption" id="activity-model">&mdash;</span>
+    </nx-portrait>
+    <div class="readings" id="activity-cores"></div>
+  </div>
   <div class="readings">
     <nx-row><label data-t="pi.memory"></label><nx-leds id="activity-memory"></nx-leds></nx-row>
     <nx-row><label data-t="activity.load"></label><nx-field id="activity-load">&mdash;</nx-field></nx-row>

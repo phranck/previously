@@ -90,9 +90,10 @@ _LOOKED_AT = None
 def readings():
     """Everything a monitor draws, in one answer.
 
-    @returns dict with `cores`, `load`, `memory` and `emulator`. Anything that
-      could not be read is None, and the window draws that as empty rather
-      than as zero.
+    @returns dict with `model`, `cores`, `load`, `memory` and `emulator`.
+      Anything that could not be read is None, and the window draws that as
+      empty rather than as zero. The model is the board's name, which the
+      window shows under its picture as the Raspberry Pi window does.
     """
     global _LAST
 
@@ -104,6 +105,7 @@ def readings():
 
     seconds = now - before[0] if before else 0
     return {
+        "model": pi.model(),
         "cores": _busy(cores, before[1] if before else None),
         "load": _load(),
         "memory": pi.memory(),

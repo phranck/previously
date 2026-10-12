@@ -2,6 +2,7 @@
 
 import { t } from "../strings.js";
 import { show, theWindow } from "./page.js";
+import { modelOf } from "./pi.js";
 import { ask } from "./service.js";
 import { NOTHING, costOf, decimal } from "./words.js";
 
@@ -45,6 +46,7 @@ async function sampleActivity() {
  */
 function drawActivity(activity) {
   show("activity-note", activity ? "" : t("note.no-service"));
+  show("activity-model", modelOf(activity));
 
   /* One bar per core the service reports. The very first answer has no
      figures yet, since each one is a difference between two readings, and

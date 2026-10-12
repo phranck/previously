@@ -52,6 +52,10 @@ SOUND_CARDS = pathlib.Path("/proc/asound")
 #: somewhere else, the way it can with the sound cards above.
 MEMINFO = pathlib.Path("/proc/meminfo")
 
+#: Where the device tree names the board. One read of a file the kernel holds
+#: in memory, which is why Activity Monitor can ask for it once a second.
+MODEL = pathlib.Path("/proc/device-tree/model")
+
 #: What the console writes down when the emulator ends badly, inside the
 #: service's own runtime directory. One line each, and the whole file is gone
 #: at every boot because that directory is a tmpfs. `setup.py` writes the line
@@ -69,7 +73,7 @@ def readings(runtime_directory=None):
       leaves that line empty rather than saying something untrue.
     """
     return {
-        "model": _model(),
+        "model": model(),
         "uptime_seconds": _uptime_seconds(),
         "temperature_c": _temperature(),
         "throttling": _throttling(),
@@ -116,10 +120,12 @@ def crashes(runtime_directory):
     return {"count": len(when), "last": max(when)}
 
 
-def _model():
-    """@returns The board's own name, such as "Raspberry Pi 5 Model B Rev 1.1"."""
+def model():
+    """@returns The board's own name, such as "Raspberry Pi 5 Model B Rev 1.1",
+      or None. The one place it is read, for this window and for Activity
+      Monitor, which both show it under the board's picture."""
     try:
-        raw = pathlib.Path("/proc/device-tree/model").read_bytes()
+        raw = MODEL.read_bytes()
     except OSError:
         return None
     # The device tree writes its strings with a trailing null.
