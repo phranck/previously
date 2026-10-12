@@ -610,8 +610,12 @@ export interface MemoryReading {
 export interface PiAnswer {
   /** The version answering, build included. */
   version: string;
-  /** The device tree's name for the board. */
+  /** The device tree's description of the board, for a person to read. */
   model: string | null;
+  /** The service's name for the board out of hardware.BOARDS, such as "pi5",
+   *  read off the device tree's root compatible, or null for a board it does
+   *  not know. The page shows the drawing named after it. */
+  board: string | null;
   /** From /proc/uptime, in whole seconds. */
   uptime_seconds: number | null;
   /** From `vcgencmd measure_temp`, in degrees Celsius. */
@@ -670,8 +674,10 @@ export interface EmulatorCost {
  *  between two samples, so the first answer after a pause carries null where
  *  a figure needs one. */
 export interface ActivityAnswer {
-  /** The device tree's name for the board. */
+  /** The device tree's description of the board, for a person to read. */
   model: string | null;
+  /** The service's name for the board, as PiAnswer carries it. */
+  board: string | null;
   /** Per cent busy per core, in the kernel's order, one decimal; null where
    *  there is no earlier sample or /proc/stat cannot be read. */
   cores: number[] | null;

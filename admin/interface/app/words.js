@@ -30,10 +30,6 @@ const Art = {
   /* NeXTSTEP 3.3 has no picture of a CD, so a disc wears the generic SCSI
      device, which is what a CD-ROM on the bus is. */
   Disc: "scsi",
-  Pi4: "board-pi4",
-  Pi5: "board-pi5",
-  ComputeModule4: "board-cm4",
-  ComputeModule5: "board-cm5",
 };
 
 /** Which picture a machine wears, by the case the service says it comes in.
@@ -44,18 +40,8 @@ const MACHINE_ART = new Map([
   ["station", Art.Station],
 ]);
 
-/** Which drawing a Raspberry Pi wears, by how its model begins. The device tree
- *  names a board such as `Raspberry Pi 5 Model B Rev 1.1` or `Raspberry Pi
- *  Compute Module 4 Rev 1.0`, and the word boundary after the number keeps the
- *  Pi 400, the Pi 500 and the Compute Module 4S out, since none of these four
- *  drawings is of them.
- *  @type {[RegExp, string][]} */
-const BOARD_ART = [
-  [/^Raspberry Pi 4\b/, Art.Pi4],
-  [/^Raspberry Pi 5\b/, Art.Pi5],
-  [/^Raspberry Pi Compute Module 4\b/, Art.ComputeModule4],
-  [/^Raspberry Pi Compute Module 5\b/, Art.ComputeModule5],
-];
+/** Whose drawing a board wears when the service does not know it. */
+const ANY_BOARD = "pi5";
 
 /**
  * What the service just said, as a sentence.
@@ -170,13 +156,15 @@ function machineArt(enclosure) {
 
 /**
  * The picture for the board the service runs on.
- * @param {string | null | undefined} model - The board's model, as the device
- *   tree gives it, or nothing where it could not be read.
- * @returns {string} The picture's name. Any board this does not know, and a
- *   model that could not be read, wears the Pi 5.
+ * @param {string | null | undefined} board - The service's name for it, such
+ *   as `pi5`, out of the table in hardware.py, or null for a board the service
+ *   does not know.
+ * @returns {string} The picture's name. Every board the service knows has a
+ *   drawing in web/parts named after it, which tests/test_hardware.py holds,
+ *   and a board it does not know wears the Pi 5's.
  */
-function boardArt(model) {
-  return BOARD_ART.find(([pattern]) => pattern.test(model ?? ""))?.[1] ?? Art.Pi5;
+function boardArt(board) {
+  return `board-${board ?? ANY_BOARD}`;
 }
 
 /**

@@ -123,6 +123,11 @@ def test_the_board_readings_say_which_version_is_answering(service):
     assert "uptime_seconds" in payload
 
 
+#: What one reading of Activity Monitor holds, whether it is asked for or
+#: streamed.
+ACTIVITY_READING = {"model", "board", "cores", "load", "memory", "emulator"}
+
+
 def test_what_every_core_is_doing_is_open(service):
     """This route reads `/proc` and forks nothing. It is a reading, so it needs
     no password, the way the board's own readings do not."""
@@ -130,7 +135,7 @@ def test_what_every_core_is_doing_is_open(service):
     payload = json.loads(body)
 
     assert status == 200
-    assert set(payload) == {"model", "cores", "load", "memory", "emulator"}
+    assert set(payload) == ACTIVITY_READING
 
 
 def open_a_stream(service):
@@ -180,7 +185,7 @@ def test_the_readings_stream_while_somebody_listens(service, quick_readings):
     assert answer.status == 200
     assert answer.headers["Content-Type"].startswith("text/event-stream")
     assert answer.headers["Cache-Control"] == "no-store"
-    assert all(set(reading) == {"model", "cores", "load", "memory", "emulator"}
+    assert all(set(reading) == ACTIVITY_READING
                for reading in sent)
 
 
