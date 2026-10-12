@@ -271,7 +271,7 @@ A group with nothing to offer is not drawn, and a group's cells change with the 
 
 **Saving does not activate.** Opened on one of the eleven, which cannot be changed, it asks for a name and keeps a configuration of your own. Opened on one of your own, it writes that one back under the name it has. Either way `previous.cfg` is untouched, so the editor cannot leave a machine that will not boot. Starting one is the same double click as always.
 
-It opens three ways: from the context menu on a machine, which is the one that decides what is being edited; from its tile in the dock; and from `Config Editor.app` in the Apps folder. The last two open it on the configuration that is set now, because that is the machine in front of you.
+It opens three ways: from the context menu on a machine, which is the one that decides what is being edited; from its tile, which is in the dock until somebody takes it out; and from `Config Editor.app` in the Apps folder. The last two open it on the configuration that is set now, because that is the machine in front of you.
 
 ## Disks, and which one the machine boots
 
@@ -453,7 +453,9 @@ Two of those paths are worth telling apart. `state_directory` is `/var/lib/previ
 
 **An application here is its window.** One is running when the window it opens is open, so closing that window is quitting it. NeXTSTEP kept an application alive without windows; this tool has nothing for such an application to be, and a light saying it was running would mean nothing.
 
-What follows is what the dock does: the Workspace tile is Previously itself and never carries the three marks, the Config Editor carries them while its window is closed and loses them while it is open, and everything else puts its tile on the floor of the screen while it is open, because those are not in the dock.
+What follows is what the dock does. The Workspace tile is Previously itself and never carries the three marks. Every other tile is an application somebody put there, and the Config Editor is there until somebody takes it out. A docked application carries the marks while its window is closed and loses them while it is open. One that is open and not in the dock puts its tile on the floor of the screen.
+
+An application joins the dock when its icon is dragged from the File Viewer, or its tile from the floor, onto a free slot. It leaves when its tile is carried off the dock and let go, and one that is running leaves only with Command held. Which applications are in the dock is kept in this browser, the way the shelf's contents are.
 
 ## The one menu, and what is in it
 

@@ -4,6 +4,7 @@ import { NEAR_FLIGHT_MS, NxViewer, deskRect, fly, zoom } from "../nextstep.js";
 import { t } from "../strings.js";
 import { bootFromDisk, putTheCopyBack, useTheDisc } from "./disks.js";
 import { noticeTheApplications } from "./dock.js";
+import { readPaths, writePaths } from "./kept.js";
 import { changeTo, editOnWhatIsRunning, notYet } from "./machines.js";
 import { byId, show, targetName, theWindow } from "./page.js";
 import { showInPreview } from "./preview.js";
@@ -43,22 +44,7 @@ const KEPT_KEY = "previously:kept";
 const KEPT_BY_DEFAULT = ["/", "/Machines", "/Disks"];
 
 /** The identifiers on the viewer's shelf, in the order they were put there. */
-let kept = readKept();
-
-/** @returns {string[]} What was on the shelf last time, or the two that are
- *  there to begin with. An empty shelf is a shelf somebody emptied, and that
- *  is remembered as itself. */
-function readKept() {
-  try {
-    /** @type {unknown} */
-    const saved = JSON.parse(localStorage.getItem(KEPT_KEY) ?? "null");
-    return Array.isArray(saved)
-      ? saved.filter((path) => typeof path === "string")
-      : [...KEPT_BY_DEFAULT];
-  } catch {
-    return [...KEPT_BY_DEFAULT];
-  }
-}
+let kept = readPaths(KEPT_KEY, KEPT_BY_DEFAULT);
 
 /**
  * Fills the shelf with the machines the service offers.
@@ -135,9 +121,9 @@ function saying(folder) {
 /**
  * One entry as the viewer wants it.
  * @param {TreeEntry} entry - Anything the tree holds.
- * @returns {ViewerEntry} `{label, icon, value, folder}`. The value is the
- *   entry's path, which is what a drop, a double click and the menu all hand
- *   over, so there is one place a thing's name lives.
+ * @returns {ViewerEntry} `{label, icon, value, folder, dockable}`. The value
+ *   is the entry's path, which is what a drop, a double click and the menu all
+ *   hand over, so there is one place a thing's name lives.
  *
  * Everything in the tree keeps the name it came with, because a viewer shows
  * names: the folders, the bundles, the machines and Previously itself. A
@@ -154,6 +140,7 @@ function entryFor(entry) {
     icon: entry.kind === "machine" ? machineArt(entry.enclosure) : entry.icon,
     value: entry.path,
     folder: entry.kind === "folder",
+    dockable: entry.kind === "application",
   };
 }
 
@@ -331,11 +318,7 @@ function folderAt(path) {
 function keepOnShelf(where, onto) {
   kept = kept.filter((entry) => entry !== where);
   if (onto) kept.push(where);
-  try {
-    localStorage.setItem(KEPT_KEY, JSON.stringify(kept));
-  } catch {
-    /* A browser that refuses to store it still shows it for this visit. */
-  }
+  writePaths(KEPT_KEY, kept);
   drawMachines();
 }
 

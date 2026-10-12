@@ -92,7 +92,7 @@ python3 build.py            # or: make -C ../admin kit
 
 The two files it writes, `../admin/interface/nextstep.css` and `../admin/interface/nextstep.js`, say at the top that they are generated. `../admin/tests/test_kit.py` fails when either has been edited by hand, which is what makes one source safe to rely on.
 
-What the parts do is tested in `../admin/tests/kit/`, against the script `build.py` wrote, so a change to a part is tested once `make kit` has run. Those tests put the elements on a document in Node and read back what they made of their markup: a scroller drives the view it wraps, an opened window comes to the front, the menu shows one owner's entries, a tile lands only on a free slot, and a row of lamps lights as far as its share reaches. `make -C ../admin check` runs them with everything else.
+What the parts do is tested in `../admin/tests/kit/`, against the script `build.py` wrote, so a change to a part is tested once `make kit` has run. Those tests put the elements on a document in Node and read back what they made of their markup: a scroller drives the view it wraps, an opened window comes to the front, the menu shows one owner's entries, a tile lands only on a free slot and leaves the dock only where it may, and a row of lamps lights as far as its share reaches. `make -C ../admin check` runs them with everything else.
 
 What is not in the kit is what only one application has. The admin keeps that in `../admin/interface/app.css`, and this draft keeps its own beside the marks in the file.
 
@@ -127,6 +127,10 @@ NeXT wrote down why, so it is written down here. A tile acts on a double click a
 The three marks in the lower left corner of a tile say the application is **not** running, and they go when it starts. That is the direction the OpenStep guidelines give and the direction the running system shows: Mail, Librarian and the console carry them while the Workspace and the clock do not.
 
 An application that is running and is not in the dock puts its tile on the floor of the screen instead, from the left corner rightwards, and takes it away again when it stops. `nx-floor` is that floor. The tile is the dock's own, because `Workspace.app/tile.tiff` is a plain 64 by 64 gray square with the icon on it and no lettering.
+
+An application joins the dock when its icon is dragged from the File Viewer, or its tile from the floor, onto a free slot. Over a free slot, the ghost of its icon stands faded in that slot. An occupied slot shows nothing and takes nothing, and only an `nx-thing` carrying `dockable` is taken at all. The dock then raises `nx-dock` with the application and the slot, and the page builds the tile and hands it to `take`.
+
+A tile leaves the dock when it is carried off the column and let go. While it is carried, a dimmed copy stands in its slot, and that copy goes the moment letting go would take the tile out. A tile whose application is running stays unless Command is held, and the Workspace tile never moves. The dock raises `nx-undock` for a tile that left. This is what the [NeXTSTEP User's Guide](https://bitsavers.org/pdf/next/NeXTSTEP_User_Guide_1994.pdf) describes on pages 60 and 61.
 
 ## A note on the icons and the face
 

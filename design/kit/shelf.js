@@ -25,6 +25,10 @@ class NxShelf extends HTMLElement {
  * @attr icon - Which picture it carries.
  * @attr label - The name under it.
  * @attr chosen - Draw it selected.
+ * @attr value - What it hands over when it is used. Without one it cannot be
+ *   carried or opened.
+ * @attr dockable - It is an application, so the dock takes it when it is
+ *   carried there.
  */
 class NxThing extends HTMLElement {
   connectedCallback() {
@@ -80,7 +84,9 @@ class NxThing extends HTMLElement {
          switched off and on again while the page is up. */
       if (!this.canBeUsed || !event.dataTransfer) return event.preventDefault();
       event.dataTransfer.setData("text/plain", this.value);
-      event.dataTransfer.effectAllowed = "copy";
+      /* A window and the shelf take a copy of what is handed over. The dock
+         takes a link: it keeps where the application is, not the application. */
+      event.dataTransfer.effectAllowed = "copyLink";
       this.setAttribute("lifting", "");
     });
 

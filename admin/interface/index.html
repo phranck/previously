@@ -75,14 +75,11 @@
   <nx-menu-item for="editor" name="quit" data-t-key="menu.quit.key" data-t="menu.quit"></nx-menu-item>
 </nx-menu>
 
-<!-- The Workspace is always running and never carries the marks. The editor
-     carries them while its window is closed, like any other application here. -->
-<nx-dock>
+<!-- The Workspace is always running and never carries the marks. Every other
+     tile is an application somebody put here, which the page draws from the
+     tree, and each carries the marks while its window is closed. -->
+<nx-dock id="dock">
   <nx-tile icon="Workspace" title="NeXT" fixed></nx-tile>
-  <!-- No `opens`, unlike the other tiles: the editor is opened on a machine, and
-       the page decides which one before the window is shown. -->
-  <nx-tile icon="defaultAppIcon" data-t-title="app.config-editor"
-           name="editor" app="/Apps/Config Editor.app"></nx-tile>
 </nx-dock>
 
 <!-- Where an application that is not in the dock puts its icon while it is

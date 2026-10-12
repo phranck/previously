@@ -9,6 +9,8 @@
  * @property {string} [value] - What choosing it hands over. Left out, it hands
  *   nothing over.
  * @property {boolean} [folder] - In the contents, that it has more inside.
+ * @property {boolean} [dockable] - That it is an application, which the dock
+ *   takes when it is carried there.
  */
 
 /**
@@ -152,6 +154,7 @@ class NxViewer extends HTMLElement {
     thing.setAttribute("icon", entry.icon ?? "");
     thing.setAttribute("label", entry.label ?? "");
     if (entry.value !== undefined) thing.setAttribute("value", entry.value);
+    thing.toggleAttribute("dockable", Boolean(entry.dockable));
     return thing;
   }
 

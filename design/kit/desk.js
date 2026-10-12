@@ -150,7 +150,8 @@ function onDesk(length) {
 }
 
 /**
- * @param {PointerEvent} event
+ * @param {MouseEvent} event - A pointer event, or a drag event, which reports
+ *   where the pointer is in the same way.
  * @returns {DeskPoint} Where the pointer is.
  */
 function deskPoint(event) {
@@ -218,12 +219,15 @@ function showArt(el, name) {
  * Runs a pointer gesture and reports the result when it ends.
  * @template Start
  * @param {HTMLElement} handle - Where the gesture starts.
- * @param {(point: DeskPoint, start: Start) => void} onMove - Given where the
- *   pointer is now.
+ * @param {(point: DeskPoint, start: Start, event: PointerEvent) => void} onMove -
+ *   Given where the pointer is now, and the event that said so, which is what
+ *   carries the keys held down.
  * @param {(point: DeskPoint) => Start} onStart - Whatever the mover needs to
  *   know about the moment the gesture began, given the same.
- * @param {(start: Start) => void} [onEnd] - Given what onStart returned,
- *   which by then carries whatever the moves wrote into it.
+ * @param {(start: Start, event: PointerEvent) => void} [onEnd] - Given what
+ *   onStart returned, which by then carries whatever the moves wrote into it,
+ *   and the event that ended it: a pointerup, or a pointercancel where the
+ *   browser took the pointer away.
  *
  * The pointer is converted here, so what a gesture hands on is already in the
  * units of the element it moves and nothing downstream has to know the desk
@@ -247,7 +251,7 @@ function gesture(handle, onMove, onStart, onEnd) {
 
     const apply = () => {
       frame = 0;
-      if (latest) onMove(deskPoint(latest), start);
+      if (latest) onMove(deskPoint(latest), start, latest);
     };
 
     const move = (/** @type {PointerEvent} */ moveEvent) => {
@@ -255,15 +259,19 @@ function gesture(handle, onMove, onStart, onEnd) {
       if (!frame) frame = requestAnimationFrame(apply);
     };
 
-    const finish = () => {
+    const finish = (/** @type {PointerEvent} */ endEvent) => {
+      /* Both endings are taken off, because only the one that fired goes by
+         itself, and the other would end the next gesture a second time. */
       handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", finish);
+      handle.removeEventListener("pointercancel", finish);
       /* The last position has to land before anything saves it, so a frame
          still owed is run now rather than canceled. */
       if (frame) {
         cancelAnimationFrame(frame);
         apply();
       }
-      onEnd?.(start);
+      onEnd?.(start, endEvent);
     };
 
     handle.addEventListener("pointermove", move);
