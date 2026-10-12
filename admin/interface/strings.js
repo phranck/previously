@@ -22,7 +22,8 @@ import { sv } from "./lang/sv.js";
 
 /** Every catalog, by the code it answers to. Gathered here rather than
  *  written into by each of them, so that a catalog is a table and nothing
- *  else: what it is called, and when it is read, is this file's business. */
+ *  else: what it is called, and when it is read, is this file's business.
+ *  @type {Record<string, Record<string, string>>} */
 const NX_STRINGS = { en, de, fr, it, es, sv };
 
 /** The one that is always complete, and the one every other falls back to. */
@@ -35,7 +36,8 @@ const LANGUAGE_KEY = "previously:language";
 
 /** What each catalog is called, in its own language. The Preferences window
  *  offers these, and a language named in a language one does not read is no
- *  help to anybody. */
+ *  help to anybody.
+ *  @type {Record<string, string>} */
 const LANGUAGE_NAMES = {
   en: "English",
   de: "Deutsch",
@@ -47,7 +49,8 @@ const LANGUAGE_NAMES = {
 
 /** Which locale each language formats its dates in. German is Austrian here
  *  because that is where this machine stands; the others take the plain
- *  language, so a date comes out the way that language writes one. */
+ *  language, so a date comes out the way that language writes one.
+ *  @type {Record<string, string>} */
 const LOCALES = {
   en: "en-GB",
   de: "de-AT",
@@ -83,7 +86,7 @@ function currentLocale() {
 /**
  * Looks a string up in the language in force.
  * @param {string} key - What the string is called, such as `info.processor`.
- * @param {any} [values] - What fills the `{name}` places in it.
+ * @param {object} [values] - What fills the `{name}` places in it, by name.
  * @param {number} [count] - Where the string has one wording for one thing and
  *   another for several, the number of things. The browser knows each
  *   language's own rule for which is which, so `lang/fr.js` gets the singular
@@ -105,15 +108,16 @@ function t(key, values, count) {
 /**
  * Puts values into a string's `{name}` places.
  * @param {string} line
- * @param {any} [values]
+ * @param {object} [values] - What fills them, by name.
  * @returns {string} A place nothing was given for keeps its braces, so a
  *   catalog entry that names a value the caller does not send shows up
  *   rather than leaving a hole.
  */
 function fill(line, values) {
   if (!values) return line;
+  const given = /** @type {Record<string, unknown>} */ (values);
   return line.replace(/\{(\w+)\}/g, (whole, name) =>
-    (name in values ? String(values[name]) : whole));
+    (name in given ? String(given[name]) : whole));
 }
 
 /**
@@ -133,19 +137,19 @@ function translate(root = document) {
   document.documentElement.lang = language;
 
   /* Each of the three is an element of the page, carrying a dataset. What a
-     query answers with is an Element, which has none, so each says what it
-     found once rather than at every use of it. */
-  for (const found of root.querySelectorAll("[data-t]")) {
-    const element = /** @type {any} */ (found);
-    writeWords(element, t(element.dataset.t));
+     query answers with is an Element, which has none, so each list says what
+     it holds once rather than at every use of it. */
+  for (const element of /** @type {NodeListOf<HTMLElement>} */ (
+    root.querySelectorAll("[data-t]"))) {
+    writeWords(element, t(element.dataset.t ?? ""));
   }
-  for (const found of root.querySelectorAll("[data-t-title]")) {
-    const element = /** @type {any} */ (found);
-    writeTitle(element, t(element.dataset.tTitle));
+  for (const element of /** @type {NodeListOf<HTMLElement>} */ (
+    root.querySelectorAll("[data-t-title]"))) {
+    writeTitle(element, t(element.dataset.tTitle ?? ""));
   }
-  for (const found of root.querySelectorAll("[data-t-key]")) {
-    const element = /** @type {any} */ (found);
-    writeKey(element, t(element.dataset.tKey));
+  for (const element of /** @type {NodeListOf<HTMLElement>} */ (
+    root.querySelectorAll("[data-t-key]"))) {
+    writeKey(element, t(element.dataset.tKey ?? ""));
   }
 }
 
@@ -165,11 +169,11 @@ function translate(root = document) {
  * inside the label and nothing on the right where every other entry has it.
  */
 function writeWords(element, text) {
-  const words = /** @type {any} */ (
-    [...element.childNodes].find((node) => node.nodeType === Node.TEXT_NODE));
-  if (words) return void (words.data = text);
+  const words = [...element.childNodes]
+    .find((node) => node.nodeType === Node.TEXT_NODE);
+  if (words) return void (words.textContent = text);
 
-  const letter = /** @type {any} */ (element.querySelector(":scope > .key"));
+  const letter = element.querySelector(":scope > .key");
   const written = document.createTextNode(text);
   if (letter) element.insertBefore(written, letter);
   else element.append(written);
@@ -177,8 +181,8 @@ function writeWords(element, text) {
 
 /**
  * Puts text in the bar of a window or a menu.
- * @param {any} element - Anything in the page, and for a title usually one of
- *   the kit's windows, which carries a rename of its own.
+ * @param {Element} element - Anything in the page, and for a title usually one
+ *   of the kit's windows, which carries a rename of its own once it is built.
  * @param {string} text
  *
  * Three ways, because there are three states to catch. A window that is built
@@ -186,15 +190,18 @@ function writeWords(element, text) {
  * built yet takes the attribute, which is what the kit reads a moment later.
  */
 function writeTitle(element, text) {
-  if (element.rename) return element.rename(text);
-  const bar = /** @type {any} */ (element.querySelector(":scope > .title"));
+  if ("rename" in element && typeof element.rename === "function") {
+    element.rename(text);
+    return;
+  }
+  const bar = element.querySelector(":scope > .title");
   if (bar) bar.textContent = text;
   else element.setAttribute("title", text);
 }
 
 /**
  * Puts the letter beside a menu entry, and gives the page the letter to act on.
- * @param {HTMLElement} element - A menu entry.
+ * @param {Element} element - A menu entry.
  * @param {string} letter
  *
  * Both, because they are two views of one thing: the attribute is what the
@@ -207,7 +214,7 @@ function writeTitle(element, text) {
  */
 function writeKey(element, letter) {
   element.setAttribute("key", letter);
-  const shown = /** @type {any} */ (element.querySelector(":scope > .key"));
+  const shown = element.querySelector(":scope > .key");
   if (shown) shown.textContent = letter;
 }
 

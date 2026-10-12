@@ -3,6 +3,7 @@
 import { t } from "../strings.js";
 import { SETUP, refreshTheInstaller } from "./installer.js";
 import { reportAboutTheMachine } from "./machines.js";
+import { wasTaken } from "./outcome.js";
 import { show, theWindow } from "./page.js";
 import { askPanel } from "./panels.js";
 import { ask, tell } from "./service.js";
@@ -10,9 +11,15 @@ import { setBusy } from "./status.js";
 import { Needs, allowed } from "./system.js";
 import { Art, say, sized } from "./words.js";
 
+/** @typedef {import("../answers.js").DiskEntry} DiskEntry */
+/** @typedef {import("../answers.js").DiscEntry} DiscEntry */
+/** @typedef {import("../answers.js").BackupEntry} BackupEntry */
+
 /**
  * Asks about a disk and makes the machine boot it when the answer is yes.
- * @param {any} disk - Its entry in the tree.
+ * @param {Pick<DiskEntry, "id" | "name" | "bytes" | "booting">} disk - Its
+ *   entry in the tree, or the same four facts about a system in the
+ *   Installer's list.
  *
  * Nothing is fetched and nothing is copied. Each system is one file, the guest
  * writes into that file, and pointing the machine elsewhere leaves the first
@@ -50,8 +57,8 @@ async function bootFromDisk(disk) {
 
 /**
  * Puts a disc into the machine, or takes it out again.
- * @param {any} disc - Its entry in the tree, which says which slot it is on
- *   where it is in the machine at all.
+ * @param {DiscEntry} disc - Its entry in the tree, which says which slot it is
+ *   on where it is in the machine at all.
  *
  * One gesture for both, because it is one thing: the disc is either in the
  * machine or it is not, and a double click swaps that over. The same as taking
@@ -65,7 +72,7 @@ function useTheDisc(disc) {
 
 /**
  * Asks about a disc, and puts it in the machine when the answer is yes.
- * @param {any} disc - Its entry in the tree.
+ * @param {DiscEntry} disc - Its entry in the tree.
  *
  * It goes beside the disk the machine boots rather than instead of it, on a
  * free slot of the bus, and it is read only there because that is what a disc
@@ -96,7 +103,7 @@ async function putTheDiscIn(disc) {
 /**
  * Asks about a disc that is in the machine, and takes it out when the answer
  * is yes.
- * @param {any} disc - Its entry in the tree.
+ * @param {DiscEntry} disc - Its entry in the tree.
  */
 async function takeTheDiscOut(disc) {
   const agreed = await askPanel({
@@ -114,7 +121,7 @@ async function takeTheDiscOut(disc) {
 
 /**
  * Asks about a copy of a disk, and has one made when the answer is yes.
- * @param {any} disk - Its entry in the tree.
+ * @param {DiskEntry} disk - Its entry in the tree.
  *
  * Two gigabytes, so what it costs and what would be left are in the question
  * rather than in a failure afterwards. The figures are fetched at the moment
@@ -130,7 +137,7 @@ async function backUpTheDisk(disk) {
       t("ask.backup.cost", { name: disk.name, size: sized(disk.bytes) }),
       state ? t("ask.fetch.left", {
         free: sized(state.room),
-        left: sized(Math.max(0, state.room - disk.bytes)),
+        left: sized(state.room === null ? null : Math.max(0, state.room - disk.bytes)),
       }) : "",
       t("ask.backup.off"),
       t("ask.job.time"),
@@ -143,7 +150,7 @@ async function backUpTheDisk(disk) {
 
 /**
  * Asks about a copy, and writes it back over its disk when the answer is yes.
- * @param {any} copy - Its entry in the tree.
+ * @param {BackupEntry} copy - Its entry in the tree.
  *
  * The one thing that can be done with a copy, and the one that cannot be
  * undone: what is on the disk now is written over. So the question says that
@@ -165,8 +172,8 @@ async function putTheCopyBack(copy) {
 
 /**
  * Leaves a request for a copy and shows the window that watches it.
- * @param {string} route - Which of the two.
- * @param {any} body - What to send.
+ * @param {"/api/disk/backup" | "/api/disk/restore"} route - Which of the two.
+ * @param {object} body - What to send.
  *
  * The Installer is opened, because it is the window that says what the Pi is
  * doing and this takes minutes. Starting a five minute job from a viewer and
@@ -175,7 +182,7 @@ async function putTheCopyBack(copy) {
 async function askTheInstallerToCopy(route, body) {
   const answer = await tell(route, body);
   show("machine-note", answer === null ? t("note.no-service") : say(answer));
-  if (!answer?.ok) return;
+  if (!wasTaken(answer)) return;
 
   theWindow("installer")?.open();
   refreshTheInstaller();

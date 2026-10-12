@@ -3,7 +3,7 @@
 import { t, writeTitle, writeWords } from "../strings.js";
 import { drawTheMenu } from "./menu.js";
 import { isAStatus } from "./outcome.js";
-import { show } from "./page.js";
+import { byId, show, theWindow } from "./page.js";
 import { askForPassword, askPanel } from "./panels.js";
 import { drawPi } from "./pi.js";
 import { Kiosk, ask, operate } from "./service.js";
@@ -11,15 +11,19 @@ import { Needs, begin, end, heard, hold } from "./system.js";
 import { markCurrent } from "./viewer.js";
 import { Art, NOTHING, changedLine, cpuOf, machineArt, modelOf, nameOf, say, screenOf, since, writtenLine } from "./words.js";
 
+/** @typedef {import("../answers.js").StatusAnswer} StatusAnswer */
+/** @typedef {import("../answers.js").Said} Said */
+/** @typedef {import("../nextstep.js").NxMenuItem} NxMenuItem */
+
 /**
  * Draws the state of the machine into the info window.
- * @param {any} status - What /api/status answered, or null.
+ * @param {StatusAnswer | null} status - What /api/status answered, or null.
  *
  * And hands it to the system's state, which every control that changes
  * something follows, in this window and in every other.
  */
 function drawStatus(status) {
-  const state = /** @type {any} */ (document.getElementById("info-state"));
+  const state = byId("info-state");
   lastStatus = status;
   drawWhatThisMachineIs(status);
 
@@ -106,7 +110,7 @@ function drawStatus(status) {
      plays no part in it: a NeXTstation Color stands in the same case as a gray
      one, and the line above says which tube is in it. */
   runningArt = machineArt(machine.enclosure);
-  /** @type {any} */ (document.getElementById("info-icon")).style.backgroundImage = `var(--${runningArt})`;
+  byId("info-icon").style.backgroundImage = `var(--${runningArt})`;
 }
 
 /** Whether the Installer has been put in front of somebody in this visit. Once
@@ -126,13 +130,13 @@ let offeredTheInstaller = false;
 function offerTheInstaller() {
   if (offeredTheInstaller) return;
   offeredTheInstaller = true;
-  /** @type {any} */ (document.querySelector('nx-window[name="installer"]'))?.open();
+  theWindow("installer")?.open();
 }
 
 /**
  * Draws the menu entry that says what the emulated machine is, or takes it
  * away.
- * @param {any} status - What /api/status answered, or null.
+ * @param {StatusAnswer | null} status - What /api/status answered, or null.
  *
  * It carries the machine's own name, so its words are written here rather than
  * taken from the catalog: `About NeXTcube Turbo`. On a Pi with nothing
@@ -141,7 +145,8 @@ function offerTheInstaller() {
  * all.
  */
 function drawWhatThisMachineIs(status) {
-  const entry = /** @type {any} */ (document.querySelector('nx-menu-item[name="about"]'));
+  const entry = /** @type {NxMenuItem | null} */ (
+    document.querySelector('nx-menu-item[name="about"]'));
   if (!entry) return;
 
   const machine = status?.ready?.set_up ? status.configuration : null;
@@ -151,7 +156,7 @@ function drawWhatThisMachineIs(status) {
        concerned. */
     const words = t("menu.about", { machine: modelOf(machine) });
     writeWords(entry, words);
-    const window_ = /** @type {any} */ (document.querySelector('nx-window[name="info"]'));
+    const window_ = theWindow("info");
     if (window_) writeTitle(window_, words);
   }
 
@@ -168,7 +173,8 @@ function drawWhatThisMachineIs(status) {
 }
 
 /** Whether the entry about this machine is in the menu, so that the menu is
- *  drawn again when that changes and not twice a second when it does not. */
+ *  drawn again when that changes and not twice a second when it does not.
+ *  @type {boolean | null} */
 let aboutIsThere = null;
 
 /** The picture of the machine that is configured now, so a panel asking about
@@ -176,7 +182,8 @@ let aboutIsThere = null;
 let runningArt = Art.Computer;
 
 /** The last thing /api/status said, for the parts of the info window that are
- *  about the file rather than about a machine. */
+ *  about the file rather than about a machine.
+ *  @type {StatusAnswer | null} */
 let lastStatus = null;
 
 /** Written into noteState while a note is new and the state it describes has
@@ -187,7 +194,8 @@ const JUST_WRITTEN = Symbol("just written");
  *  JUST_WRITTEN before that has been seen, and null where there is no note.
  *
  *  The note says what was last asked for, so it has said everything it has to
- *  say once the machine has moved on from the state it was written in. */
+ *  say once the machine has moved on from the state it was written in.
+ *  @type {string | symbol | null} */
 let noteState = null;
 
 /**
@@ -210,7 +218,8 @@ function setBusy(busy, words) {
 
 /**
  * Ends an operation on the machine with what the service said about it.
- * @param {any} answer - What `tell` handed over, or null on no contact.
+ * @param {Said | null} answer - What `tell` handed over, or null on no
+ *   contact.
  *
  * The status rides along with every answer to a change of the machine, so it
  * is drawn at once rather than at the next poll. Only where it is there: a
@@ -254,14 +263,14 @@ function wireButtons() {
   hold("#kiosk-stop", Needs.Quiet, () => Boolean(lastStatus?.running));
   hold("#kiosk-restart", Needs.Quiet, () => Boolean(lastStatus?.running));
 
-  /** @type {any} */ (document.getElementById("kiosk-start")).addEventListener("click",
+  byId("kiosk-start").addEventListener("click",
     () => operate(Kiosk.Start, t("busy.starting")));
 
-  /** @type {any} */ (document.getElementById("kiosk-stop")).addEventListener("click", async () => {
+  byId("kiosk-stop").addEventListener("click", async () => {
     if (await warn(t("button.power-off"))) operate(Kiosk.Stop, t("busy.stopping"));
   });
 
-  /** @type {any} */ (document.getElementById("kiosk-restart")).addEventListener("click", async () => {
+  byId("kiosk-restart").addEventListener("click", async () => {
     if (await warn(t("button.restart"))) operate(Kiosk.Restart, t("busy.restarting"));
   });
 }
@@ -271,7 +280,7 @@ function wireButtons() {
 async function refresh() {
   drawStatus(await ask("/api/status"));
 
-  const window_ = /** @type {any} */ (document.querySelector('nx-window[name="pi"]'));
+  const window_ = theWindow("pi");
   if (window_ && !window_.hidden) drawPi(await ask("/api/pi"));
 }
 

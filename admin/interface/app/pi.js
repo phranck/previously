@@ -4,6 +4,8 @@ import { t } from "../strings.js";
 import { show, showState } from "./page.js";
 import { NOTHING, costOf, duration, named, released, when } from "./words.js";
 
+/** @typedef {import("../answers.js").PiAnswer} PiAnswer */
+
 /** How often the status is fetched. A machine whose job is to sit there does
  *  not repay a faster poll than this. */
 const REFRESH_MS = 5000;
@@ -11,8 +13,8 @@ const REFRESH_MS = 5000;
 /**
  * What stands under the board's picture, in this window and in Activity
  * Monitor alike.
- * @param {any} answer - What the service answered, carrying `model`, or null
- *   where it did not answer.
+ * @param {{model: string | null} | null} answer - What the service answered,
+ *   carrying `model`, or null where it did not answer.
  * @returns {string} The board's model, or that the Pi cannot be reached.
  */
 function modelOf(answer) {
@@ -21,7 +23,7 @@ function modelOf(answer) {
 
 /**
  * Draws what the board underneath is doing.
- * @param {any} pi - What /api/pi answered, or null.
+ * @param {PiAnswer | null} pi - What /api/pi answered, or null.
  */
 function drawPi(pi) {
   show("pi-model", modelOf(pi));

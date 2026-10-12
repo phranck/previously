@@ -1,6 +1,12 @@
-/* Grab, which takes a picture of the emulated screen. */
+/* Grab, which takes a picture of the emulated screen.
+ *
+ * The picture is the machine's own framebuffer, taken at the moment it is
+ * asked for. Nothing here polls: a screen that redrew itself every few seconds
+ * would be a window that costs the emulator something for as long as it is
+ * open, and what a person wants is to look now.
+ */
 
-import { theWindow } from "./page.js";
+import { byId, theWindow } from "./page.js";
 import { askForPassword } from "./panels.js";
 import { KEPT_HEADER } from "./service.js";
 import { lastStatus } from "./status.js";
@@ -17,9 +23,7 @@ import { t } from "../strings.js";
  * one picture rather than all of them.
  */
 async function takeAPicture() {
-  const view = /** @type {any} */ (document.getElementById("shot"));
-  const button = /** @type {any} */ (document.getElementById("shot-take"));
-  if (!view) return;
+  const button = byId("shot-take", HTMLButtonElement);
   /* No screen to take while the emulator is down or being changed, and the
      note says which of the two it is. */
   if (!allowed(Needs.Screen, "shot-note")) return drawPicture("shot", null);
@@ -45,12 +49,12 @@ async function takeAPicture() {
 
 /**
  * Puts a picture in the window, or says why there is none.
- * @param {Blob} picture - What the service answered with, or null.
- * @param {string} [name] - What the service filed it as.
+ * @param {Blob | null} picture - What the service answered with, or null.
+ * @param {string | null} [name] - What the service filed it as.
  */
 function showTheScreen(picture, name) {
   drawPicture("shot", picture, name);
-  /** @type {any} */ (document.getElementById("shot-note")).textContent = picture
+  byId("shot-note").textContent = picture
     ? ""
     : t(lastStatus?.running === false ? "grab.idle" : "grab.failed");
 }
@@ -58,8 +62,8 @@ function showTheScreen(picture, name) {
 /**
  * Draws a picture into a view, and releases the one it replaces.
  * @param {string} id - Which view, which is its element's id.
- * @param {Blob} picture - The picture, or null to empty the view.
- * @param {string} [name] - What it is called, for saving it later.
+ * @param {Blob | null} picture - The picture, or null to empty the view.
+ * @param {string | null} [name] - What it is called, for saving it later.
  *
  * One place, because two windows show a picture: Grab shows what it has just
  * taken and Preview shows one that was kept. A blob has to be released or the
@@ -67,19 +71,18 @@ function showTheScreen(picture, name) {
  * remember the last one per view.
  */
 function drawPicture(id, picture, name) {
-  const view = /** @type {any} */ (document.getElementById(id));
-  if (!view) return;
+  const view = byId(id);
 
-  if (shownPictures[id]) URL.revokeObjectURL(shownPictures[id].url);
-  shownPictures[id] = picture
-    ? { url: URL.createObjectURL(picture), name }
-    : null;
-  view.style.backgroundImage = shownPictures[id]
-    ? `url("${shownPictures[id].url}")` : "";
+  const before = shownPictures[id];
+  if (before) URL.revokeObjectURL(before.url);
+  const shown = picture ? { url: URL.createObjectURL(picture), name } : null;
+  shownPictures[id] = shown;
+  view.style.backgroundImage = shown ? `url("${shown.url}")` : "";
 }
 
 /** What each picture view is showing and what it is called, so it can be
- *  released when it is replaced and saved while it is up. */
+ *  released when it is replaced and saved while it is up.
+ *  @type {Record<string, {url: string, name: string | null | undefined} | null>} */
 const shownPictures = {};
 
 /**
@@ -100,24 +103,11 @@ function saveThePicture(id) {
   link.click();
 }
 
-/* --- the menu belongs to whatever is in front -----------------------------
-
-   NeXTSTEP had one menu, in one place, whose title and entries were replaced
-   when another application became active. Read off the running system: the
-   Workspace's menu is titled Workspace and holds ten entries, and Preferences'
-   is titled Preferences and holds five, of which Info, Ausblenden and
-   Verlassen are the ones every application has.
-
-   Here an application is a window, so the front window decides. A window that
-   is not an application's, which is the Info window, the Raspberry Pi window
-   and the File Viewer, leaves the workspace's own menu standing: under
-   NeXTSTEP those are the Workspace's own windows too. */
-
 /** Wires the window that shows the emulated screen. */
 function wireGrab() {
   const window_ = theWindow("grab");
-  const button = /** @type {any} */ (document.getElementById("shot-take"));
-  if (!window_ || !button) return;
+  if (!window_) return;
+  const button = byId("shot-take", HTMLButtonElement);
 
   hold("#shot-take", Needs.Screen);
   hold('nx-menu-item[name="grab-take"]', Needs.Screen);
@@ -128,18 +118,6 @@ function wireGrab() {
   window_.addEventListener("nx-close", () => showTheScreen(null));
   if (!window_.hidden) takeAPicture();
 }
-
-/* --- the Installer --------------------------------------------------------
-
-   What NeXT called the application that puts things on a machine and takes
-   them off again. Here there are two kinds of thing: the emulator, which is a
-   package and a handful of steps around it, and a system, which is a two
-   gigabyte disk that arrives as an archive of a few tens of megabytes.
-
-   The work is none of this window's. It asks the service, the service leaves a
-   request, and a program running as root does it and says how far it has got.
-   So what is drawn here comes from the Pi on every look, and a reload shows
-   the same thing a moment later. */
 
 export {
   takeAPicture,

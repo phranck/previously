@@ -1,9 +1,9 @@
 /* What this tool is, and what a browser sees the first time it arrives. */
 
-import { theWindow } from "./page.js";
+import { byId, theWindow } from "./page.js";
 import { ask } from "./service.js";
 import { released } from "./words.js";
-import { deskIsNew } from "../nextstep.js";
+import { NxAsk, deskIsNew } from "../nextstep.js";
 import { t } from "../strings.js";
 
 const PRODUCT = "Previously";
@@ -23,7 +23,7 @@ const HOLDER_SITE = "https://layered.work";
  */
 async function showWhatThisIs() {
   const version = (await ask("/api/pi"))?.version;
-  await /** @type {any} */ (document.getElementById("ask")).tell({
+  await byId("ask", NxAsk).tell({
     icon: "Previously",
     name: PRODUCT,
     subtitle: t("about.tagline"),

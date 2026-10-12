@@ -11,13 +11,43 @@
  * would have three special cases by the third one.
  */
 
+import { NxPopup } from "../nextstep.js";
 import { currentLanguage, t } from "../strings.js";
 import { drawPicture } from "./grab.js";
 import { render } from "./markdown.js";
+import { wasTaken } from "./outcome.js";
+import { byId, menuEntry, theMenu, theWindow } from "./page.js";
 import { askForPassword, askPanel } from "./panels.js";
 import { ask, tell } from "./service.js";
 import { drawMachines, find, root } from "./viewer.js";
 import { Art } from "./words.js";
+
+/** @typedef {import("../answers.js").ReleaseRun} ReleaseRun */
+
+/**
+ * Something Preview shows. A picture is what the tree says about it, of which
+ * the name is all that is read. Notes carry everything they show, because they
+ * are not fetched again once they are here.
+ * @typedef {object} PreviewDocument
+ * @property {"picture" | "notes"} kind - Which renderer takes it.
+ * @property {string} name - The window's title, and for a picture what it is
+ *   called in the Pictures folder.
+ * @property {string} [notes] - Notes only: the Markdown they were written in,
+ *   "" where there are none.
+ * @property {string | null} [version] - Notes only: the release they are of,
+ *   or null where no release is known.
+ * @property {ReleaseRun[]} [versions] - Notes only: every entry there is,
+ *   newest first.
+ */
+
+/**
+ * How one kind of document is shown.
+ * @typedef {object} Renderer
+ * @property {string} room - The id of the part of the window it fills.
+ * @property {(document_: PreviewDocument) => Promise<string>} show - Fills
+ *   it, and answers with what to say under the window, or "".
+ * @property {() => void} clear - Empties it again.
+ */
 
 /** Where Preview keeps what it is showing, so a reload comes back to it.
  *
@@ -41,13 +71,16 @@ const SHOWING_KEY = "previously.preview";
  *
  * `show` answers with what to say under the window where there is anything, and
  * with nothing where the document arrived whole.
+ *
+ * @type {Record<PreviewDocument["kind"], Renderer>}
  */
 const RENDERERS = {
   picture: {
     room: "preview-picture",
 
     /**
-     * @param {any} document_ - What the tree says about a kept picture.
+     * @param {PreviewDocument} document_ - What the tree says about a kept
+     *   picture.
      * @returns {Promise<string>} What to say under it, or "".
      *
      * Fetched rather than pointed at, for the same reason Grab fetches its own:
@@ -79,10 +112,8 @@ const RENDERERS = {
     room: "preview-document",
 
     /**
-     * @param {any} document_ - Carrying `notes` as the Markdown they were
-     *   written in, `version` as the release they are of, and `versions` as
-     *   every entry there is, newest first, each with the `first` and the
-     *   `last` release it stands for.
+     * @param {PreviewDocument} document_ - Carrying `notes`, `version` and
+     *   `versions`.
      * @returns {Promise<string>} What to say where there are none.
      *
      * Turned into elements rather than into markup, which `markdown.js` is
@@ -96,38 +127,37 @@ const RENDERERS = {
      */
     async show(document_) {
       const versions = document_.versions ?? [];
-      /** @type {any} */ (document.getElementById("preview-version")).offer(
+      byId("preview-version", NxPopup).offer(
         versions.map(({ first, last }) => ({
           value: last,
           label: first === last ? last : t("preview.versions.run", { first, last }),
         })),
         document_.version);
-      /** @type {any} */ (document.getElementById("preview-versions")).hidden =
-        versions.length === 0;
+      byId("preview-versions").hidden = versions.length === 0;
 
       if (!document_.notes) return t("preview.no-notes");
-      document.getElementById("preview-document").append(render(document_.notes));
+      byId("preview-document").append(render(document_.notes));
       return "";
     },
 
     clear() {
-      document.getElementById("preview-document").replaceChildren();
-      /** @type {any} */ (document.getElementById("preview-versions")).hidden = true;
+      byId("preview-document").replaceChildren();
+      byId("preview-versions").hidden = true;
     },
   },
 };
 
 /**
  * Shows one document in Preview.
- * @param {any} document_ - What it is, carrying at least `kind` and `name`.
+ * @param {PreviewDocument} document_ - What it is.
  *
  * Every renderer is emptied and every room but one is taken away, so a window
  * that showed a picture and is given notes is not a window showing both.
  */
 async function showInPreview(document_) {
-  const window_ = /** @type {any} */ (document.querySelector('nx-window[name="preview"]'));
+  const window_ = theWindow("preview");
+  if (!window_) return;
   const renderer = RENDERERS[document_.kind];
-  if (!window_ || !renderer) return;
 
   emptyThePreview(document_.kind);
   window_.rename(document_.name);
@@ -141,16 +171,15 @@ async function showInPreview(document_) {
      document. Without this the bar measures whichever room happens to be
      first: notes in a window whose picture room is empty scroll to the wheel
      and show no bar at all, which is what they did. */
-  /** @type {any} */ (window_.querySelector("nx-scroller"))
-    .drive(document.getElementById(renderer.room));
+  window_.querySelector("nx-scroller")?.drive(byId(renderer.room));
 
-  /** @type {any} */ (document.getElementById("preview-note")).textContent =
-    await renderer.show(document_);
+  byId("preview-note").textContent = await renderer.show(document_);
 }
 
 /**
  * Writes down what the window is showing, or forgets it.
- * @param {any} showing - The document, as `{ kind, name }`, or null.
+ * @param {PreviewDocument | null} showing - The document, as its kind, its
+ *   name and for notes its release, or null.
  */
 function keepShowing(showing) {
   try {
@@ -163,14 +192,29 @@ function keepShowing(showing) {
   }
 }
 
-/** @returns {any} What it was showing, or null. */
+/** @returns {PreviewDocument | null} What it was showing, or null. */
 function whatItWasShowing() {
   try {
-    const kept = JSON.parse(localStorage.getItem(SHOWING_KEY));
-    return kept && RENDERERS[kept.kind] ? kept : null;
+    /** @type {unknown} */
+    const kept = JSON.parse(localStorage.getItem(SHOWING_KEY) ?? "null");
+    return isADocument(kept) ? kept : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Whether what this browser kept is a document Preview can show.
+ * @param {unknown} kept - What was read back.
+ * @returns {kept is PreviewDocument}
+ *
+ * Whatever is in the browser's storage was written by a version of this page
+ * that may not be this one, so a kind no renderer takes anymore is not shown.
+ */
+function isADocument(kept) {
+  return typeof kept === "object" && kept !== null
+    && "kind" in kept && typeof kept.kind === "string" && Object.hasOwn(RENDERERS, kept.kind)
+    && "name" in kept && typeof kept.name === "string";
 }
 
 /**
@@ -185,7 +229,7 @@ function whatItWasShowing() {
  * the Pi says now.
  */
 function fillPreviewIfItCameBackOpen() {
-  const window_ = /** @type {any} */ (document.querySelector('nx-window[name="preview"]'));
+  const window_ = theWindow("preview");
   if (!window_ || window_.hidden) return;
 
   const showing = whatItWasShowing();
@@ -193,8 +237,7 @@ function fillPreviewIfItCameBackOpen() {
     /* Open with nothing to put in it, which is a browser that forgot or a
        first visit to a desk somebody left open. Saying so beats a blank. */
     emptyThePreview();
-    /** @type {any} */ (document.getElementById("preview-note")).textContent =
-      t("preview.empty");
+    byId("preview-note").textContent = t("preview.empty");
     return;
   }
   if (showing.kind === "notes") return void showTheReleaseNotes(showing.version);
@@ -209,14 +252,14 @@ function fillPreviewIfItCameBackOpen() {
 function emptyThePreview(kind) {
   for (const [name, renderer] of Object.entries(RENDERERS)) {
     renderer.clear();
-    /** @type {any} */ (document.getElementById(renderer.room)).hidden =
-      name !== kind;
+    byId(renderer.room).hidden = name !== kind;
   }
 }
 
 /**
  * Opens the notes of a release.
- * @param {string} [version] - Which release, the newest where none is named.
+ * @param {string | null} [version] - Which release, the newest where none is
+ *   named.
  *
  * Its own address rather than a field of the answer the Raspberry Pi window
  * polls, because that one is asked every two seconds and these are thousands of
@@ -227,9 +270,10 @@ function emptyThePreview(kind) {
  * names every release there is, which the pop-up list above the notes offers.
  */
 async function showTheReleaseNotes(version) {
-  const asked = new URLSearchParams({ language: currentLanguage() });
-  if (version) asked.set("version", version);
-  const answer = await ask("/api/update/notes?" + asked);
+  /** @type {Record<string, string>} */
+  const asked = { language: currentLanguage() };
+  if (version) asked.version = version;
+  const answer = await ask("/api/update/notes", asked);
   showInPreview({
     kind: "notes",
     name: t("preview.notes.title", { version: answer?.version ?? "" }).trim(),
@@ -247,7 +291,7 @@ async function showTheReleaseNotes(version) {
  * while everything around it spoke the new one.
  */
 function showTheNotesAgain() {
-  const window_ = /** @type {any} */ (document.querySelector('nx-window[name="preview"]'));
+  const window_ = theWindow("preview");
   const showing = whatItWasShowing();
   if (!window_ || window_.hidden || showing?.kind !== "notes") return;
   showTheReleaseNotes(showing.version);
@@ -270,8 +314,7 @@ async function deleteThePicture(name) {
   });
   if (!sure) return false;
 
-  const answer = await tell("/api/picture/delete", { name });
-  if (!answer?.ok) return false;
+  if (!wasTaken(await tell("/api/picture/delete", { name }))) return false;
 
   /* The folder has one thing fewer in it than the viewer is drawing, and a
      window showing what has gone is showing something that is not there. */
@@ -281,7 +324,7 @@ async function deleteThePicture(name) {
 
 /**
  * Offers what can be done to a picture, where one was right clicked.
- * @param {HTMLElement} thing - The icon under the pointer.
+ * @param {Element} thing - The icon under the pointer.
  * @param {number} x @param {number} y - Where the pointer was.
  * @returns {boolean} Whether this menu was the right one for what was clicked.
  *
@@ -291,12 +334,13 @@ async function deleteThePicture(name) {
  * follows it.
  */
 function openPictureMenu(thing, x, y) {
-  const where = thing.getAttribute("value");
-  const entry = find(root, where);
+  const entry = find(root, thing.getAttribute("value") ?? "");
   if (entry?.kind !== "picture") return false;
 
-  const menu = /** @type {any} */ (document.querySelector('nx-menu[name="picture-menu"]'));
-  menu.querySelector('nx-menu-item[name="delete"]').onclick = async () => {
+  const menu = theMenu("picture-menu");
+  if (!menu) return false;
+
+  menuEntry(menu, "delete").onclick = async () => {
     menu.close();
     await deleteThePicture(entry.name);
   };
@@ -308,22 +352,20 @@ function openPictureMenu(thing, x, y) {
 function wirePreview() {
   /* A release chosen in the pop-up list is a release whose notes are asked for,
      in the language the interface speaks. */
-  document.getElementById("preview-version")?.addEventListener("nx-pick",
-    (/** @type {any} */ event) => showTheReleaseNotes(event.detail.value));
+  byId("preview-version").addEventListener("nx-pick",
+    (event) => showTheReleaseNotes(event.detail.value));
 
-  document.querySelector('nx-window[name="preview"]')
-    ?.addEventListener("nx-close", () => {
-      emptyThePreview();
-      /* So a desk that comes back does not reopen a window onto a document
-         somebody closed. */
-      keepShowing(null);
-    });
+  theWindow("preview")?.addEventListener("nx-close", () => {
+    emptyThePreview();
+    /* So a desk that comes back does not reopen a window onto a document
+       somebody closed. */
+    keepShowing(null);
+  });
 
   fillPreviewIfItCameBackOpen();
 }
 
 export {
-  RENDERERS,
   showInPreview,
   showTheReleaseNotes,
   showTheNotesAgain,

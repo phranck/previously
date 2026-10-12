@@ -12,7 +12,7 @@ import { t } from "../strings.js";
 import { show } from "./page.js";
 
 /** What a control needs before it can be used. */
-const Needs = {
+const Needs = /** @type {const} */ ({
   /** Contact with the service and nothing under way: everything that changes
    *  the machine, its disks, the board or this tool. */
   Quiet: "quiet",
@@ -22,7 +22,9 @@ const Needs = {
   /** Contact with the service and nothing more: keeping a configuration or
    *  taking a picture away, which touch neither the machine nor the board. */
   Contact: "contact",
-};
+});
+
+/** One of Needs. @typedef {typeof Needs[keyof typeof Needs]} Need */
 
 /** Whether the last status arrived. False until the first one has, because
  *  nothing is known about a system that has not answered yet. */
@@ -36,17 +38,19 @@ let running = false;
 let operation = null;
 
 /** Which jobs of the privileged helper are under way, by the window that
- *  watches them. The helper takes one job at a time whoever asked for it. */
+ *  watches them. The helper takes one job at a time whoever asked for it.
+ *  @type {Record<string, boolean>} */
 const helping = {};
 
 /** Every control that changes something, with what it needs and the condition
- *  of its own beside that. */
+ *  of its own beside that.
+ *  @type {{selector: string, needs: Need, own: () => boolean}[]} */
 const held = [];
 
 /**
  * Puts a control under the system's state.
  * @param {string} selector - Where it is, as querySelector takes it.
- * @param {string} needs - One of Needs.
+ * @param {Need} needs - One of Needs.
  * @param {() => boolean} [own] - What the control itself asks on top, such as
  *   an emulator that is running before it can be stopped. Read every time the
  *   controls are drawn, so it answers about now.
@@ -57,7 +61,7 @@ function hold(selector, needs, own = () => true) {
 
 /**
  * Whether something needing that may be done now.
- * @param {string} needs - One of Needs.
+ * @param {Need} needs - One of Needs.
  * @returns {boolean}
  */
 function may(needs) {
@@ -66,7 +70,7 @@ function may(needs) {
 
 /**
  * Why something needing that may not be done now.
- * @param {string} needs - One of Needs.
+ * @param {Need} needs - One of Needs.
  * @returns {string} The sentence for it, or "" where it may.
  */
 function whyNot(needs) {
@@ -80,7 +84,7 @@ function whyNot(needs) {
 
 /**
  * Lets an action go ahead, or says in a note why it cannot.
- * @param {string} needs - One of Needs.
+ * @param {Need} needs - One of Needs.
  * @param {string} note - The note of the window it was asked from.
  * @returns {boolean} Whether to go ahead.
  *
@@ -99,12 +103,14 @@ function allowed(needs, note) {
 
 /** The notes that say why something was refused, with what it needed, so each
  *  is taken away once that is possible again. Left standing, it would go on
- *  saying something is being changed after the change is over. */
+ *  saying something is being changed after the change is over.
+ *  @type {Map<string, Need>} */
 const refused = new Map();
 
 /**
  * Takes in what the service last said about the machine.
- * @param {any} status - What /api/status answered, or null where nothing did.
+ * @param {{running: boolean} | null} status - What /api/status answered, or
+ *   null where nothing did.
  *
  * An operation that takes the board away is over when the board answers again
  * after having gone, and not before: its own request comes back long before
@@ -172,10 +178,10 @@ function drawTheSystem() {
  */
 function holdTheControls() {
   for (const { selector, needs, own } of held) {
-    const control = /** @type {any} */ (document.querySelector(selector));
+    const control = document.querySelector(selector);
     if (!control) continue;
     const off = !may(needs) || !own();
-    if (control.tagName === "BUTTON") control.disabled = off;
+    if (control instanceof HTMLButtonElement) control.disabled = off;
     else control.toggleAttribute("disabled", off);
   }
 }

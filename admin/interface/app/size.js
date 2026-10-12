@@ -1,6 +1,20 @@
 /* How large the interface is drawn. */
 
 import { setDeskScale } from "../nextstep.js";
+import { byId } from "./page.js";
+
+/* NeXTSTEP's own measurements are what everything here is built from, and on
+   a large panel at a low resolution they are small. So the same desk is drawn
+   larger rather than measured again.
+
+   In quarters, which is a finer choice than the bitmaps are exact at. Measured
+   against the sizes they are actually drawn at: a quarter step puts five of
+   them on half pixels, a half step puts two there, and only 1 and 2 leave
+   every one whole. They carry image-rendering: pixelated, so a row of their
+   own pixels is doubled rather than smeared. Somebody at a large panel needs a
+   size between too small and too large more than they need a picture that is
+   exact at two settings out of five. */
+
 /** What the interface can be drawn at. */
 const SIZES = [1, 1.25, 1.5, 1.75, 2];
 
@@ -47,8 +61,7 @@ function drawAtSize(scale) {
  * reads the same in every language, and 100% says which one is the original.
  */
 function drawSizes() {
-  const row = /** @type {any} */ (document.getElementById("size-choices"));
-  if (!row) return;
+  const row = byId("size-choices");
   row.replaceChildren(...SIZES.map((scale) => {
     const choice = document.createElement("div");
     choice.className = "choice";

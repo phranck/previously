@@ -12,11 +12,15 @@
  */
 
 import { t } from "../strings.js";
-import { show } from "./page.js";
+import { wasTaken } from "./outcome.js";
+import { byId, show, theWindow } from "./page.js";
 import { showTheReleaseNotes } from "./preview.js";
 import { ask, tell } from "./service.js";
 import { Needs, helperIs, hold, holdTheControls } from "./system.js";
 import { released, say, sized } from "./words.js";
+
+/** @typedef {import("../answers.js").UpdateAnswer} UpdateAnswer */
+/** @typedef {import("../answers.js").SetupProgress} SetupProgress */
 
 /** Where the update asks and tells. One address for both, because what comes
  *  back from asking is what the window shows anyway. */
@@ -37,7 +41,8 @@ const EVERY_FOURTH = 4;
 const PATIENCE_MS = 30000;
 
 /** The last thing /api/update said, so the window can be drawn again in another
- *  language, and so a moment with no service still has something to show. */
+ *  language, and so a moment with no service still has something to show.
+ *  @type {UpdateAnswer | null} */
 let updateState = null;
 
 /** Whether the request has been left and the helper has not started yet. The
@@ -47,7 +52,8 @@ let updateState = null;
 let waitingForTheHelper = false;
 
 /** Which run was showing when that request was left, by the moment it started,
- *  so the one that follows it can be told apart from it. */
+ *  so the one that follows it can be told apart from it.
+ *  @type {number | null} */
 let theRunBefore = null;
 
 /** When it was left, by this browser's clock, so waiting for ever is not one of
@@ -72,12 +78,13 @@ let weAskedForOne = false;
  *   would spend that in twenty minutes.
  */
 async function refreshTheUpdate(check) {
-  drawTheUpdate(await ask(check ? `${UPDATE}?check=1` : UPDATE));
+  drawTheUpdate(await ask(UPDATE, check ? { check: "1" } : undefined));
 }
 
 /**
  * Draws the version line, the trough and the sentence under it.
- * @param {any} state - What /api/update answered, or null on no contact.
+ * @param {UpdateAnswer | null} state - What /api/update answered, or null on
+ *   no contact.
  */
 function drawTheUpdate(state) {
   if (state === null) {
@@ -97,27 +104,27 @@ function drawTheUpdate(state) {
   show("pi-newest", released(state.published));
   /* And marked where it is not the version answering, so the line somebody is
      reading says so rather than only the button at the foot of the window. */
-  /** @type {any} */ (document.getElementById("pi-newest"))
+  byId("pi-newest")
     .toggleAttribute("newer", Boolean(state.newer));
   /* What that release says about itself can be read whenever there is a release
      to read about, whether it is newer than this one or not. */
-  /** @type {any} */ (document.getElementById("pi-notes")).disabled =
+  byId("pi-notes", HTMLButtonElement).disabled =
     state.published === null;
   drawWhatIsHappening(state);
 }
 
 /**
  * Says how a replacement is getting on, or what there is to do.
- * @param {any} state - What /api/update answered.
+ * @param {UpdateAnswer} state - What /api/update answered.
  */
 function drawWhatIsHappening(state) {
-  const gauge = /** @type {any} */ (document.getElementById("pi-update-gauge"));
+  const gauge = byId("pi-update-gauge");
   const progress = state.progress;
 
   /* Anything the Pi is still showing from before the request is the run before
      this one, so the window keeps saying it was asked rather than reading out
      that one's ending. */
-  if (waitingForTheHelper && Boolean(progress)
+  if (waitingForTheHelper && progress !== null
       && progress.started_at !== theRunBefore) {
     waitingForTheHelper = false;
   }
@@ -130,7 +137,7 @@ function drawWhatIsHappening(state) {
     return;
   }
 
-  const running = Boolean(progress) && progress.finished_at === null;
+  const running = progress !== null && progress.finished_at === null;
   gauge.hidden = !running;
   offerTheUpdate(!running && state.newer, running);
 
@@ -154,7 +161,7 @@ function drawWhatIsHappening(state) {
 
 /**
  * Fills the trough and says which step of how many.
- * @param {any} progress - What the helper wrote.
+ * @param {SetupProgress} progress - What the helper wrote.
  *
  * Two measures in one bar: which step of how many, and how far through a step
  * that knows. Only the download knows, and the step after it is where the
@@ -174,13 +181,13 @@ function drawHowFarItHasGot(progress) {
 
   const through = progress.part?.of ? progress.part.done / progress.part.of : 0;
   const done = (progress.done - 1 + Math.min(1, through)) / progress.of;
-  /** @type {any} */ (document.getElementById("pi-update-fill")).style.width =
+  byId("pi-update-fill").style.width =
     `${Math.round(done * 100)}%`;
 }
 
 /**
  * Says which step stopped it and why, in words rather than as shell output.
- * @param {any} progress - What the helper wrote.
+ * @param {SetupProgress} progress - What the helper wrote.
  *
  * Always, whoever is reading. A failed replacement leaves the tool that is here
  * running, which is the safe direction and also the one nothing else on the page
@@ -223,7 +230,7 @@ function replacing() {
  * so a run on is the system's state rather than this button's alone.
  */
 function offerTheUpdate(offered, busy) {
-  /** @type {any} */ (document.getElementById("pi-update")).hidden = !updateState?.newer;
+  byId("pi-update").hidden = !updateState?.newer;
   updateIsFree = offered;
   helperIs("update", busy);
   holdTheControls();
@@ -249,7 +256,7 @@ async function askForTheNewest() {
   offerTheUpdate(false, true);
 
   const answer = await tell(UPDATE);
-  waitingForTheHelper = Boolean(answer?.ok);
+  waitingForTheHelper = wasTaken(answer);
 
   if (answer === null) {
     /* Nothing was left for the helper, so nothing is about to run. */
@@ -257,27 +264,24 @@ async function askForTheNewest() {
     show("pi-update-note", t("note.no-service"));
     return;
   }
-  if (!answer.ok) {
+  if (!wasTaken(answer)) {
     /* Refused before anything started, which is the case worth saying at once:
        there is nothing newer, or the helper is already busy with something
        else. */
     show("pi-update-note", say(answer));
   }
-  drawTheUpdate(answer.published === undefined ? updateState : answer);
+  drawTheUpdate("published" in answer ? answer : updateState);
 }
 
 /** Wires the button and the look the window takes on its own. */
 function wireTheUpdate() {
-  const window_ = /** @type {any} */ (
-    document.querySelector('nx-window[name="pi"]'));
+  const window_ = theWindow("pi");
   if (!window_) return;
 
   hold("#pi-update", Needs.Quiet, () => updateIsFree);
-  /** @type {any} */ (document.getElementById("pi-update"))
-    .addEventListener("click", askForTheNewest);
+  byId("pi-update").addEventListener("click", askForTheNewest);
   /* The newest release's notes, and the click itself is not a version. */
-  /** @type {any} */ (document.getElementById("pi-notes"))
-    .addEventListener("click", () => showTheReleaseNotes());
+  byId("pi-notes").addEventListener("click", () => showTheReleaseNotes());
 
   /* Opening it asks straight away, because a window that filled itself at the
      next poll would stand empty for a moment first, and this is also the one

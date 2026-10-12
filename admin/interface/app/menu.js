@@ -1,12 +1,26 @@
-/* The one menu, which belongs to whatever window is in front. */
+/* The one menu, which belongs to whatever window is in front.
+ *
+ * NeXTSTEP had one menu, in one place, whose title and entries were replaced
+ * when another application became active. Read off the running system: the
+ * Workspace's menu is titled Workspace and holds ten entries, and Preferences'
+ * is titled Preferences and holds five, of which Info, Ausblenden and
+ * Verlassen are the ones every application has.
+ *
+ * Here an application is a window, so the front window decides. A window that
+ * is not an application's, which is the Info window, the Raspberry Pi window
+ * and the File Viewer, leaves the workspace's own menu standing: under
+ * NeXTSTEP those are the Workspace's own windows too.
+ */
 
 import { showWhatThisIs } from "./about.js";
 import { applications } from "./dock.js";
 import { saveThePicture, shownPictures, takeAPicture } from "./grab.js";
-import { theWindow } from "./page.js";
+import { theMenu, theWindow } from "./page.js";
 import { deleteThePicture } from "./preview.js";
 import { Needs, hold } from "./system.js";
 import { appName } from "./viewer.js";
+
+/** @typedef {import("../nextstep.js").NxWindow} NxWindow */
 
 /**
  * Puts the menu of whatever is in front into the one menu there is.
@@ -14,12 +28,15 @@ import { appName } from "./viewer.js";
  *   out, whichever window is in front now is asked.
  */
 function drawTheMenu(front) {
-  const menu = /** @type {any} */ (document.querySelector('nx-menu[name="menu"]'));
-  if (!menu?.showFor) return;
+  const menu = theMenu("menu");
+  /* The menu can be asked for before the kit has built it, and then it cannot
+     show anything yet. */
+  if (typeof menu?.showFor !== "function") return;
 
-  const name = front ?? /** @type {any} */ (document.querySelector("nx-window:not([inactive]):not([hidden])"))?.name;
+  const name = front ?? /** @type {NxWindow | null} */ (
+    document.querySelector("nx-window:not([inactive]):not([hidden])"))?.name;
   const application = applications().find((entry) => entry.opens === name);
-  menu.showFor(application ? name : "",
+  menu.showFor(application?.opens ?? "",
                application ? appName(application) : WORKSPACE);
 }
 
@@ -29,11 +46,9 @@ function drawTheMenu(front) {
  *  is installed or not. */
 const WORKSPACE = "Workspace";
 
-/** What this tool is called, which is a name and so the same in every
-    language. */
 /** Follows the front window, and the windows that open and close with it. */
 function watchTheFrontWindow() {
-  document.addEventListener("nx-front", (/** @type {any} */ event) => drawTheMenu(event.detail?.name));
+  document.addEventListener("nx-front", (event) => drawTheMenu(event.detail?.name));
   /* A window closing leaves something else in front, and nothing says which
      until the next raise, so the menu is asked to work it out again. */
   document.addEventListener("nx-close", () => drawTheMenu());
@@ -45,7 +60,7 @@ function watchTheFrontWindow() {
   for (const entry of document.querySelectorAll('nx-menu-item[name="quit"]')) {
     entry.addEventListener("click", () => {
       const owner = entry.getAttribute("for");
-      theWindow(owner)?.close();
+      if (owner) theWindow(owner)?.close();
     });
   }
   document.querySelector('nx-menu-item[name="about-previously"]')
@@ -59,17 +74,17 @@ function watchTheFrontWindow() {
   /* Taking a picture away touches neither the machine nor the board, so it
      needs the service and nothing more. */
   hold('nx-menu-item[name="preview-delete"]', Needs.Contact);
-  document.querySelector('nx-menu-item[name="preview-delete"]')
-    ?.addEventListener("click", async (/** @type {any} */ event) => {
-      if (event.currentTarget.hasAttribute("disabled")) return;
-      const showing = shownPictures["preview-picture"];
-      if (!showing?.name) return;
-      /* The window goes with the picture, because a window showing something
-         that is no longer there is worse than no window. */
-      if (await deleteThePicture(showing.name)) {
-        theWindow("preview")?.close();
-      }
-    });
+  const deleting = document.querySelector('nx-menu-item[name="preview-delete"]');
+  deleting?.addEventListener("click", async () => {
+    if (deleting.hasAttribute("disabled")) return;
+    const showing = shownPictures["preview-picture"];
+    if (!showing?.name) return;
+    /* The window goes with the picture, because a window showing something
+       that is no longer there is worse than no window. */
+    if (await deleteThePicture(showing.name)) {
+      theWindow("preview")?.close();
+    }
+  });
 
   drawTheMenu();
 }

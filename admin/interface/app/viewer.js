@@ -1,24 +1,35 @@
 /* The File Viewer: what Previously holds, and moving about in it. */
 
-import { NEAR_FLIGHT_MS, deskRect, fly, zoom } from "../nextstep.js";
+import { NEAR_FLIGHT_MS, NxViewer, deskRect, fly, zoom } from "../nextstep.js";
 import { t } from "../strings.js";
 import { bootFromDisk, putTheCopyBack, useTheDisc } from "./disks.js";
 import { noticeTheApplications } from "./dock.js";
 import { changeTo, editOnWhatIsRunning, notYet } from "./machines.js";
-import { show } from "./page.js";
+import { byId, show, targetName, theWindow } from "./page.js";
 import { showInPreview } from "./preview.js";
 import { ask } from "./service.js";
 import { lastStatus, refresh } from "./status.js";
-import { APPLICATION, EDITOR, machineArt } from "./words.js";
+import { EDITOR, machineArt } from "./words.js";
 
-/** Everything this tool holds, as the service arranged it. */
-let root = { name: "Previously", path: "/", entries: [] };
+/** @typedef {import("../answers.js").FilesAnswer} FilesAnswer */
+/** @typedef {import("../answers.js").TreeEntry} TreeEntry */
+/** @typedef {import("../answers.js").Folder<TreeEntry>} TreeFolder */
+/** @typedef {import("../answers.js").ApplicationEntry} ApplicationEntry */
+/** @typedef {import("../answers.js").MachineEntry} MachineEntry */
+/** @typedef {import("../nextstep.js").ViewerEntry} ViewerEntry */
 
-/** The way to the place being shown, outermost first. */
+/** Everything this tool holds, as the service arranged it. Until it has
+ *  answered, the root alone, named and drawn the way the service draws it.
+ *  @type {FilesAnswer} */
+let root = { name: "Previously", icon: "home", path: "/", kind: "folder", writable: true, entries: [] };
+
+/** The way to the place being shown, outermost first.
+ *  @type {TreeFolder[]} */
 let at = [root];
 
 /** Every machine anywhere in that tree. Kept because the info window says what
- *  a machine is without anything having to run. */
+ *  a machine is without anything having to run.
+ *  @type {MachineEntry[]} */
 let catalogue = [];
 
 /** Where the shelf's contents live between visits. The things themselves come
@@ -39,8 +50,11 @@ let kept = readKept();
  *  is remembered as itself. */
 function readKept() {
   try {
-    const saved = JSON.parse(localStorage.getItem(KEPT_KEY));
-    return Array.isArray(saved) ? saved : [...KEPT_BY_DEFAULT];
+    /** @type {unknown} */
+    const saved = JSON.parse(localStorage.getItem(KEPT_KEY) ?? "null");
+    return Array.isArray(saved)
+      ? saved.filter((path) => typeof path === "string")
+      : [...KEPT_BY_DEFAULT];
   } catch {
     return [...KEPT_BY_DEFAULT];
   }
@@ -67,34 +81,33 @@ async function drawMachines() {
   noticeTheApplications();
   /* Stay where the reader was, by path rather than by object, because the
      tree they are looking at was fetched again. */
-  at = at.map((step) => find(root, step.path)).filter(Boolean);
+  at = at.map((step) => folderAt(step.path)).filter((step) => step !== null);
   if (!at.length) at = [root];
   drawPlace();
 }
 
 /**
  * Every machine anywhere in the tree.
- * @param {any} folder - Where to look.
- * @returns {any[]} The machines, in the order they are met.
+ * @param {TreeEntry} entry - Where to look.
+ * @returns {MachineEntry[]} The machines, in the order they are met.
  *
  * The info window says what a machine is without caring where it sits, so it
  * reads from this rather than from wherever the viewer happens to be.
  */
-function allMachines(folder) {
-  return (folder.entries ?? []).flatMap((entry) =>
-    entry.kind === "machine" ? [entry] : allMachines(entry));
+function allMachines(entry) {
+  if (entry.kind === "machine") return [entry];
+  return entry.kind === "folder" ? entry.entries.flatMap((inside) => allMachines(inside)) : [];
 }
 
 /** Draws whatever place the viewer is in, with the way there above it. */
 function drawPlace() {
-  const viewer = /** @type {any} */ (document.getElementById("file-viewer"));
   const here = at[at.length - 1];
-  viewer.show({
+  byId("file-viewer", NxViewer).show({
     path: at.map(entryFor),
-    contents: (here.entries ?? []).map(entryFor),
+    contents: here.entries.map(entryFor),
     /* Anything can lie on the shelf, a folder as readily as a machine, so
        this looks in the whole tree rather than among the machines. */
-    keeps: kept.map((path) => find(root, path)).filter(Boolean).map(entryFor),
+    keeps: kept.map((path) => find(root, path)).filter((entry) => entry !== null).map(entryFor),
     status: saying(here),
   });
   markCurrent(lastStatus?.configuration?.catalogue,
@@ -103,7 +116,7 @@ function drawPlace() {
 
 /**
  * The line under the shelf.
- * @param {any} folder - The place being shown.
+ * @param {TreeFolder} folder - The place being shown.
  * @returns {string} Which place, what is in it, and what cannot be done to it.
  *
  * It names the place because of where it sits: directly under the shelf, which
@@ -111,55 +124,42 @@ function drawPlace() {
  * there and had no such question to answer.
  */
 function saying(folder) {
-  const count = (folder.entries ?? []).length;
+  const count = folder.entries.length;
   return t("viewer.status", {
-    name: nameFor(folder),
+    name: folder.name,
     count: t("viewer.count", { count }, count),
-    more: folder.writable === false ? t("viewer.read-only") : "",
+    more: folder.writable ? "" : t("viewer.read-only"),
   });
 }
 
 /**
  * One entry as the viewer wants it.
- * @param {any} entry - A folder, an application or a machine.
- * @returns {any} `{label, icon, value}`. The value is the entry's path,
- *   which is what a drop, a double click and the menu all hand over, so there
- *   is one place a thing's name lives.
+ * @param {TreeEntry} entry - Anything the tree holds.
+ * @returns {ViewerEntry} `{label, icon, value, folder}`. The value is the
+ *   entry's path, which is what a drop, a double click and the menu all hand
+ *   over, so there is one place a thing's name lives.
+ *
+ * Everything in the tree keeps the name it came with, because a viewer shows
+ * names: the folders, the bundles, the machines and Previously itself. A
+ * German NeXTSTEP holds a directory called `Apps` and a bundle called
+ * `Preferences.app`, and its viewer shows both as it finds them. What an
+ * application is called in words is a different question, and appName answers
+ * that one.
  */
 function entryFor(entry) {
   return {
-    label: nameFor(entry),
+    label: entry.name,
     /* A folder and an application bring their own picture. A machine wears
        the one its boot ROM draws, and which that is follows from its case. */
-    icon: entry.icon ?? machineArt(entry.enclosure),
+    icon: entry.kind === "machine" ? machineArt(entry.enclosure) : entry.icon,
     value: entry.path,
     folder: entry.kind === "folder",
   };
 }
 
 /**
- * What one entry of the tree is called, here, now.
- * @param {any} entry - A folder, an application or a machine.
- * @returns {string} The words for it in the language being read, or its own
- *   name where it has one that belongs to it.
- *
- * Everything in the tree keeps the name it came with, because a viewer shows
- * names: the folders, the bundles, the machines and Previously itself. A
- * German NeXTSTEP holds a directory called `Apps` and a bundle called
- * `Preferences.app`, and its viewer shows both as it finds them.
- *
- * What an application is called in words is a different question, and appName
- * answers that one.
- */
-function nameFor(entry) {
-  if (entry.kind === "application" || !entry.label) return entry.name;
-  return t(entry.label);
-}
-
-/**
- * @param {any} entry - An application.
- * @returns {string} What it is called in words, without the suffix its file
- *   name carries.
+ * @param {ApplicationEntry} entry - An application.
+ * @returns {string} What it is called in words, in the language being read.
  *
  * NeXTSTEP kept the two apart and so does this. The bundle in `/NextApps` was
  * `Preferences.app` in every language, while the application called itself
@@ -167,17 +167,19 @@ function nameFor(entry) {
  * what its own `preferences.strings` holds.
  */
 function appName(entry) {
-  return entry.label ? t(entry.label) : entry.name.replace(APPLICATION, "");
+  return t(entry.label);
 }
 
 /**
  * Answers a double click in the viewer, whatever was under it.
  * @param {string} path - What the thing carries.
+ * @param {Element} [asker] - The thing that was opened, which is where
+ *   whatever opens starts from.
  */
 function open(path, asker) {
   const entry = find(root, path);
   if (!entry) return;
-  if (entry.kind === "folder" || entry.path === "/") {
+  if (entry.kind === "folder") {
     /* Built from the path rather than by adding a step, because a folder on
        the shelf can be anywhere and the way there is not the way from here. */
     at = chainTo(entry.path);
@@ -191,7 +193,7 @@ function open(path, asker) {
     /* An application this tool has is a window it already holds. One it does
        not have yet says so, which is the honest thing to do with an icon that
        is there because the place it sits in is being built around it. */
-    const window_ = /** @type {any} */ (document.querySelector(`nx-window[name="${entry.opens}"]`));
+    const window_ = theWindow(entry.opens);
     return window_ ? window_.open(asker) : notYet(appName(entry));
   }
   if (entry.kind === "picture") return showInPreview(entry);
@@ -211,7 +213,7 @@ function open(path, asker) {
 /**
  * Draws the place the viewer has moved to, with the way there where it is
  * known.
- * @param {HTMLElement} [asker] - The thing that was opened, if one was.
+ * @param {Element} [asker] - The thing that was opened, if one was.
  *
  * The rectangles run from the mark around that thing to the band that is
  * about to hold what was inside it, and the contents change when they arrive.
@@ -219,22 +221,23 @@ function open(path, asker) {
  * place simply changes.
  */
 async function openFolder(asker) {
-  const band = /** @type {any} */ (document.querySelector("#file-viewer nx-scroller:last-child"));
+  const band = document.querySelector("#file-viewer nx-scroller:last-child");
   /* Only from the band below. The original draws this nowhere else: what is
      opened from the shelf flies to the path instead, and a step of the path
      is a way back rather than something being opened. */
-  const fromTheBand = asker?.closest?.(".contents");
-  if (!fromTheBand || !band) return drawPlace();
+  const from = asker?.closest(".contents") ? deskRect(asker) : null;
+  const to = deskRect(band);
+  if (!from || !to) return drawPlace();
 
-  await zoom(deskRect(asker), deskRect(band));
+  await zoom(from, to);
   drawPlace();
 }
 
 /**
  * Answers one click on the shelf.
  * @param {string} where - The path of what was clicked.
- * @param {HTMLElement} thing - What was clicked, which is where its icon
- *   starts from.
+ * @param {Element} thing - What was clicked, which is where its icon starts
+ *   from.
  *
  * A folder on the shelf changes what the viewer shows, and its icon travels
  * to the place it takes in the path as it does. Anything else there is a
@@ -242,7 +245,7 @@ async function openFolder(asker) {
  */
 async function visitFromTheShelf(where, thing) {
   const entry = find(root, where);
-  if (!entry || !(entry.kind === "folder" || entry.path === "/")) return;
+  if (entry?.kind !== "folder") return;
 
   /* Already where the viewer is standing, which the path shows by ending on
      it. There is nothing to fly to and nothing to redraw, and an icon that
@@ -255,25 +258,26 @@ async function visitFromTheShelf(where, thing) {
   drawPlace();
 
   const steps = document.querySelectorAll("#file-viewer .path nx-thing");
-  const landing = /** @type {any} */ (steps[steps.length - 1]);
-  if (!from || !landing) return;
+  const landing = steps[steps.length - 1];
+  const to = deskRect(landing);
+  if (!from || !to || !(landing instanceof HTMLElement)) return;
 
   landing.style.visibility = "hidden";
-  await fly(landing.getAttribute("icon"), from, deskRect(landing), NEAR_FLIGHT_MS);
+  await fly(landing.getAttribute("icon") ?? "", from, to, NEAR_FLIGHT_MS);
   landing.style.visibility = "";
 }
 
 /**
  * The way from the root to a place, as the steps themselves.
  * @param {string} where - A path such as "/Machines/System".
- * @returns {any[]} The root first, that place last.
+ * @returns {TreeFolder[]} The root first, that place last.
  */
 function chainTo(where) {
   const steps = [root];
   let path = "";
   for (const part of where.split("/").filter(Boolean)) {
     path += "/" + part;
-    const step = find(root, path);
+    const step = folderAt(path);
     if (!step) break;
     steps.push(step);
   }
@@ -290,17 +294,29 @@ function goTo(index) {
 }
 
 /**
- * @param {any} folder - Where to look.
+ * @param {TreeEntry} entry - Where to look.
  * @param {string} path - What to look for.
- * @returns {any} The entry with that path, anywhere below.
+ * @returns {TreeEntry | null} The entry with that path, that one or anywhere
+ *   below it.
  */
-function find(folder, path) {
-  if (folder.path === path) return folder;
-  for (const entry of folder.entries ?? []) {
-    const found = find(entry, path);
+function find(entry, path) {
+  if (entry.path === path) return entry;
+  if (entry.kind !== "folder") return null;
+  for (const inside of entry.entries) {
+    const found = find(inside, path);
     if (found) return found;
   }
   return null;
+}
+
+/**
+ * @param {string} path - What to look for.
+ * @returns {TreeFolder | null} The folder with that path, or null where the
+ *   path leads to something else or nowhere.
+ */
+function folderAt(path) {
+  const found = find(root, path);
+  return found?.kind === "folder" ? found : null;
 }
 
 /**
@@ -325,8 +341,8 @@ function keepOnShelf(where, onto) {
 
 /**
  * Marks the machine the emulator is currently set to.
- * @param {string|null} identifier - Which of the eleven the file holds exactly,
- *   or null where it holds none of them.
+ * @param {string | null} [identifier] - Which of the eleven the file holds
+ *   exactly, or null where it holds none of them or nothing has been read yet.
  * @param {boolean} [untried] - Whether the file has been written since that
  *   machine started, so what is written down has never been through a boot.
  *
@@ -335,15 +351,16 @@ function keepOnShelf(where, onto) {
  */
 function markCurrent(identifier, untried) {
   for (const thing of document.querySelectorAll("#file-viewer nx-thing")) {
-    const where = thing.getAttribute("value");
-    const entry = catalogue.find((machine) => machine.path === where);
+    const where = thing.getAttribute("value") ?? "";
+    const machine = catalogue.find((entry) => entry.path === where);
+    const entry = find(root, where);
     /* A disk carries which one the machine boots, because the service reads
        that out of the configuration and the browser has no business working it
        out from a path. The same mark, because it is the same statement: this
        is the one in force. */
-    const isCurrent = entry
-      ? Boolean(identifier) && entry.id === identifier
-      : Boolean(find(root, where)?.booting);
+    const isCurrent = machine
+      ? machine.id === identifier
+      : entry?.kind === "disk" && entry.booting;
     thing.classList.toggle("current", isCurrent);
     thing.classList.toggle("untried", isCurrent && Boolean(untried));
     /* Switching to the machine that is already running would shut NeXTSTEP
@@ -355,8 +372,8 @@ function markCurrent(identifier, untried) {
 
 /** Fills a window the moment it opens, rather than at the next poll. */
 function wireOpening() {
-  document.addEventListener("nx-open", (/** @type {any} */ event) => {
-    if (event.target.getAttribute("name") === "pi") refresh();
+  document.addEventListener("nx-open", (event) => {
+    if (targetName(event.target) === "pi") refresh();
   });
 }
 

@@ -2,9 +2,14 @@
 //
 // xterm.js and its fit addon arrive as their authors built them, each as a
 // script of its own that leaves a name behind, and `terminal.js` reaches for
-// those two names. Nothing here describes them: what they do is their own
-// documentation, and this is only so that a name they define is not read as
-// one nobody defined.
+// those two names. Their types are the ones the same releases publish, which
+// package.json brings at exactly the versions in web/vendor/, so the checker
+// reads the library that ships rather than a description of it.
 
-declare const Terminal: any;
-declare const FitAddon: any;
+import type { Terminal as XTerm } from "@xterm/xterm";
+import type { FitAddon as Fit } from "@xterm/addon-fit";
+
+declare global {
+  const Terminal: typeof XTerm;
+  const FitAddon: { FitAddon: typeof Fit };
+}

@@ -6,28 +6,32 @@
  * what the page may do with it, so that is decided here, once.
  */
 
+/** @typedef {import("../answers.js").StatusAnswer} StatusAnswer */
+
 /**
  * Whether an answer carries the machine's status, as every answer to a change
  * of the machine does beside what came of it.
- * @param {any} answer - What `tell` handed over, or null on no contact.
- * @returns {boolean}
+ * @param {unknown} answer - What `tell` handed over, or null on no contact.
+ * @returns {answer is StatusAnswer}
  *
  * A refusal carries none, and drawn as one it reads as a machine that has
  * stopped and whose file cannot be read.
  */
 function isAStatus(answer) {
-  return typeof answer?.running === "boolean";
+  return typeof answer === "object" && answer !== null && "running" in answer
+    && typeof answer.running === "boolean";
 }
 
 /**
  * Whether the service took the request.
- * @param {any} answer - What `tell` handed over, or null on no contact.
+ * @param {unknown} answer - What `tell` handed over, or null on no contact.
  * @returns {boolean} True only where the answer says so. A refusal carries no
  *   `ok` at all, and the page's own answer for a dismissed password panel
  *   carries false.
  */
 function wasTaken(answer) {
-  return answer?.ok === true;
+  return typeof answer === "object" && answer !== null && "ok" in answer
+    && answer.ok === true;
 }
 
 export {

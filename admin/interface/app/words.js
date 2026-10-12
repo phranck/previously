@@ -1,14 +1,16 @@
 /* What everything here is called, and how a figure is said. */
 
 import { currentLocale, t } from "../strings.js";
+
+/** @typedef {import("../answers.js").Said} Said */
+/** @typedef {import("../answers.js").MachineFacts} MachineFacts */
+/** @typedef {import("../answers.js").ConfigurationFile} ConfigurationFile */
+/** @typedef {import("../answers.js").EmulatorCost} EmulatorCost */
+
 /** What stands in a field that has nothing to say. An em dash rather than an
  *  empty field, because an empty one reads as a value that is missing and this
  *  one is a question that does not arise. */
 const NOTHING = "—";
-
-/** What the name of an application ends in. NeXTSTEP showed the whole file
- *  name, suffix and all, and this is a filesystem however made up it is. */
-const APPLICATION = ".app";
 
 /** Which window the Config Editor is. The tree names the same one as what
  *  `Config Editor.app` opens, and this is the one application here that is
@@ -33,15 +35,15 @@ const Art = {
 /** Which picture a machine wears, by the case the service says it comes in.
  *  Both are the boot ROM's own drawings, so the shelf shows what the screen
  *  shows a second after a machine is chosen. */
-const MACHINE_ART = {
-  cube: Art.Cube,
-  station: Art.Station,
-};
+const MACHINE_ART = new Map([
+  ["cube", Art.Cube],
+  ["station", Art.Station],
+]);
 
 /**
  * What the service just said, as a sentence.
- * @param {any} told - Its answer, carrying `reason` and whatever fills
- *   it.
+ * @param {Said | null | undefined} told - Its answer, carrying `reason` and
+ *   whatever fills it, or a refusal, which names nothing and says nothing.
  * @returns {string} The sentence in the language the interface speaks, or the
  *   bare name where no catalog knows it, because a name on the screen is
  *   ugly and silence is worse.
@@ -52,16 +54,19 @@ const MACHINE_ART = {
  * of bytes is put into words here, as every other size in this interface is.
  */
 function say(told) {
-  if (!told?.reason) return "";
+  if (!told || !("reason" in told)) return "";
   const key = `told.${told.reason}`;
   /* The reason a change was rolled back is itself a name, and it stands in the
      middle of the sentence rather than beside it. */
-  const values = told.why ? { ...told, why: t(`why.${told.why}`) } : told;
+  const values = "why" in told ? { ...told, why: t(`why.${told.why}`) } : told;
 
   /* Bytes are the one value the service cannot send ready to read: how large a
      number is worth writing out, and how it is written, are questions about
      the language rather than about the machine. */
-  if (["setup.no-room", "setup.no-room-until-restart"].includes(told.reason)) {
+  if (told.reason === "setup.no-room") {
+    return t(key, { ...values, free: sized(told.free), needed: sized(told.needed) });
+  }
+  if (told.reason === "setup.no-room-until-restart") {
     return t(key, { ...values, free: sized(told.free), needed: sized(told.needed),
                     back: sized(told.back) });
   }
@@ -70,8 +75,8 @@ function say(told) {
      five sentences: one for all of them would say nothing about any. */
   if (told.reason === "setup.asked") return t(`${key}.${told.job}`, values);
   if (told.reason === "guest.still-shutting-down") return t(key, values, told.seconds);
-  if (["machine.running", "disk.booting", "disc.inserted", "disc.ejected"]
-      .includes(told.reason)) {
+  if (told.reason === "machine.running" || told.reason === "disk.booting"
+      || told.reason === "disc.inserted" || told.reason === "disc.ejected") {
     return t(key, values, told.lines);
   }
   return t(key, values);
@@ -79,7 +84,7 @@ function say(told) {
 
 /**
  * What a machine is called, from the facts the service sent.
- * @param {any} machine - A configuration or a catalog entry.
+ * @param {MachineFacts} machine - A configuration or a catalog entry.
  * @returns {string} The model's own name with what is fitted to it.
  *
  * The model is a product name and arrives as it is. What gets added to it is
@@ -92,7 +97,7 @@ function nameOf(machine) {
 
 /**
  * What the machine is called, and nothing about the boards in it.
- * @param {any} machine - A configuration or a catalog entry.
+ * @param {MachineFacts} machine - A configuration or a catalog entry.
  * @returns {string} The model's own name, with Turbo where that is part of it.
  *
  * For the one place a whole sentence does not fit: a menu entry is a line in a
@@ -106,7 +111,7 @@ function modelOf(machine) {
 }
 
 /**
- * @param {any} machine - A configuration or a catalog entry.
+ * @param {MachineFacts} machine - A configuration or a catalog entry.
  * @returns {string} The processor and its clock.
  */
 function cpuOf(machine) {
@@ -114,7 +119,7 @@ function cpuOf(machine) {
 }
 
 /**
- * @param {any} machine - A configuration or a catalog entry.
+ * @param {MachineFacts} machine - A configuration or a catalog entry.
  * @returns {string} What the screen shows, which is where color is decided.
  *
  * A cube has no color of its own: Previous's own dialog switches the flag off
@@ -126,7 +131,7 @@ function screenOf(machine) {
 }
 
 /**
- * @param {any} machine - A configuration or a catalog entry.
+ * @param {MachineFacts} machine - A configuration or a catalog entry.
  * @returns {string} The three chips that decide whether it runs at all.
  */
 function chipsOf(machine) {
@@ -136,18 +141,19 @@ function chipsOf(machine) {
 
 /**
  * The picture for a machine.
- * @param {string|null} enclosure - What the service called its case.
+ * @param {string | null | undefined} enclosure - What the service called its
+ *   case.
  * @returns {string} The picture's name. A case nobody knows falls back to the
  *   generic computer, so a service that learns a new machine type before this
  *   page does still draws something.
  */
 function machineArt(enclosure) {
-  return MACHINE_ART[enclosure] ?? Art.Computer;
+  return MACHINE_ART.get(enclosure ?? "") ?? Art.Computer;
 }
 
 /**
  * Says how long something has been running, in the words a person uses.
- * @param {number|null} seconds
+ * @param {number | null | undefined} seconds
  * @returns {string}
  */
 function since(seconds) {
@@ -163,7 +169,7 @@ function since(seconds) {
 
 /**
  * When a moment was, in the words a person here uses.
- * @param {number|null} seconds - A Unix timestamp.
+ * @param {number | null | undefined} seconds - A Unix timestamp.
  * @returns {string} The date and time, or an em dash where there is none.
  */
 function when(seconds) {
@@ -178,7 +184,8 @@ function when(seconds) {
 
 /**
  * When the configuration file was last written.
- * @param {any} file - What the service says about previous.cfg.
+ * @param {ConfigurationFile | null | undefined} file - What the service says
+ *   about previous.cfg.
  * @returns {string} The moment, and a note where the running machine is older
  *   than the file. Previous reads the file once at its start, so anything
  *   written afterwards is a machine nobody has tried.
@@ -191,7 +198,8 @@ function changedLine(file) {
 
 /**
  * Who wrote the configuration file last.
- * @param {any} file - What the service says about previous.cfg.
+ * @param {ConfigurationFile | null | undefined} file - What the service says
+ *   about previous.cfg.
  * @returns {string} One of two sentences. Previously leaves a note of what it
  *   wrote, so a file that no longer matches that note came from somewhere
  *   else, and the two candidates are the emulator's own settings dialog and
@@ -219,7 +227,7 @@ function fitted(banks) {
 
 /**
  * Says how long something has been running, the short way.
- * @param {number|null} seconds
+ * @param {number | null | undefined} seconds
  * @returns {string}
  */
 function duration(seconds) {
@@ -234,9 +242,8 @@ function duration(seconds) {
 
 /**
  * What the emulator is costing, as one line.
- * @param {any} emulator - What the service says about it, carrying
- *   `cpu_percent`, `memory_mb` and `uptime_seconds`, or null where it is not
- *   running.
+ * @param {EmulatorCost | null | undefined} emulator - What the service says
+ *   about it, or null where it is not running.
  * @returns {string}
  *
  * The Raspberry Pi window and Activity Monitor both say this, and they say it
@@ -280,7 +287,7 @@ function named(names) {
 
 /**
  * How large something is, in the words a person uses.
- * @param {number} bytes
+ * @param {number | null | undefined} bytes
  * @param {boolean} [fine] - Whether to keep a decimal below a gigabyte. A
  *   figure that stands still says nothing about a download, so the counter
  *   keeps one and the list, where the number never moves, does not.
@@ -303,8 +310,8 @@ const MEGABYTES_IN_A_GIGABYTE = 1024;
 
 /**
  * How much of the memory is in use, the short way.
- * @param {number} used - Megabytes in use.
- * @param {number} total - Megabytes there are.
+ * @param {number | null} used - Megabytes in use.
+ * @param {number | null} total - Megabytes there are.
  * @returns {string} Both figures in the unit the total reads in, such as
  *   `1.2/4.0 GB`, or an em dash where either is missing.
  *
@@ -313,7 +320,8 @@ const MEGABYTES_IN_A_GIGABYTE = 1024;
  * the figure holds its width while it changes under somebody reading it.
  */
 function memoryInUse(used, total) {
-  if (!Number.isFinite(used) || !Number.isFinite(total)) return NOTHING;
+  if (used === null || total === null
+      || !Number.isFinite(used) || !Number.isFinite(total)) return NOTHING;
   const gigabytes = total >= MEGABYTES_IN_A_GIGABYTE;
   const places = gigabytes ? 1 : 0;
   const format = new Intl.NumberFormat(currentLocale(),
@@ -331,8 +339,8 @@ const RELEASE_IN = /^\d+(?:\.\d+)*/;
 
 /**
  * A version of this tool, as a person reads one.
- * @param {string} version - What the service reports, which for a build between
- *   two releases is something like `1.0.0+35.g553551d`.
+ * @param {string | null | undefined} version - What the service reports, which
+ *   for a build between two releases is something like `1.0.0+35.g553551d`.
  * @returns {string} The release alone, so `1.0.0`. A version this does not
  *   recognize is shown whole rather than swallowed, because a string nobody
  *   expected is still better on the screen than nothing.
@@ -351,7 +359,6 @@ function released(version) {
 }
 
 export {
-  APPLICATION,
   Art,
   EDITOR,
   NOTHING,

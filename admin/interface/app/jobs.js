@@ -6,6 +6,8 @@ import { Install, askTheInstaller, chosenSystem, setupState } from "./installer.
 import { askPanel } from "./panels.js";
 import { Art, sized } from "./words.js";
 
+/** @typedef {import("../answers.js").SystemOffer} SystemOffer */
+
 /**
  * Asks before the emulator is installed, and installs it when the answer is
  * yes.
@@ -35,9 +37,9 @@ async function installTheEmulator() {
 
 /**
  * Which system the emulator is installed with.
- * @returns {any} The one chosen in the list, or the one the
- *   service says comes by default, or nothing at all where that one is already
- *   here.
+ * @returns {SystemOffer | undefined} The one chosen in the list, or the one
+ *   the service says comes by default, or nothing at all where that one is
+ *   already here.
  */
 function whichSystemToInstallWith() {
   const systems = setupState?.systems ?? [];
@@ -77,9 +79,10 @@ async function removeTheEmulator() {
  * failure afterwards.
  */
 async function fetchTheSystem() {
-  const system = setupState?.systems.find(
-    (entry) => entry.identifier === chosenSystem);
-  if (!system) return;
+  const state = setupState;
+  const system = state?.systems.find((entry) => entry.identifier === chosenSystem);
+  if (!state || !system) return;
+  const room = state.room;
 
   const agreed = await askPanel({
     name: t("ask.fetch.title", { name: system.name }),
@@ -90,8 +93,8 @@ async function fetchTheSystem() {
         unpacked: sized(system.unpacked),
       }),
       t("ask.fetch.left", {
-        free: sized(setupState.room),
-        left: sized(Math.max(0, setupState.room - system.unpacked)),
+        free: sized(room),
+        left: sized(room === null ? null : Math.max(0, room - system.unpacked)),
       }),
       /* The same sentence the other question ends on, because it says the same
          thing: this takes minutes and the window can be left. Two copies of it
