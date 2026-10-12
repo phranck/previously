@@ -145,6 +145,9 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `GET /api/update` | Which version of this tool is installed, which is published, and how a replacement of it is getting on |
 | `GET /api/update/notes` | What the published release says about itself, as the Markdown it was written in |
 | `POST /api/update` | Asks the privileged helper to replace this tool with the newest release |
+| `GET /api/screen` | A picture of what the emulated machine shows, kept in Documents/Pictures as well, and only with the password |
+| `GET /api/picture?name=` | One picture out of Documents/Pictures, by its name alone, and only with the password |
+| `POST /api/picture/delete` | Takes one picture out of Documents/Pictures |
 | `GET /api/terminal` | Becomes a WebSocket carrying a login on this machine |
 
 Every POST is checked for a session before anything is done with what was sent, and the three routes above about the secret itself are what a browser goes through to have one. A POST that says it comes from another page is refused whatever it carries, because a cookie rides along with every request to this host and a session alone would let another site act here.
@@ -197,7 +200,7 @@ Those values come from Previous itself, out of the function its own dialog runs 
 
 **Previous never writes the file back by itself.** Not when it exits, and not when its own configuration dialog closes. The only thing that writes is "Save Config" in that dialog, which asks for a filename first. So what somebody sets behind F12 holds for that session and is gone at the next start unless they save it, and this tool cannot see it while it is only in the emulator's memory. What it does see, within five seconds, is a file somebody saved.
 
-That also decides what this tool overwrites, which is the keys that make up a machine and the three written with it, and nothing else. Sound, network and the rest of the screen settings are left exactly as the file has them, whoever put them there.
+That also decides what this tool overwrites, which is the keys that make up a machine and the four written with it, and nothing else. Sound, network and the rest of the screen settings are left exactly as the file has them, whoever put them there.
 
 **Disks are the one exception, and it is three keys wide.** Which disk the machine boots is `szImageName0`, `nDeviceType0` and `bDiskInserted0`, and those are written when somebody activates a disk and at no other time. The six further slots, the write protection and everything else in `[HardDisk]` stay exactly as the file has them, so a disc somebody put on the bus is still on the bus afterwards. What it points at is always one of the disks this tool put on the card and never a path from anywhere else.
 
