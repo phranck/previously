@@ -93,22 +93,6 @@ def is_running(unit):
     return _ask(["systemctl", "is-active", unit]) == "active"
 
 
-def uptime_seconds(unit):
-    """How long the unit has been active, or None where it is not.
-
-    @param unit - The unit's name.
-    @returns int or None
-    """
-    stamp = _property(unit, "ActiveEnterTimestampMonotonic")
-    if not stamp or stamp == "0":
-        return None
-    try:
-        started = int(stamp) / 1_000_000
-    except ValueError:
-        return None
-    return max(0, int(_monotonic() - started))
-
-
 def hold_path(runtime_directory):
     """Where the file that holds the emulator down lives.
 
@@ -455,12 +439,6 @@ def _wait_for_shutdown(timeout, sleep):
     return not emulator_is_running()
 
 
-def _property(unit, name):
-    """@returns One systemd property of a unit, as a string, or None."""
-    answer = _ask(["systemctl", "show", unit, "--property", name, "--value"])
-    return answer or None
-
-
 def _ask(command):
     """Runs a read-only systemctl query.
 
@@ -478,12 +456,3 @@ def _ask(command):
     except (OSError, subprocess.TimeoutExpired):
         return ""
     return result.stdout.strip()
-
-
-def _monotonic():
-    """The clock systemd's monotonic timestamps are measured against.
-
-    A separate function so a test can replace it without reaching into time.
-    """
-    import time
-    return time.clock_gettime(time.CLOCK_BOOTTIME)
