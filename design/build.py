@@ -246,8 +246,9 @@ def data_uri(path, kind):
 def pictures():
     """@returns every picture in PARTS with its media type, sorted by name.
 
-    Bitmaps and the one drawing, board.svg, which is served as it is so the
-    browser draws it at the display's own resolution.
+    Bitmaps and the four drawings of a board that boards.py writes, which
+    are served as they are so the browser draws them at the display's own
+    resolution.
     """
     return sorted((path, PICTURE_KINDS[path.suffix]) for path in PARTS.iterdir()
                   if path.suffix in PICTURE_KINDS)
