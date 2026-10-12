@@ -98,12 +98,29 @@ test("a row filled in before it is on the page is drawn when it arrives", () => 
   const row = document.createElement("nx-leds");
   row.setAttribute("lamps", "4");
   row.value = 100;
-  row.says = "100 %";
+  row.says = "100%";
 
   document.body.append(row);
 
   assert.deepEqual(litLamps(row), [0, 1, 2, 3]);
-  assert.equal(row.querySelector(".says").textContent, "100 %");
+  assert.equal(row.querySelector(".says").textContent, "100%");
+});
+
+test("the widest a row will say reaches its figure, before it is on the page or after", () => {
+  /* The figure takes the room of that and stands against its right edge, so a
+     reading that gains a digit leaves its sign where it was. Where the figure
+     ends is for a browser to measure. That the figure is told is for this. */
+  lay("");
+  const early = document.createElement("nx-leds");
+  early.widest = "100%";
+  document.body.append(early);
+  const late = lay(`<nx-leds></nx-leds>`);
+  late.widest = "100%";
+
+  for (const row of [early, late]) {
+    assert.equal(row.querySelector(".says").dataset.widest, "100%");
+    assert.equal(row.querySelector(".says").textContent, "");
+  }
 });
 
 test("a new share is followed rather than jumped to", async (context) => {

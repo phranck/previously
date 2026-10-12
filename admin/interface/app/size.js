@@ -76,7 +76,7 @@ function drawSizes() {
 
     const under = document.createElement("div");
     under.className = "choice-name";
-    under.textContent = Math.round(scale * 100) + " %";
+    under.textContent = Math.round(scale * 100) + "%";
 
     choice.append(sample, under);
     choice.addEventListener("click", () => drawAtSize(scale));
