@@ -1,7 +1,7 @@
 /**
  * nx-leds lights as many lamps from the left as its share is of the row.
  *
- * Activity Monitor draws one of these per core and one for memory, once a
+ * Activity Monitor draws one of these per core and one for memory, twice a
  * second, and the row is the whole of what somebody reads off it. A row that
  * lights from the wrong end, rounds the wrong way or keeps lamps lit from the
  * last reading shows a machine doing something it is not.

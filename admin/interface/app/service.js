@@ -2,8 +2,7 @@
 
 import { t } from "../strings.js";
 import { askForPassword } from "./panels.js";
-import { drawStatus, refresh, setBusy } from "./status.js";
-import { say } from "./words.js";
+import { endOperation, refresh, setBusy } from "./status.js";
 
 /** What the service names a screenshot it filed, so the viewer can be redrawn
  *  without asking for the whole tree to find out whether it should be. */
@@ -122,9 +121,7 @@ async function tell(route, body) {
  */
 async function operate(route, working) {
   setBusy(true, working);
-  const answer = await tell(route);
-  setBusy(false, answer === null ? t("note.no-service") : say(answer));
-  if (answer) drawStatus(answer);
+  endOperation(await tell(route));
   refresh();
 }
 

@@ -85,9 +85,10 @@ export default [
     rules,
   },
   {
-    // The kit's tests, which run in Node with happy-dom's document put on the
-    // global object, so they name what a browser brings without importing it.
-    files: ["tests/kit/**/*.js"],
+    // The tests of the kit and of the page, which run in Node with happy-dom's
+    // document put on the global object, so they name what a browser brings
+    // without importing it.
+    files: ["tests/kit/**/*.js", "tests/page/**/*.js"],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: "module",
@@ -99,6 +100,9 @@ export default [
         KeyboardEvent: "readonly",
         URL: "readonly",
         getComputedStyle: "readonly",
+        setTimeout: "readonly",
+        Response: "readonly",
+        globalThis: "readonly",
       },
     },
     rules,
