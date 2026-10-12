@@ -482,11 +482,13 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 /* --- the raspberry pi window --------------------------------------------- */
 
 /* The board, in this window and in Activity Monitor, as tall as the cube and
-   the station stand in the About window and as wide as its own shape makes it:
-   ../web/parts/board.svg is drawn 60 wide to an icon's height of 48. */
+   the station stand in the About window and as wide as the drawings are: the
+   four in ../web/parts/board-*.svg are 72 by 48, as ../../design/boards.py
+   draws them, so the box holds each at its own size. The page puts in the drawing of
+   the board that answered, and until one has, the box shows the Pi 5. */
 nx-portrait .icon.board-picture {
-  width: 60px;
-  background-image: var(--board);
+  width: 72px;
+  background-image: var(--board-pi5);
 }
 
 /* The published version, where it is newer than the one answering. Marked here

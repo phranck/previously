@@ -174,11 +174,14 @@
   --defaultUnixIcon: url("parts/defaultUnixIcon.png");
   --defaultAppIcon: url("parts/defaultAppIcon.png");
   --defaultIcon: url("parts/defaultIcon.png");
-  /* The board this runs on, which NeXTSTEP has no picture of, drawn for this
-     repository. A drawing rather than a bitmap, because the NeXT logo on its
-     processor is a vector and stays sharp only where the browser draws it at
-     the display's own resolution. */
-  --board: url("parts/board.svg");
+  /* The boards this runs on, which NeXTSTEP has no picture of, drawn for this
+     repository by ../../design/boards.py: the Raspberry Pi 4 and 5 and the
+     Compute Modules 4 and 5. Drawings rather than bitmaps, so the browser
+     draws them at the display's own resolution. */
+  --board-pi4: url("parts/board-pi4.svg");
+  --board-pi5: url("parts/board-pi5.svg");
+  --board-cm4: url("parts/board-cm4.svg");
+  --board-cm5: url("parts/board-cm5.svg");
   --Check: url("parts/Check.png");
   --dock-marks: url("parts/dock-marks.png");
   --floppy: url("parts/floppy.png");

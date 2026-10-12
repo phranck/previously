@@ -91,8 +91,21 @@ test("opening it again opens a new one", () => {
   assert.notEqual(Stream.opened[1].readyState, Stream.CLOSED);
 });
 
+test("a reading puts in the drawing of the board it names", () => {
+  Stream.opened[1].send("message", JSON.stringify(
+    { ...READING, model: "Raspberry Pi Compute Module 4 Rev 1.1" }));
+
+  assert.equal(document.getElementById("activity-board").style.backgroundImage,
+               "var(--board-cm4)");
+});
+
 test("a stream that breaks says so in the window", () => {
   Stream.opened[1].send("error");
 
   assert.notEqual(document.getElementById("activity-note").textContent, "");
+});
+
+test("and keeps the drawing of the board it last heard from", () => {
+  assert.equal(document.getElementById("activity-board").style.backgroundImage,
+               "var(--board-cm4)");
 });

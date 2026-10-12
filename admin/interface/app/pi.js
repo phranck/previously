@@ -1,8 +1,8 @@
 /* The Raspberry Pi window, which is about the board rather than the machine. */
 
 import { t } from "../strings.js";
-import { show, showState } from "./page.js";
-import { NOTHING, costOf, duration, named, released, when } from "./words.js";
+import { byId, show, showState } from "./page.js";
+import { NOTHING, boardArt, costOf, duration, named, released, when } from "./words.js";
 
 /** @typedef {import("../answers.js").PiAnswer} PiAnswer */
 
@@ -22,11 +22,26 @@ function modelOf(answer) {
 }
 
 /**
+ * Puts the drawing of the board the service runs on into a picture, in this
+ * window and in Activity Monitor alike.
+ * @param {string} id - The picture's id.
+ * @param {{model: string | null} | null} answer - What the service answered,
+ *   carrying `model`, or null where it did not answer. No answer leaves the
+ *   picture as it stands, because a board that stops answering is still the
+ *   board it was.
+ */
+function showBoard(id, answer) {
+  if (answer === null) return;
+  byId(id).style.backgroundImage = `var(--${boardArt(answer.model)})`;
+}
+
+/**
  * Draws what the board underneath is doing.
  * @param {PiAnswer | null} pi - What /api/pi answered, or null.
  */
 function drawPi(pi) {
   show("pi-model", modelOf(pi));
+  showBoard("pi-board", pi);
   /* Whether the buttons can be used is the system's state, which the status
      asked for at the same moment decides. */
   if (pi === null) return;
@@ -90,4 +105,5 @@ export {
   REFRESH_MS,
   drawPi,
   modelOf,
+  showBoard,
 };

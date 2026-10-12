@@ -8,9 +8,9 @@ Two other drafts were tried and not taken up, one showing the back of the cube a
 
 ## Where the pictures come from
 
-The NeXTSTEP draft draws nothing by hand but the board the Info window wears, which NeXTSTEP has no picture of, and its own mark is the Previously website's. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
+The NeXTSTEP draft draws nothing itself but the boards the Info window wears, which NeXTSTEP has no picture of, and its own mark is the Previously website's. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
 
-Eight tools do that work:
+Nine tools do that work:
 
 | Tool | What it does |
 |---|---|
@@ -19,6 +19,7 @@ Eight tools do that work:
 | `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `../admin/web/parts/`. |
 | `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
 | `makepng.py` | Draws the icon a PNG file wears on NeXT's own TIFF sheet, because NeXTSTEP has none for a format that came later. |
+| `boards.py` | Draws the four Raspberry Pi boards the Info window and Activity Monitor show. |
 | `mark.py` | Fetches the Previously mark and the icon of its tab from the website and writes the admin's copies into `../admin/web/parts/`. |
 | `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their license, into `../admin/web/fonts/`. |
 | `build.py` | Puts the kit together, writes the two files the admin serves, and bakes the pictures and those faces into the mockup as data URIs so it stays one file. |
@@ -61,13 +62,14 @@ It changes one thing on the way, in metrics rather than in outlines. A font stat
 
 ## The board's picture
 
-The Info window wears a circuit board beside its readings. It is drawn by hand as `../admin/web/parts/board.svg`, in a gray a shade darker than the NeXTstation's, with a pin header, a processor and its ports along two edges. NeXT's logo sits on the processor's lid.
+The Info window and Activity Monitor wear the circuit board the service runs on beside their readings: a Raspberry Pi 4, a Raspberry Pi 5, a Compute Module 4 or a Compute Module 5. Any other board wears the Pi 5. `boards.py` draws all four into `../admin/web/parts/` as `board-pi4.svg`, `board-pi5.svg`, `board-cm4.svg` and `board-cm5.svg`, in a gray a shade darker than the NeXTstation's. Each part sits where it sits on the real board, measured off Raspberry Pi's illustration of the Pi 4 and off photographs of the other three. NeXT's logo sits on each processor's lid, out of `next-logo.svg`, and the processor is drawn a few pixels larger than its place on the board so the logo has room.
 
-The board is drawn on the grid of pixels it is shown at, 60 by 48, and every edge but the logo's falls between two pixels. At that size or at any whole multiple of it, nothing but the logo is smoothed. The logo is NeXT's own as a vector, so it stays sharp at whatever size the board is drawn at.
+Every board is drawn on the grid of pixels it is shown at, 72 by 48, and every edge but the logo's falls between two pixels. At that size or at any whole multiple of it, nothing but the logo is smoothed. The logo is NeXT's own as a vector, so it stays sharp at whatever size the board is drawn at.
 
-The file is served as it is, so the browser draws it at the display's own resolution, and `build.py` bakes it into the mockup like the bitmaps. The website at previous.li draws its hero, its mark and its icons from the same file on `main`.
+The files are served as they are, so the browser draws them at the display's own resolution, and `build.py` bakes them into the mockup like the bitmaps. The website at previous.li draws its hero, its mark and its icons from `board-pi5.svg` on `main`. Run both again whenever a board changes:
 
 ```bash
+python3 boards.py
 python3 build.py
 ```
 
@@ -138,7 +140,7 @@ The pictures in `../admin/web/parts/` are NeXT's, and NeXT's assets belong to Ap
 
 Thirteen are read out of the Workspace Manager's own bundle in a NeXTSTEP 3.3 disk image, one out of Terminal.app and two out of Preferences.app in the same image. Three are cut from a screenshot of the running system, because NeXTSTEP drew its window buttons and dock marks in PostScript and they exist as no file at all. Two come from the boot ROM, through the emulator's own grab.
 
-The circuit board in `board.svg` is this repository's own, apart from the logo on its processor, which is NeXT's. `Previously.png` is the website's mark, which is NeXT's cube logo with that board in place of the N.
+The four circuit boards in `board-*.svg` are this repository's own, apart from the logo on their processors, which is NeXT's. `Previously.png` is the website's mark, which is NeXT's cube logo with a circuit board in place of the N.
 
 The tools are ours and hold none of it. `extract.py`, `bootpicture.py`, `ufs.py` and `nxtiff.py` know how to read a NeXT filesystem, a NeXT TIFF and a NeXT screen, which is a description of formats rather than a copy of anything.
 
