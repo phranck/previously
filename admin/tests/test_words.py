@@ -39,6 +39,22 @@ def test_a_card_with_no_room_is_said_in_sizes_a_person_reads():
                         "it needs 3.3 GB and 2.1 GB is free.")
 
 
+@pytest.mark.parametrize("used, total, figure", [
+    # A 4 GB Pi 5 reports 4049 MB, and that is the board it was sold as.
+    (512, 4049, "0.5/4.0 GB"),
+    (12345, 16218, "12.1/15.8 GB"),
+    (300, 900, "300/900 MB"),
+])
+def test_memory_in_use_is_said_the_short_way(used, total, figure):
+    """Activity Monitor writes it beside a row of lamps, where a five digit
+    count of megabytes does not fit and does not read at a glance."""
+    assert said({"call": "memoryInUse", "with": [used, total]}) == figure
+
+
+def test_memory_that_was_not_read_is_said_as_nothing():
+    assert said({"call": "memoryInUse", "with": [None, 4049]}) == "\N{EM DASH}"
+
+
 def test_room_a_restart_gives_back_is_said_in_sizes_as_well():
     sentence = said({"reason": "setup.no-room-until-restart",
                      "name": "NeXTSTEP 3.3", "free": 2_076_180_480,

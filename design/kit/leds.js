@@ -10,9 +10,8 @@ const LEDS_IN_A_ROW = 20;
  *
  * It holds no scale beyond the share itself: whoever uses it hands over a
  * percentage and the words for it, and the words stay with whoever owns them.
- * It is drawn once for each value it is given and never animated, because
- * what it shows changes once a second at most and a lamp has no state
- * between on and off.
+ * It is drawn once for each value it is given and never animated, because a
+ * lamp has no state between on and off.
  *
  * @attr lamps - How many lamps the row has. LEDS_IN_A_ROW where it does not
  *   say.

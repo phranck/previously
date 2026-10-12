@@ -149,7 +149,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 **pi.readings(self.settings.runtime_directory)})
         if route == "/api/activity":
             # Its own route rather than more of the one above, because this one
-            # is asked once a second while a monitor is open and that one
+            # is asked twice a second while a monitor is open and that one
             # forks three times to answer.
             return self._json(activity.readings())
         if route == "/api/files":

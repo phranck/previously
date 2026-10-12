@@ -5,14 +5,17 @@
  * they speak English, which is the catalog the tests read.
  *
  * An answer of the service arrives on stdin as JSON, and the sentence `say`
- * makes of it is written to stdout.
+ * makes of it is written to stdout. Where the JSON names a `call` instead, the
+ * export of that name is called with the values in `with`, and what it returns
+ * is written out.
  */
 
 globalThis.localStorage = { getItem: () => null, setItem() {} };
 
 const here = new URL("../interface/app/words.js", import.meta.url);
-const { say } = await import(here.href);
+const words = await import(here.href);
 
 const sent = [];
 for await (const chunk of process.stdin) sent.push(chunk);
-console.log(say(JSON.parse(Buffer.concat(sent).toString("utf-8"))));
+const given = JSON.parse(Buffer.concat(sent).toString("utf-8"));
+console.log(given.call ? words[given.call](...given.with) : words.say(given));

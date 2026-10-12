@@ -296,6 +296,33 @@ function sized(bytes, fine) {
   return t(gigabytes ? "size.gb" : "size.mb", { size: figure });
 }
 
+/** Megabytes in a gigabyte of memory. Memory is counted in powers of two, which
+ *  is how the kernel reports it and how a board is sold: a 4 GB Pi 5 reports
+ *  4049 MB, which is 4.0 GB this way and 4.2 the way a disk is counted. */
+const MEGABYTES_IN_A_GIGABYTE = 1024;
+
+/**
+ * How much of the memory is in use, the short way.
+ * @param {number} used - Megabytes in use.
+ * @param {number} total - Megabytes there are.
+ * @returns {string} Both figures in the unit the total reads in, such as
+ *   `1.2/4.0 GB`, or an em dash where either is missing.
+ *
+ * One unit for both, so the line stays short beside a row of lamps. In
+ * gigabytes both keep one place after the point even where it is a zero, so
+ * the figure holds its width while it changes under somebody reading it.
+ */
+function memoryInUse(used, total) {
+  if (!Number.isFinite(used) || !Number.isFinite(total)) return NOTHING;
+  const gigabytes = total >= MEGABYTES_IN_A_GIGABYTE;
+  const places = gigabytes ? 1 : 0;
+  const format = new Intl.NumberFormat(currentLocale(),
+    { minimumFractionDigits: places, maximumFractionDigits: places });
+  const scale = gigabytes ? MEGABYTES_IN_A_GIGABYTE : 1;
+  return t(gigabytes ? "size.gb" : "size.mb",
+    { size: `${format.format(used / scale)}/${format.format(total / scale)}` });
+}
+
 /** Where a version stops being the release and starts being the build. The
  *  release is digits and periods, and a package built between two releases
  *  carries how far it stands from a tag and which commit it is after a `+` or
@@ -336,6 +363,7 @@ export {
   duration,
   fitted,
   machineArt,
+  memoryInUse,
   modelOf,
   nameOf,
   named,

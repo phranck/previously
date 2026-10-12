@@ -1529,12 +1529,14 @@ nx-slider .unit {
    The lamps are whole pixels at a size stated here, not shares of whatever
    width the row is given. A lamp of 9.6 pixels is drawn as a blend of two
    columns at each edge, and twenty of those read as a smear rather than as a
-   row of lamps.
+   row of lamps. Each is half as wide as it is tall, an upright bar the way
+   Pulse drew them, so the row leaves room for the words beside it.
 
    The words beside the row belong to whoever uses it, as the unit beside a
    slider does, so the row says nothing about processors or memory. */
 nx-leds {
-  --led: 8px;
+  --led-width: 4px;
+  --led-height: 8px;
   --led-gap: 2px;
   display: flex;
   align-items: center;
@@ -1558,15 +1560,15 @@ nx-leds .lamps {
 }
 
 nx-leds .led {
-  width: var(--led);
-  height: var(--led);
+  width: var(--led-width);
+  height: var(--led-height);
   background: var(--dark);
 }
 
 nx-leds .led[lit] { background: var(--live); }
 
-/* The figure, which changes once a second, so its digits are held to one
-   width and the words after them do not shift about while somebody reads. */
+/* The figure, which changes while somebody reads it, so its digits are held
+   to one width and the words after them do not shift about. */
 nx-leds .says {
   white-space: nowrap;
   overflow: hidden;
@@ -3932,9 +3934,8 @@ const LEDS_IN_A_ROW = 20;
  *
  * It holds no scale beyond the share itself: whoever uses it hands over a
  * percentage and the words for it, and the words stay with whoever owns them.
- * It is drawn once for each value it is given and never animated, because
- * what it shows changes once a second at most and a lamp has no state
- * between on and off.
+ * It is drawn once for each value it is given and never animated, because a
+ * lamp has no state between on and off.
  *
  * @attr lamps - How many lamps the row has. LEDS_IN_A_ROW where it does not
  *   say.
