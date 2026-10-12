@@ -4,6 +4,8 @@ export const sv = {
   /* --- the menus ------------------------------------------------------- */
   "menu.about-previously": "Om Previously...",
   "menu.about-previously.key": "v",
+  "menu.about-app": "Om {app}...",
+  "menu.about-app.key": "o",
   "menu.info.key": "i",
   "menu.about": "Om {machine}",
   "menu.about.key": "o",

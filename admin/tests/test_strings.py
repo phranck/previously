@@ -196,7 +196,7 @@ def test_every_application_can_be_named_in_words(english):
     is."""
     from previously import files
 
-    wanted = {label for _, _, _, label in files.APPLICATIONS}
+    wanted = {application.label for application in files.APPLICATIONS}
 
     assert sorted(wanted - set(english)) == []
 
@@ -361,6 +361,17 @@ def test_the_entry_about_this_machine_carries_a_letter_of_its_own_word(language)
     words = catalogue(language)
 
     assert words["menu.about.key"] in words["menu.about"].lower(), language
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_the_entry_about_an_application_carries_a_letter_of_its_own_words(language):
+    """Its words are the page's as well, because they hold the application's
+    name in words. That name differs from one application to the next, so the
+    letter comes from the words around it, which every application shares."""
+    words = catalogue(language)
+    around = words["menu.about-app"].replace("{app}", "").lower()
+
+    assert words["menu.about-app.key"] in around, language
 
 
 @pytest.mark.parametrize("language", LANGUAGES)

@@ -19,7 +19,7 @@ import { fillTheEditorIfItCameBackOpen, wireEditor } from "./app/editor.js";
 import { wireGrab } from "./app/grab.js";
 import { wireTheInstaller } from "./app/installer.js";
 import { wireMachines } from "./app/machines.js";
-import { watchTheFrontWindow } from "./app/menu.js";
+import { drawTheMenu, watchTheFrontWindow } from "./app/menu.js";
 import { REFRESH_MS } from "./app/pi.js";
 import { drawLanguages, wirePreferences } from "./app/preferences.js";
 import { wirePreview } from "./app/preview.js";
@@ -55,6 +55,11 @@ watchTheApplications();
 drawLanguages();
 /* Both before the editor is filled, because what it shows is the machine that is
    set and which of the saved configurations that is, and neither is known until
-   the tree and the status are in. */
-Promise.all([drawMachines(), refresh()]).then(fillTheEditorIfItCameBackOpen);
+   the tree and the status are in. The menu is drawn again then as well,
+   because which application the window in front belongs to, and what that
+   application is called, arrive with the tree. */
+Promise.all([drawMachines(), refresh()]).then(() => {
+  fillTheEditorIfItCameBackOpen();
+  drawTheMenu();
+});
 setInterval(refresh, REFRESH_MS);

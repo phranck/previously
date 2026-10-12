@@ -120,7 +120,7 @@ def test_every_application_opens_a_window_that_is_there(markup):
     from previously import files
 
     windows = set(re.findall(r'<nx-window name="([^"]+)"', markup))
-    opens = {opens for _, _, opens, _ in files.APPLICATIONS}
+    opens = {application.opens for application in files.APPLICATIONS}
 
     assert sorted(opens - windows) == []
 
@@ -136,6 +136,27 @@ def test_the_entry_about_this_machine_is_written_by_the_page(page, markup):
     assert "data-t=" not in entry.group(0)
     assert 'data-t-key="menu.about.key"' in entry.group(0)
     assert 't("menu.about"' in page
+
+
+def test_every_application_opens_its_menu_with_an_entry_about_it(page, markup):
+    """Where NeXTSTEP put Info. The entry carries the application's name in
+    words, so it has no `data-t` and the page writes its sentence, for the same
+    reason as the entry about this machine above."""
+    from previously import files
+
+    menu = markup[markup.index('<nx-menu name="menu"'):]
+    menu = menu[:menu.index("</nx-menu>")]
+    first = {}
+    for entry in re.findall(r"<nx-menu-item\b[^>]*>", menu):
+        owner = re.search(r'\bfor="([^"]+)"', entry)
+        if owner:
+            first.setdefault(owner.group(1), entry)
+
+    for application in files.APPLICATIONS:
+        entry = first.get(application.opens, "")
+        assert 'name="about-app"' in entry, application.name
+        assert "data-t=" not in entry, application.name
+    assert 't("menu.about-app"' in page
 
 
 def test_an_entry_the_page_takes_out_stays_out(page):

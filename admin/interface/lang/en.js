@@ -12,6 +12,8 @@ export const en = {
      acts on the first entry whose letter matches. */
   "menu.about-previously": "About Previously...",
   "menu.about-previously.key": "v",
+  "menu.about-app": "About {app}...",
+  "menu.about-app.key": "a",
   "menu.info.key": "i",
   "menu.about": "About {machine}",
   "menu.about.key": "a",
