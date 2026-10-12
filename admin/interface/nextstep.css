@@ -1605,12 +1605,27 @@ nx-leds .led {
 nx-leds .led[lit] { background: var(--live); }
 
 /* The figure, which changes while somebody reads it, so its digits are held
-   to one width and the words after them do not shift about. */
+   to one width and the words after them do not shift about. Where the row is
+   told the widest it will say, the figure takes that much room and stands
+   against its right edge, so its last digit and the sign after it stay put
+   when it gains or loses a digit. */
 nx-leds .says {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* The widest, set out of sight and without height, so it widens the figure
+   and draws nothing. Without it the figure is as wide as what it says, and
+   aligning it right changes nothing. */
+nx-leds .says::after {
+  content: attr(data-widest);
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
 }
 
 /* --- the terminal ------------------------------------------------------- */

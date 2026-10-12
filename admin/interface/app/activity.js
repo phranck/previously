@@ -89,6 +89,10 @@ function drawActivity(activity) {
      there from the first moment and light up with the next reading. */
   const meters = drawTheCores(activity?.cores?.length ?? activity?.load?.cores);
   for (const [index, meter] of meters.entries()) {
+    /* A core's figure takes the room of the widest it can say, so the four
+       of them stand right-aligned and a reading that gains a digit does not
+       move its sign. */
+    meter.widest = t("activity.percent", { percent: 100 });
     showShare(meter, activity?.cores?.[index] ?? null,
       (share) => t("activity.percent", { percent: Math.round(share) }));
   }

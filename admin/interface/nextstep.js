@@ -2798,6 +2798,7 @@ class NxLeds extends HTMLElement {
     this.figure = document.createElement("span");
     this.figure.className = "says";
     this.figure.textContent = this.words ?? "";
+    if (this.longest) this.figure.dataset.widest = this.longest;
 
     this.append(this.row, this.figure);
     this.setAttribute("role", "meter");
@@ -2837,11 +2838,20 @@ class NxLeds extends HTMLElement {
   }
 
   /** @param {string} words - What the share is, in the words of whoever
-   *  measures it, such as `12 %`. Written beside the row. */
+   *  measures it, such as `12%`. Written beside the row. */
   set says(words) {
     this.words = words;
     if (this.figure) this.figure.textContent = words;
     this.setAttribute("aria-valuetext", words);
+  }
+
+  /** @param {string} words - The longest the row will say, such as `100%`.
+   *  The figure takes that much room and stands against its right edge, so a
+   *  figure that gains or loses a digit leaves the ones after it where they
+   *  are. Left unsaid, the figure is as wide as what it says. */
+  set widest(words) {
+    this.longest = words;
+    if (this.figure) this.figure.dataset.widest = words;
   }
 
   /** Lets the lamps follow the share given, a frame at a time, or shows it at
