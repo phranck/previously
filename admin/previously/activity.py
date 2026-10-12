@@ -1,4 +1,4 @@
-"""What every core is doing, cheap enough to ask once a second.
+"""What every core is doing, cheap enough to ask twice a second.
 
 `pi.py` answers the question a person asks when they open a window to check on
 the board, and it may fork for it: `vcgencmd` twice and `ps` once. That is the
@@ -9,8 +9,9 @@ takes 1.5 ms, and a whole answer to `/api/pi` takes 9.9 ms.
 
 So nothing here forks. Everything is a file under `/proc`, which is the kernel
 answering out of memory it already holds. A whole reading costs 0.42 ms on that
-same Pi while the emulator runs, and 0.13 ms while it does not, which at one
-a second is four hundredths of one per cent of one core.
+same Pi while the emulator runs, and 0.13 ms while it does not. With the HTTP
+request around it, one answer costs the service 1.5 ms of a core, measured on
+2026-10-12, which at two a second is three tenths of one per cent of one core.
 
 **Every figure here is a difference between two moments.** The counters in
 `/proc/stat` are totals since the board started, and a total says nothing about
@@ -64,14 +65,14 @@ STARTTIME_FIELD = 19
 _LAST = None
 
 #: How old that sample may be and still be compared against. Activity Monitor
-#: asks once a second while its window is open, so a sample older than this
+#: asks twice a second while its window is open, so a sample older than this
 #: was left by a window that has since been closed, and what changed since
 #: then is not what the board is doing now.
 COMPARABLE_FOR_SECONDS = 5
 
 #: Which process is the emulator, once it has been found. Checked against its
 #: own name on every reading, so a stale number answers nothing: the scan below
-#: walks a few hundred directories, and doing that once a second would cost
+#: walks a few hundred directories, and doing that at every reading would cost
 #: more than everything else here put together.
 _PID = None
 

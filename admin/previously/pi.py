@@ -53,7 +53,7 @@ SOUND_CARDS = pathlib.Path("/proc/asound")
 MEMINFO = pathlib.Path("/proc/meminfo")
 
 #: Where the device tree names the board. One read of a file the kernel holds
-#: in memory, which is why Activity Monitor can ask for it once a second.
+#: in memory, which is why Activity Monitor can ask for it twice a second.
 MODEL = pathlib.Path("/proc/device-tree/model")
 
 #: What the console writes down when the emulator ends badly, inside the
@@ -251,7 +251,7 @@ def memory():
     Available rather than free, because Linux lends unused memory to the page
     cache and free alone makes a healthy machine look exhausted.
 
-    Public, because `activity.py` answers the same question once a second and
+    Public, because `activity.py` answers the same question twice a second and
     a second reading of `/proc/meminfo` would be a second answer to it.
     """
     wanted = {"MemTotal": None, "MemAvailable": None}

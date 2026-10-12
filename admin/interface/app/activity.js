@@ -1,22 +1,22 @@
-/* Activity Monitor: what every core of the board is doing, once a second. */
+/* Activity Monitor: what every core of the board is doing, twice a second. */
 
 import { t } from "../strings.js";
 import { show, theWindow } from "./page.js";
 import { modelOf } from "./pi.js";
 import { ask } from "./service.js";
-import { NOTHING, costOf, decimal } from "./words.js";
+import { NOTHING, costOf, decimal, memoryInUse } from "./words.js";
 
 /** How often the window asks while it is open. The service reads `/proc` and
- *  forks nothing for this, so once a second costs the board four hundredths
- *  of one per cent of a core, and a bar that moves more slowly than that
- *  reads as a figure rather than as a monitor. */
-const ACTIVITY_MS = 1000;
+ *  forks nothing for this, and a whole answer costs it 1.5 ms of a core on a
+ *  Pi 5, so twice a second is three tenths of one per cent of one core. A bar
+ *  that moves more slowly reads as a figure rather than as a monitor. */
+const ACTIVITY_MS = 500;
 
 /** Which window this is, as the markup and the Apps folder name it. */
 const ACTIVITY = "activity";
 
 /** Whether an answer is still on its way, so a service that is slow to reply
- *  is not asked again on top of itself every second until it does. */
+ *  is not asked again on top of itself at every tick until it does. */
 let asking = false;
 
 /**
@@ -51,7 +51,7 @@ function drawActivity(activity) {
   /* One bar per core the service reports. The very first answer has no
      figures yet, since each one is a difference between two readings, and
      the load averages already say how many cores there are, so the bars are
-     there from the first moment and light up a second later. */
+     there from the first moment and light up at the next answer. */
   const meters = drawTheCores(activity?.cores?.length ?? activity?.load?.cores);
   for (const [index, meter] of meters.entries()) {
     showShare(meter, activity?.cores?.[index] ?? null,
@@ -70,12 +70,13 @@ function drawActivity(activity) {
       }, load.cores)
     : NOTHING);
 
-  /* The bar is what is in use and the words are what is free, which is the
-     sentence the Raspberry Pi window says about the same memory. */
+  /* The bar and the first figure are both what is in use, so the words read
+     the bar out. */
   const memory = activity?.memory;
+  const used = memory ? memory.total_mb - memory.available_mb : null;
   showShare(document.getElementById("activity-memory"),
-    memory ? (memory.total_mb - memory.available_mb) * 100 / memory.total_mb : null,
-    () => t("pi.memory.free", { available: memory.available_mb, total: memory.total_mb }));
+    memory ? used * 100 / memory.total_mb : null,
+    () => memoryInUse(used, memory.total_mb));
 
   show("activity-emulator", activity ? costOf(activity.emulator) : NOTHING);
 }
@@ -120,8 +121,8 @@ function drawTheCores(count) {
   });
 }
 
-/** Starts the once-a-second sampling, and fills the window the moment it is
- *  opened rather than up to a second later. Wired once. */
+/** Starts the sampling, and fills the window the moment it is opened rather
+ *  than at the next tick. Wired once. */
 function wireActivity() {
   document.addEventListener("nx-open", (/** @type {any} */ event) => {
     if (event.target.getAttribute("name") === ACTIVITY) sampleActivity();

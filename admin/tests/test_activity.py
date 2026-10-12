@@ -202,7 +202,7 @@ def test_a_machine_with_no_emulator_is_not_searched_every_second(monkeypatch, tm
 
 def test_a_process_number_that_now_belongs_to_something_else_is_dropped(monkeypatch, tmp_path):
     """A number is reused the moment a process ends, and this one is kept
-    between readings so the scan does not run every second. What makes that
+    between readings so the scan does not run at every one. What makes that
     safe is asking the process what it calls itself."""
     proc(monkeypatch, tmp_path, [(0, 1)])
     a_process(tmp_path, 42, screen.EMULATOR)

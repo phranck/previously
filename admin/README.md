@@ -16,7 +16,7 @@ make browser      # what only a browser can show, in Safari Technology Preview
 
 The rest is the system's own and is assumed rather than installed: `systemd` for `systemctl`, `procps` for `pgrep` and `ps`, `raspi-utils-core` for `vcgencmd`, and `python3`. A Pi without `vcgencmd` still runs this; the window shows one reading fewer, because every reading in `pi.py` answers with nothing rather than failing.
 
-`activity.py` needs none of them. It answers the same kind of question once a second and reads `/proc` alone, because what is cheap at one answer every five seconds is not cheap at one a second. Measured on a Pi 5: a whole reading costs 0.42 ms while the emulator runs, against 9.9 ms for an answer to `/api/pi`, which forks `vcgencmd` twice and `ps` once at 1.5 ms a fork. Every figure it gives is the difference between two readings, since the kernel's counters are totals since the board started and a total says nothing about now. A reading older than five seconds is not compared against, because it was left by a window that has since been closed, and a difference across that pause would be its average rather than the present.
+`activity.py` needs none of them. It answers the same kind of question twice a second and reads `/proc` alone, because what is cheap at one answer every five seconds is not cheap at two a second. Measured on a Pi 5: a whole reading costs 0.42 ms while the emulator runs, against 9.9 ms for an answer to `/api/pi`, which forks `vcgencmd` twice and `ps` once at 1.5 ms a fork. Every figure it gives is the difference between two readings, since the kernel's counters are totals since the board started and a total says nothing about now. A reading older than five seconds is not compared against, because it was left by a window that has since been closed, and a difference across that pause would be its average rather than the present.
 
 What each is for: `cage` is the compositor the emulator runs in, `xwayland` is the X server cage runs it on, `7zip` unpacks the disk archive, `xdotool` presses the emulator's keys, and ImageMagick's `import` reads its screen, which is the only way to tell a machine that booted from one that did not. Both of the last two reach the emulator through that X server.
 
@@ -73,7 +73,7 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/terminal.py` | The shell session behind the Terminal window |
 | `previously/websocket.py` | The protocol that session travels over |
 | `previously/pi.py` | What the board underneath is doing |
-| `previously/activity.py` | The same question asked once a second, off `/proc` alone |
+| `previously/activity.py` | The same question asked twice a second, off `/proc` alone |
 | `previously/server.py` | Which addresses exist and what answers them |
 | `previously/password.py` | The one secret, who is signed in, and what a request may do without it |
 | `previously/answers.py` | How the service names what happened, so the browser can say it |
@@ -483,11 +483,11 @@ NeXTSTEP had no Activity Monitor, and a Pi that boots straight into an emulator 
 
 **The board in the upper left, the cores beside it.** The board's picture stands there with its model under it, as in the Raspberry Pi window, and both windows read the model from the same place.
 
-**One row of lamps per core.** Each core's load is a run of twenty small square lamps on a dark field, lit from the left, the way BeOS's Pulse drew a processor. One lamp is five per cent, and the figure stands beside the row. How many rows there are is the board's to say, so a Pi 5 draws four and a two-core board draws two.
+**One row of lamps per core.** Each core's load is a run of twenty narrow upright lamps on a dark field, lit from the left, the way BeOS's Pulse drew a processor. One lamp is five per cent, and the figure stands beside the row. How many rows there are is the board's to say, so a Pi 5 draws four and a two-core board draws two.
 
-**Under the cores, indented to their column, the readings that are not the load of one core.** Memory is a row of lamps for what is in use, with what is free beside it in the words the Raspberry Pi window uses. The three load averages are figures, read against the number of cores, because 4.0 is a machine working flat out on four cores and one four times oversubscribed on one. The last line is what the emulator costs. Its percentage is of one core, so around 150 is ordinary with a NeXTdimension.
+**Under the cores, indented to their column, the readings that are not the load of one core.** Memory is a row of lamps for what is in use, with what is in use and what there is beside it, such as `1.2/4.0 GB`. A gigabyte of memory is 1024 MB here, so a 4 GB board reads as 4.0 GB. The three load averages are figures, read against the number of cores, because 4.0 is a machine working flat out on four cores and one four times oversubscribed on one. The last line is what the emulator costs. Its percentage is of one core, so around 150 is ordinary with a NeXTdimension.
 
-**It asks once a second while its window is open, and never while it is closed.** The answer comes from `GET /api/activity`, which reads `/proc` and forks nothing. Each figure is a difference between two readings, so the first answer after the window opens has none, and the rows stand dark for that one second.
+**It asks twice a second while its window is open, and never while it is closed.** The answer comes from `GET /api/activity`, which reads `/proc` and forks nothing, and one answer costs the service 1.5 ms of a core on a Pi 5. Each figure is a difference between two readings, so the first answer after the window opens has none, and the rows stand dark for that half second.
 
 **The row of lamps is `nx-leds`, a part of the kit.** It takes a share in per cent and the words for it, and it knows nothing about processors or memory. Its lamps are whole pixels at a size the part states, because a lamp sized as a share of the row's width blends into its neighbor at every edge. A lit lamp is the green and an unlit one the gray of the lamp beside "running" in the Info window, so lit means the same thing in both places.
 
