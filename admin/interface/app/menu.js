@@ -12,15 +12,17 @@
  * NeXTSTEP those are the Workspace's own windows too.
  */
 
-import { showWhatThisIs } from "./about.js";
+import { showWhatItIs, showWhatThisIs } from "./about.js";
 import { applications } from "./dock.js";
 import { saveThePicture, shownPictures, takeAPicture } from "./grab.js";
 import { theMenu, theWindow } from "./page.js";
 import { deleteThePicture } from "./preview.js";
 import { Needs, hold } from "./system.js";
 import { appName } from "./viewer.js";
+import { t, writeWords } from "../strings.js";
 
 /** @typedef {import("../nextstep.js").NxWindow} NxWindow */
+/** @typedef {import("../answers.js").ApplicationEntry} ApplicationEntry */
 
 /**
  * Puts the menu of whatever is in front into the one menu there is.
@@ -36,8 +38,35 @@ function drawTheMenu(front) {
   const name = front ?? /** @type {NxWindow | null} */ (
     document.querySelector("nx-window:not([inactive]):not([hidden])"))?.name;
   const application = applications().find((entry) => entry.opens === name);
+  nameTheAboutEntries();
   menu.showFor(application?.opens ?? "",
                application ? appName(application) : WORKSPACE);
+}
+
+/**
+ * @param {Element} entry - An entry of the main menu.
+ * @returns {ApplicationEntry | undefined} The application it belongs to, by
+ *   its `for`, or nothing where the tree has not arrived yet.
+ */
+function ownerOf(entry) {
+  return applications().find((application) => application.opens === entry.getAttribute("for"));
+}
+
+/**
+ * Writes the words of every application's About entry, "About Grab..." for
+ * Grab, in the language being read.
+ *
+ * Here rather than in the markup, because the words carry the application's
+ * name in words. An application the tree has not described yet is `away`,
+ * because an entry whose name is not known yet says nothing.
+ */
+function nameTheAboutEntries() {
+  for (const entry of /** @type {NodeListOf<HTMLElement>} */ (
+    document.querySelectorAll('nx-menu-item[name="about-app"]'))) {
+    const application = ownerOf(entry);
+    entry.toggleAttribute("away", !application);
+    if (application) writeWords(entry, t("menu.about-app", { app: appName(application) }));
+  }
 }
 
 /** What the workspace's own menu is called. NeXTSTEP's own name for it, and
@@ -65,6 +94,14 @@ function watchTheFrontWindow() {
   }
   document.querySelector('nx-menu-item[name="about-previously"]')
     ?.addEventListener("click", showWhatThisIs);
+  /* The same for every application's About entry: each says which one it
+     belongs to through its `for`, as Quit does. */
+  for (const entry of document.querySelectorAll('nx-menu-item[name="about-app"]')) {
+    entry.addEventListener("click", () => {
+      const application = ownerOf(entry);
+      if (application) showWhatItIs(application);
+    });
+  }
   document.querySelector('nx-menu-item[name="grab-take"]')
     ?.addEventListener("click", takeAPicture);
   for (const [entry, view] of [["grab-save", "shot"], ["preview-save", "preview-picture"]]) {

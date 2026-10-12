@@ -467,6 +467,10 @@ NeXTSTEP had one menu, and the Workspace's own is what stands there while no app
 
 That entry says so with `away`, which is the page's word for something that is not in the menu just now. `hidden` belongs to the menu, which hides every entry owned by another application each time the front window changes, and a page writing into that one would have its work put back a moment later.
 
+**Every application's menu opens with an entry about it**, such as About Grab..., which is where NeXTSTEP put Info. It puts up the same panel as About Previously, with the application's picture, its name in words, its own version and the copyright. Its words carry the application's name, so the page writes them.
+
+**Each application has a version of its own**, kept beside the rest of what describes it in `files.APPLICATIONS`. A release that changes an application raises that application's version as well: the middle number for something new, the last one for a fix.
+
 ## The six languages
 
 English, German, French, Italian, Spanish and Swedish, which are the six NeXTSTEP itself shipped. English is the default and the one every other falls back to, so a missing entry shows an English sentence rather than a name.

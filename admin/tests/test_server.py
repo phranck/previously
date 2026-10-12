@@ -903,17 +903,27 @@ def test_every_machine_says_which_case_it_is_in(service):
 
 def test_the_applications_are_there_and_say_what_they_open(service):
     """Every application this tool has crosses the wire with the window it
-    opens, in the order a viewer sorts them. Which applications those are is
-    `files.APPLICATIONS`, so this holds the route to that rather than to a copy
-    of it."""
+    opens and its own version, in the order a viewer sorts them. Which
+    applications those are is `files.APPLICATIONS`, so this holds the route to
+    that rather than to a copy of it."""
     _, _, body = fetch(service + "/api/files")
     tree = json.loads(body)
     apps = next(e for e in tree["entries"] if e["name"] == "Apps")
     names = [entry["name"] for entry in apps["entries"]]
 
     assert names == sorted(names)
-    assert {entry["name"]: entry["opens"] for entry in apps["entries"]} == {
-        name: opens for name, _, opens, _ in files.APPLICATIONS}
+    assert {entry["name"]: (entry["opens"], entry["version"])
+            for entry in apps["entries"]} == {
+        application.name: (application.opens, application.version)
+        for application in files.APPLICATIONS}
+
+
+def test_every_application_version_is_three_numbers():
+    """A version of this tool is written as x.y.z everywhere it is shown, and
+    an application's is shown in its About panel the same way."""
+    for application in files.APPLICATIONS:
+        parts = application.version.split(".")
+        assert len(parts) == 3 and all(part.isdigit() for part in parts), application
 
 
 def test_changing_the_machine_needs_a_session(service):

@@ -41,6 +41,7 @@ application carries the name of a string as well, and that name is used
 wherever it is spoken rather than where its bundle is shown.
 """
 
+import collections
 import datetime
 import pathlib
 
@@ -126,17 +127,22 @@ PICTURE_SUFFIXES = (".png", ".tiff", ".tif", ".jpg", ".jpeg", ".gif")
 #: module, because a monitor is what it is.
 ACTIVITY_MONITOR_ICON = "Monitor"
 
-#: The applications, in the order a viewer sorts them. Each carries its
-#: picture, the window it opens and the name of what it is called in words,
-#: which is not what its bundle is called.
+#: One application: its bundle's name, the picture it wears, the window it
+#: opens, the name of what it is called in words, which is not what its bundle
+#: is called, and its own version, which its About panel shows. A release that
+#: changes an application raises that application's version with it.
+Application = collections.namedtuple("Application", "name icon opens label version")
+
+#: The applications, in the order a viewer sorts them.
 APPLICATIONS = (
-    ("Activity Monitor.app", ACTIVITY_MONITOR_ICON, "activity", "app.activity-monitor"),
-    ("Config Editor.app", DEFAULT_APP_ICON, "editor", "app.config-editor"),
-    ("Grab.app", GRAB_ICON, "grab", "app.grab"),
-    ("Installer.app", INSTALLER_ICON, "installer", "app.installer"),
-    ("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences"),
-    ("Preview.app", PREVIEW_ICON, "preview", "app.preview"),
-    ("Terminal.app", TERMINAL_ICON, "terminal", "app.terminal"),
+    Application("Activity Monitor.app", ACTIVITY_MONITOR_ICON, "activity",
+                "app.activity-monitor", "1.0.0"),
+    Application("Config Editor.app", DEFAULT_APP_ICON, "editor", "app.config-editor", "1.0.0"),
+    Application("Grab.app", GRAB_ICON, "grab", "app.grab", "1.0.0"),
+    Application("Installer.app", INSTALLER_ICON, "installer", "app.installer", "1.0.0"),
+    Application("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences", "1.0.0"),
+    Application("Preview.app", PREVIEW_ICON, "preview", "app.preview", "1.0.0"),
+    Application("Terminal.app", TERMINAL_ICON, "terminal", "app.terminal", "1.0.0"),
 )
 
 
@@ -157,19 +163,21 @@ def tree(machines_file=None, documents=None, disks=None, booting=None,
       `config.slots` answers it, so a disc that is in the machine says which
       slot it is on.
     @returns dict, a folder with `name`, `icon`, `path` and `entries`, and a
-      `label` on the applications, which is what each is called in words.
+      `label` and a `version` on the applications, which are what each is
+      called in words and which release of it this is.
     """
     return _folder(ROOT, "/", HOME_ICON, [
         _folder("Apps", "/Apps", FOLDER_ICON, [
             {
-                "name": name,
-                "label": label,
-                "icon": icon,
-                "path": "/Apps/" + name,
+                "name": application.name,
+                "label": application.label,
+                "icon": application.icon,
+                "path": "/Apps/" + application.name,
                 "kind": "application",
-                "opens": opens,
+                "opens": application.opens,
+                "version": application.version,
             }
-            for name, icon, opens, label in APPLICATIONS
+            for application in APPLICATIONS
         ]),
         *_disk_folder(disks, booting),
         *_disc_folder(disks, inserted),

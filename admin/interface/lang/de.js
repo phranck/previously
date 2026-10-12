@@ -4,6 +4,8 @@ export const de = {
   /* --- the menus ------------------------------------------------------- */
   "menu.about-previously": "Über Previously...",
   "menu.about-previously.key": "v",
+  "menu.about-app": "Über {app}...",
+  "menu.about-app.key": "b",
   "menu.info.key": "i",
   "menu.about": "Über {machine}",
   "menu.about.key": "b",

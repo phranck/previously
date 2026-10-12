@@ -476,6 +476,9 @@ export interface ApplicationEntry {
   kind: "application";
   /** The `name` of the nx-window it opens. */
   opens: string;
+  /** Which release of the application this is, as x.y.z, which its About
+   *  panel shows. */
+  version: string;
 }
 
 /** A system's disk on the card, from files._disk. */
