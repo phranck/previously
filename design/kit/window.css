@@ -82,19 +82,21 @@ nx-window .resizer {
 }
 
 /* The two ends take the corner, so a drag there changes width and height at
-   once. Each carries the same two-line divider on its inner edge. */
+   once. Each carries the same two-line divider on its inner edge, drawn as one
+   gradient for the reason base.css gives for the edges: a border and an inset
+   shadow beside it come apart at 125%, and the bar shows between them. */
 nx-window .resizer .end {
   width: var(--resize-end);
   cursor: nesw-resize;
 }
 nx-window .resizer .end:first-child {
-  border-right: 1px solid var(--white);
-  box-shadow: inset -2px 0 0 var(--dark);
+  background: linear-gradient(to left,
+    var(--white) 0 1px, var(--dark) 1px 3px, transparent 3px);
 }
 nx-window .resizer .end:last-child {
   cursor: nwse-resize;
-  border-left: 1px solid var(--dark);
-  box-shadow: inset 2px 0 0 var(--white);
+  background: linear-gradient(to right,
+    var(--dark) 0 1px, var(--white) 1px 3px, transparent 3px);
 }
 nx-window .resizer .middle { flex: 1; }
 

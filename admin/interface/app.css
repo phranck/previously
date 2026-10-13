@@ -50,8 +50,7 @@ nx-window[name="preferences"] .module-row {
   place-items: center;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--raised-sides);
-  box-shadow: var(--raised-inside);
+  border-image: var(--raised);
   cursor: default;
 }
 
@@ -175,17 +174,16 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    than about this design. Drawn from a length this stylesheet states, it lands
    where it is put, in every browser and at every size.
 
-   The kit's groove, read from the two values base.css states it as: two
-   rectangles lit against each other, which is a notch cut into a surface that
-   stays where it is. Not the sunken edge, which says the surface inside it
-   sits lower, and which this group's does not. */
+   The kit's groove, as base.css states it: two rectangles lit against each
+   other, which is a notch cut into a surface that stays where it is. Not the
+   sunken edge, which says the surface inside it sits lower, and which this
+   group's does not. */
 .group::before {
   content: "";
   position: absolute;
   inset: calc(var(--line) / 2) 0 0;
   border: 1px solid;
-  border-color: var(--groove-sides);
-  box-shadow: var(--groove-inside);
+  border-image: var(--groove);
   pointer-events: none;
 }
 
@@ -230,8 +228,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   place-items: center;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--raised-sides);
-  box-shadow: var(--raised-inside);
+  border-image: var(--raised);
   cursor: default;
   padding: 4px 8px;
 }
@@ -281,8 +278,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   padding: var(--socket-air);
   background: var(--light);
   border: 1px solid;
-  border-color: var(--sunken-sides);
-  box-shadow: var(--sunken-inside);
+  border-image: var(--sunken);
   cursor: default;
 }
 
@@ -290,8 +286,8 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    bank, so the place is on the board and no socket is: it keeps its height and
    loses its edge, rather than leaving a gap where a reader would count four. */
 .bank[absent] {
+  border-image: none;
   border-color: transparent;
-  box-shadow: none;
 }
 
 /* Named for the bank it sits in rather than for what it is, because Preferences
@@ -305,8 +301,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   place-items: center;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--raised-sides);
-  box-shadow: var(--raised-inside);
+  border-image: var(--raised);
 }
 
 /* An empty socket says so rather than standing blank, because a blank one reads
@@ -314,8 +309,8 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    raise, and its word is set in the smaller type the interface uses for what it
    says about itself rather than for what can be chosen. */
 .bank-module[empty] {
+  border-image: none;
   border-color: transparent;
-  box-shadow: none;
   background: none;
   color: var(--dark);
   font-size: var(--status-size);
@@ -408,8 +403,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
 .systems {
   background: var(--white);
   border: 1px solid;
-  border-color: var(--sunken-sides);
-  box-shadow: var(--sunken-inside);
+  border-image: var(--sunken);
 }
 
 /* One system: whether it is here, its name, and what it costs. Three columns
@@ -465,8 +459,7 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   padding: 2px;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--sunken-sides);
-  box-shadow: var(--sunken-inside);
+  border-image: var(--sunken);
 }
 
 /* The part that is done. The dark gray the interface states a fact in rather
@@ -576,13 +569,14 @@ nx-window[name="activity"] .info-body + .readings { margin-top: var(--portrait-g
 
 /* A block keeps its own line breaks and its own indentation, which is what a
    fence is for, and it scrolls sideways rather than wrapping: a wrapped command
-   is one somebody would copy wrongly. */
+   is one somebody would copy wrongly. It sits sunken in the page, with the
+   same edge as every other sunken surface. */
 .document pre {
   margin: 0 0 11px;
   padding: 9px 11px;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--sunken-sides);
+  border-image: var(--sunken);
   overflow-x: auto;
 }
 

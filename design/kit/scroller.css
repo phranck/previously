@@ -63,8 +63,7 @@ nx-scroller .knob {
   top: 0;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--raised-sides);
-  box-shadow: var(--raised-inside);
+  border-image: var(--raised);
   cursor: default;
 }
 /* The dimple in the middle of the knob, which is what you take hold of. */
@@ -99,14 +98,10 @@ nx-scroller .step {
   place-items: center;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--raised-sides);
-  box-shadow: var(--raised-inside);
+  border-image: var(--raised);
   cursor: default;
 }
-nx-scroller .step:active {
-  border-color: var(--sunken-sides);
-  box-shadow: var(--sunken-inside);
-}
+nx-scroller .step:active { border-image: var(--sunken); }
 nx-scroller .step i {
   width: 0; height: 0;
   border-left: 5px solid transparent;

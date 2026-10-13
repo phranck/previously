@@ -66,8 +66,8 @@ nx-ask .titlebar {
    edge rather than stopping at the padding. It is therefore drawn as one edge
    on each of the two blocks that meet at it, which is what makes it reach both
    sides. Dark above white is what the figure has, its row 87 being the dark
-   gray and row 88 the white, and it is the pair the kit already states as
-   --groove-sides. */
+   gray and row 88 the white, and it is the outer pair of the kit's own
+   groove. */
 nx-ask .naming {
   display: flex;
   align-items: center;

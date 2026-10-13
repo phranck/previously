@@ -32,15 +32,15 @@ nx-popup .popup-mark {
   margin: 0 2px 2px 0;
   background: var(--light);
   border: 1px solid;
-  border-color: var(--raised-sides);
-  box-shadow: var(--raised-inside), 2px 2px 0 var(--dark);
+  border-image: var(--raised);
+  box-shadow: 2px 2px 0 var(--dark);
 }
 
-/* A button with nothing to choose between greys its label, and its mark with
+/* A button with nothing to choose between grays its label, and its mark with
    it, so the whole of it says it is not for now. */
 nx-popup .popup-button:disabled .popup-mark {
+  border-image: none;
   border-color: var(--dark);
-  box-shadow: 2px 2px 0 var(--dark);
 }
 
 /* The list while it is up: a spring-loaded window, which stands above every
