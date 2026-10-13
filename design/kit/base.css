@@ -180,6 +180,11 @@
   --board-pi5: url("parts/board-pi5.svg");
   --board-cm4: url("parts/board-cm4.svg");
   --board-cm5: url("parts/board-cm5.svg");
+  /* The three edges below, which ../../design/edges.py draws in the grays
+     at the top of this block. */
+  --edge-sunken: url("parts/edge-sunken.svg");
+  --edge-raised: url("parts/edge-raised.svg");
+  --edge-groove: url("parts/edge-groove.svg");
   --Check: url("parts/Check.png");
   --dock-marks: url("parts/dock-marks.png");
   --floppy: url("parts/floppy.png");
@@ -281,16 +286,23 @@ body {
    Groove: outer #555555 on top and left with #ffffff below and right, and
    inside that #ffffff on top and left with #555555 below and right.
 
-   Each is two values rather than a rule alone, because a class cannot be put
-   on a pseudo-element and some surfaces are drawn as one. Whatever draws an
-   edge reads it from here, so there is one statement of what each one means. */
+   Each edge is one picture, laid round the box as a border image two pixels
+   wide over a border of one. The outer line lies on the border and the inner
+   one on the first pixel of the padding, and the box takes the room a one
+   pixel border gives it. One picture rather than a border and an inset
+   shadow, because WebKit rounds a border's width down to whole device pixels
+   and draws a shadow from the unrounded edge, so at 125%, 150% and 175% those
+   two come apart and the background shows between them. A border image draws
+   both lines from the outer edge of the box. ../../design/edges.py draws the
+   three pictures and says which pixel is which gray.
+
+   Each is a value rather than a rule alone, because a class cannot be put on
+   a pseudo-element and some surfaces are drawn as one. Whatever draws an edge
+   reads it from here, after its own `border`, which would otherwise reset it. */
 :root {
-  --sunken-sides: var(--dark) var(--white) var(--white) var(--dark);
-  --sunken-inside: inset 1px 1px 0 var(--black);
-  --raised-sides: var(--white) var(--black) var(--black) var(--white);
-  --raised-inside: inset -1px -1px 0 var(--dark);
-  --groove-sides: var(--dark) var(--white) var(--white) var(--dark);
-  --groove-inside: inset 1px 1px 0 var(--white), inset -1px -1px 0 var(--dark);
+  --sunken: var(--edge-sunken) 2 / 2px / 0 stretch;
+  --raised: var(--edge-raised) 2 / 2px / 0 stretch;
+  --groove: var(--edge-groove) 2 / 2px / 0 stretch;
 }
 
 .sunken,
@@ -298,15 +310,13 @@ nx-portrait,
 nx-field,
 nx-scroller {
   border: 1px solid;
-  border-color: var(--sunken-sides);
-  box-shadow: var(--sunken-inside);
+  border-image: var(--sunken);
 }
 
 .raised,
 button,
 nx-tile {
   border: 1px solid;
-  border-color: var(--raised-sides);
-  box-shadow: var(--raised-inside);
+  border-image: var(--raised);
 }
 

@@ -35,8 +35,7 @@ nx-slider .trough {
   container-type: inline-size;
   height: var(--scroller);
   border: 1px solid;
-  border-color: var(--sunken-sides);
-  box-shadow: var(--sunken-inside);
+  border-image: var(--sunken);
   background: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 2px 2px;
   cursor: default;
 }
@@ -49,8 +48,7 @@ nx-slider .knob {
   width: var(--knob-width);
   background: var(--light);
   border: 1px solid;
-  border-color: var(--raised-sides);
-  box-shadow: var(--raised-inside);
+  border-image: var(--raised);
   /* Moved with a transform, so traveling between two steps costs the
      compositor and nothing else. */
   transition: transform var(--slide-time, 120ms) ease-out;
@@ -120,9 +118,10 @@ nx-slider[fixed] .trough { cursor: auto; }
 nx-slider[fixed] .knob::after { display: none; }
 
 /* Focus is drawn on the trough rather than on the knob, because the trough is
-   what the whole control is. */
+   what the whole control is, and as the ring a button and a text field wear
+   rather than as a color of the trough's edge, which is a picture. */
 nx-slider:focus { outline: none; }
-nx-slider:focus-visible .trough { border-color: var(--black); }
+nx-slider:focus-visible .trough { outline: 1px solid var(--black); outline-offset: 1px; }
 
 /* The unit, said once. The ticks carry figures alone, so this is what makes
    them megahertz rather than megabytes. Set in the smaller type the interface

@@ -36,8 +36,7 @@ nx-leds .lamps {
   padding: 6px;
   background: var(--black);
   border: 1px solid;
-  border-color: var(--sunken-sides);
-  box-shadow: var(--sunken-inside);
+  border-image: var(--sunken);
 }
 
 nx-leds .led {

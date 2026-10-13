@@ -8,9 +8,9 @@ Two other drafts were tried and not taken up, one showing the back of the cube a
 
 ## Where the pictures come from
 
-The NeXTSTEP draft draws nothing itself but the boards the Info window wears, which NeXTSTEP has no picture of, and its own mark is the Previously website's. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
+The NeXTSTEP draft draws nothing itself but the boards the Info window wears, which NeXTSTEP has no picture of, and the three edges its surfaces are built from. Its own mark is the Previously website's. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
 
-Nine tools do that work:
+Ten tools do that work:
 
 | Tool | What it does |
 |---|---|
@@ -20,6 +20,7 @@ Nine tools do that work:
 | `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
 | `makepng.py` | Draws the icon a PNG file wears on NeXT's own TIFF sheet, because NeXTSTEP has none for a format that came later. |
 | `boards.py` | Draws the four Raspberry Pi boards the Info window and Activity Monitor show. |
+| `edges.py` | Draws the sunken, the raised and the grooved edge in the grays `kit/base.css` declares. |
 | `mark.py` | Fetches the Previously mark and the icon of its tab from the website and writes the admin's copies into `../admin/web/parts/`. |
 | `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their license, into `../admin/web/fonts/`. |
 | `build.py` | Puts the kit together, writes the two files the admin serves, and bakes the pictures and those faces into the mockup as data URIs so it stays one file. |
@@ -70,6 +71,17 @@ The files are served as they are, so the browser draws them at the display's own
 
 ```bash
 python3 boards.py
+python3 build.py
+```
+
+## The edges
+
+NeXTSTEP lit its surfaces from the top left, and every edge in it is two lines of its grays: a sunken field, a raised button, and the groove around a titled group. `edges.py` draws each as a small picture into `../admin/web/parts/`, as `edge-sunken.svg`, `edge-raised.svg` and `edge-groove.svg`, and `kit/base.css` lays it round a box as a border image two pixels wide over a border of one.
+
+They are pictures because a border and an inset shadow beside it come apart in WebKit. It rounds a border's width down to whole device pixels and draws the shadow from the unrounded edge, so at 125%, 150% and 175% the background shows between the two lines. A border image draws both from the outer edge of the box. `../admin/tests/test_edges.py` fails when a rule puts a border and an inset shadow on the same side again, and when a picture no longer matches what `edges.py` draws. Run it again whenever a gray in `kit/base.css` changes:
+
+```bash
+python3 edges.py
 python3 build.py
 ```
 
@@ -140,7 +152,7 @@ The pictures in `../admin/web/parts/` are NeXT's, and NeXT's assets belong to Ap
 
 Thirteen are read out of the Workspace Manager's own bundle in a NeXTSTEP 3.3 disk image, one out of Terminal.app and two out of Preferences.app in the same image. Three are cut from a screenshot of the running system, because NeXTSTEP drew its window buttons and dock marks in PostScript and they exist as no file at all. Two come from the boot ROM, through the emulator's own grab.
 
-The four circuit boards in `board-*.svg` are this repository's own, apart from the logo on their processors, which is NeXT's. `Previously.png` is the website's mark, which is NeXT's cube logo with a circuit board in place of the N.
+The four circuit boards in `board-*.svg` are this repository's own, apart from the logo on their processors, which is NeXT's. So are the three edges in `edge-*.svg`. `Previously.png` is the website's mark, which is NeXT's cube logo with a circuit board in place of the N.
 
 The tools are ours and hold none of it. `extract.py`, `bootpicture.py`, `ufs.py` and `nxtiff.py` know how to read a NeXT filesystem, a NeXT TIFF and a NeXT screen, which is a description of formats rather than a copy of anything.
 
