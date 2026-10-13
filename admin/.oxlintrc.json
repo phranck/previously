@@ -1,0 +1,113 @@
+{
+  // What checks the interface, which is the half of this repository flake8
+  // cannot see.
+  //
+  // On the rules that catch mistakes rather than the ones that argue about
+  // style: a name used and never declared, a name declared and never used, a
+  // case that falls through. What the code looks like is settled by the code
+  // around it and by review, so Oxlint's own categories are off and the rules
+  // are named one by one.
+  //
+  // `no-undef` is the one that matters most, because the interface is modules.
+  // A name has to be imported, and nothing else says when one was missed:
+  // esbuild bundles a free variable without a word, and the page fails at the
+  // moment somebody presses the thing that needs it. Duplicate parameters need
+  // no rule of their own, since a module is strict code and the parser refuses
+  // them.
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [],
+  "categories": {
+    "correctness": "off"
+  },
+  "env": {
+    "builtin": true,
+    "es2023": true
+  },
+  "ignorePatterns": ["interface/nextstep.js", "interface/vendor/**"],
+  "rules": {
+    "no-undef": "error",
+    // An imported name cannot be assigned to, so a module that keeps a value
+    // has to be the one that changes it. This is what says so at the moment
+    // the import is written rather than when the page is built.
+    "no-import-assign": "error",
+    "no-unused-vars": ["error", { "args": "none" }],
+    "no-fallthrough": "error",
+    "no-dupe-keys": "error",
+    "no-const-assign": "error",
+    "no-self-compare": "error",
+    "no-unreachable": "error"
+  },
+  "overrides": [
+    {
+      "files": ["interface/**/*.js"],
+      "globals": {
+        // What a browser brings.
+        "document": "readonly",
+        "window": "readonly",
+        "navigator": "readonly",
+        "location": "readonly",
+        "localStorage": "readonly",
+        "fetch": "readonly",
+        "setTimeout": "readonly",
+        "clearTimeout": "readonly",
+        "setInterval": "readonly",
+        "clearInterval": "readonly",
+        "requestAnimationFrame": "readonly",
+        "addEventListener": "readonly",
+        "removeEventListener": "readonly",
+        "matchMedia": "readonly",
+        "customElements": "readonly",
+        "getComputedStyle": "readonly",
+        "innerWidth": "readonly",
+        "innerHeight": "readonly",
+        "devicePixelRatio": "readonly",
+        "CustomEvent": "readonly",
+        "Event": "readonly",
+        "Node": "readonly",
+        "Element": "readonly",
+        "HTMLElement": "readonly",
+        "HTMLButtonElement": "readonly",
+        "Image": "readonly",
+        "URL": "readonly",
+        "WebSocket": "readonly",
+        "EventSource": "readonly",
+        "AbortController": "readonly",
+        "ResizeObserver": "readonly",
+        "MutationObserver": "readonly",
+        "performance": "readonly",
+        "console": "readonly",
+        "crypto": "readonly",
+        "URLSearchParams": "readonly",
+        "AbortSignal": "readonly",
+        "TextEncoder": "readonly",
+        "TextDecoder": "readonly",
+        // The one library this interface takes, which arrives as a global
+        // because that is how its own file is written.
+        "Terminal": "readonly",
+        "FitAddon": "readonly"
+      }
+    },
+    {
+      // The tests of the kit and of the page, which run in Node with
+      // happy-dom's document put on the global object, so they name what a
+      // browser brings without importing it.
+      "files": ["tests/kit/**/*.js", "tests/page/**/*.js"],
+      "globals": {
+        "window": "readonly",
+        "document": "readonly",
+        "localStorage": "readonly",
+        "dispatchEvent": "readonly",
+        "PointerEvent": "readonly",
+        "KeyboardEvent": "readonly",
+        "MouseEvent": "readonly",
+        "CustomEvent": "readonly",
+        "DataTransfer": "readonly",
+        "URL": "readonly",
+        "getComputedStyle": "readonly",
+        "setTimeout": "readonly",
+        "requestAnimationFrame": "readonly",
+        "Response": "readonly"
+      }
+    }
+  ]
+}
