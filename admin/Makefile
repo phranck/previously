@@ -6,7 +6,7 @@
 # and how to point PYTHON at them.
 
 PYTHON ?= python3
-ESLINT ?= node_modules/.bin/eslint
+OXLINT ?= node_modules/.bin/oxlint
 TSC ?= node_modules/.bin/tsc
 
 .PHONY: help run test test-dom browser lint lint-service lint-interface types check kit web clean
@@ -15,7 +15,7 @@ help:
 	@echo 'run      start the service in the foreground'
 	@echo 'test     run the test suite: the service, and the kit and the page against a DOM'
 	@echo 'browser  run what only a browser can show, in Safari Technology Preview'
-	@echo 'lint     check both halves: flake8 on the service, eslint and tsc on the interface'
+	@echo 'lint     check both halves: flake8 on the service, oxlint and tsc on the interface'
 	@echo 'check    lint and test, which is what a commit needs'
 	@echo 'kit      put interface/nextstep.css and interface/nextstep.js back together'
 	@echo 'web      build what the browser gets, out of interface/'
@@ -57,12 +57,13 @@ lint: lint-service lint-interface types
 lint-service:
 	$(PYTHON) -m flake8 --max-line-length=100 previously tests browser build_web.py
 
-# The other half of this repository, which flake8 cannot see. `no-undef` is
-# what matters most since the interface became modules: a name that is not
-# imported bundles without a word and fails when somebody presses the thing
-# that needs it. `npm install eslint` puts it here.
+# The other half of this repository, which flake8 cannot see, by the rules in
+# .oxlintrc.json. `no-undef` is what matters most, because the interface is
+# modules: a name that is not imported bundles without a word and fails when
+# somebody presses the thing that needs it. A warning fails it as well, so a
+# rule turned down to one is still a rule. `npm install` puts Oxlint here.
 lint-interface:
-	$(ESLINT) interface tests/kit tests/page --no-warn-ignored
+	$(OXLINT) --deny-warnings interface tests/kit tests/page
 
 # And what the documentation comments say, read as types. The interface stays
 # JavaScript: this compiles nothing and writes nothing, it only reads what is

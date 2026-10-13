@@ -16,7 +16,7 @@ admin/packaging/build/
 .serena/
 
 # What the linter is installed from. Nothing here is deployed either: the Pi
-# runs the built interface, and esbuild and eslint are what a person building
+# runs the built interface, and esbuild and Oxlint are what a person building
 # it needs on their own machine.
 admin/node_modules/
 admin/package-lock.json

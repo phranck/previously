@@ -77,7 +77,7 @@ jobs:
           # somebody presses the thing that needs it.
           npm install --silent
           python3 -m flake8 --max-line-length=100 previously tests browser build_web.py
-          node_modules/.bin/eslint interface tests/kit tests/page --no-warn-ignored
+          node_modules/.bin/oxlint --deny-warnings interface tests/kit tests/page
           node_modules/.bin/tsc -p tsconfig.json
           # The kit's elements and the page's own modules against a DOM, with
           # what `npm install` brought.
