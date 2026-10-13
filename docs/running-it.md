@@ -2,47 +2,37 @@
 
 Everything the README leaves out: how a machine is set up, how to check the result, and how to get back into one whose screen now belongs to a NeXT.
 
-## Three ways in
+## Setting a machine up
 
-There are three, in this order, and none of them goes away.
-
-1. **In the browser, through Previously.** The comfortable one, and the one everything else is written around.
-2. **In a terminal, with `install.sh`.** For somebody who would rather see what runs before it runs.
-3. **In a terminal, by hand.** For somebody who wants to know what each step does, and who will change some of them.
-
-The third is what the other two automate. It is not written out here, because a third copy of those steps would be a third thing to keep in step with the other two; `install.sh` is that list, it is one file, and it says at every step why it does what it does.
-
-## In the browser
-
-One package is installed by hand, and it is the only step that happens outside a browser:
+One line, on the Pi, over SSH:
 
 ```bash
 curl -fsSL https://previous.li/install.sh | bash
 ```
 
-That fetches the admin tool, installs it and starts it. Open `http://<hostname>.local:8810`, choose a password, and the desk comes up with the Installer already open, because a Pi with nothing on it has nothing else to offer.
+It installs the admin tool as a Debian package and hands the rest to the tool's helper, which runs the same job the Installer window runs from a browser. The helper installs `cage`, `7zip`, `xdotool` and `imagemagick`, adds the signed [Window Maker Live archive](https://wmlive.rumbero.org/repo/) pinned to Previous alone, and installs Previous from it. It fetches NeXTSTEP 3.3, writes `~/.config/previous/previous.cfg`, logs the first console in, silences the startup and has that console start Previous. Last, it sends the sound to a speaker and starts the machine. The script shows each step as it happens, and at the end NeXTSTEP is on the Pi's screen. It then says where the admin answers, which is `http://<hostname>.local:8810`. Open it and choose a password.
 
-**The Installer puts the rest there.** Previous with everything around it, and a system to run on it: NeXTSTEP 3.3 unless another of the six is chosen. It says what each costs to fetch and what would be left on the card before it starts, and it refuses a system the card has no room for before anything is installed, saying what is needed and what is free. On an 8 GB card the first attempt asks for a restart instead: the Pi keeps a swap file of up to 2 GB on the card, the tool switches swap to memory alone, and the file goes when the Pi starts again. While it runs it says which step it is on and how far through. A failure says which step failed and which of the earlier ones were put back.
+Run it as the user the machine will belong to, not under `sudo`. It raises its own privileges where it needs them, asking for your password once, before it prints anything else. The pipe does not get in the way of that, because `sudo` reads the password from the terminal device rather than from stdin.
+
+Every step exists once, in `admin/previously/setup.py`, one function each, and that file is what to read to do any of them by hand.
+
+Running it a second time changes nothing that is already in place. A step that finds its work done skips itself and says so: a system already on the card is not fetched again, and an existing configuration is left exactly as it is.
+
+## The Installer window
+
+**It changes the machine afterwards.** The emulator can be updated or removed, a system can be fetched or taken off the card, and a disk can be copied and the copy put back. On a Pi that has the admin tool and nothing else, it runs the whole job itself, with NeXTSTEP 3.3 unless another of the six is chosen.
+
+It says what each system costs to fetch and what would be left on the card before it starts, and it refuses a system the card has no room for before anything is installed, saying what is needed and what is free. On an 8 GB card the first attempt asks for a restart instead: the Pi keeps a swap file of up to 2 GB on the card, the tool switches swap to memory alone, and the file goes when the Pi starts again. While it runs it says which step it is on and how far through.
 
 **Nothing in the browser holds any privilege.** The tool writes a small file into its own runtime directory, and a systemd path unit starts a program that runs as root and reads it. That file carries four names: a job, a system, a machine and, for putting a copy back, the name of that copy. Three of the four are looked up in tables that ship with the package and the fourth is matched against the listing of one folder, so nothing that arrives from a browser is ever a path, a URL or a command. `admin/previously/setup.py` is the whole of what root does, and it is one file.
 
-**Afterwards the same window takes things off again**, which is the half worth having: the emulator can be updated or removed, a system can be fetched or taken off the card, and a disk can be copied and the copy put back.
+## When it stops half way
 
-## What the script does
+A step that fails puts back what it changed, and the steps before it as well, in reverse order. The script says which step stopped it and what was put back, and the Installer window says the same and can try again.
 
-The second way in, and what the first one automates. It installs `cage` and `7zip`, adds the signed [Window Maker Live archive](https://wmlive.rumbero.org/repo/) pinned to Previous alone, installs Previous from it, fetches a preinstalled NeXTSTEP 3.3 disk image, writes `~/.config/previous/previous.cfg`, installs the admin tool as a Debian package, enables console autologin, silences the boot and hands the first console to Previous.
+Ctrl+C while the admin tool is being installed takes the tool off again. Once the helper has the job, the Pi carries on by itself. Ctrl+C then stops the script from watching and nothing else, and the Installer window shows how far it is.
 
-These steps exist a second time, in `admin/previously/setup.py`, which is what the browser asks. Two copies of one thing is one too many, and this is the copy that goes: the browser cannot be the way in on a machine that has no admin tool yet, so the script stays until the other one has set a real machine up, and then shrinks to installing the package and asking for the rest.
-
-Run it as the user the machine will belong to, not under `sudo`. It writes the configuration and the startup line into your home directory and raises its own privileges where it needs them, asking for your password once, before it prints anything else. The pipe does not get in the way of that, because `sudo` reads the password from the terminal device rather than from stdin.
-
-Running it a second time changes nothing that is already in place. An existing disk image, an existing configuration file and an autostart entry that is already there are all left alone.
-
-## Interrupting it
-
-Ctrl+C leaves the machine as it was. Every step records how to undo exactly what it changed, and an interrupt walks that record backwards. A failing step does the same, because a half-configured system is no better than an interrupted one.
-
-Only this run's own changes are reversed. Your own disk image in `~/nextstep` stays, a package that was already installed stays, an existing configuration is not touched, and exactly the fenced block is removed from `~/.profile` rather than the file. A step that skipped itself records nothing, so it can never take away what it found in place.
+Only this run's own changes are reversed. A package that was already installed stays, an existing configuration is not touched, and exactly the fenced block is removed from `~/.profile` rather than the file. A step that skipped itself records nothing, so it can never take away what it found in place.
 
 The refreshed package lists are the one thing left behind. They are more current than before and harm nothing.
 
@@ -57,19 +47,13 @@ Anyone who wants to read it first can read [the one file on GitHub](https://gith
 
 ## Checking the result
 
-Before rebooting into the kiosk, at the Pi's own keyboard on the text console:
-
-```bash
-cage -- previous
-```
-
-The gray NeXT screen should appear, followed within half a minute by the NeXTSTEP login panel. Log in as `me`, no password. A second account, `root`, has none either.
+The installation ends with the machine starting on the Pi's screen. The gray NeXT screen appears, followed within half a minute by the NeXTSTEP login panel. Log in as `me`, no password. A second account, `root`, has none either.
 
 Over SSH there is no screen to draw on, but the disk can still be checked:
 
 ```bash
-ditool -im ~/nextstep/*/NS33_2GB.dd -lsp
-ditool -im ~/nextstep/*/NS33_2GB.dd -p a -ls
+ditool -im ~/nextstep/nextstep-3.3.dd -lsp
+ditool -im ~/nextstep/nextstep-3.3.dd -p a -ls
 ```
 
 Names like `NextLibrary` and `NextApps` in the listing mean the image and its path are right. To start it on the Pi's own screen from an SSH session:
@@ -80,7 +64,7 @@ sudo systemctl restart getty@tty1
 
 ## Using your own disk image
 
-Put it into `~/nextstep` before running the script. It finds it, skips the download, and writes the configuration against your image.
+Put it into `~/nextstep` as `nextstep-3.3.dd` before running the script. It finds it, skips the download, and writes the configuration against your image. Every system is looked for under its own name the same way, such as `openstep-4.2.dd`, and an image under any other name is not one the script knows to use.
 
 ## Updating Previous
 
