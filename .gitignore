@@ -24,3 +24,7 @@ admin/package-lock.json
 # Where the browser automation leaves its snapshots while a page is being
 # looked at.
 .playwright-mcp/
+
+# Working documents for the operator. They sit beside the code but are not
+# part of the project, so they are never versioned.
+Papers
