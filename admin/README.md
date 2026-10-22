@@ -41,9 +41,11 @@ Four declaration files say what the comments cannot. `interface/answers.d.ts` ho
 Homebrew's are their own programs rather than modules of the system Python, which the Makefile calls as `$(PYTHON) -m`. So on a Mac it is a virtual environment that works with it:
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install flake8 pytest selenium
+python3 -m venv .venv && .venv/bin/pip install flake8 pytest selenium pillow
 make check PYTHON=.venv/bin/python
 ```
+
+Pillow is for `measuring/boot.py`, which reads the pictures of a measured boot on the Mac. The service never imports it.
 
 **`make browser` runs what only a browser laying out the page can show**, such as whether a scroller's knob matches what there is to scroll. It starts the service in a temporary home on a free port and drives Safari Technology Preview through that browser's own `safaridriver`. So it needs Safari Technology Preview with remote automation allowed, and Selenium in the virtual environment. The suite skips where either is missing, and `make check` does not run it.
 

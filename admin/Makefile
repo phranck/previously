@@ -55,7 +55,7 @@ browser:
 lint: lint-service lint-interface types
 
 lint-service:
-	$(PYTHON) -m flake8 --max-line-length=100 previously tests browser build_web.py
+	$(PYTHON) -m flake8 --max-line-length=100 previously tests browser measuring build_web.py
 
 # The other half of this repository, which flake8 cannot see, by the rules in
 # .oxlintrc.json. `no-undef` is what matters most, because the interface is
