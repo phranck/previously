@@ -121,3 +121,123 @@ def test_every_step_is_called_what_the_installer_window_calls_it(step):
 def test_every_part_of_a_step_is_said_as_the_installer_window_says_it(doing):
     assert labels("doing_label").get(doing) \
         == catalogue("en")["installer.doing." + doing]
+
+
+# -- a second run --------------------------------------------------------
+
+
+#: Stand-ins for what the script asks the machine, each reading and writing
+#: the state the test sets up in $STATE.
+STAND_INS = {
+    "sudo": 'case "$1" in -n|-v) exit 0 ;; esac\nexec env "$@"\n',
+    # Installing the package makes its version the one that is here.
+    "apt-get": 'echo "$*" >> "$STATE/apt-get"\n'
+               'case " $* " in *" install "*) cp "$STATE/newest" "$STATE/here" ;; esac\n',
+    "dpkg-query": '[ -f "$STATE/here" ] || exit 1\n'
+                  'case "$*" in *Status*) echo "install ok installed" ;; '
+                  '*) cat "$STATE/here" ;; esac\n',
+    "dpkg-deb": 'cat "$STATE/newest"\n',
+    # Enough of dpkg's ordering for versions made of numbers and dots.
+    "dpkg": 'exec python3 -c \'import sys; key = lambda version: tuple('
+            'int(part) for part in version.split(".")); '
+            'sys.exit(0 if key(sys.argv[1]) > key(sys.argv[3]) else 1)\' "$2" "$3" "$4"\n',
+    "curl": 'while [ $# -gt 0 ]; do\n'
+            '  if [ "$1" = -o ]; then shift; echo package > "$1"; fi\n'
+            '  shift\ndone\n',
+    # One answer per call, out of $STATE/states, and inactive once they run out.
+    "systemctl": 'if [ -s "$STATE/states" ]; then\n'
+                 '  head -n 1 "$STATE/states"\n'
+                 '  sed -i.before 1d "$STATE/states"\n'
+                 'else\n  echo inactive\nfi\nexit 3\n',
+}
+
+
+def with_the_script(tmp_path, snippet, here=None, newest="1.9.0", states=()):
+    """Runs shell with install.sh's functions defined and the machine stood in for.
+
+    @param snippet - What to run once the functions are there.
+    @param here - The version of the admin tool installed, or None for none.
+    @param newest - The version the fetched package carries.
+    @param states - What `systemctl is-active` answers, one call after another.
+    @returns (subprocess.CompletedProcess, list of str): what the run said, with
+      a line `undo: <what>` for each entry on the undo record after it, and
+      every call apt-get received.
+    """
+    tools = tmp_path / "bin"
+    tools.mkdir()
+    for name, body in STAND_INS.items():
+        (tools / name).write_text("#!/bin/sh\n" + body, encoding="utf-8")
+        (tools / name).chmod(0o755)
+
+    state = tmp_path / "state"
+    state.mkdir()
+    (state / "newest").write_text(newest, encoding="utf-8")
+    if here:
+        (state / "here").write_text(here, encoding="utf-8")
+    (state / "states").write_text("".join(line + "\n" for line in states),
+                                  encoding="utf-8")
+
+    # The script without the call to main, so sourcing it defines everything
+    # and runs nothing. Beside nothing, so it fetches the package as a run off
+    # the network does.
+    functions = tmp_path / "functions.sh"
+    functions.write_text(SCRIPT[:SCRIPT.rindex('main "$@"')], encoding="utf-8")
+
+    ran = subprocess.run(
+        ["bash", "-c", 'source "$1"; LOG="$(mktemp)"; %s; COMPLETED=true; '
+                       'for what in "${UNDO_WHAT[@]}"; do echo "undo: $what"; done'
+         % snippet, "_", str(functions)],
+        capture_output=True, text=True, timeout=30, check=False,
+        env=dict(os.environ, PATH="%s:%s" % (tools, os.environ["PATH"]),
+                 TMPDIR=str(tmp_path), STATE=str(state), NO_COLOR="1"))
+    assert ran.returncode == 0, ran.stdout + ran.stderr
+    called = state / "apt-get"
+    return ran, (called.read_text(encoding="utf-8").splitlines()
+                 if called.exists() else [])
+
+
+def test_a_second_run_replaces_an_older_admin_tool(tmp_path):
+    """The helper that sets the machine up is part of the tool, so a run that
+    failed over a defect fixed since would fail the same way again with the
+    tool it left behind."""
+    ran, apt = with_the_script(tmp_path, "install_admin", here="1.8.0",
+                               newest="1.9.0")
+
+    assert "  ✓ The admin tool 1.8.0 replaced by 1.9.0" in ran.stdout.splitlines()
+    assert [call for call in apt if " install " in call]
+    assert "undo: remove the admin tool" not in ran.stdout, \
+        "a rollback would take away the tool that was working"
+
+
+def test_a_second_run_leaves_a_current_admin_tool_alone(tmp_path):
+    ran, apt = with_the_script(tmp_path, "install_admin", here="1.9.0",
+                               newest="1.9.0")
+
+    assert "  ✓ The admin tool 1.9.0  already in place" in ran.stdout.splitlines()
+    assert apt == []
+
+
+def test_a_run_already_under_way_is_waited_for(tmp_path):
+    """One that an earlier run of the script handed over before it was
+    stopped, or one the Installer window started. Replacing the tool under it
+    or asking for a second job would have two apt runs at once."""
+    ran, _ = with_the_script(tmp_path, "wait_for_a_run_under_way",
+                             states=("activating", "activating"))
+
+    assert ran.stdout.splitlines() == [
+        "  ✓ The run already under way on the Pi has ended"]
+    assert (tmp_path / "state" / "states").read_text(encoding="utf-8") == ""
+
+
+def test_nothing_is_said_where_no_run_is_under_way(tmp_path):
+    ran, _ = with_the_script(tmp_path, "wait_for_a_run_under_way")
+
+    assert ran.stdout == ""
+
+
+def test_both_ways_in_wait_before_they_touch_the_tool():
+    main = re.search(r"^main\(\) \{\n(.*?)\n\}", SCRIPT, re.M | re.S)
+    assert main, "install.sh has no main"
+
+    assert re.findall(r"wait_for_a_run_under_way\n\s+(\w+)", main.group(1)) \
+        == ["update_admin", "install_admin"]

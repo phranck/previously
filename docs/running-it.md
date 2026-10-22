@@ -18,6 +18,8 @@ Every step exists once, in `admin/previously/setup.py`, one function each, and t
 
 Running it a second time changes nothing that is already in place. A step that finds its work done skips itself and says so: a system already on the card is not fetched again, and an existing configuration is left exactly as it is.
 
+The admin tool is the one exception. Where the one on the Pi is older than the newest release, a second run replaces it first, so a fix released since a failed run takes effect. Where a run is still under way on the Pi, from an earlier start of the script or from the Installer window, the script waits for it to end before it does anything.
+
 ## The Installer window
 
 **It changes the machine afterwards.** The emulator can be updated or removed, a system can be fetched or taken off the card, and a disk can be copied and the copy put back. On a Pi that has the admin tool and nothing else, it runs the whole job itself, with NeXTSTEP 3.3 unless another of the six is chosen.

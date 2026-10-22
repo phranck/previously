@@ -326,12 +326,21 @@ fetch_admin_package() {
 }
 
 install_admin() {
+  fetch_admin_package
+
+  # A tool that is here is replaced where the package is newer, because the
+  # helper that sets the machine up is part of it: a run that failed over a
+  # defect fixed since would otherwise fail the same way again.
   if admin_is_installed; then
-    already_line "The admin tool $(admin_version)"
+    local here
+    here="$(admin_version)"
+    if dpkg --compare-versions "$(dpkg-deb -f "$ADMIN_PACKAGE" Version)" gt "$here"; then
+      replace_admin "$here"
+    else
+      already_line "The admin tool ${here}"
+    fi
     return
   fi
-
-  fetch_admin_package
 
   # apt rather than dpkg, so the dependencies it declares are resolved. The
   # package enables and starts the service and the units that act for it.
@@ -344,11 +353,30 @@ install_admin() {
   done_line "The admin tool $(admin_version)"
 }
 
-# The admin tool on its own, for a machine that already has everything else.
+# Puts the fetched package in place over the tool that is here, and says which
+# version replaced which.
+#
+# $1 is the version that is here, and the rest goes to apt-get install.
 #
 # Nothing here is written to the undo record. A run that fails half way leaves
 # the tool that was already installed, and rolling that back would take away a
 # working one to answer for a replacement that never happened.
+replace_admin() {
+  local before="$1"
+  shift
+  apt_quietly "Updating the admin tool" install -y -qq "$@" "$ADMIN_PACKAGE" \
+    || abort "Could not install the admin tool."
+
+  local after
+  after="$(admin_version)"
+  if [[ "$before" == "$after" ]]; then
+    done_line "The admin tool ${after}, put in place again"
+  else
+    done_line "The admin tool ${before} replaced by ${after}"
+  fi
+}
+
+# The admin tool on its own, for a machine that already has everything else.
 update_admin() {
   local before
   before="$(admin_version)"
@@ -361,17 +389,27 @@ update_admin() {
   # the same build in place again, which is what a rebuild of one commit is,
   # and --allow-downgrades is for going back to a release from a checkout that
   # ran ahead of it.
-  apt_quietly "Updating the admin tool" \
-    install -y -qq --reinstall --allow-downgrades "$ADMIN_PACKAGE" \
-    || abort "Could not install the admin tool."
+  replace_admin "$before" --reinstall --allow-downgrades
+}
 
-  local after
-  after="$(admin_version)"
-  if [[ "$before" == "$after" ]]; then
-    done_line "The admin tool ${after}, put in place again"
-  else
-    done_line "The admin tool ${before} replaced by ${after}"
-  fi
+# The helper's unit. It takes one request and ends, and without
+# RemainAfterExit= systemd calls it activating for as long as that run lasts.
+readonly HELPER_UNIT="previously-setup.service"
+
+# Waits for a run of the helper that is already under way, such as one an
+# earlier run of this script handed over before it was stopped, or one the
+# Installer window started. Replacing the tool underneath it, or asking it for
+# a second job, would have two apt runs at once.
+wait_for_a_run_under_way() {
+  local state
+  state="$(systemctl is-active "$HELPER_UNIT" 2>/dev/null || true)"
+  [[ "$state" == activating ]] || return 0
+  while [[ "$state" == activating ]]; do
+    spin "Waiting for the run already under way on the Pi"
+    sleep 0.1
+    state="$(systemctl is-active "$HELPER_UNIT" 2>/dev/null || true)"
+  done
+  done_line "The run already under way on the Pi has ended"
 }
 
 # ---------------------------------------------------------------------------
@@ -583,7 +621,9 @@ usage() {
 Usage: install.sh [--update-admin]
 
 With no arguments it sets a Raspberry Pi up from nothing and starts NeXTSTEP,
-and skips every step it finds already done.
+and skips every step it finds already done. An admin tool older than the
+newest one is replaced first, and a run already under way on the Pi is waited
+for.
 
   --update-admin   Replace the admin tool with the newest one. Built from the
                    checkout this script sits in, or taken from the latest
@@ -601,6 +641,7 @@ main() {
       check_sudo
       banner
       check_host
+      wait_for_a_run_under_way
       update_admin
       COMPLETED=true
       rm -f "$LOG"
@@ -619,6 +660,7 @@ main() {
   check_sudo
   banner
   check_host
+  wait_for_a_run_under_way
   install_admin
   set_up_the_machine
 
