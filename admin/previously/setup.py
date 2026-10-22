@@ -23,8 +23,9 @@ backwards.
 
 These steps are written here and nowhere else. `install.sh` installs this tool
 and asks for the `install` job, which is the job the Installer window asks for
-too. The package's postinst calls `refresh_console` from here, which is how a
-console that is already there follows the tool from one version to the next.
+too. The package's postinst calls `refresh_console` and `refresh_archive` from
+here, which is how a console and an archive source that are already there
+follow the tool from one version to the next.
 """
 
 import datetime
@@ -96,13 +97,30 @@ TOOLS = ("cage", "7zip", "xdotool", "imagemagick")
 SOUND = ("pipewire", "wireplumber", "pipewire-alsa")
 
 #: The archive Previous comes from, pinned so that nothing else does.
-REPOSITORY_HOST = "wmlive.rumbero.org"
-REPOSITORY_URL = "https://%s/repo" % REPOSITORY_HOST
+REPOSITORY_URL = "https://wmlive.rumbero.org/repo"
 REPOSITORY_SUITE = "wmlive-trixie"
 REPOSITORY_KEY = pathlib.Path("/etc/apt/keyrings/wmlive.asc")
 REPOSITORY_SOURCE = pathlib.Path("/etc/apt/sources.list.d/wmlive.sources")
 REPOSITORY_PINS = pathlib.Path("/etc/apt/preferences.d/wmlive")
 EMULATOR_PACKAGE = "previous"
+
+#: The copy of that archive on previous.li, for networks the archive does not
+#: answer. Its index files are the archive's byte for byte, so the archive's
+#: own signature covers them. The source names a mirror list holding both,
+#: and apt fetches every file the archive does not hand over from the copy,
+#: whatever the archive answered instead.
+REPOSITORY_COPY_URL = "https://previous.li/apt/wmlive"
+REPOSITORY_MIRRORS = pathlib.Path("/etc/apt/mirrors/wmlive.list")
+
+#: The Origin the archive's Release names, which the copy repeats because it
+#: is the same file. The pins match this rather than a host, because the
+#: archive and its copy are served from two hosts.
+REPOSITORY_ORIGIN = "wmlive.rumbero.org"
+
+#: The archive's key as it ships with this tool, so that setting the archive
+#: up does not depend on reaching it. `tests/test_packaging.py` holds it to
+#: the fingerprint that signs the archive.
+REPOSITORY_KEY_SHIPPED = pathlib.Path(__file__).with_name("wmlive.asc")
 
 #: What the tools and the emulator put on the card, with their dependencies.
 #: Read off Raspberry Pi OS Lite trixie on 6 October 2026 with `apt-get -s
@@ -1003,38 +1021,94 @@ def _apt_install(work, arguments):
 
 
 def _archive(work):
-    """The Window Maker Live source, pinned so that only Previous comes from it."""
-    if not REPOSITORY_KEY.exists():
-        REPOSITORY_KEY.parent.mkdir(parents=True, exist_ok=True)
-        _fetched("%s/%s.asc" % (REPOSITORY_URL, REPOSITORY_HOST),
-                 REPOSITORY_KEY, work, (REPOSITORY_HOST,))
-        REPOSITORY_KEY.chmod(0o644)
-        work.undoes(lambda: REPOSITORY_KEY.unlink(missing_ok=True))
+    """The Window Maker Live source, pinned so that only Previous comes from it.
 
+    A file that is there and says something else is replaced, which is how a
+    machine set up by an older version comes to reach the copy as well.
+    """
+    for path, content in _archive_files().items():
+        undo = _made_to_hold(path, content)
+        if undo:
+            work.undoes(undo)
+
+
+def refresh_archive():
+    """Brings the archive's source up to what this version writes.
+
+    @returns bool, whether anything was written.
+
+    A machine without the source is given none, because adding it is setting
+    the machine up, which is the install job's to do. The package calls this
+    from postinst, so a machine whose archive stops answering reaches the copy
+    from the moment the tool is updated, before any job asks apt for anything.
+    """
     if not REPOSITORY_SOURCE.exists():
-        REPOSITORY_SOURCE.write_text(
-            "Types: deb\n"
-            "URIs: %s\n"
-            "Suites: %s\n"
-            "Components: main\n"
-            "Signed-By: %s\n" % (REPOSITORY_URL, REPOSITORY_SUITE,
-                                 REPOSITORY_KEY), encoding="utf-8")
-        work.undoes(lambda: REPOSITORY_SOURCE.unlink(missing_ok=True))
+        return False
+    undos = [_made_to_hold(path, content)
+             for path, content in _archive_files().items()]
+    return any(undos)
 
-    if not REPOSITORY_PINS.exists():
+
+def _archive_files():
+    """@returns dict of pathlib.Path to the bytes it holds, for each file of
+    the archive's source.
+
+    The one statement of that source. The archive step writes it and
+    `refresh_archive` brings an older one up to it. Written in this order, so
+    the source comes last and apt never reads it without its key, its mirrors
+    and its pins.
+    """
+    return {
+        REPOSITORY_KEY: REPOSITORY_KEY_SHIPPED.read_bytes(),
+        # The archive first, so the copy is asked only for what the archive
+        # does not hand over. A tab separates a mirror from what is said
+        # about it.
+        REPOSITORY_MIRRORS: (
+            "%s\tpriority:1\n"
+            "%s\tpriority:2\n" % (REPOSITORY_URL, REPOSITORY_COPY_URL)).encode(),
         # The archive carries more than Previous, and without this it could
         # replace packages that belong to Debian. -1 blocks everything, and the
         # emulator is let back in at the ordinary priority.
-        REPOSITORY_PINS.write_text(
+        REPOSITORY_PINS: (
             "Package: *\n"
-            "Pin: origin %s\n"
+            "Pin: release o=%s\n"
             "Pin-Priority: -1\n"
             "\n"
             "Package: %s\n"
-            "Pin: origin %s\n"
-            "Pin-Priority: 500\n" % (REPOSITORY_HOST, EMULATOR_PACKAGE,
-                                     REPOSITORY_HOST), encoding="utf-8")
-        work.undoes(lambda: REPOSITORY_PINS.unlink(missing_ok=True))
+            "Pin: release o=%s\n"
+            "Pin-Priority: 500\n" % (REPOSITORY_ORIGIN, EMULATOR_PACKAGE,
+                                     REPOSITORY_ORIGIN)).encode(),
+        REPOSITORY_SOURCE: (
+            "Types: deb\n"
+            "URIs: mirror+file:%s\n"
+            "Suites: %s\n"
+            "Components: main\n"
+            "Signed-By: %s\n" % (REPOSITORY_MIRRORS, REPOSITORY_SUITE,
+                                 REPOSITORY_KEY)).encode(),
+    }
+
+
+def _made_to_hold(path, content):
+    """Writes content to a file where it holds anything else.
+
+    @param path - pathlib.Path of the file, left readable by everyone, as the
+      files beside it in /etc/apt are.
+    @param content - bytes.
+    @returns a function that puts back what the file held, and takes it away
+      where there was none, or None where it already held content.
+    """
+    try:
+        before = path.read_bytes()
+    except FileNotFoundError:
+        before = None
+    if before == content:
+        return None
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
+    path.chmod(0o644)
+    if before is None:
+        return lambda: path.unlink(missing_ok=True)
+    return lambda: path.write_bytes(before)
 
 
 def _emulator(work):
@@ -1166,7 +1240,8 @@ def _no_emulator(work):
     if installed(EMULATOR_PACKAGE):
         run(["apt-get", "purge", "-y", "-qq", EMULATOR_PACKAGE])
         run(["apt-get", "autoremove", "--purge", "-y", "-qq"])
-    for path in (REPOSITORY_PINS, REPOSITORY_SOURCE, REPOSITORY_KEY):
+    for path in (REPOSITORY_SOURCE, REPOSITORY_PINS, REPOSITORY_MIRRORS,
+                 REPOSITORY_KEY):
         path.unlink(missing_ok=True)
 
 

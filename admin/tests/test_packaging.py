@@ -318,6 +318,54 @@ def test_the_package_brings_the_console_up_to_date(build, tmp_path):
     assert postinst.index("User=$owner") < found.start()
 
 
+# -- the archive Previous comes from -------------------------------------
+
+
+#: The key that signs the Window Maker Live archive, as gpg names it. apt takes
+#: an index from the archive or from its copy only with this signature on it.
+ARCHIVE_FINGERPRINT = "C40423E642122B755120F8CC963E4C2E2B830BAD"
+
+
+def test_the_package_carries_the_key_that_signs_the_archive(build, tmp_path):
+    """Carried rather than fetched, because a network that cannot reach the
+    archive cannot reach its key either. Checked with gpg where it is here,
+    because what makes a key this one is its fingerprint."""
+    from previously import setup
+
+    gpg = shutil.which("gpg")
+    if gpg is None:
+        pytest.skip("gpg is not on this machine")
+
+    build.lay_out(tmp_path / "tree")
+    carried = (tmp_path / "tree" / build.LIB / build.NAME
+               / setup.REPOSITORY_KEY_SHIPPED.name)
+    keyring = tmp_path / "gnupg"
+    keyring.mkdir(mode=0o700)
+    said = subprocess.run(
+        [gpg, "--homedir", str(keyring), "--show-keys", "--with-colons",
+         str(carried)],
+        capture_output=True, text=True, check=True).stdout
+
+    fingerprints = [line.split(":")[9] for line in said.splitlines()
+                    if line.startswith("fpr:")]
+    assert ARCHIVE_FINGERPRINT in fingerprints
+
+
+def test_the_package_brings_the_archive_source_up_to_date(build):
+    """On every install and upgrade, so a machine whose archive stops
+    answering reaches the copy as soon as the tool is updated. A program of
+    its own, so a console that cannot be brought up to date does not hold the
+    source back."""
+    postinst = build.scripts()["postinst"]
+
+    programs = re.findall(r"python3 -c '(.*?)'", postinst, re.S)
+    archive = [program for program in programs
+               if "setup.refresh_archive()" in program]
+
+    assert len(archive) == 1, "postinst does not bring the archive source up to date"
+    assert "refresh_console" not in archive[0]
+
+
 # -- swap ----------------------------------------------------------------
 
 
