@@ -142,6 +142,41 @@ def test_the_boot_is_counted_from_the_emulators_start(boot):
                      from_nothing=True) == {"previous": 100.0}
 
 
+def test_the_kernels_workers_are_one_line(boot):
+    """A worker's name carries its number and whatever queue it serves at
+    that moment, which differ from one run to the next."""
+    samples = [{"at": 0.0, "processes": {"1": ["kworker/u16:3-v3d_tfu", 0],
+                                         "2": ["kworker/u16:0-v3d_render", 0]}},
+               {"at": 10.0, "processes": {"1": ["kworker/u16:3-v3d_tfu", 20],
+                                          "2": ["kworker/u16:0-events_unbound", 30]}}]
+
+    assert boot.load(samples, "processes", 0.0, 10.0, 100) == {"kworker": 5.0}
+
+
+def test_what_the_slices_take_away_is_always_listed(boot):
+    """cage, Xwayland and PipeWire are what #571 and #572 remove, so a report
+    after them says 0 rather than leaving the line out."""
+    runs = [{"processes_booting": {"previous": 130.0, "Xwayland": 0.0},
+             "processes_idle": {"previous": 130.0, "Xwayland": 5.0}}]
+
+    lines = boot._load_table("Process", runs, "processes", 1)
+
+    assert "| `previous` | 130.0 | 130.0 |" in lines
+    assert "| `Xwayland` | 0.0 | 5.0 |" in lines
+    assert "| `cage` | 0.0 | 0.0 |" in lines
+    assert "| `pipewire` | 0.0 | 0.0 |" in lines
+
+
+def test_a_process_that_starts_on_the_way_counts_from_nothing(boot):
+    """cage starts Xwayland only once Previous connects, which is after the
+    first sample, and all of its time falls inside the span."""
+    samples = [{"at": 0.0, "processes": {"1": ["cage", 10]}},
+               {"at": 10.0, "processes": {"1": ["cage", 20], "2": ["Xwayland", 50]}}]
+
+    assert boot.load(samples, "processes", 0.0, 10.0, 100) == {
+        "cage": 1.0, "Xwayland": 5.0}
+
+
 def test_samples_that_do_not_cover_the_span_say_nothing(boot):
     samples = [sample(10.0, previous=0)]
 

@@ -38,7 +38,11 @@ All times count from the kernel's start, because that is where the board's clock
 | Screen settled | the first grab from which every later one matches the last, apart from the clock in the dock |
 | NeXTSTEP boot | from Previous's start to the settled screen |
 
-With NeXTSTEP 3.3 the settled screen is the Workspace, because that system logs `me` in by itself. It is exact to the second, which is how often the screen is grabbed. The clock in the dock changes 13 to 17 pixels a minute, and `CLOCK_PIXELS` in `boot.py` lets up to 100 pass.
+With NeXTSTEP 3.3 the settled screen is the Workspace, because that system logs `me` in by itself. It is exact to the second, which is how often the screen is grabbed. The clock in the dock changes 6 to 29 pixels a minute, and `CLOCK_PIXELS` in `boot.py` lets up to 100 pass.
+
+A NeXTSTEP that has never been set up stops at its Welcome panel, where a language and a keyboard are chosen, and the screen settles there instead. Look at the last grab of a run before comparing it with another.
+
+The process table always lists `cage`, `Xwayland`, `pipewire`, `wireplumber` and `pipewire-pulse`, at 0 where they did not run, because they are what the slimmer Linux takes away. All of the kernel's workers are one line, `kworker`.
 
 The load tables give percent of one core. A figure over 100 is a name with several threads busy at once. "While booting" runs from Previous's start to the settled screen, and "Idle" from ten seconds after that to the end of the capture. The process table lists the eight that are busiest while idle. `python3` there is the admin service, because the capture leaves itself out.
 

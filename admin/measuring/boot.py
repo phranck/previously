@@ -59,8 +59,9 @@ CAPTURE_SECONDS = 240
 
 #: How many pixels may differ between two pictures of a screen that has stopped
 #: changing. The clock in the dock turns over once a minute, which is not the
-#: boot going on: 13 to 17 pixels on a Pi 5 on 23.10.2026, where the smallest
-#: change during that boot was 205.
+#: boot going on: 6 to 29 pixels in twelve boots on a Pi 4 and a Pi 5 on
+#: 23.10.2026, with and without a NeXTdimension, where the smallest change
+#: during a boot was 205.
 CLOCK_PIXELS = 100
 
 #: How long after the screen has settled the idle reading begins, so whatever
@@ -69,6 +70,14 @@ IDLE_AFTER_SECONDS = 10
 
 #: How many processes the report lists beside the emulator's threads.
 PROCESSES_LISTED = 8
+
+#: Processes the report lists however little they use, because they are what
+#: #571 and #572 take away, and a report after that says 0 for them.
+WATCHED = ("cage", "Xwayland", "pipewire", "wireplumber", "pipewire-pulse")
+
+#: How the kernel's workers begin their names. The rest is a number and the
+#: queue a worker serves at that moment, which differ from run to run.
+KERNEL_WORKER = "kworker"
 
 #: What the report shows where a figure could not be read.
 MISSING = "n/a"
@@ -339,12 +348,21 @@ def load(samples, key, start, end, ticks_per_second, from_nothing=False):
     if seconds <= 0:
         return {}
 
+    # One that the first sample does not hold started inside the span, so all
+    # of its time is.
     spent = {}
     for number, (name, ticks) in last[key].items():
-        before = 0 if from_nothing else first[key].get(number, [name, ticks])[1]
-        spent[name] = spent.get(name, 0) + ticks - before
+        before = 0 if from_nothing else first[key].get(number, [name, 0])[1]
+        family = _family(name)
+        spent[family] = spent.get(family, 0) + ticks - before
     return {name: round(ticks * 100 / (ticks_per_second * seconds), 1)
             for name, ticks in spent.items()}
+
+
+def _family(name):
+    """@returns The name a process is counted under: its own, or one line for
+    all of the kernel's workers."""
+    return KERNEL_WORKER if name.startswith(KERNEL_WORKER + "/") else name
 
 
 def _nearest(samples, at, before):
@@ -427,7 +445,8 @@ def report(title, runs):
 
 def _load_table(heading, runs, key, listed):
     """@returns list of Markdown lines for one load table, busiest when idle
-    first, with at most `listed` rows where that is not None."""
+    first. Where `listed` is not None, that many rows and then every WATCHED
+    process that is not among them, at 0 where it did not run."""
     names = set()
     for run in runs:
         names.update(run[key + "_booting"])
@@ -439,7 +458,10 @@ def _load_table(heading, runs, key, listed):
         rows.append((idle or 0, booting or 0, name))
     rows.sort(reverse=True)
     if listed is not None:
+        found = {row[2]: row for row in rows}
         rows = rows[:listed]
+        shown = {row[2] for row in rows}
+        rows += [found.get(name, (0, 0, name)) for name in WATCHED if name not in shown]
     lines = ["| %s | While booting | Idle |" % heading, "|---|---:|---:|"]
     lines += ["| `%s` | %.1f | %.1f |" % (name, booting, idle)
               for idle, booting, name in rows]
