@@ -230,7 +230,7 @@ export const en = {
   "button.power-on": "Power On",
   "button.change": "Change",
   "button.use": "Use",
-  "about.tagline": "Your fastest way to get NeXTSTEP on your Raspberry Pi up and running.",
+  "about.tagline": "The fastest way to get NeXTSTEP on your Raspberry Pi up and running.",
   "about.version": "Version {version}",
   "about.copyright": "Copyright © {year} {holder}",
   "about.holder": "LAYERED",
