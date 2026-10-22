@@ -167,6 +167,19 @@ def test_python_on_the_pi_is_handed_its_program_whole(boot, monkeypatch):
     assert program not in command[-1]
 
 
+def test_a_machine_the_pi_refuses_stops_the_measurement(boot, monkeypatch):
+    """Measuring on would measure the machine that was there before under the
+    name of the one asked for. Seen on a Pi 5 on 23.10.2026, where the guest
+    was still starting and did not shut down for the change."""
+    monkeypatch.setattr(boot, "_ssh", lambda target, command, given=None, quiet=False: "")
+    monkeypatch.setattr(
+        boot, "_python",
+        lambda target, program: '[false, {"reason": "guest.still-shutting-down"}]\n')
+
+    with pytest.raises(RuntimeError, match="guest.still-shutting-down"):
+        boot._switch("next@pi.local", "nextcube-turbo-dimension")
+
+
 # -- the capture's reading of /proc ------------------------------------------
 
 

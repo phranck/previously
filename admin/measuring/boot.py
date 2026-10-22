@@ -135,12 +135,19 @@ def _install_unit(target, seconds):
 
 def _switch(target, machine):
     """Keeps the configuration as it is and makes the emulator that machine,
-    the way the admin's machine window does."""
+    the way the admin's machine window does.
+
+    @raises RuntimeError where the Pi refuses, because measuring on would
+      measure the machine that was there before under the other one's name.
+    """
     _ssh(target, "cp .config/previous/previous.cfg %s" % REMOTE_CONFIGURATION)
-    said = _python(target, "from previously import change, settings; "
-                           "print(change.to_machine(%r, settings.Settings.load()))"
-                   % machine)
-    say("%s: %s" % (target, said.strip()))
+    ok, said = json.loads(_python(
+        target, "import json\nfrom previously import change, settings\n"
+                "print(json.dumps(change.to_machine(%r, settings.Settings.load())))\n"
+                % machine))
+    if not ok:
+        raise RuntimeError("%s did not become %s: %s" % (target, machine, said))
+    say("%s: %s" % (target, said))
 
 
 def _switch_back(target):
@@ -195,9 +202,15 @@ def _collect(target, directory):
 
 
 def _remove(target):
-    """Takes the unit and every file this put on the Pi away again."""
-    _ssh(target, "systemctl --user disable %s; rm -f %s; systemctl --user daemon-reload; "
-                 "rm -rf %s" % (UNIT, UNIT_PATH, REMOTE), quiet=True)
+    """Stops a capture that is still running and takes the unit and every file
+    this put on the Pi away again.
+
+    @raises CalledProcessError where the Pi does not answer, so nothing is
+      left behind without whoever runs this hearing about it.
+    """
+    _ssh(target, "systemctl --user disable --now %s; rm -f %s; "
+                 "systemctl --user daemon-reload; rm -rf %s"
+                 % (UNIT, UNIT_PATH, REMOTE))
 
 
 def _python(target, program):
