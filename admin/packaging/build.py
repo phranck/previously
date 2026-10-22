@@ -276,8 +276,8 @@ fi
 #: Run after the files are in place. Only what dpkg does not do itself: who
 #: the tool runs as is written down, systemd has to be told the units exist,
 #: the one directory the service cannot create for itself is made, a console
-#: that is there is brought up to this version, and the service is started so
-#: that installing it is enough to have it.
+#: and an archive source that are there are brought up to this version, and
+#: the service is started so that installing it is enough to have it.
 POSTINST = """#!/bin/sh
 set -e
 
@@ -316,6 +316,15 @@ import sys
 from previously import setup
 setup.refresh_console(setup.Owner(sys.argv[1]))
 ' "$owner" || true
+
+    # The source Previous comes from, brought up to what this version of the
+    # helper writes where the machine has one, for the same reason. Not fatal:
+    # the source that is there still installs Previous wherever its archive
+    # answers.
+    PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/%(lib)s python3 -c '
+from previously import setup
+setup.refresh_archive()
+' || true
 
     # systemd's own x11.conf is what makes the X server's socket directory, at
     # boot. Applied here as well, because the /tmp cleanup may have taken it

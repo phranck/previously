@@ -1345,11 +1345,124 @@ def test_what_the_window_is_told_while_this_runs(tmp_path, a_release):
 # -- what may be fetched, and from where ----------------------------------
 
 
-def test_the_emulator_comes_from_the_one_archive_it_comes_from():
-    """Pinned so that only Previous comes from it, because that archive carries
-    more than Previous and could otherwise replace packages of Debian's."""
-    assert setup.REPOSITORY_URL.startswith("https://")
-    assert setup.REPOSITORY_HOST in setup.REPOSITORY_URL
+@pytest.fixture
+def archive_run(tmp_path, monkeypatch):
+    """A run at the archive step, with the files of the archive's source in
+    the test's own directory.
+
+    @returns the run.
+    """
+    for name in ("REPOSITORY_KEY", "REPOSITORY_MIRRORS", "REPOSITORY_PINS",
+                 "REPOSITORY_SOURCE"):
+        monkeypatch.setattr(setup, name, tmp_path / "apt" / name.lower())
+    work = work_in(tmp_path, job="update", system=None)
+    work.at("archive", 1)
+    return work
+
+
+def paragraphs_of(path):
+    """@returns list of dict, one per paragraph of a file in apt's deb822 form."""
+    return [dict(line.split(": ", 1) for line in paragraph.splitlines())
+            for paragraph in path.read_text(encoding="utf-8").split("\n\n")]
+
+
+def test_apt_turns_to_the_copy_for_whatever_the_archive_does_not_hand_over(
+        archive_run):
+    """Some networks cannot reach the archive. apt asks the mirrors in the
+    order of their priority, and the next one for every file the one before
+    does not hand over, whatever it answered instead."""
+    setup.STEPS["archive"](archive_run)
+
+    mirrors = [line.split("\t") for line in setup.REPOSITORY_MIRRORS.read_text(
+        encoding="utf-8").splitlines()]
+    source, = paragraphs_of(setup.REPOSITORY_SOURCE)
+
+    assert mirrors == [[setup.REPOSITORY_URL, "priority:1"],
+                       [setup.REPOSITORY_COPY_URL, "priority:2"]]
+    assert source["URIs"] == "mirror+file:%s" % setup.REPOSITORY_MIRRORS
+    assert source["Signed-By"] == str(setup.REPOSITORY_KEY)
+    assert setup.REPOSITORY_KEY.read_bytes() == \
+        setup.REPOSITORY_KEY_SHIPPED.read_bytes()
+
+
+def test_the_pins_hold_the_archive_and_its_copy_alike(archive_run):
+    """The two are served from two hosts, so a pin on a host would leave the
+    copy offering every package the archive carries, at the priority Debian's
+    own have. Both serve the archive's Release, and with it its Origin."""
+    setup.STEPS["archive"](archive_run)
+
+    pins = [(paragraph["Package"], paragraph["Pin"], paragraph["Pin-Priority"])
+            for paragraph in paragraphs_of(setup.REPOSITORY_PINS)]
+
+    # What the first line of the archive's Release says.
+    origin = "release o=wmlive.rumbero.org"
+    assert pins == [("*", origin, "-1"), (setup.EMULATOR_PACKAGE, origin, "500")]
+
+
+def test_a_machine_set_up_for_the_archive_alone_is_brought_to_its_copy(
+        archive_run):
+    """Its source names the archive and its pins name the archive's host.
+    Both are replaced, and a later step that fails puts both back."""
+    was = {setup.REPOSITORY_KEY: setup.REPOSITORY_KEY_SHIPPED.read_bytes(),
+           setup.REPOSITORY_SOURCE: (
+               "Types: deb\nURIs: %s\n" % setup.REPOSITORY_URL).encode(),
+           setup.REPOSITORY_PINS: b"Package: *\nPin: origin wmlive.rumbero.org\n"}
+    setup.REPOSITORY_KEY.parent.mkdir(parents=True)
+    for path, content in was.items():
+        path.write_bytes(content)
+
+    setup.STEPS["archive"](archive_run)
+
+    assert "mirror+file:" in setup.REPOSITORY_SOURCE.read_text(encoding="utf-8")
+    assert "release o=" in setup.REPOSITORY_PINS.read_text(encoding="utf-8")
+    assert archive_run.changed == ["archive"]
+
+    archive_run.reverse()
+
+    assert {path: path.read_bytes() for path in was} == was
+    assert not setup.REPOSITORY_MIRRORS.exists()
+
+
+def test_an_archive_source_that_is_current_is_left_alone(tmp_path, archive_run):
+    """Asking for an update twice changes nothing the second time, so a later
+    failure has nothing of this step's to put back."""
+    setup.STEPS["archive"](archive_run)
+    again = work_in(tmp_path, job="update", system=None)
+    again.at("archive", 1)
+
+    setup.STEPS["archive"](again)
+
+    assert again.changed == []
+
+
+def test_the_package_brings_an_archive_source_up_to_date(archive_run):
+    """The package does this on every install and upgrade, so a machine
+    reaches the copy from the moment the tool is updated, before any job asks
+    apt for anything."""
+    setup.REPOSITORY_SOURCE.parent.mkdir(parents=True)
+    setup.REPOSITORY_SOURCE.write_text(
+        "Types: deb\nURIs: %s\n" % setup.REPOSITORY_URL, encoding="utf-8")
+
+    assert setup.refresh_archive()
+    assert setup.REPOSITORY_SOURCE.read_bytes() == \
+        setup._archive_files()[setup.REPOSITORY_SOURCE]
+    assert not setup.refresh_archive(), "wrote a current source a second time"
+
+
+def test_the_package_gives_a_machine_without_the_archive_none(archive_run):
+    """Installing the tool is not setting the machine up. The source is added
+    by the install job, and the package only keeps one that is there
+    current."""
+    assert not setup.refresh_archive()
+    assert not any(path.exists() for path in setup._archive_files())
+
+
+def test_taking_the_emulator_away_takes_its_source_with_it(archive_run, commands):
+    setup.STEPS["archive"](archive_run)
+
+    setup.STEPS["no-emulator"](archive_run)
+
+    assert not any(path.exists() for path in setup._archive_files())
 
 
 # -- who owns what it writes ----------------------------------------------
