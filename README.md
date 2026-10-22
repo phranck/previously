@@ -13,13 +13,13 @@
 
 # Previously
 
-A Raspberry Pi 5 that starts straight into NeXTSTEP. No desktop behind it, no login to get past, nothing on the screen but the gray NeXT panel. The emulator underneath is [Previous](https://previous.nextcommunity.net/), and the machine it pretends to be is a NeXTcube from 1993.
+A Raspberry Pi 4 or 5 that starts straight into NeXTSTEP. No desktop behind it, no login to get past, nothing on the screen but the gray NeXT panel. The emulator underneath is [Previous](https://previous.nextcommunity.net/), and the machine it pretends to be is a NeXTcube Turbo, one of eleven it can be.
 
 One line sets all of it up, and afterwards a web admin takes over that looks like the machine it configures.
 
 ## Installing it
 
-You need a Raspberry Pi 5 with a card imaged with Raspberry Pi OS Lite, 64 bit, based on Debian 13. On the Pi, over SSH:
+You need a Raspberry Pi 4 or 5 with a card imaged with Raspberry Pi OS Lite, 64 bit, based on Debian 13. On the Pi, over SSH:
 
 ```bash
 curl -fsSL https://previous.li/install.sh | bash
@@ -33,7 +33,7 @@ A step that fails puts back what it changed. The Installer window in the admin t
 
 Machines, drives and displays are things you pick rather than values you type. Complete configurations move by drag and drop, and any of them can be changed and kept as your own. It answers on the network, so the Pi never needs a keyboard of its own. Its Activity Monitor shows what every core of the Pi is doing as a row of LEDs, twice a second.
 
-None of it is approximated: the icons are the original files out of a NeXTSTEP 3.3 disk image, the window buttons are cut pixel for pixel out of the running system, and every color, edge and raster is measured off it.
+The icons are the original files out of a NeXTSTEP 3.3 disk image, the window buttons are cut pixel for pixel out of a screenshot of the running system, and the grays, edges and rasters are read off that screenshot. What NeXTSTEP had no picture of, such as the icon of a PNG file or the circuit boards, is drawn to match.
 
 ## More
 

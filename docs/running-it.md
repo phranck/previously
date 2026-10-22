@@ -89,7 +89,7 @@ The package owns `/usr/bin` and `/usr/share/previous`. The disk image and the co
 
 ## Updating the admin tool
 
-**From the browser.** Open the Raspberry Pi window. The line marked Previously is the version that is answering, the one under it is the newest that has been published, and where the second is newer than the first that field is tinted and an Update button stands beside Restart. Pressing it is the whole of it.
+**From the browser.** Open the Info window. The line marked Previously is the version that is answering, the one under it is the newest that has been published, and where the second is newer than the first that field is tinted and an Update button stands beside Restart. Pressing it is the whole of it.
 
 Opening the window is what asks GitHub, at most three times a minute. So a release published while you are looking at the window turns up when you close it and open it again, and leaving the window open does not spend the sixty requests an hour an address is allowed.
 

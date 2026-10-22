@@ -8,7 +8,7 @@ Two other drafts were tried and not taken up, one showing the back of the cube a
 
 ## Where the pictures come from
 
-The NeXTSTEP draft draws nothing itself but the boards the Info window wears, which NeXTSTEP has no picture of, and the three edges its surfaces are built from. Its own mark is the Previously website's. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
+The NeXTSTEP draft draws nothing itself but the boards the Info window wears, which NeXTSTEP has no picture of, the three edges its surfaces are built from, and the icon a PNG file wears. Its own mark is the Previously website's. Its icons are the original files out of a NeXTSTEP 3.3 disk image, and its window buttons and dock marks are cut from a screenshot of the running system, because NeXTSTEP drew those in PostScript and they exist as no file at all.
 
 Ten tools do that work:
 
@@ -150,7 +150,7 @@ A tile leaves the dock when it is carried off the column and let go. While it is
 
 The pictures in `../admin/web/parts/` are NeXT's, and NeXT's assets belong to Apple. They stay, and this repository can carry them: that was weighed and decided in #8 on 14 September 2026.
 
-Thirteen are read out of the Workspace Manager's own bundle in a NeXTSTEP 3.3 disk image, one out of Terminal.app and two out of Preferences.app in the same image. Three are cut from a screenshot of the running system, because NeXTSTEP drew its window buttons and dock marks in PostScript and they exist as no file at all. Two come from the boot ROM, through the emulator's own grab.
+Fourteen are read out of the Workspace Manager's own bundle in a NeXTSTEP 3.3 disk image, and eight more out of Terminal.app, Preferences.app, Installer.app, Grab.app and Preview.app in the same image. Three are cut from a screenshot of the running system, because NeXTSTEP drew its window buttons and dock marks in PostScript and they exist as no file at all. Two come from the boot ROM, through the emulator's own grab, and the color machine is the machine icon with its screen lit.
 
 The four circuit boards in `board-*.svg` are this repository's own, apart from the logo on their processors, which is NeXT's. So are the three edges in `edge-*.svg`. `Previously.png` is the website's mark, which is NeXT's cube logo with a circuit board in place of the N.
 
