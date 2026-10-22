@@ -136,12 +136,12 @@ Application = collections.namedtuple("Application", "name icon opens label versi
 #: The applications, in the order a viewer sorts them.
 APPLICATIONS = (
     Application("Activity Monitor.app", ACTIVITY_MONITOR_ICON, "activity",
-                "app.activity-monitor", "1.0.0"),
-    Application("Config Editor.app", DEFAULT_APP_ICON, "editor", "app.config-editor", "1.0.0"),
+                "app.activity-monitor", "1.1.0"),
+    Application("Config Editor.app", DEFAULT_APP_ICON, "editor", "app.config-editor", "1.0.1"),
     Application("Grab.app", GRAB_ICON, "grab", "app.grab", "1.0.0"),
-    Application("Installer.app", INSTALLER_ICON, "installer", "app.installer", "1.0.0"),
-    Application("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences", "1.0.0"),
-    Application("Preview.app", PREVIEW_ICON, "preview", "app.preview", "1.0.0"),
+    Application("Installer.app", INSTALLER_ICON, "installer", "app.installer", "1.0.1"),
+    Application("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences", "1.0.1"),
+    Application("Preview.app", PREVIEW_ICON, "preview", "app.preview", "1.0.1"),
     Application("Terminal.app", TERMINAL_ICON, "terminal", "app.terminal", "1.0.0"),
 )
 
