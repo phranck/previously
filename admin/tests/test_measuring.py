@@ -148,6 +148,25 @@ def test_samples_that_do_not_cover_the_span_say_nothing(boot):
     assert boot.load(samples, "threads", 20.0, 30.0, 100) == {}
 
 
+# -- talking to the Pi ----------------------------------------------------------
+
+
+def test_python_on_the_pi_is_handed_its_program_whole(boot, monkeypatch):
+    """On stdin rather than inside the command line, where the shell on the
+    Pi takes a quote in the program for the end of it. A machine named with
+    %r in single quotes stopped every run with a NeXTdimension that way."""
+    asked = []
+    monkeypatch.setattr(boot, "_run",
+                        lambda command, given=None: asked.append((command, given)) or "")
+    program = "print('nextcube-turbo-dimension')"
+
+    boot._python("next@pi.local", program)
+
+    command, given = asked[0]
+    assert given == program
+    assert program not in command[-1]
+
+
 # -- the capture's reading of /proc ------------------------------------------
 
 

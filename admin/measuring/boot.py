@@ -157,7 +157,7 @@ def _reboot(target):
     """
     before = _boot_id(target)
     _python(target, "from previously import kiosk, settings; "
-                    "print(kiosk.board(\"reboot\", "
+                    "print(kiosk.board('reboot', "
                     "settings.Settings.load().runtime_directory))")
     until = time.monotonic() + BACK_WITHIN_SECONDS
     while time.monotonic() < until:
@@ -201,8 +201,12 @@ def _remove(target):
 
 
 def _python(target, program):
-    """@returns What a line of Python printed on the Pi, against the copy."""
-    return _ssh(target, "%s -c '%s'" % (REMOTE_PYTHON, program))
+    """@returns What Python printed on the Pi, run against the copy.
+
+    The program goes in on stdin, so no quote in it has to survive the shell
+    on the Pi.
+    """
+    return _ssh(target, "%s -" % REMOTE_PYTHON, program)
 
 
 def _ssh(target, command, given=None, quiet=False):
