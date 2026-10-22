@@ -46,7 +46,7 @@ import threading
 import time
 import urllib.error
 
-from . import fetching, files, machines, release, systems
+from . import config, fetching, files, machines, release, systems
 from .answers import told
 from .settings import Settings
 
@@ -177,9 +177,9 @@ PROFILE = ".profile"
 AUTOSTART_OPENS = "# >>> nextstep-rpi >>>"
 AUTOSTART_CLOSES = "# <<< nextstep-rpi <<<"
 
-#: Where the emulator runs, and therefore where it writes a screen grab. Its
-#: own directory rather than the home, so the tool needs write access to that
-#: one place and to nothing else.
+#: Where the emulator runs, and where its configuration has it write a screen
+#: grab. Its own directory rather than the home, so the tool needs write access
+#: to that one place and to nothing else.
 WORK_DIRECTORY = ".cache/previously"
 
 #: The service's own runtime directory, which is a tmpfs the unit makes.
@@ -1460,15 +1460,18 @@ def _configuration(work):
 
     for made in work.owner.directory(configuration.parent):
         work.undoes(lambda place=made: place.rmdir())
-    work.owner.write(configuration, _written(work.machine, disk))
+    work.owner.write(configuration, _written(work.machine, disk,
+                                             work.owner.home / WORK_DIRECTORY))
     work.undoes(lambda: configuration.unlink(missing_ok=True))
 
 
-def _written(machine, disk):
+def _written(machine, disk, grabs):
     """The configuration a fresh machine gets.
 
     @param machine - The Machine it describes.
     @param disk - pathlib.Path of the disk it boots.
+    @param grabs - pathlib.Path of the directory the emulator writes a screen
+      grab into, which is the one the admin may read and remove it in.
     @returns str
 
     Only the keys that differ from what Previous writes by default, plus the
@@ -1488,6 +1491,7 @@ def _written(machine, disk):
         "Boot": {"nBootDevice": "1", "bVerbose": "FALSE"},
         "HardDisk": {"szImageName0": str(disk), "nDeviceType0": "1",
                      "bDiskInserted0": "TRUE", "bWriteProtected0": "FALSE"},
+        **config.writing_into(grabs),
     }
     # Merged section by section, because the machine's Screen keys go beside
     # the kiosk's rather than in place of them.
@@ -1644,6 +1648,40 @@ def refresh_console(owner):
     return True
 
 
+def refresh_configuration(owner, previous_config=None):
+    """Has an emulator configuration that is there write its grabs where the
+    admin reads them.
+
+    @param owner - Whose configuration it is.
+    @param previous_config - pathlib.Path to it. Left out, the one the
+      service's settings name in that owner's home.
+    @returns bool, whether anything was written.
+
+    A file that names no directory, or names the home that is Previous's own
+    default, has the emulator leave every grab in the home, where the admin may
+    not remove it. A directory somebody chose for their printouts stays theirs,
+    and the admin photographs the window instead. A machine without a
+    configuration is given none, because writing one is setting the machine
+    up, which is the install job's to do. The package calls this from postinst
+    on every install and upgrade, as it does `refresh_console`.
+
+    Written only where it changes something, because a file newer than the
+    running machine is what the admin reports as a change nobody has tried.
+    """
+    if previous_config is None:
+        previous_config = Settings.load(home=owner.home).previous_config
+    if not previous_config.is_file():
+        return False
+    if config.output_directory(previous_config, owner.home) != owner.home:
+        return False
+    try:
+        config.write(previous_config,
+                     config.writing_into(owner.home / WORK_DIRECTORY))
+    except config.NotReadable:
+        return False
+    return True
+
+
 def _the_block_in(text):
     """@returns str - The fenced block as it stands, markers and all, or ""."""
     opens = text.find(AUTOSTART_OPENS)
@@ -1698,9 +1736,9 @@ def _autostart_block(owner):
         "# The file is on a tmpfs, so a board that has just booted never finds one and\n"
         "# always starts its emulator.\n"
         "#\n"
-        "# The directory it runs in is where it writes a screen grab, and the admin tool\n"
-        "# reads those and removes them. Its own rather than the home directory, so the\n"
-        "# tool needs write access to that one directory and to nothing else of yours.\n"
+        "# It runs in a directory of its own, which its configuration also names as where\n"
+        "# it writes a screen grab. The admin tool reads those and removes them, so it\n"
+        "# needs write access to that one directory and to nothing else of yours.\n"
         "#\n"
         "# An emulator that ends badly says so in one line, which the Raspberry Pi window\n"
         "# reads. It goes in the runtime directory because that is a tmpfs: the file is\n"

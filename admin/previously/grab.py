@@ -3,8 +3,9 @@
 Previous can write its own framebuffer to a file, and that is the picture worth
 having: it is the machine's own 1120 by 832, pixel for pixel, rather than the
 emulator's window scaled to whatever screen the Pi is plugged into. The
-emulator offers it as a keyboard shortcut and writes the file into whatever
-directory it was started in.
+emulator offers it as a keyboard shortcut and writes the file into its
+printer's directory, which its configuration names and `setup.py` sets to the
+directory the emulator runs in.
 
 So taking a picture is three steps: press the keys, wait for a file that was
 not there before and is finished, and read it. It is then kept in the folder
@@ -26,7 +27,7 @@ import shutil
 import subprocess
 import time
 
-from . import screen
+from . import config, screen
 
 #: What Previous maps the grab to, from its own [ShortcutsWithModifiers] where
 #: kScreenshot is G. The modifier is the emulator's own rather than the
@@ -55,15 +56,17 @@ PNG_HEAD = b"\x89PNG\r\n\x1a\n"
 PNG_TAIL = b"\x00\x00\x00\x00IEND\xaeB`\x82"
 
 
-def take():
+def take(previous_config):
     """A picture of the emulated screen.
 
+    @param previous_config - pathlib.Path to the emulator's configuration,
+      which says where it writes its grab.
     @returns bytes of a PNG, or None where no picture could be taken.
 
     The emulator's own grab first, because it is the machine's own resolution,
     and ImageMagick against the window second.
     """
-    return grabbed() or photographed()
+    return grabbed(previous_config) or photographed()
 
 
 def keep(picture, where):
@@ -99,43 +102,28 @@ def _a_name_for_now():
     return "Screen %s.png" % now
 
 
-def working_directory():
-    """Where the emulator writes what it is asked to write.
-
-    @returns pathlib.Path, or None where the emulator is not running.
-
-    Read from the running process rather than assumed, because it is whatever
-    directory the console started it in and this service does not start it.
-    """
-    pid = _emulator_pid()
-    if pid is None:
-        return None
-    try:
-        return pathlib.Path(os.readlink("/proc/%d/cwd" % pid))
-    except OSError:
-        return None
-
-
-def grabbed():
+def grabbed(previous_config):
     """Asks the emulator for its framebuffer and reads what it wrote.
 
+    @param previous_config - pathlib.Path to the emulator's configuration.
     @returns bytes of a PNG, or None.
 
-    Only where the file can be taken away again afterwards. The emulator
-    writes into whatever directory it was started in, and a picture already
+    Only where the file can be taken away again afterwards. A picture already
     sent to a browser that stays on the disk is one this service left there;
     do that on every press and the directory fills up. Where it cannot be
-    removed the window is photographed instead, which leaves nothing behind
-    and is what a machine whose emulator was started somewhere unexpected
-    falls back to.
+    removed the window is photographed instead, which leaves nothing behind.
+    That is what a configuration naming no directory comes to, because
+    Previous then writes into the home and this service may not write there.
 
     What is watched for is a file that was not there a moment ago, because the
     emulator counts its grabs up rather than overwriting. The count is taken
     before the keys are sent, since the emulator writes the moment they land
     and a count taken afterwards would already hold what it is waiting for.
     """
-    where = working_directory()
-    if where is None or not os.access(where, os.W_OK):
+    if _emulator_pid() is None:
+        return None
+    where = config.output_directory(previous_config, pathlib.Path.home())
+    if not os.access(where, os.W_OK):
         return None
 
     before = set(where.glob(GRAB_GLOB))

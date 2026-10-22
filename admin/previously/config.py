@@ -10,6 +10,7 @@ the half which only looks cannot damage anything.
 
 import configparser
 import hashlib
+import pathlib
 import time
 
 from . import discs
@@ -34,6 +35,13 @@ SLOTS = 7
 #: for the disk it boots.
 BOOT_SLOT = 0
 HARD_DISK = "1"
+
+#: The one key that says where Previous writes a screen grab, a printed page
+#: and a recorded sound. `Grab_GetPath` in its src/grab.c builds every such
+#: path from the printer's directory, and src/configuration.c sets that to the
+#: home of whoever runs it unless the file names another.
+OUTPUT_SECTION = "Printer"
+OUTPUT_KEY = "szPrintToFileName"
 
 #: What the emulator calls each machine, by the number in the file. The names
 #: are Previous's own, as its System dialog labels the three in
@@ -499,6 +507,30 @@ def booting(disk):
         "nDeviceType%d" % BOOT_SLOT: HARD_DISK,
         "bDiskInserted%d" % BOOT_SLOT: "TRUE",
     }}
+
+
+def output_directory(path, home):
+    """Where Previous writes what it grabs, prints and records.
+
+    @param path - pathlib.Path to previous.cfg.
+    @param home - pathlib.Path of the home of the user Previous runs as.
+    @returns pathlib.Path. The home where the file names no directory or
+      cannot be read, because that is where Previous itself falls back to.
+    """
+    try:
+        named = _section(_parsed(path), OUTPUT_SECTION).get(OUTPUT_KEY, "").strip()
+    except NotReadable:
+        named = ""
+    return pathlib.Path(named) if named else pathlib.Path(home)
+
+
+def writing_into(directory):
+    """What to write so Previous grabs, prints and records into a directory.
+
+    @param directory - pathlib.Path of it.
+    @returns dict of section to key to value, as `write` takes it.
+    """
+    return {OUTPUT_SECTION: {OUTPUT_KEY: str(directory)}}
 
 
 def slots(path):

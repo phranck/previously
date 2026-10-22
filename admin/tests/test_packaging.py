@@ -318,6 +318,23 @@ def test_the_package_brings_the_console_up_to_date(build, tmp_path):
     assert postinst.index("User=$owner") < found.start()
 
 
+def test_the_package_brings_the_emulator_configuration_up_to_date(build):
+    """On every install and upgrade, so a machine set up before Previous was
+    told where to write its grabs stops leaving them in the home. A program of
+    its own, so a console that cannot be brought up to date does not hold the
+    configuration back."""
+    postinst = build.scripts()["postinst"]
+
+    programs = re.findall(r"python3 -c '(.*?)' \"\$owner\"", postinst, re.S)
+    configuration = [
+        program for program in programs
+        if "setup.refresh_configuration(setup.Owner(sys.argv[1]))" in program]
+
+    assert len(configuration) == 1, "postinst does not bring the configuration up to date"
+    assert "refresh_console" not in configuration[0]
+    assert postinst.index("User=$owner") < postinst.index("refresh_configuration")
+
+
 # -- the archive Previous comes from -------------------------------------
 
 

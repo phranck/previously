@@ -920,7 +920,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not self._signed_in():
             return self._json({"error": "password required"}, status=403)
 
-        picture = grab.take()
+        picture = grab.take(self.settings.previous_config)
         if picture is None:
             return self._json({"error": "no screen"}, status=503)
 
