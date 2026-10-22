@@ -17,10 +17,17 @@ from previously import grab
 PICTURE = grab.PNG_HEAD + b"and then some pixels" + grab.PNG_TAIL
 
 
+#: What the emulator's configuration is called in each test's directory.
+CONFIGURATION = "previous.cfg"
+
+
 @pytest.fixture
 def where(tmp_path, monkeypatch):
-    """A directory standing in for the one the emulator writes into."""
-    monkeypatch.setattr(grab, "working_directory", lambda: tmp_path)
+    """A directory standing in for the one the emulator writes into, named in
+    a configuration beside it the way `setup.py` names it on the Pi."""
+    monkeypatch.setattr(grab, "_emulator_pid", lambda: 1)
+    (tmp_path / CONFIGURATION).write_text(
+        "[Printer]\nszPrintToFileName = %s\n" % tmp_path)
     return tmp_path
 
 
@@ -35,14 +42,14 @@ def writes(where, name=None, content=PICTURE):
 def test_the_picture_is_the_file_the_emulator_just_wrote(where, monkeypatch):
     monkeypatch.setattr(grab.screen, "press", writes(where))
 
-    assert grab.grabbed() == PICTURE
+    assert grab.grabbed(where / CONFIGURATION) == PICTURE
 
 
 def test_the_picture_is_taken_away_once_it_has_been_read(where, monkeypatch):
     """A directory that fills up with these is this service's doing."""
     monkeypatch.setattr(grab.screen, "press", writes(where))
 
-    grab.grabbed()
+    grab.grabbed(where / CONFIGURATION)
 
     assert list(where.glob(grab.GRAB_GLOB)) == []
 
@@ -54,7 +61,7 @@ def test_a_grab_that_was_already_there_is_not_this_picture(where, monkeypatch):
     older.write_bytes(grab.PNG_HEAD + b"an older one" + grab.PNG_TAIL)
     monkeypatch.setattr(grab.screen, "press", writes(where, "next_screen_001.png"))
 
-    picture = grab.grabbed()
+    picture = grab.grabbed(where / CONFIGURATION)
 
     assert picture == PICTURE
     assert older.exists()
@@ -63,7 +70,7 @@ def test_a_grab_that_was_already_there_is_not_this_picture(where, monkeypatch):
 def test_nothing_comes_of_a_shortcut_that_was_not_sent(where, monkeypatch):
     monkeypatch.setattr(grab.screen, "press", lambda keys: False)
 
-    assert grab.grabbed() is None
+    assert grab.grabbed(where / CONFIGURATION) is None
 
 
 def test_nothing_comes_of_an_emulator_that_wrote_nothing(where, monkeypatch):
@@ -72,15 +79,47 @@ def test_nothing_comes_of_an_emulator_that_wrote_nothing(where, monkeypatch):
     monkeypatch.setattr(grab, "GRAB_TIMEOUT_SECONDS", 0.3)
     monkeypatch.setattr(grab.screen, "press", lambda keys: True)
 
-    assert grab.grabbed() is None
+    assert grab.grabbed(where / CONFIGURATION) is None
 
 
-def test_nothing_comes_of_an_emulator_that_is_not_running(monkeypatch):
-    monkeypatch.setattr(grab, "working_directory", lambda: None)
+def test_nothing_comes_of_an_emulator_that_is_not_running(where, monkeypatch):
+    monkeypatch.setattr(grab, "_emulator_pid", lambda: None)
     monkeypatch.setattr(grab.screen, "press",
                         lambda keys: pytest.fail("nothing to press at"))
 
-    assert grab.grabbed() is None
+    assert grab.grabbed(where / CONFIGURATION) is None
+
+
+def test_the_picture_is_looked_for_where_previous_is_told_to_write_it(
+        where, monkeypatch):
+    """Previous writes a grab into its printer's directory, which is the home
+    unless its configuration names another. The directory it runs in has
+    nothing to do with it. Measured on a Pi 4 and a Pi 5 on 22.10.2026: the
+    emulator ran in ~/.cache/previously and wrote its grab into the home."""
+    sent = where / "grabs"
+    sent.mkdir()
+    (where / CONFIGURATION).write_text("[Printer]\nszPrintToFileName = %s\n" % sent)
+    monkeypatch.setattr(grab.screen, "press", writes(sent))
+
+    assert grab.grabbed(where / CONFIGURATION) == PICTURE
+    assert list(sent.glob(grab.GRAB_GLOB)) == []
+
+
+def test_a_configuration_that_names_no_directory_grabs_into_the_home(
+        where, monkeypatch):
+    """Which this service may not write in, so it asks nothing of the emulator
+    and the home stays as it was."""
+    home = where / "home"
+    monkeypatch.setattr(grab.pathlib.Path, "home", lambda: home)
+    (where / CONFIGURATION).write_text("[Printer]\nbPrinterConnected = FALSE\n")
+    asked = []
+    monkeypatch.setattr(grab.os, "access",
+                        lambda path, mode: asked.append(path) or False)
+    monkeypatch.setattr(grab.screen, "press",
+                        lambda keys: pytest.fail("the home would keep the picture"))
+
+    assert grab.grabbed(where / CONFIGURATION) is None
+    assert asked == [home]
 
 
 def test_a_grab_that_cannot_be_removed_is_still_the_picture(where, monkeypatch):
@@ -90,30 +129,30 @@ def test_a_grab_that_cannot_be_removed_is_still_the_picture(where, monkeypatch):
     monkeypatch.setattr(grab.pathlib.Path, "unlink",
                         lambda self, **how: (_ for _ in ()).throw(PermissionError()))
 
-    assert grab.grabbed() == PICTURE
+    assert grab.grabbed(where / CONFIGURATION) == PICTURE
 
 
 def test_the_window_is_photographed_when_the_grab_gives_nothing(monkeypatch):
     """The smaller picture, and the reason it is here."""
-    monkeypatch.setattr(grab, "grabbed", lambda: None)
+    monkeypatch.setattr(grab, "grabbed", lambda previous_config: None)
     monkeypatch.setattr(grab, "photographed", lambda: b"the window")
 
-    assert grab.take() == b"the window"
+    assert grab.take(CONFIGURATION) == b"the window"
 
 
 def test_the_grab_is_preferred_to_the_photograph(monkeypatch):
-    monkeypatch.setattr(grab, "grabbed", lambda: PICTURE)
+    monkeypatch.setattr(grab, "grabbed", lambda previous_config: PICTURE)
     monkeypatch.setattr(grab, "photographed",
                         lambda: pytest.fail("the grab already answered"))
 
-    assert grab.take() == PICTURE
+    assert grab.take(CONFIGURATION) == PICTURE
 
 
 def test_no_picture_at_all_is_an_honest_nothing(monkeypatch):
-    monkeypatch.setattr(grab, "grabbed", lambda: None)
+    monkeypatch.setattr(grab, "grabbed", lambda previous_config: None)
     monkeypatch.setattr(grab, "photographed", lambda: None)
 
-    assert grab.take() is None
+    assert grab.take(CONFIGURATION) is None
 
 
 def test_a_directory_this_cannot_write_in_is_left_alone(where, monkeypatch):
@@ -124,7 +163,7 @@ def test_a_directory_this_cannot_write_in_is_left_alone(where, monkeypatch):
     monkeypatch.setattr(grab.screen, "press",
                         lambda keys: pytest.fail("nowhere to put the picture"))
 
-    assert grab.grabbed() is None
+    assert grab.grabbed(where / CONFIGURATION) is None
 
 
 def test_a_picture_still_being_written_is_not_the_picture(where, monkeypatch):
@@ -135,14 +174,14 @@ def test_a_picture_still_being_written_is_not_the_picture(where, monkeypatch):
     monkeypatch.setattr(grab.screen, "press",
                         writes(where, content=grab.PNG_HEAD + b"half of it"))
 
-    assert grab.grabbed() is None
+    assert grab.grabbed(where / CONFIGURATION) is None
 
 
 def test_a_picture_is_whole_once_it_carries_its_last_chunk(where, monkeypatch):
     whole = grab.PNG_HEAD + b"pixels" + grab.PNG_TAIL
     monkeypatch.setattr(grab.screen, "press", writes(where, content=whole))
 
-    assert grab.grabbed() == whole
+    assert grab.grabbed(where / CONFIGURATION) == whole
 
 
 def test_something_that_is_not_a_png_at_all_is_not_the_picture(where, monkeypatch):
@@ -150,7 +189,7 @@ def test_something_that_is_not_a_png_at_all_is_not_the_picture(where, monkeypatc
     monkeypatch.setattr(grab.screen, "press",
                         writes(where, content=b"not a picture" + grab.PNG_TAIL))
 
-    assert grab.grabbed() is None
+    assert grab.grabbed(where / CONFIGURATION) is None
 
 
 # -- keeping a picture ----------------------------------------------------

@@ -7,6 +7,7 @@ convenient.
 
 import configparser
 import os
+import pathlib
 import textwrap
 
 import pytest
@@ -325,7 +326,7 @@ def test_a_disc_on_a_fresh_configuration_reaches_the_bus(tmp_path):
 
     path = tmp_path / "previous.cfg"
     path.write_text(setup._written(machines.find("nextcube-turbo"),
-                                   tmp_path / "nextstep-3.3.dd"))
+                                   tmp_path / "nextstep-3.3.dd", tmp_path))
 
     config.write(path, config.inserting(1, tmp_path / "Developer.iso"))
 
@@ -516,3 +517,34 @@ def test_the_processor_is_the_one_the_level_stands_for():
     described = config.describe({"nCpuLevel": "3"}, {}, {})
 
     assert described["cpu"] == "68030"
+
+
+# -- where Previous writes what it grabs ------------------------------------
+
+
+def test_a_grab_goes_where_the_printer_section_sends_it(tmp_path):
+    """Previous builds the path of a screen grab from the printer's directory,
+    in Grab_GetPath in src/grab.c, and not from the directory it runs in."""
+    path = write(tmp_path, "[Printer]\nszPrintToFileName = /home/next/.cache/previously\n")
+
+    assert (config.output_directory(path, pathlib.Path("/home/next"))
+            == pathlib.Path("/home/next/.cache/previously"))
+
+
+def test_a_file_that_names_no_directory_sends_a_grab_home(tmp_path):
+    """Previous's own default, from src/configuration.c. A configuration
+    `setup.py` wrote before this key existed holds the printer flag alone."""
+    path = write(tmp_path, "[Printer]\nbPrinterConnected = FALSE\n")
+
+    assert config.output_directory(path, tmp_path) == tmp_path
+
+
+def test_a_file_that_cannot_be_read_sends_a_grab_home(tmp_path):
+    """Previous starts from its defaults where it has no file, and so does
+    the answer here."""
+    assert config.output_directory(tmp_path / "absent.cfg", tmp_path) == tmp_path
+
+
+def test_what_is_written_to_send_grabs_somewhere_is_one_key(tmp_path):
+    assert config.writing_into(tmp_path) == {
+        "Printer": {"szPrintToFileName": str(tmp_path)}}

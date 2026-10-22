@@ -9,7 +9,9 @@ holds, and it is what the machines in the admin's shelf wear.
 The input is a grab taken by Previous itself, which writes the emulated
 framebuffer at 1120 by 832 in NeXT's four grays rather than the window as it
 stands on the Pi's screen. Press Ctrl+Alt+G while the panel is up, and the
-file appears in the emulator's working directory as next_screen_NNN.png.
+file appears as next_screen_NNN.png in the directory the emulator's
+configuration names for its printer, which is ~/.cache/previously on a Pi that
+Previously set up.
 
     python3 bootpicture.py next_screen_021.png ../admin/web/parts/nextstation.png
 

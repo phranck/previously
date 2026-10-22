@@ -1275,7 +1275,7 @@ def test_a_picture_of_the_screen_needs_a_session(service, monkeypatch):
     """The one reading that does. Everything else this service tells is about
     the machine; a picture is about whoever is sitting at it."""
     monkeypatch.setattr(server.grab, "take",
-                        lambda: pytest.fail("refused before it was taken"))
+                        lambda previous_config: pytest.fail("refused before it was taken"))
 
     with pytest.raises(urllib.error.HTTPError) as refused:
         fetch(service + "/api/screen")
@@ -1284,7 +1284,8 @@ def test_a_picture_of_the_screen_needs_a_session(service, monkeypatch):
 
 
 def test_the_picture_arrives_as_a_png(service, monkeypatch):
-    monkeypatch.setattr(server.grab, "take", lambda: b"\x89PNG\r\n\x1a\npixels")
+    monkeypatch.setattr(server.grab, "take",
+                        lambda previous_config: b"\x89PNG\r\n\x1a\npixels")
     request = urllib.request.Request(service + "/api/screen")
     sign(request)
 
@@ -1297,10 +1298,26 @@ def test_the_picture_arrives_as_a_png(service, monkeypatch):
     assert body == b"\x89PNG\r\n\x1a\npixels"
 
 
+def test_the_grab_is_told_which_configuration_the_emulator_reads(
+        service, tmp_path, monkeypatch):
+    """That file says where Previous writes the picture."""
+    asked = []
+    monkeypatch.setattr(server.grab, "take",
+                        lambda previous_config: asked.append(previous_config)
+                        or b"\x89PNG\r\n\x1a\npixels")
+    request = urllib.request.Request(service + "/api/screen")
+    sign(request)
+
+    with urllib.request.urlopen(request, timeout=5):
+        pass
+
+    assert asked == [tmp_path / "previous.cfg"]
+
+
 def test_a_screen_that_cannot_be_read_says_so(service, monkeypatch):
     """Rather than sending an empty picture, which a browser draws as a
     broken one and nobody can tell from a black screen."""
-    monkeypatch.setattr(server.grab, "take", lambda: None)
+    monkeypatch.setattr(server.grab, "take", lambda previous_config: None)
     request = urllib.request.Request(service + "/api/screen")
     sign(request)
 
@@ -1313,7 +1330,8 @@ def test_a_screen_that_cannot_be_read_says_so(service, monkeypatch):
 def test_the_picture_is_kept_as_well_as_sent(service, tmp_path, monkeypatch):
     """A screenshot is a document. It goes into the folder the File Viewer
     shows as Documents/Pictures, where the emulated machine reaches it too."""
-    monkeypatch.setattr(server.grab, "take", lambda: b"\x89PNG\r\n\x1a\npixels")
+    monkeypatch.setattr(server.grab, "take",
+                        lambda previous_config: b"\x89PNG\r\n\x1a\npixels")
     request = urllib.request.Request(service + "/api/screen")
     sign(request)
 
@@ -1326,7 +1344,8 @@ def test_the_picture_is_kept_as_well_as_sent(service, tmp_path, monkeypatch):
 
 
 def test_a_kept_picture_is_in_the_tree(service, tmp_path, monkeypatch):
-    monkeypatch.setattr(server.grab, "take", lambda: b"\x89PNG\r\n\x1a\npixels")
+    monkeypatch.setattr(server.grab, "take",
+                        lambda previous_config: b"\x89PNG\r\n\x1a\npixels")
     request = urllib.request.Request(service + "/api/screen")
     sign(request)
     with urllib.request.urlopen(request, timeout=5) as answer:

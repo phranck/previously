@@ -436,7 +436,8 @@ def test_a_fresh_machine_boots_without_the_sound_out_test():
     written.optionxform = str
     written.read_string(setup._written(
         machines.find("nextcube-turbo"),
-        pathlib.Path("/home/next/nextstep/nextstep-3.3.dd")))
+        pathlib.Path("/home/next/nextstep/nextstep-3.3.dd"),
+        pathlib.Path("/home/next/.cache/previously")))
 
     assert dict(written["Boot"]) == {"nBootDevice": "1", "bVerbose": "FALSE",
                                      "bEnableSoundTest": "FALSE"}
@@ -449,11 +450,30 @@ def test_a_fresh_machine_with_a_board_is_shown_on_it():
     written.optionxform = str
     written.read_string(setup._written(
         machines.find("nextcube-turbo-dimension"),
-        pathlib.Path("/home/next/nextstep/nextstep-3.3.dd")))
+        pathlib.Path("/home/next/nextstep/nextstep-3.3.dd"),
+        pathlib.Path("/home/next/.cache/previously")))
 
     assert written["Screen"]["bFullScreen"] == "TRUE"
     assert written["Screen"]["nMode"] == "0"
     assert written["Screen"]["nSingleModeSlot"] == "2"
+
+
+def test_a_fresh_configuration_sends_a_grab_where_the_admin_reads_it(tmp_path, commands):
+    """Previous writes a grab into its printer's directory, which is the home
+    unless the file names another, and the admin may not write in the home."""
+    work = work_in(tmp_path)
+    disk = work.settings.disks / "nextstep-3.3.dd"
+    disk.parent.mkdir(parents=True)
+    disk.write_bytes(b"x")
+
+    setup.STEPS["configuration"](work)
+    written = configparser.ConfigParser()
+    written.optionxform = str
+    written.read(work.settings.previous_config, encoding="utf-8")
+
+    assert written["Printer"]["szPrintToFileName"] == str(
+        work.owner.home / setup.WORK_DIRECTORY)
+    assert written["Printer"]["bPrinterConnected"] == "FALSE"
 
 
 def test_a_configuration_that_is_already_there_is_left_alone(tmp_path, commands):
@@ -615,6 +635,65 @@ def test_the_package_leaves_a_current_console_alone(tmp_path, commands):
 
     assert not setup.refresh_console(work.owner)
     assert profile.read_text() == once
+
+
+def older_configuration(home, printer):
+    """A configuration as an older version of `setup.py` wrote it, or as
+    Previous's own "Save config" writes it, with that printer section."""
+    path = home / ".config" / "previous" / "previous.cfg"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("[System]\nnMachineType = 1\n\n[Printer]\n%s\n" % printer)
+    return path
+
+
+def test_the_package_sends_the_grabs_of_an_older_configuration_to_the_admin(tmp_path):
+    """On every install and upgrade, so a machine set up before the key was
+    written stops leaving its grabs in the home."""
+    owner = Nobody(tmp_path)
+    path = older_configuration(tmp_path, "bPrinterConnected = FALSE")
+
+    assert setup.refresh_configuration(owner, path)
+    assert path.read_text() == (
+        "[System]\nnMachineType = 1\n\n[Printer]\nbPrinterConnected = FALSE\n"
+        "szPrintToFileName = %s\n" % (tmp_path / setup.WORK_DIRECTORY))
+
+
+def test_a_configuration_that_names_the_home_is_sent_to_the_admin(tmp_path):
+    """Previous's "Save config" writes every key, its default for this one
+    among them, so a file naming the home is a file nobody chose a place in."""
+    owner = Nobody(tmp_path)
+    path = older_configuration(tmp_path, "szPrintToFileName = %s" % tmp_path)
+
+    assert setup.refresh_configuration(owner, path)
+    assert "szPrintToFileName = %s\n" % (tmp_path / setup.WORK_DIRECTORY) in path.read_text()
+
+
+def test_a_place_somebody_chose_for_their_printouts_stays(tmp_path):
+    owner = Nobody(tmp_path)
+    path = older_configuration(tmp_path, "szPrintToFileName = /media/usb")
+    was = path.read_text()
+
+    assert not setup.refresh_configuration(owner, path)
+    assert path.read_text() == was
+
+
+def test_the_package_gives_a_machine_without_a_configuration_none(tmp_path):
+    """Writing one is setting the machine up, which is the install job's."""
+    assert not setup.refresh_configuration(Nobody(tmp_path),
+                                           tmp_path / "previous.cfg")
+    assert not (tmp_path / "previous.cfg").exists()
+
+
+def test_the_package_leaves_a_current_configuration_untouched(tmp_path):
+    """Untouched rather than written again, because a file newer than the
+    running machine is what the admin reports as a change nobody has tried."""
+    owner = Nobody(tmp_path)
+    path = older_configuration(
+        tmp_path, "szPrintToFileName = %s" % (tmp_path / setup.WORK_DIRECTORY))
+    os.utime(path, (0, 0))
+
+    assert not setup.refresh_configuration(owner, path)
+    assert path.stat().st_mtime == 0
 
 
 def test_an_installation_ends_with_the_machine_running(tmp_path, commands, monkeypatch):

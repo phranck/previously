@@ -38,7 +38,7 @@ python3 build.py
 
 The pictures of the NeXTcube and the NeXTstation come from somewhere else again, because NeXTSTEP holds no drawing of either. The boot ROM does: while it tests the hardware it puts up a panel with the NeXT cube on the left and the machine on the right, and which machine that is follows from the configuration.
 
-Previous can write the emulated framebuffer itself, which is what makes those pictures usable. Ctrl+Alt+G grabs it at the machine's own 1120 by 832 in NeXT's four grays, unscaled, and leaves `next_screen_NNN.png` in the directory the emulator was started in. Grabbing once a second through a boot catches the panel, and `bootpicture.py` finds the machine inside it and reduces it to an icon:
+Previous can write the emulated framebuffer itself, which is what makes those pictures usable. Ctrl+Alt+G grabs it at the machine's own 1120 by 832 in NeXT's four grays, unscaled, and leaves `next_screen_NNN.png` in the directory `szPrintToFileName` names in the `[Printer]` section of its configuration. On a Pi that Previously set up, that is `~/.cache/previously`. Grabbing once a second through a boot catches the panel, and `bootpicture.py` finds the machine inside it and reduces it to an icon:
 
 ```bash
 python3 bootpicture.py next_screen_021.png ../admin/web/parts/nextstation.png

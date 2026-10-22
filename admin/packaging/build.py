@@ -132,8 +132,8 @@ OWNER_FILE = "etc/systemd/system/" + SERVICE + ".d/owner.conf"
 #: it, because systemd skips an entry whose path is absent, which would leave
 #: the first save refusing.
 #:
-#: The third is where the emulator runs, so it is where a screen grab lands,
-#: which this service reads and removes again.
+#: The third is where the emulator runs and where its configuration has a
+#: screen grab land, which this service reads and removes again.
 #:
 #: The fourth is the real part of the Previously tree, which the File Viewer
 #: shows as Documents/Pictures. Grab writes a screenshot there and Preview
@@ -315,6 +315,15 @@ if [ "$1" = configure ]; then
 import sys
 from previously import setup
 setup.refresh_console(setup.Owner(sys.argv[1]))
+' "$owner" || true
+
+    # The emulator's configuration, brought up to where this version has it
+    # write a screen grab, for the same reason. Not fatal: without it the admin
+    # photographs the window instead.
+    PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/%(lib)s python3 -c '
+import sys
+from previously import setup
+setup.refresh_configuration(setup.Owner(sys.argv[1]))
 ' "$owner" || true
 
     # The source Previous comes from, brought up to what this version of the
