@@ -144,7 +144,7 @@ abort() {
 
 banner() {
   printf '\n  %sPreviously%s\n' "$BOLD" "$RESET"
-  printf '  %sYour fastest way to get NeXTSTEP on your Raspberry Pi up and running.%s\n\n' "$DIM" "$RESET"
+  printf '  %sThe fastest way to get NeXTSTEP on your Raspberry Pi up and running.%s\n\n' "$DIM" "$RESET"
 }
 
 # Runs a command with its output in the log and the spinner beside it.
