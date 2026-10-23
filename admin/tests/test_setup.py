@@ -555,6 +555,14 @@ def test_previous_draws_through_x_before_wayland(tmp_path):
     assert drivers.split("=", 1)[1].split(",") == ["x11", "wayland"]
 
 
+def test_cage_takes_its_pointer_from_the_packages_theme(tmp_path):
+    """cage sets its own pointer whenever a mouse arrives, and the package's
+    theme makes that one invisible."""
+    words = start_line(Nobody(tmp_path))
+
+    assert "XCURSOR_PATH=" + setup.CURSORS in words[:words.index("cage")]
+
+
 def run_the_console(tmp_path, monkeypatch, cage_exits):
     """Runs the autostart the way the console's login shell does, with a cage
     that ends at once and a sleep that only writes down how long it was asked

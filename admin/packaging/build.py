@@ -6,7 +6,8 @@
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
 package copies Python, static files, seven unit files, one udev rule, one
-tmpfiles entry, one rpi-swap drop-in and one drop-in for the console into place. Nothing is compiled, nothing is patched and
+tmpfiles entry, one rpi-swap drop-in, one drop-in for the console and one
+cursor theme into place. Nothing is compiled, nothing is patched and
 nothing is generated at install time, so the debhelper machinery would be a
 build system around a copy.
 
@@ -22,6 +23,7 @@ import argparse
 import pathlib
 import re
 import shutil
+import struct
 import subprocess
 import sys
 
@@ -99,6 +101,17 @@ SWAP_DROP_IN = (
 #: own beside the one raspi-config writes for the login, under /usr/lib for the
 #: same reason as the udev rule.
 CONSOLE_LIMIT = "usr/lib/systemd/system/getty@tty1.service.d/50-" + NAME + ".conf"
+
+#: A cursor theme that shows nothing, at the path `setup.CURSORS` hands cage
+#: as its XCURSOR_PATH. cage loads its pointer from the theme `default` under
+#: the name `left_ptr`, and `default` is the newer name for the same pointer.
+CURSORS = "usr/share/" + NAME + "/cursors"
+CURSOR_NAMES = ("left_ptr", "default")
+
+#: The Xcursor format's type for an image chunk, as libXcursor and wlroots
+#: read it, and the size cage asks its theme for.
+XCURSOR_IMAGE = 0xFFFD0002
+CURSOR_SIZE = 24
 
 #: What git adds to the description of a tree that has something uncommitted
 #: in it, and therefore what the version of such a build ends in. A package
@@ -448,12 +461,32 @@ def lay_out(into):
     (into / SWAP).parent.mkdir(parents=True, exist_ok=True)
     (into / SWAP).write_text(SWAP_DROP_IN, encoding="utf-8")
 
+    theme = into / CURSORS / "default" / "cursors"
+    theme.mkdir(parents=True, exist_ok=True)
+    for name in CURSOR_NAMES:
+        (theme / name).write_bytes(transparent_cursor())
+
     (into / CONSOLE_LIMIT).parent.mkdir(parents=True, exist_ok=True)
     (into / CONSOLE_LIMIT).write_text(
         "# Written by the previously package. The console keeps starting the\n"
         "# emulator however often it ends at once.\n"
         "[Unit]\n"
         "StartLimitIntervalSec=0\n", encoding="utf-8")
+
+
+def transparent_cursor():
+    """@returns bytes, an Xcursor file holding one transparent pixel.
+
+    Laid out as libXcursor and wlroots read it, all little endian: the file
+    header with the magic, its own length, the version and one table entry;
+    the entry with the chunk's type, its nominal size and where it starts; and
+    the image chunk, whose header gives its length, type, nominal size,
+    version, width, height, hot spot and delay before the pixels.
+    """
+    header = struct.pack("<4sIII", b"Xcur", 16, 0x10000, 1)
+    table = struct.pack("<III", XCURSOR_IMAGE, CURSOR_SIZE, len(header) + 12)
+    image = struct.pack("<9I", 36, XCURSOR_IMAGE, CURSOR_SIZE, 1, 1, 1, 0, 0, 0)
+    return header + table + image + struct.pack("<I", 0)
 
 
 def scripts():
