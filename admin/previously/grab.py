@@ -27,7 +27,7 @@ import shutil
 import subprocess
 import time
 
-from . import config, screen
+from . import config, png, screen
 
 #: What Previous maps the grab to, from its own [ShortcutsWithModifiers] where
 #: kScreenshot is G. The modifier is the emulator's own rather than the
@@ -67,6 +67,39 @@ def take(previous_config):
     and ImageMagick against the window second.
     """
     return grabbed(previous_config) or photographed()
+
+
+def looks_alive(previous_config):
+    """Whether the emulated screen is showing anything at all.
+
+    @param previous_config - pathlib.Path to the emulator's configuration, or
+      None, where nothing can be grabbed.
+    @returns True where something is drawn, False where the screen is one
+      color, and None where it could not be read.
+
+    Previous says nothing about the machine inside it. A configuration it
+    cannot run can leave the emulator running and its screen one color, so the
+    process table says everything is fine while nothing has booted. The screen
+    is the only place that difference shows, and a screen that has booted is
+    never one color: even before NeXTSTEP loads, the boot ROM has put its
+    panel up.
+
+    None rather than False when there is no reading, and the difference
+    matters: a grab that fails must not make every machine look broken. Only a
+    screen that was read and found to be one color is False.
+
+    Read from Previous's own grab, which works on a Pi 4 and a Pi 5 alike.
+    ImageMagick cannot read the emulator's window on a Pi 4.
+    """
+    if previous_config is None:
+        return None
+    picture = grabbed(previous_config)
+    if picture is None:
+        return None
+    try:
+        return not png.one_color(picture)
+    except png.Unreadable:
+        return None
 
 
 def keep(picture, where):

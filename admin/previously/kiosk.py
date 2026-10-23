@@ -213,7 +213,7 @@ def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep,
     # NeXTSTEP, and where the screen is blank there is no NeXTSTEP to reach, so
     # pressing it only spends the whole timeout before saying so. Previous
     # itself is told instead, and the hold is already in place.
-    if screen.looks_alive() is False:
+    if grab.looks_alive(previous_config) is False:
         if quit_emulator(sleep=sleep):
             return True, told("emulator.ended-because-blank")
         return False, told("emulator.blank-and-will-not-end")

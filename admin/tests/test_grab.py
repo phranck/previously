@@ -7,6 +7,7 @@ shortcut reaches Previous at all, was measured on the machine and is written
 down in the issue rather than pretended at here.
 """
 
+import pathlib
 import re
 
 import pytest
@@ -15,6 +16,9 @@ from previously import grab
 
 #: A PNG, as far as anything here is concerned.
 PICTURE = grab.PNG_HEAD + b"and then some pixels" + grab.PNG_TAIL
+
+#: Grabs Previous wrote on a Pi 5 on 23.10.2026, which `test_png.py` describes.
+GRABS = pathlib.Path(__file__).resolve().parent / "grabs"
 
 
 #: What the emulator's configuration is called in each test's directory.
@@ -190,6 +194,55 @@ def test_something_that_is_not_a_png_at_all_is_not_the_picture(where, monkeypatc
                         writes(where, content=b"not a picture" + grab.PNG_TAIL))
 
     assert grab.grabbed(where / CONFIGURATION) is None
+
+
+# -- whether the screen shows anything ------------------------------------
+
+
+def grabbing(monkeypatch, picture):
+    """Lets the emulator answer a grab with these bytes, or with nothing."""
+    monkeypatch.setattr(grab, "grabbed", lambda previous_config: picture)
+
+
+def test_a_screen_with_something_on_it_is_alive(monkeypatch):
+    grabbing(monkeypatch, (GRABS / "workspace.png").read_bytes())
+
+    assert grab.looks_alive(CONFIGURATION) is True
+
+
+def test_a_screen_in_color_is_read_as_well(monkeypatch):
+    grabbing(monkeypatch, (GRABS / "dimension.png").read_bytes())
+
+    assert grab.looks_alive(CONFIGURATION) is True
+
+
+def test_a_screen_of_one_color_is_not(monkeypatch):
+    """A machine that shows nothing. Grabbed on a Pi 5 on 23.10.2026 from a
+    NeXTcube with NeXTdimension whose window showed the main screen while its
+    console was on the board."""
+    grabbing(monkeypatch, (GRABS / "blank.png").read_bytes())
+
+    assert grab.looks_alive(CONFIGURATION) is False
+
+
+def test_no_grab_means_no_reading(monkeypatch):
+    """Not False: a screen that was not read is not a blank one."""
+    grabbing(monkeypatch, None)
+
+    assert grab.looks_alive(CONFIGURATION) is None
+
+
+def test_a_grab_that_cannot_be_read_is_no_reading(monkeypatch):
+    grabbing(monkeypatch, PICTURE)
+
+    assert grab.looks_alive(CONFIGURATION) is None
+
+
+def test_without_a_configuration_nothing_is_grabbed(monkeypatch):
+    monkeypatch.setattr(grab, "grabbed",
+                        lambda previous_config: pytest.fail("nowhere to look"))
+
+    assert grab.looks_alive(None) is None
 
 
 # -- keeping a picture ----------------------------------------------------

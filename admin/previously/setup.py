@@ -88,8 +88,8 @@ ARCHITECTURE = "arm64"
 RELEASE = "trixie"
 
 #: The kiosk compositor, the unpacker for a system archive, and the two tools
-#: the admin uses to reach the emulator: xdotool presses its keys and
-#: ImageMagick reads its screen.
+#: the admin uses to reach the emulator: xdotool presses its keys, the grab
+#: among them, and ImageMagick photographs its window where a grab fails.
 TOOLS = ("cage", "7zip", "xdotool", "imagemagick")
 
 #: What carries the sound. PipeWire connects the emulator to itself rather than
@@ -1747,7 +1747,8 @@ def _autostart_block(owner):
         "# did, so the console never falls through to a prompt.\n"
         "#\n"
         "# Previous runs on cage's X server, because that is how the admin tool reaches\n"
-        "# it: xdotool presses its keys and ImageMagick reads its screen, both through X.\n"
+        "# it: xdotool presses its keys, the grab among them, and ImageMagick\n"
+        "# photographs its window where a grab fails, both through X.\n"
         "# Previous is built against SDL3, which takes Wayland wherever it can, so it is\n"
         "# told to try X first. Wayland comes second, so a machine without an X server\n"
         "# still starts its emulator.\n"
