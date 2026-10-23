@@ -172,7 +172,8 @@ def _applied(settings, values, name, done, already, sleep):
     wrong. What differs between a machine and a disk is the keys and the
     words, and both arrive as arguments.
     """
-    stopped, reason = kiosk.stop(settings.runtime_directory, sleep=sleep)
+    stopped, reason = kiosk.stop(settings.runtime_directory, sleep=sleep,
+                                 previous_config=settings.previous_config)
     if not stopped:
         return False, reason
 

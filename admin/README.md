@@ -310,7 +310,9 @@ Both directions need the machine switched off. A copy taken while NeXTSTEP is wr
 
 **Stopping means pressing the power button, not killing the emulator.** Previous maps the NeXT power button to F10. Taking the emulator away instead leaves the guest's file system dirty, and it runs a check on the way back up.
 
-One key is not enough. NeXTSTEP answers the power key with a panel asking whether the machine should really switch off, so the return key follows it two seconds later to press that panel's default button.
+One key is not enough. NeXTSTEP answers the power key with a panel asking whether the machine should really switch off, and the return key presses that panel's default button. It goes in three seconds after the power key, which is how long the panel takes to appear, and again every four seconds until the guest has gone.
+
+**A guest that is still starting is watched first.** NeXTSTEP drops the power key while it brings up its window server, between "Startup complete" and the Workspace, and a key pressed then reaches nothing. So where the emulator is younger than three minutes, the tool grabs the screen once a second and presses the key once the grabs have stayed the same for fifteen seconds. It never presses the key a second time instead, because a power key that arrives while NeXTSTEP shuts down ends the shutdown early.
 
 The keys go in through the X server with `xdotool`, because Previous runs as an X client under the kiosk's Xwayland. It does so because the console tells it to: Previous is built against SDL3, which takes Wayland wherever it can, so the console starts it with `SDL_VIDEO_DRIVER=x11,wayland`. A Wayland virtual keyboard is not the way: it binds its protocol against the compositor and reports success, and the emulator never sees the key. Both directions were measured on the machine.
 

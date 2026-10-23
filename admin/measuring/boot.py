@@ -162,8 +162,10 @@ def _switch(target, machine):
 def _switch_back(target):
     """Puts the configuration kept by `_switch` back and restarts the guest."""
     _ssh(target, "cp %s .config/previous/previous.cfg" % REMOTE_CONFIGURATION)
-    _python(target, "from previously import kiosk, settings; "
-                    "print(kiosk.restart(settings.Settings.load().runtime_directory))")
+    _python(target, "from previously import kiosk, settings\n"
+                    "loaded = settings.Settings.load()\n"
+                    "print(kiosk.restart(loaded.runtime_directory, "
+                    "previous_config=loaded.previous_config))\n")
 
 
 def _reboot(target):
@@ -172,9 +174,10 @@ def _reboot(target):
     @raises RuntimeError where it does not come back in time.
     """
     before = _boot_id(target)
-    _python(target, "from previously import kiosk, settings; "
-                    "print(kiosk.board('reboot', "
-                    "settings.Settings.load().runtime_directory))")
+    _python(target, "from previously import kiosk, settings\n"
+                    "loaded = settings.Settings.load()\n"
+                    "print(kiosk.board('reboot', loaded.runtime_directory, "
+                    "previous_config=loaded.previous_config))\n")
     until = time.monotonic() + BACK_WITHIN_SECONDS
     while time.monotonic() < until:
         time.sleep(ASK_EVERY_SECONDS)
