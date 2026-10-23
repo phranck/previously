@@ -677,6 +677,33 @@ def test_a_place_somebody_chose_for_their_printouts_stays(tmp_path):
     assert path.read_text() == was
 
 
+def test_the_package_takes_a_rom_somebody_set_out_of_a_configuration(tmp_path):
+    """Without the key Previous loads the ROM it ships for the machine. Set by
+    hand to the NeXTdimension's ROM for a turbo board, it halted Previous's
+    CPU on a Pi 5 on 23.10.2026."""
+    owner = Nobody(tmp_path)
+    path = older_configuration(
+        tmp_path, "szPrintToFileName = %s" % (tmp_path / setup.WORK_DIRECTORY))
+    path.write_text(path.read_text()
+                    + "\n[ROM]\nszRomTurboFileName = /usr/share/previous/ND_step1_v43.BIN\n")
+
+    assert setup.refresh_configuration(owner, path)
+    assert "szRomTurboFileName" not in path.read_text()
+
+
+def test_a_rom_is_taken_out_where_somebody_chose_a_place_for_printouts(tmp_path):
+    """The place is theirs and stays. The ROM is not a choice anybody has."""
+    owner = Nobody(tmp_path)
+    path = older_configuration(tmp_path, "szPrintToFileName = /media/usb")
+    path.write_text(path.read_text()
+                    + "\n[ROM]\nszRomTurboFileName = /usr/share/previous/ND_step1_v43.BIN\n")
+
+    assert setup.refresh_configuration(owner, path)
+    written = path.read_text()
+    assert "szPrintToFileName = /media/usb" in written
+    assert "szRomTurboFileName" not in written
+
+
 def test_the_package_gives_a_machine_without_a_configuration_none(tmp_path):
     """Writing one is setting the machine up, which is the install job's."""
     assert not setup.refresh_configuration(Nobody(tmp_path),

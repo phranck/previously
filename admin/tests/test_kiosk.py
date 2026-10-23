@@ -171,6 +171,54 @@ def test_starting_removes_the_hold(tmp_path, world):
     assert told["reason"] == "emulator.on-its-way-back"
 
 
+#: A ROM set by hand that the machine cannot run, which halted Previous's CPU
+#: on a Pi 5 on 23.10.2026.
+WRONG_ROM = "[ROM]\nszRomTurboFileName = /usr/share/previous/ND_step1_v43.BIN\n"
+
+
+def test_starting_takes_out_a_rom_somebody_set(tmp_path, world):
+    """Previous reads its configuration when it starts, so this is the last
+    moment the admin can keep it from starting on a ROM it cannot run."""
+    path = tmp_path / CONFIGURATION
+    path.write_text(WRONG_ROM)
+    kiosk.stop(tmp_path, sleep=world.sleep)
+
+    finished, told = kiosk.start(tmp_path, previous_config=path)
+
+    assert finished is True
+    assert told["reason"] == "emulator.on-its-way-back"
+    assert "szRomTurboFileName" not in path.read_text()
+
+
+def test_an_emulator_that_is_running_is_not_written_under(tmp_path, world):
+    """It read its configuration when it started, and a file newer than the
+    running machine is what the admin reports as a change nobody has tried."""
+    path = tmp_path / CONFIGURATION
+    path.write_text(WRONG_ROM)
+
+    kiosk.start(tmp_path, previous_config=path)
+
+    assert path.read_text() == WRONG_ROM
+
+
+def test_starting_without_a_configuration_still_starts(tmp_path, world):
+    kiosk.stop(tmp_path, sleep=world.sleep)
+
+    finished, told = kiosk.start(tmp_path)
+
+    assert finished is True
+    assert kiosk.is_held(tmp_path) is False
+
+
+def test_a_configuration_that_cannot_be_read_does_not_hold_the_start_up(tmp_path, world):
+    kiosk.stop(tmp_path, sleep=world.sleep)
+
+    finished, _ = kiosk.start(tmp_path, previous_config=tmp_path / "absent.cfg")
+
+    assert finished is True
+    assert kiosk.is_held(tmp_path) is False
+
+
 def test_starting_something_already_running_says_so(tmp_path, world):
     finished, told = kiosk.start(tmp_path)
 

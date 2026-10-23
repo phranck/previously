@@ -43,6 +43,17 @@ HARD_DISK = "1"
 OUTPUT_SECTION = "Printer"
 OUTPUT_KEY = "szPrintToFileName"
 
+#: The keys that name a ROM file, by section, as the beginning their names
+#: share. Previous's src/rom.c loads `szRom030FileName`, `szRom040FileName` or
+#: `szRomTurboFileName` by machine type, and a NeXTdimension loads its
+#: `szRomFileName0` to `2`, and src/configuration.c defaults every one of them
+#: to a ROM it ships. So a file that names none boots the right ROM on every
+#: machine and with every version of Previous, and one that names a ROM the
+#: machine cannot run is put right by taking the key out: set by hand to the
+#: NeXTdimension's ROM for a turbo board, it halted Previous's CPU on a Pi 5
+#: on 23.10.2026.
+ROM_KEYS = {"ROM": "szRom", "Dimension": "szRomFileName"}
+
 #: What the emulator calls each machine, by the number in the file. The names
 #: are Previous's own, as its System dialog labels the three in
 #: src/gui-sdl/dlgSystem.c.
@@ -497,8 +508,9 @@ def booting(disk):
 
     Three keys and no more. The README says this tool leaves the disks, the
     sound, the network and the screen exactly as the file has them, and this is
-    the one exception to it: which disk a machine boots is what the whole idea
-    of having several of them is for. The six other slots, the write protection
+    one of two exceptions to it: which disk a machine boots is what the whole
+    idea of having several of them is for. The other is a ROM, which
+    `forget_roms` takes out. The six other slots, the write protection
     and everything else in that section stay untouched, so a disc somebody put
     on the bus is still on the bus afterwards.
     """
@@ -531,6 +543,71 @@ def writing_into(directory):
     @returns dict of section to key to value, as `write` takes it.
     """
     return {OUTPUT_SECTION: {OUTPUT_KEY: str(directory)}}
+
+
+def forget_roms(path):
+    """Takes every ROM key out of the file, and leaves the rest as it was.
+
+    @param path - pathlib.Path to previous.cfg.
+    @returns int, how many lines went.
+    @raises NotReadable where the file cannot be read or written.
+
+    A section left with no key at all goes as well, header and all, because a
+    ROM written by hand is usually a section of its own and an empty header is
+    what taking its key out would leave behind. A section that was empty
+    before stays, since it is not this tool's to take.
+
+    Not written at all where it names no ROM, because a file newer than the
+    running machine is what the admin reports as a change nobody has tried.
+    """
+    try:
+        lines = path.read_text().splitlines(keepends=True)
+    except OSError as error:
+        raise NotReadable("cannot read %s: %s" % (path, error)) from error
+
+    sections = _sections(lines)
+    kept = []
+    for index, (name, block) in enumerate(sections):
+        prefix = ROM_KEYS.get(name)
+        held = block if prefix is None else [
+            line for line in block if not _key_of(line).startswith(prefix)]
+        emptied = len(held) < len(block) and not any(_key_of(line) for line in held)
+        if not emptied:
+            kept.extend(held)
+        elif index == len(sections) - 1:
+            # The last section, so the blank lines that parted it from the one
+            # before go with it rather than ending the file.
+            while kept and not kept[-1].strip():
+                kept.pop()
+
+    removed = len(lines) - len(kept)
+    if removed:
+        try:
+            path.write_text("".join(kept))
+        except OSError as error:
+            raise NotReadable("cannot write %s: %s" % (path, error)) from error
+    return removed
+
+
+def _sections(lines):
+    """@returns list of (section name, its lines from its header up to the
+    next), with None for what stands before the first header."""
+    found = [(None, [])]
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            found.append((stripped[1:-1], []))
+        found[-1][1].append(line)
+    return found
+
+
+def _key_of(line):
+    """@returns The key a line sets, or "" for a header, a blank line or a
+    comment."""
+    stripped = line.strip()
+    if "=" not in stripped or stripped.startswith(("[", "#", ";")):
+        return ""
+    return stripped.split("=", 1)[0].strip()
 
 
 def slots(path):

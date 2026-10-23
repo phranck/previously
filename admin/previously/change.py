@@ -180,6 +180,9 @@ def _applied(settings, values, name, done, already, sleep):
     try:
         config.back_up(settings.previous_config)
         changed = config.write(settings.previous_config, values)
+        # And whatever ROM the file names taken out, so the machine boots the
+        # one Previous ships for it, as `config.ROM_KEYS` says.
+        changed += config.forget_roms(settings.previous_config)
     except config.NotReadable as error:
         # Nothing was written, so there is nothing to undo. Let it come back as
         # whatever it was rather than leaving the machine switched off for a
