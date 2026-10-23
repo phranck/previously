@@ -216,6 +216,40 @@ def test_a_machine_the_pi_refuses_stops_the_measurement(boot, monkeypatch):
         boot._switch("next@pi.local", "nextcube-turbo-dimension")
 
 
+def a_pi(boot, monkeypatch, restart):
+    """A Pi that answers `cat` with one boot id before the restart and another
+    after it, and the restart itself with `restart`, a function of nothing
+    that returns what it printed or raises."""
+    boots = iter(["before\n", "", "after\n"])
+
+    def run(command, given=None):
+        if command[-1].startswith("cat "):
+            return next(boots)
+        return restart()
+
+    monkeypatch.setattr(boot, "_run", run)
+    monkeypatch.setattr(boot.time, "sleep", lambda seconds: None)
+
+
+def test_a_board_that_restarts_before_it_answers_is_still_measured(boot, monkeypatch):
+    """The board reboots the moment the request is written, and on a Pi 4 on
+    23.10.2026 that took the SSH session down before Python had answered. The
+    new boot id is what says the board came back."""
+    def dropped():
+        raise boot.subprocess.CalledProcessError(255, ["ssh"])
+
+    a_pi(boot, monkeypatch, dropped)
+
+    boot._reboot("next@pi.local")
+
+
+def test_a_board_that_refuses_to_restart_stops_the_measurement(boot, monkeypatch):
+    a_pi(boot, monkeypatch, lambda: '[false, {"reason": "guest.still-shutting-down"}]\n')
+
+    with pytest.raises(RuntimeError, match="guest.still-shutting-down"):
+        boot._reboot("next@pi.local")
+
+
 # -- the capture's reading of /proc ------------------------------------------
 
 
