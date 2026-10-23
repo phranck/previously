@@ -316,10 +316,11 @@ def test_the_console_never_gives_up_on_the_emulator(build, tmp_path):
     assert lines.index("[Unit]") < lines.index("StartLimitIntervalSec=0")
 
 
-def test_the_package_brings_no_x_server(build):
-    """Previous draws through Wayland into cage, and cage starts an X server
-    only where Xwayland is installed."""
-    assert "xwayland" not in build.DEPENDS
+def test_the_package_brings_the_x_server_previous_draws_through(build):
+    """The console tells Previous to draw through X first, and cage starts an
+    X server only where Xwayland is installed. The cage in the Raspberry Pi
+    archive does not bring it along, so the package does."""
+    assert "xwayland" in build.DEPENDS
 
 
 def test_the_package_brings_the_console_up_to_date(build, tmp_path):

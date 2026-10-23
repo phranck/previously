@@ -71,10 +71,10 @@ IDLE_AFTER_SECONDS = 10
 #: How many processes the report lists beside the emulator's threads.
 PROCESSES_LISTED = 8
 
-#: Processes the report lists however little they use. Xwayland and
-#: pipewire-pulse are what #571 and #572 take away, so a report after that says
-#: 0 for them, and cage, pipewire and wireplumber stay, so their share stays in
-#: view.
+#: Processes the report lists however little they use: the display and the
+#: sound stack, which the slimmer Linux works on. pipewire-pulse is what #572
+#: takes away, so a report after that says 0 for it, and the rest stay in view
+#: beside it.
 WATCHED = ("cage", "Xwayland", "pipewire", "wireplumber", "pipewire-pulse")
 
 #: How the kernel's workers begin their names. The rest is a number and the

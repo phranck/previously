@@ -154,9 +154,9 @@ def test_the_kernels_workers_are_one_line(boot):
 
 
 def test_what_the_slices_take_away_is_always_listed(boot):
-    """Xwayland and pipewire-pulse are what #571 and #572 remove, so a report
-    after them says 0 rather than leaving the line out, and what stays is
-    listed beside them."""
+    """pipewire-pulse is what #572 removes, so a report after it says 0 rather
+    than leaving the line out, and the rest of the display and sound stack is
+    listed beside it."""
     runs = [{"processes_booting": {"previous": 130.0, "Xwayland": 0.0},
              "processes_idle": {"previous": 130.0, "Xwayland": 5.0}}]
 

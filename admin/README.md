@@ -12,13 +12,13 @@ make browser      # what only a browser can show, in Safari Technology Preview
 
 ## What it needs installed
 
-**To run, on the Pi**, three things beyond what Raspberry Pi OS already has: `cage`, `7zip`, and Previous itself out of the Window Maker Live archive. The one-liner has the helper install them.
+**To run, on the Pi**, four things beyond what Raspberry Pi OS already has: `cage`, `xwayland`, `7zip`, and Previous itself out of the Window Maker Live archive. The package brings `xwayland`, because the console has Previous draw through it, and the one-liner has the helper install the rest.
 
 The rest is the system's own and is assumed rather than installed: `systemd` for `systemctl`, `procps` for `pgrep` and `ps`, `raspi-utils-core` for `vcgencmd`, and `python3`. A Pi without `vcgencmd` still runs this; the window shows one reading fewer, because every reading in `pi.py` answers with nothing rather than failing.
 
 `activity.py` needs none of them. It answers the same kind of question twice a second and reads `/proc` alone, because what is cheap at one answer every five seconds is not cheap at two a second. Measured on a Pi 5: a whole reading costs 0.42 ms while the emulator runs, against 9.9 ms for an answer to `/api/pi`, which forks `vcgencmd` twice and `ps` once at 1.5 ms a fork. Every figure it gives is the difference between two readings, since the kernel's counters are totals since the board started and a total says nothing about now. A reading older than five seconds is not compared against, because it was left by a window that has since been closed, and a difference across that pause would be its average rather than the present.
 
-What each is for: `cage` is the compositor the emulator runs in, and `7zip` unpacks the disk archive.
+What each is for: `cage` is the compositor the emulator runs in, `xwayland` is the X server cage runs it on, and `7zip` unpacks the disk archive.
 
 **The emulator's keys go in through a virtual keyboard**, a device the kernel makes through `/dev/uinput`. The compositor reads it like any keyboard plugged into the Pi, so the keys reach Previous however it draws. The package gives `/dev/uinput` to the `input` group, and the service's unit adds that group. That takes a udev rule for the device and a tmpfiles entry for the node the board makes at boot, before the module is loaded, as systemd does for its own such nodes. A key goes only to a running emulator, because with no compositor holding the keyboard its keys would reach the text console.
 
@@ -336,7 +336,7 @@ A sudoers rule was the other way to do this, and it cannot work here: the servic
 
 ```sh
 while [ -f /run/previously/hold ]; do sleep 2; done
-WLR_BACKENDS=headless,drm,libinput SDL_VIDEO_DRIVER=wayland cage -d -m last -- /usr/bin/previous
+SDL_VIDEO_DRIVER=x11,wayland cage -- /usr/bin/previous
 status=$?
 if [ "$status" -ne 0 ]; then
   if [ -d /run/previously ]; then
@@ -351,7 +351,7 @@ That path is a tmpfs and is empty at every boot, which is what makes restarting 
 
 **An emulator that cannot start is tried again every few seconds, for as long as it takes.** The session waits two seconds after a bad end, so the console does not restart as fast as a login takes. The package lifts systemd's start limit for `getty@tty1` in `/usr/lib/systemd/system/getty@tty1.service.d/50-previously.conf`. Without it, systemd stops the console for good after five starts within ten seconds, and only root can start it again.
 
-**Previous draws through Wayland straight into cage, with no X server.** cage sets every monitor to its native mode, and Previous fits its fixed 1120 by 832 into it with bars rather than stretching it. `cage -d` draws the window decorations, because a window SDL decorates itself loads a GTK plugin, and Previous then never starts. SDL's Wayland driver needs a screen to start at all, so `WLR_BACKENDS=headless,drm,libinput` gives cage a headless output before any monitor, and `-m last` shows only the output added last. A monitor, there from the start or plugged in later, takes the picture over, and a board without one still runs its emulator.
+**Previous draws through cage's Xwayland.** cage sets every monitor to its native mode, and Previous fits its fixed 1120 by 832 into it with bars rather than stretching it. Previous grabs the mouse when it is clicked, and under Wayland alone SDL needs pointer constraints for that, which cage does not offer: the mouse stops reaching NeXTSTEP shortly after the first click. Xwayland holds the grab itself.
 
 **An emulator that ends badly says so in one line**, and the Raspberry Pi window reads it. The file is on that same tmpfs, so what is in it happened since this board came up and nothing has to work out when. The `exit` runs the session down exactly as `exec` did, so the console never falls through to a shell prompt.
 
