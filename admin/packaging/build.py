@@ -6,7 +6,7 @@
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
 package copies Python, static files, seven unit files, one udev rule, one
-tmpfiles entry and one rpi-swap drop-in into place. Nothing is compiled, nothing is patched and
+tmpfiles entry, one rpi-swap drop-in and one drop-in for the console into place. Nothing is compiled, nothing is patched and
 nothing is generated at install time, so the debhelper machinery would be a
 build system around a copy.
 
@@ -89,6 +89,14 @@ SWAP_DROP_IN = (
     "# one, such as /etc/rpi/swap.conf.d/80-mine.conf, overrides it.\n"
     "[Main]\n"
     "Mechanism=zram\n")
+
+#: Where the package lifts systemd's start limit for the console. The console
+#: starts the emulator, and an emulator that ends at once ends the console's
+#: session with it; after five of those within ten seconds systemd would stop
+#: the console for good, and nothing but root starts it again. A drop-in of its
+#: own beside the one raspi-config writes for the login, under /usr/lib for the
+#: same reason as the udev rule.
+CONSOLE_LIMIT = "usr/lib/systemd/system/getty@tty1.service.d/50-" + NAME + ".conf"
 
 #: What git adds to the description of a tree that has something uncommitted
 #: in it, and therefore what the version of such a build ends in. A package
@@ -437,6 +445,13 @@ def lay_out(into):
 
     (into / SWAP).parent.mkdir(parents=True, exist_ok=True)
     (into / SWAP).write_text(SWAP_DROP_IN, encoding="utf-8")
+
+    (into / CONSOLE_LIMIT).parent.mkdir(parents=True, exist_ok=True)
+    (into / CONSOLE_LIMIT).write_text(
+        "# Written by the previously package. The console keeps starting the\n"
+        "# emulator however often it ends at once.\n"
+        "[Unit]\n"
+        "StartLimitIntervalSec=0\n", encoding="utf-8")
 
 
 def scripts():

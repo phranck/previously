@@ -16,6 +16,7 @@ import errno
 import json
 import os
 import pathlib
+import subprocess
 
 import pytest
 
@@ -569,6 +570,62 @@ def test_a_board_without_a_monitor_still_gives_previous_a_screen(tmp_path):
     assert backends.split("=", 1)[1].split(",")[0] == "headless"
     assert "drm" in backends.split("=", 1)[1].split(",")
     assert options[options.index("-m") + 1] == "last"
+
+
+def run_the_console(tmp_path, monkeypatch, cage_exits):
+    """Runs the autostart the way the console's login shell does, with a cage
+    that ends at once and a sleep that only writes down how long it was asked
+    to wait.
+
+    @param cage_exits - The status cage ends with.
+    @returns (int, list of str, str): the session's status, every wait asked
+      for, and what the crash file holds.
+    """
+    runtime = tmp_path / "run"
+    runtime.mkdir()
+    monkeypatch.setattr(setup, "RUNTIME", str(runtime))
+    monkeypatch.setattr(setup, "HOLD", str(runtime / "hold"))
+    monkeypatch.setattr(setup, "CRASHES", str(runtime / "crashes"))
+    tools = tmp_path / "bin"
+    tools.mkdir()
+    slept = tmp_path / "slept"
+    for name, body in (("cage", "exit %d" % cage_exits),
+                       ("clear", "exit 0"),
+                       ("sleep", 'echo "$1" >> %s' % slept)):
+        (tools / name).write_text("#!/bin/sh\n%s\n" % body, encoding="utf-8")
+        (tools / name).chmod(0o755)
+    owner = Nobody(tmp_path / "home")
+    owner.home.mkdir()
+    profile = tmp_path / "profile"
+    profile.write_text(setup._autostart_block(owner), encoding="utf-8")
+
+    finished = subprocess.run(
+        ["sh", "-c", '. "$1"', "console", str(profile)],
+        env={"PATH": "%s:/usr/bin:/bin" % tools, "XDG_VTNR": "1"},
+        capture_output=True, text=True, check=False)
+    crashes = runtime / "crashes"
+    return (finished.returncode,
+            slept.read_text().split() if slept.exists() else [],
+            crashes.read_text() if crashes.exists() else "")
+
+
+def test_an_emulator_that_ends_badly_is_written_down_and_waited_for(tmp_path, monkeypatch):
+    """systemd starts the console again the moment its session ends, so an
+    emulator that cannot start would otherwise be tried as fast as a login
+    takes."""
+    status, slept, crashes = run_the_console(tmp_path, monkeypatch, 3)
+
+    assert status == 3
+    assert crashes.split()[-1] == "3"
+    assert slept == [str(setup.CRASH_PAUSE_SECONDS)]
+
+
+def test_an_emulator_that_ends_well_ends_the_session_at_once(tmp_path, monkeypatch):
+    status, slept, crashes = run_the_console(tmp_path, monkeypatch, 0)
+
+    assert status == 0
+    assert slept == []
+    assert crashes == ""
 
 
 def test_an_autostart_that_is_already_there_is_not_written_twice(tmp_path, commands):
