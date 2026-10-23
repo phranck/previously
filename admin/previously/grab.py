@@ -14,20 +14,14 @@ because a picture already sent to a browser is one nobody will ask the disk for
 again, and a directory that fills up with them is this service's doing. Where
 that directory cannot be written in, the grab is not asked for at all, since
 taking a picture must not be a way of leaving litter in somebody's home.
-
-Failing that, ImageMagick photographs the emulator's window. That is the
-smaller picture and the one that is scaled, and it is here so that a screen can
-still be seen when the better way is out of reach.
 """
 
 import datetime
 import os
 import pathlib
-import shutil
-import subprocess
 import time
 
-from . import config, png, screen
+from . import config, emulator, png
 
 #: What Previous maps the grab to, from its own [ShortcutsWithModifiers] where
 #: kScreenshot is G. The modifier is the emulator's own rather than the
@@ -43,10 +37,6 @@ GRAB_GLOB = "next_screen_*.png"
 GRAB_TIMEOUT_SECONDS = 5
 LOOK_EVERY_SECONDS = 0.1
 
-#: How long to give ImageMagick. It either photographs the window at once or
-#: cannot reach it at all.
-IMPORT_TIMEOUT_SECONDS = 10
-
 #: What a picture is, for whoever sends it on.
 PNG = "image/png"
 
@@ -54,19 +44,6 @@ PNG = "image/png"
 #: end is what says the emulator has finished writing rather than started.
 PNG_HEAD = b"\x89PNG\r\n\x1a\n"
 PNG_TAIL = b"\x00\x00\x00\x00IEND\xaeB`\x82"
-
-
-def take(previous_config):
-    """A picture of the emulated screen.
-
-    @param previous_config - pathlib.Path to the emulator's configuration,
-      which says where it writes its grab.
-    @returns bytes of a PNG, or None where no picture could be taken.
-
-    The emulator's own grab first, because it is the machine's own resolution,
-    and ImageMagick against the window second.
-    """
-    return grabbed(previous_config) or photographed()
 
 
 def looks_alive(previous_config):
@@ -87,9 +64,6 @@ def looks_alive(previous_config):
     None rather than False when there is no reading, and the difference
     matters: a grab that fails must not make every machine look broken. Only a
     screen that was read and found to be one color is False.
-
-    Read from Previous's own grab, which works on a Pi 4 and a Pi 5 alike.
-    ImageMagick cannot read the emulator's window on a Pi 4.
     """
     if previous_config is None:
         return None
@@ -144,23 +118,23 @@ def grabbed(previous_config):
     Only where the file can be taken away again afterwards. A picture already
     sent to a browser that stays on the disk is one this service left there;
     do that on every press and the directory fills up. Where it cannot be
-    removed the window is photographed instead, which leaves nothing behind.
-    That is what a configuration naming no directory comes to, because
-    Previous then writes into the home and this service may not write there.
+    removed no grab is asked for, so nothing is left behind. That is what a
+    configuration naming no directory comes to, because Previous then writes
+    into the home and this service may not write there.
 
     What is watched for is a file that was not there a moment ago, because the
     emulator counts its grabs up rather than overwriting. The count is taken
     before the keys are sent, since the emulator writes the moment they land
     and a count taken afterwards would already hold what it is waiting for.
     """
-    if _emulator_pid() is None:
+    if emulator.pid() is None:
         return None
     where = config.output_directory(previous_config, pathlib.Path.home())
     if not os.access(where, os.W_OK):
         return None
 
     before = set(where.glob(GRAB_GLOB))
-    if not screen.press(GRAB_KEYS):
+    if not emulator.press(GRAB_KEYS):
         return None
 
     written = _waits_for_a_whole_picture(where, before)
@@ -173,35 +147,6 @@ def grabbed(previous_config):
         picture = None
     _remove(written)
     return picture or None
-
-
-def photographed():
-    """Photographs the emulator's window with ImageMagick.
-
-    @returns bytes of a PNG, or None.
-
-    The window rather than the root, because Xwayland under cage has no root
-    window worth capturing. Trimmed, because the window is whatever size the
-    Pi's own screen is and Previous fills the difference around the machine's
-    screen with black: untrimmed, a picture of a 1120 by 832 machine arrives
-    as 1024 by 600 with bars down two sides of it.
-
-    What is left is still the emulator's scaling of the machine's screen
-    rather than the machine's own pixels. That is what this is: the picture
-    for when the grab cannot be reached.
-    """
-    window = screen.window()
-    if window is None or shutil.which("import") is None:
-        return None
-    try:
-        result = subprocess.run(
-            ["import", "-window", window, "-trim", "+repage", "png:-"],
-            capture_output=True, timeout=IMPORT_TIMEOUT_SECONDS, check=False,
-            env=dict(os.environ, DISPLAY=screen.display()),
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    return result.stdout or None
 
 
 def _waits_for_a_whole_picture(where, before):
@@ -249,15 +194,3 @@ def _remove(path):
         path.unlink()
     except OSError:
         pass
-
-
-def _emulator_pid():
-    """@returns the emulator's process id, or None."""
-    try:
-        result = subprocess.run(
-            ["pgrep", "-x", screen.EMULATOR], capture_output=True, text=True,
-            timeout=screen.TIMEOUT_SECONDS, check=False)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    first = result.stdout.split()
-    return int(first[0]) if first and first[0].isdigit() else None

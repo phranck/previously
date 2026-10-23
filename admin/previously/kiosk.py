@@ -25,7 +25,7 @@ import json
 import subprocess
 import time
 
-from . import grab, machines, screen, setup, systems
+from . import emulator, grab, machines, setup, systems
 from .answers import told
 
 #: How long to wait for systemctl before giving up. A query that hangs is worse
@@ -155,7 +155,7 @@ def emulator_is_running():
     Distinct from is_running, which answers about the unit. The unit is active
     whether the emulator runs or not, because what it holds is a login shell.
     """
-    return _ask(["pgrep", "-x", screen.EMULATOR]) != ""
+    return emulator.pid() is not None
 
 
 def emulator_uptime_seconds():
@@ -169,7 +169,7 @@ def emulator_uptime_seconds():
     up from one that is restarting over and over because it cannot run the
     configuration it was given.
     """
-    answer = _ask(["ps", "-o", "etimes=", "-C", screen.EMULATOR])
+    answer = _ask(["ps", "-o", "etimes=", "-C", emulator.PROCESS])
     ages = [int(line) for line in answer.split() if line.isdigit()]
     return min(ages) if ages else None
 
@@ -183,7 +183,7 @@ def press_power():
     really switch off. Answering it is the waiting's business, because when the
     panel appears is the guest's business and not ours.
     """
-    return screen.press(POWER_KEY)
+    return emulator.press(POWER_KEY)
 
 
 def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep,
@@ -265,11 +265,11 @@ def quit_emulator(timeout=QUIT_TIMEOUT_SECONDS, sleep=time.sleep):
     was = emulator_uptime_seconds()
     if was is None:
         return True
-    if not screen.press(QUIT_KEYS):
+    if not emulator.press(QUIT_KEYS):
         return False
 
     sleep(1)
-    screen.press(CONFIRM_KEY)
+    emulator.press(CONFIRM_KEY)
 
     # Gone means this one is gone, not that nothing is running. Nothing holds
     # the console here, so a fresh emulator is often up within a second of the
@@ -500,7 +500,7 @@ def _wait_for_shutdown(timeout, sleep):
         if not emulator_is_running():
             return True
         if attempt % CONFIRM_EVERY_POLLS == CONFIRM_EVERY_POLLS - 1:
-            screen.press(CONFIRM_KEY)
+            emulator.press(CONFIRM_KEY)
         sleep(POLL_SECONDS)
     return not emulator_is_running()
 

@@ -9,8 +9,9 @@ One module per job:
     files.py      the places this tool shows, which are on no disk
     change.py     changing the machine without leaving it unable to start
     kiosk.py      everything this tool does to the machine, in one file
-    screen.py     reading the emulated screen, and pressing its keys
-    grab.py       taking a picture of that screen and keeping it
+    emulator.py   which process the emulator is, and the keyboard that reaches it
+    grab.py       taking a picture of its screen, and keeping it
+    png.py        reading that picture's pixels
     terminal.py   the shell session behind the Terminal window
     websocket.py  the protocol that session travels over
     pi.py         what the board underneath is doing

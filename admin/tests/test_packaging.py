@@ -247,56 +247,66 @@ def test_the_helper_writes_where_the_service_reads(build):
     assert named != DEFAULTS["runtime_directory"]
 
 
-# -- the X server's socket directory -------------------------------------
+# -- the keyboard that reaches the emulator --------------------------------
 
 
-def test_the_package_names_the_socket_directory_the_service_reads(build):
-    """The build names it for the cleanup and for the postinst, and the service
-    looks for the display there. They are apart because the build does not
-    import the service, so this is what holds them together."""
-    from previously import screen
+def test_the_package_gives_the_virtual_keyboard_to_a_group(build, tmp_path):
+    """/dev/uinput belongs to root alone until a rule says otherwise, and the
+    service is not root."""
+    build.lay_out(tmp_path / "tree")
 
-    assert build.X11_SOCKETS == screen.X11_SOCKETS
+    rule = (tmp_path / "tree" / build.UDEV_RULE).read_text(encoding="utf-8")
+    lines = [line for line in rule.splitlines() if line and not line.startswith("#")]
 
-
-def test_a_missing_socket_directory_does_not_stop_the_service(unit):
-    """The unit binds the X server's socket directory into its private /tmp,
-    and a bind whose source is absent is a service that never starts: systemd
-    refuses it with 226/NAMESPACE before Python runs. Optional, a missing one
-    leaves a service that answers, and only pressing the emulator's keys
-    fails."""
-    from previously import screen
-
-    bound = re.findall(r"^BindReadOnlyPaths=(\S+)", unit, re.M)
-
-    assert "-" + screen.X11_SOCKETS in bound, bound
+    assert lines == ['KERNEL=="uinput", SUBSYSTEM=="misc", GROUP="%s", MODE="0660", '
+                     'OPTIONS+="static_node=uinput"' % build.UINPUT_GROUP]
 
 
-def test_the_cleanup_of_tmp_leaves_the_socket_directory_alone(build, tmp_path):
-    """Trixie ages /tmp after ten days and takes this directory with it once
-    its timestamps look that old, which a Pi without a clock battery reaches by
-    booting at the time it was switched off. Excluded, it is never taken."""
+def test_the_node_made_before_the_module_loads_gets_the_same_rights(build, tmp_path):
+    """/dev/uinput is a static node until the module is loaded: made at boot by
+    kmod-static-nodes with root's rights alone, and unknown to udev, so no rule
+    reaches it. systemd gives its own static nodes their rights in tmpfiles as
+    well, and so does this. Found on a Pi 4 and a Pi 5 on 23.10.2026, where
+    the rule alone left the node at crw------- root root."""
     build.lay_out(tmp_path / "tree")
 
     entries = (tmp_path / "tree" / build.TMPFILES).read_text(encoding="utf-8")
+    lines = [line for line in entries.splitlines() if line and not line.startswith("#")]
 
-    assert "x " + build.X11_SOCKETS in entries.splitlines()
+    assert lines == ["z /dev/uinput 0660 - %s -" % build.UINPUT_GROUP]
 
 
-def test_the_package_puts_the_socket_directory_back_before_starting(build):
-    """Where the cleanup took it before this package arrived. systemd's own
-    x11.conf says how it is made, so that is applied rather than a second
-    statement of it, and it is done before the service is started."""
+def test_the_service_runs_with_the_group_the_keyboard_belongs_to(build, unit):
+    """The rule and the unit are two files, and this is what holds them to one
+    group."""
+    assert re.findall(r"^SupplementaryGroups=(\S+)", unit, re.M) == [build.UINPUT_GROUP]
+
+
+def test_the_package_gives_the_node_its_rights_before_starting(build):
+    """/dev/uinput was made at boot, before the rule and the entry were there,
+    and the service opens it as soon as it starts."""
     postinst = build.scripts()["postinst"]
 
-    created = postinst.index(
-        "systemd-tmpfiles --create --boot --prefix=" + build.X11_SOCKETS)
+    given = postinst.index("systemd-tmpfiles --create /" + build.TMPFILES)
+    reloaded = postinst.index("udevadm control --reload-rules")
 
-    assert created < postinst.index("systemctl enable --now")
+    assert given < postinst.index("systemctl enable --now")
+    assert reloaded < postinst.index("systemctl enable --now")
 
 
-def test_the_package_brings_the_x_server_the_emulator_is_reached_through(build):
-    """xdotool and ImageMagick reach the emulator through X, and cage starts an
+def test_the_package_needs_neither_xdotool_nor_imagemagick(build):
+    assert "xdotool" not in build.DEPENDS
+    assert "imagemagick" not in build.DEPENDS
+
+
+def test_the_service_binds_nothing_from_tmp(unit):
+    """Its keys go through the kernel now, so the X server's socket is none of
+    its business."""
+    assert not re.findall(r"^BindReadOnlyPaths=", unit, re.M)
+
+
+def test_the_package_brings_the_x_server_previous_draws_through(build):
+    """The console tells Previous to draw through X first, and cage starts an
     X server only where Xwayland is installed. The cage in the Raspberry Pi
     archive no longer brings it along, so the package does."""
     assert "xwayland" in build.DEPENDS

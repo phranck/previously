@@ -35,7 +35,7 @@ import os
 import pathlib
 import time
 
-from . import hardware, pi, screen
+from . import emulator, hardware, pi
 
 #: Where the kernel reports itself. Named rather than written into each
 #: function, so a test points them at its own directory.
@@ -318,7 +318,7 @@ def _emulator_pid():
     """
     global _PID, _LOOKED_AT
 
-    if _PID is not None and _named(_PID) == screen.EMULATOR:
+    if _PID is not None and _named(_PID) == emulator.PROCESS:
         return _PID
 
     _PID = None
@@ -335,7 +335,7 @@ def _emulator_pid():
     for entry in entries:
         if not entry.name.isdigit():
             continue
-        if _named(entry.name) == screen.EMULATOR:
+        if _named(entry.name) == emulator.PROCESS:
             _PID = int(entry.name)
             return _PID
     return None
