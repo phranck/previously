@@ -705,6 +705,31 @@ def test_a_post_from_this_page_is_not(service):
     assert raised.value.code == 404
 
 
+# -- taking the guest down -------------------------------------------------
+
+
+@pytest.mark.parametrize("route,operation", [
+    ("/api/kiosk/stop", "stop"),
+    ("/api/kiosk/restart", "restart"),
+    ("/api/pi/reboot", "board"),
+])
+def test_taking_the_guest_down_says_where_its_grabs_land(
+        service, tmp_path, monkeypatch, route, operation):
+    """So a guest that is still starting is watched until its screen stands
+    still before the power key goes in."""
+    asked = []
+
+    def taking_down(*given, **named):
+        asked.append(named)
+        return True, {"reason": "guest.shut-itself-down"}
+
+    monkeypatch.setattr(server.kiosk, operation, taking_down)
+
+    post(service + route, session=server.Handler.sessions.open(), origin=service)
+
+    assert asked == [{"previous_config": tmp_path / "previous.cfg"}]
+
+
 # -- what a POST leaves on the connection ---------------------------------
 
 

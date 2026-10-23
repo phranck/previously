@@ -55,13 +55,17 @@ LARGEST_BODY = 64 * 1024
 #: Where the browser's files live, beside the package rather than inside it.
 WEB_ROOT = pathlib.Path(__file__).resolve().parent.parent / "web"
 
-#: What a POST may ask of the emulator. A map rather than a chain of
-#: comparisons, so the set of things this service can be asked to do is one
-#: list somebody can read.
+#: What a POST may ask of the emulator, each called with the service's
+#: settings. A map rather than a chain of comparisons, so the set of things
+#: this service can be asked to do is one list somebody can read. The two that
+#: take the guest down are told where its grabs land, so they can wait for a
+#: guest that is still starting.
 KIOSK_OPERATIONS = {
-    "/api/kiosk/start": kiosk.start,
-    "/api/kiosk/stop": kiosk.stop,
-    "/api/kiosk/restart": kiosk.restart,
+    "/api/kiosk/start": lambda settings: kiosk.start(settings.runtime_directory),
+    "/api/kiosk/stop": lambda settings: kiosk.stop(
+        settings.runtime_directory, previous_config=settings.previous_config),
+    "/api/kiosk/restart": lambda settings: kiosk.restart(
+        settings.runtime_directory, previous_config=settings.previous_config),
 }
 
 #: What a POST may ask of the board itself. Separate from the emulator's, and
@@ -304,7 +308,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         board = BOARD_OPERATIONS.get(route)
         if board is not None:
-            finished, told = kiosk.board(board, self.settings.runtime_directory)
+            finished, told = kiosk.board(board, self.settings.runtime_directory,
+                                         previous_config=self.settings.previous_config)
             return self._json(
                 {"ok": finished, **told, **self._status()},
                 status=200 if finished else 409,
@@ -314,7 +319,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if operation is None:
             return self._json({"error": "not found"}, status=404)
 
-        finished, told = operation(self.settings.runtime_directory)
+        finished, told = operation(self.settings)
         return self._json(
             {"ok": finished, **told, **self._status()},
             status=200 if finished else 409,

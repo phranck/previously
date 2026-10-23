@@ -15,6 +15,10 @@ from previously import kiosk, screen, systems
 #: about what press_power itself does, so a fake one would test the fake.
 REAL_PRESS_POWER = kiosk.press_power
 
+#: Where the emulator's configuration would be. Nothing reads it, because
+#: the grab that would is replaced in every test that passes it.
+CONFIGURATION = "previous.cfg"
+
 
 @pytest.fixture
 def world(tmp_path, monkeypatch):
@@ -299,6 +303,98 @@ def test_a_screen_that_cannot_be_read_is_shut_down_the_usual_way(tmp_path, world
 
     assert finished is True
     assert world.power_pressed == 1
+
+
+# -- a guest that is still starting --------------------------------------
+
+
+@pytest.fixture
+def pressing(world, monkeypatch):
+    """Records at which poll the power key went, and lets the guest go one
+    poll after it, as a guest that gets the key does.
+
+    @returns list of the polls the key was pressed at.
+    """
+    world.shutdown_after_polls = None
+    pressed_at = []
+
+    def press():
+        pressed_at.append(world.polls)
+        world.shutdown_after_polls = world.polls + 1
+        return True
+
+    monkeypatch.setattr(kiosk, "press_power", press)
+    return pressed_at
+
+
+def test_a_guest_still_starting_gets_the_power_key_once_its_screen_stands_still(
+        tmp_path, world, pressing, monkeypatch):
+    """Measured on a Pi 5 on 23.10.2026: the power key pressed 45 seconds into
+    the boot, between "Startup complete" and the Workspace, reached nothing.
+    NeXTSTEP went on to its Workspace and the stop ran out its two minutes.
+    Three changes here, then the screen stands still."""
+    world.age = 45
+    pictures = iter([b"a", b"b", b"c"] + [b"d"] * 100)
+    monkeypatch.setattr(kiosk.grab, "grabbed", lambda previous_config: next(pictures))
+
+    finished, told = kiosk.stop(tmp_path, sleep=world.sleep, previous_config=CONFIGURATION)
+
+    assert finished is True
+    assert told["reason"] == "guest.shut-itself-down"
+    assert pressing == [3 + kiosk.STILL_SECONDS // kiosk.POLL_SECONDS]
+
+
+def test_a_guest_up_for_minutes_gets_the_power_key_at_once(
+        tmp_path, world, pressing, monkeypatch):
+    """No boot measured on a Pi 4 or a Pi 5 took longer than 82 seconds."""
+    world.age = kiosk.BOOTED_AFTER_SECONDS
+    monkeypatch.setattr(kiosk.grab, "grabbed",
+                        lambda previous_config: pytest.fail("a booted guest is not watched"))
+
+    kiosk.stop(tmp_path, sleep=world.sleep, previous_config=CONFIGURATION)
+
+    assert pressing == [0]
+
+
+def test_a_screen_that_cannot_be_read_does_not_hold_the_power_key_back(
+        tmp_path, world, pressing, monkeypatch):
+    world.age = 45
+    monkeypatch.setattr(kiosk.grab, "grabbed", lambda previous_config: None)
+
+    kiosk.stop(tmp_path, sleep=world.sleep, previous_config=CONFIGURATION)
+
+    assert pressing == [0]
+
+
+def test_a_screen_that_never_stands_still_gets_the_power_key_in_the_end(
+        tmp_path, world, pressing, monkeypatch):
+    """Something on it moves all the time. Once the emulator is old enough to
+    have started, asking the guest is still better than giving up on it."""
+    world.age = 45
+    count = iter(range(1000))
+    monkeypatch.setattr(kiosk.grab, "grabbed", lambda previous_config: next(count))
+
+    finished, _ = kiosk.stop(tmp_path, sleep=world.sleep, previous_config=CONFIGURATION)
+
+    assert finished is True
+    assert pressing == [(kiosk.BOOTED_AFTER_SECONDS - 45) // kiosk.POLL_SECONDS]
+
+
+def test_the_first_confirmation_waits_for_the_panel(tmp_path, world, monkeypatch):
+    """NeXTSTEP put its power panel up three seconds after the key on a Pi 5
+    on 23.10.2026. A return pressed before that reaches whatever is showing,
+    which on a NeXTSTEP that was never set up is its Welcome panel."""
+    sent = []
+    monkeypatch.setattr(kiosk.screen, "press",
+                        lambda key: sent.append((key, world.polls)) or True)
+    monkeypatch.setattr(kiosk, "press_power", REAL_PRESS_POWER)
+    world.shutdown_after_polls = 9
+
+    kiosk.stop(tmp_path, sleep=world.sleep)
+
+    confirmations = [poll for key, poll in sent if key == kiosk.CONFIRM_KEY]
+    assert sent[0] == (kiosk.POWER_KEY, 0)
+    assert confirmations[0] == kiosk.CONFIRM_EVERY_POLLS - 1
 
 
 # -- ending the emulator itself ------------------------------------------

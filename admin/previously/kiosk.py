@@ -25,7 +25,7 @@ import json
 import subprocess
 import time
 
-from . import machines, screen, setup, systems
+from . import grab, machines, screen, setup, systems
 from .answers import told
 
 #: How long to wait for systemctl before giving up. A query that hangs is worse
@@ -57,11 +57,27 @@ QUIT_KEYS = "ctrl+alt+q"
 #: to shut down, so this is the time SDL takes to close a window.
 QUIT_TIMEOUT_SECONDS = 15
 
-#: How often the confirmation is pressed again while waiting for the guest.
-#: NeXTSTEP raises its panel at its own pace, and one press at a fixed moment
-#: after the power key lands on the desktop when the panel is not up yet, which
-#: leaves the panel standing and the machine running.
+#: How often the confirmation is pressed while waiting for the guest, and how
+#: long after the power key it is pressed first. NeXTSTEP raises its panel at
+#: its own pace: three seconds after the key on a Pi 5 on 23.10.2026. A press
+#: before that reaches whatever is showing instead, and one press at a fixed
+#: moment leaves a panel that comes later standing and the machine running.
 CONFIRM_EVERY_POLLS = 4
+
+#: How long the screen has to stand still before the power key goes in, for an
+#: emulator that may still be starting. NeXTSTEP drops the key while it brings
+#: up its window server, between "Startup complete" and the Workspace: pressed
+#: there on a Pi 5 on 23.10.2026, it reached nothing, and the stop ran out its
+#: time with the guest at its Workspace. In twelve boots on a Pi 4 and a Pi 5
+#: that day, the screen never stood still for longer than 8 seconds. The clock
+#: in the dock turns over once a minute, so a screen that stands still is
+#: always still for this long somewhere within a minute.
+STILL_SECONDS = 15
+
+#: From what age an emulator counts as started however its screen looks. The
+#: slowest of those twelve boots was at its Workspace 82 seconds after Previous
+#: started, so this is more than twice that.
+BOOTED_AFTER_SECONDS = 180
 
 #: How long to give the guest after the power button. NeXTSTEP flushes and
 #: unmounts at its own pace, and a guest still writing is the one case where
@@ -170,12 +186,17 @@ def press_power():
     return screen.press(POWER_KEY)
 
 
-def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
+def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep,
+         previous_config=None):
     """Shuts the guest down properly and keeps the emulator down afterwards.
 
     @param runtime_directory - The service's runtime directory.
     @param timeout - Seconds to wait for the guest before giving up.
     @param sleep - Injected so a test does not wait in real time.
+    @param previous_config - pathlib.Path to the emulator's configuration,
+      which says where its grabs land. With it, a guest that may still be
+      starting is watched until its screen stands still before the power key
+      goes in. Without it, the key goes in at once.
     @returns (bool, str). The second is what to tell the user, whether it
       worked or not.
 
@@ -197,6 +218,7 @@ def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
             return True, told("emulator.ended-because-blank")
         return False, told("emulator.blank-and-will-not-end")
 
+    _wait_for_a_still_screen(previous_config, sleep)
     if not press_power():
         hold_path(runtime_directory).unlink(missing_ok=True)
         return False, told("emulator.power-key-refused")
@@ -261,31 +283,34 @@ def quit_emulator(timeout=QUIT_TIMEOUT_SECONDS, sleep=time.sleep):
     return False
 
 
-def restart(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep):
+def restart(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep,
+            previous_config=None):
     """Shuts the guest down properly and lets it come straight back.
 
     @param runtime_directory - The service's runtime directory.
     @param timeout - Seconds to wait for the guest.
     @param sleep - Injected so a test does not wait in real time.
+    @param previous_config - As `stop` takes it.
     @returns (bool, str)
 
     A stop followed by a start, rather than relying on the unit restarting by
     itself, because that path is observable at every step and this one is not.
     """
-    finished, reason = stop(runtime_directory, timeout, sleep)
+    finished, reason = stop(runtime_directory, timeout, sleep, previous_config)
     if not finished:
         return False, reason
     return start(runtime_directory)
 
 
 def board(action, runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS,
-          sleep=time.sleep):
+          sleep=time.sleep, previous_config=None):
     """Restarts or switches off the board, taking the guest down first.
 
     @param action - "reboot" or "poweroff".
     @param runtime_directory - The service's runtime directory.
     @param timeout - Seconds to wait for the guest before giving up.
     @param sleep - Injected so a test does not wait in real time.
+    @param previous_config - As `stop` takes it.
     @returns (bool, str)
 
     The guest goes first and the board waits for it. A board that reboots
@@ -299,7 +324,7 @@ def board(action, runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS,
     if action not in BOARD_REQUESTS:
         return False, told("board.no-such-action", action=action)
 
-    stopped, reason = stop(runtime_directory, timeout, sleep)
+    stopped, reason = stop(runtime_directory, timeout, sleep, previous_config)
     if not stopped:
         return False, reason
 
@@ -406,6 +431,47 @@ def _request(runtime_directory, action):
     return True
 
 
+def _wait_for_a_still_screen(previous_config, sleep):
+    """Waits until a guest that may still be starting can take the power key.
+
+    @param previous_config - pathlib.Path to the emulator's configuration, or
+      None, which waits for nothing.
+    @param sleep - How to wait between looks.
+
+    Returns at once for an emulator old enough to have started, and for a
+    screen that cannot be grabbed, where waiting would only hold the key back.
+    Otherwise it returns once the screen has stood still for STILL_SECONDS,
+    or once the emulator is old enough after all, or once it has gone.
+
+    Still means the same grab byte for byte. Previous writes the same PNG for
+    the same screen, which held for every still screen in the twelve boots
+    measured on 23.10.2026. Its own grab rather than a photograph of the window,
+    because ImageMagick cannot read the window on a Pi 4.
+
+    The key is never pressed a second time instead. A power key arriving while
+    NeXTSTEP shuts down ends it early: four seconds sooner in two runs on a
+    Pi 5 on 23.10.2026, against two runs without it.
+    """
+    if previous_config is None:
+        return
+    age = emulator_uptime_seconds()
+    if age is None or age >= BOOTED_AFTER_SECONDS:
+        return
+    last = grab.grabbed(previous_config)
+    if last is None:
+        return
+    still = 0
+    for _ in range(int((BOOTED_AFTER_SECONDS - age) / POLL_SECONDS)):
+        sleep(POLL_SECONDS)
+        if not emulator_is_running():
+            return
+        now = grab.grabbed(previous_config)
+        still = still + POLL_SECONDS if now is not None and now == last else 0
+        last = now
+        if still >= STILL_SECONDS:
+            return
+
+
 def _wait_for_shutdown(timeout, sleep):
     """Waits for the emulator to go, answering the panel until it does.
 
@@ -413,12 +479,12 @@ def _wait_for_shutdown(timeout, sleep):
     @param sleep - How to wait between looks.
     @returns bool, False where it is still there when the time runs out.
 
-    The confirmation is pressed again every few polls rather than once at a
-    fixed moment after the power key. NeXTSTEP raises its panel at its own
-    pace, and a machine that has been up for hours with windows open is slower
-    about it than one that has just started. A press that arrives before the
-    panel lands on the desktop and does nothing, and the panel then stands
-    unanswered until the time runs out.
+    The confirmation is pressed every few polls rather than once at a fixed
+    moment after the power key, and first one interval after it. NeXTSTEP
+    raises its panel at its own pace, and a machine that has been up for hours
+    with windows open is slower about it than one that has just started. A
+    press that arrives before the panel reaches whatever is showing instead,
+    and the panel then stands unanswered until the time runs out.
 
     Pressing again costs nothing once the guest is going: there is no longer
     anything for the key to reach.
@@ -433,7 +499,7 @@ def _wait_for_shutdown(timeout, sleep):
     for attempt in range(max(1, int(timeout / POLL_SECONDS))):
         if not emulator_is_running():
             return True
-        if attempt % CONFIRM_EVERY_POLLS == 0:
+        if attempt % CONFIRM_EVERY_POLLS == CONFIRM_EVERY_POLLS - 1:
             screen.press(CONFIRM_KEY)
         sleep(POLL_SECONDS)
     return not emulator_is_running()
