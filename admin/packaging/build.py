@@ -42,9 +42,11 @@ ARCHITECTURE = "all"
 #: declared rather than discovered.
 #:
 #:   python3          the service itself
+#:   xwayland         the X server the console has Previous draw through,
+#:                    which cage starts only where it is installed
 #:   openssh-client   the login behind the terminal, in terminal.Session
 #:   procps           pgrep and ps, which say whether the emulator runs
-DEPENDS = ["python3 (>= 3.11)", "openssh-client", "procps", "systemd"]
+DEPENDS = ["python3 (>= 3.11)", "xwayland", "openssh-client", "procps", "systemd"]
 
 #: The emulator this administers. A recommendation rather than a dependency,
 #: because it comes from an archive this package knows nothing about, and an

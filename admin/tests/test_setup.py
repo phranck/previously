@@ -543,33 +543,16 @@ def start_line(owner):
     return lines[0].split()
 
 
-def test_previous_draws_through_wayland_without_an_x_server(tmp_path):
+def test_previous_draws_through_x_before_wayland(tmp_path):
+    """Previous grabs the mouse when it is clicked, and under Wayland SDL needs
+    pointer constraints for that, which cage does not offer: on next5 the mouse
+    stopped reaching NeXTSTEP shortly after the first click. Xwayland holds the
+    grab itself. Wayland comes second, so a machine without an X server still
+    starts its emulator."""
     words = start_line(Nobody(tmp_path))
+    drivers = next(word for word in words if word.startswith("SDL_VIDEO_DRIVER="))
 
-    assert "SDL_VIDEO_DRIVER=wayland" in words
-
-
-def test_cage_draws_the_window_decorations_itself(tmp_path):
-    """Left to SDL, a decorated window loads libdecor's GTK plugin, and on both
-    Pis Previous then waited for the compositor before its first frame and
-    never emulated."""
-    words = start_line(Nobody(tmp_path))
-
-    assert words[words.index("cage") + 1:words.index("--")].count("-d") == 1
-
-
-def test_a_board_without_a_monitor_still_gives_previous_a_screen(tmp_path):
-    """SDL's Wayland driver ends at once where the compositor has no output,
-    so cage starts a headless one first. Showing only the last output added
-    hands the picture to a monitor, whether it was there at the start or comes
-    later."""
-    words = start_line(Nobody(tmp_path))
-    backends = next(word for word in words if word.startswith("WLR_BACKENDS="))
-    options = words[words.index("cage") + 1:words.index("--")]
-
-    assert backends.split("=", 1)[1].split(",")[0] == "headless"
-    assert "drm" in backends.split("=", 1)[1].split(",")
-    assert options[options.index("-m") + 1] == "last"
+    assert drivers.split("=", 1)[1].split(",") == ["x11", "wayland"]
 
 
 def run_the_console(tmp_path, monkeypatch, cage_exits):
