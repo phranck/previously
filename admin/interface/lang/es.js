@@ -474,6 +474,8 @@ export const es = {
   "setup.step.no-autologin": "La consola vuelve a preguntar quién está",
   "setup.step.quiet": "Se silencia el arranque",
   "setup.step.loud": "El arranque como estaba",
+  "setup.step.lean": "Se deja fuera lo que NeXTSTEP no necesita",
+  "setup.step.full": "Los servicios como estaban",
   "setup.step.autostart": "El arranque en la primera consola",
   "setup.step.no-autostart": "Se devuelve la consola",
   "setup.step.sound": "El sonido a un altavoz",

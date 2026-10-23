@@ -474,6 +474,8 @@ export const de = {
   "setup.step.no-autologin": "Die Konsole fragt wieder nach",
   "setup.step.quiet": "Der Start wird stumm geschaltet",
   "setup.step.loud": "Der Start wie zuvor",
+  "setup.step.lean": "Weglassen, was NeXTSTEP nicht braucht",
+  "setup.step.full": "Die Dienste wie zuvor",
   "setup.step.autostart": "Start auf der ersten Konsole",
   "setup.step.no-autostart": "Die Konsole wird zurückgegeben",
   "setup.step.sound": "Ton auf einen Lautsprecher",

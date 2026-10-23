@@ -14,7 +14,7 @@
 # It installs the admin tool and asks the tool's privileged helper for the
 # rest, which is the job the Installer window runs from a browser: the
 # emulator, the system's disk, the configuration, the console, the quiet boot,
-# the sound, and finally the machine itself. So every step exists once, in
+# the services left out, the sound, and finally the machine itself. So every step exists once, in
 # admin/previously/setup.py, and this shows them as they happen.
 #
 # Written to run straight off the network, so it carries everything it needs
@@ -425,7 +425,7 @@ wait_for_a_run_under_way() {
 # that finds its work done is over in a few milliseconds, which is quicker than
 # this looks, so the record often names a later step than the last one shown,
 # and every step in between is closed from this list.
-readonly INSTALL_STEPS=(host tools archive emulator system configuration autologin quiet autostart sound start)
+readonly INSTALL_STEPS=(host tools archive emulator system configuration autologin quiet lean autostart sound start)
 
 # Where a step stands in that list, or -1.
 step_index() {
@@ -452,6 +452,7 @@ step_label() {
     configuration) echo "The emulator's configuration" ;;
     autologin) echo "Logging in on the console" ;;
     quiet) echo "Silencing the startup" ;;
+    lean) echo "Leaving out what NeXTSTEP does not need" ;;
     autostart) echo "Starting on the first console" ;;
     sound) echo "Sound to a speaker" ;;
     start) echo "Starting the machine" ;;

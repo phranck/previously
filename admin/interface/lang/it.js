@@ -474,6 +474,8 @@ export const it = {
   "setup.step.no-autologin": "La console chiede di nuovo chi c'è",
   "setup.step.quiet": "L'avvio viene reso silenzioso",
   "setup.step.loud": "L'avvio come prima",
+  "setup.step.lean": "Si lascia fuori ciò che a NeXTSTEP non serve",
+  "setup.step.full": "I servizi come prima",
   "setup.step.autostart": "L'avvio sulla prima console",
   "setup.step.no-autostart": "La console viene restituita",
   "setup.step.sound": "Il suono verso un altoparlante",
