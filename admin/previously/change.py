@@ -19,7 +19,7 @@ come back is put straight back the way it was.
 
 import time
 
-from . import config, discs, kiosk, machines, saved, screen, systems
+from . import config, discs, grab, kiosk, machines, saved, systems
 from .answers import told
 
 #: How long to wait for the emulator to appear after the hold comes off. The
@@ -199,7 +199,7 @@ def _applied(settings, values, name, done, already, sleep):
     # The emulator running is not the machine running. A configuration Previous
     # cannot make sense of leaves the process up and the screen blank, and the
     # screen is the only place that difference shows.
-    if screen.looks_alive() is False:
+    if grab.looks_alive(settings.previous_config) is False:
         return False, _rolled_back(settings, name, sleep, blank=True)
 
     # `machine` rather than `name`, because that is what every sentence about

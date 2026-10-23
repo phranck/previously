@@ -1,17 +1,9 @@
-"""The emulator's screen, and the wire that reaches it.
-
-Previous says nothing about the machine inside it. A configuration it cannot
-run leaves the emulator running and the screen blank, so the process table says
-everything is fine while nothing has booted. The screen is the only place that
-difference shows.
-
-One reading is enough for that question, because it is not what is on the
-screen but whether anything is. A screen that has booted is never one flat
-color: even before NeXTSTEP loads, the boot ROM has put its panel up.
+"""The wire that reaches the emulator.
 
 Everything that reaches the emulator goes through the same wire, so it is here
 rather than in each caller: which display it is on, which window is its own,
-and how a key gets to it.
+and how a key gets to it. Whether the screen shows anything is answered in
+`grab.py`, from Previous's own picture of it.
 """
 
 import os
@@ -37,48 +29,6 @@ ANY_WINDOW = "."
 
 #: How long to wait for either command. Both answer at once or not at all.
 TIMEOUT_SECONDS = 5
-
-#: Below this spread the screen is one color and nothing has been drawn on it.
-#: Measured on the machine on 14 September 2026: a machine that never booted
-#: reports 0 with one color, and a running NeXTSTEP desktop 15045 with 256.
-BLANK = 1.0
-
-
-def looks_alive():
-    """Whether the emulated screen is showing anything at all.
-
-    @returns True where something is drawn, False where the screen is one flat
-      color, and None where it could not be read.
-
-    None rather than False when the reading fails, and the difference matters:
-    a missing tool or an X server that is not there yet must not make every
-    machine look broken. Only a screen that was actually read and found blank
-    is False.
-    """
-    spread = _spread()
-    if spread is None:
-        return None
-    return spread > BLANK
-
-
-def _spread():
-    """@returns The screen's standard deviation, or None where it cannot be
-      read. A flat surface is zero however bright it is."""
-    found = window()
-    if found is None or shutil.which("import") is None:
-        return None
-
-    # Trimmed first, because the window is wider than the machine's screen and
-    # Previous fills the difference with black. A blank white screen between
-    # two black bars is two colors far apart, which reads as a busy screen
-    # until the bars are cut away. Measured on the machine: the whole window
-    # reported 26781 and the same screen trimmed reported 0.
-    answer = _ask(["import", "-window", found, "-trim",
-                   "-format", "%[standard-deviation]", "info:"])
-    try:
-        return float(answer.split()[0])
-    except (ValueError, IndexError):
-        return None
 
 
 def press(keys):

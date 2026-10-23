@@ -11,7 +11,7 @@ import textwrap
 
 import pytest
 
-from previously import change, config, discs, kiosk, saved, screen
+from previously import change, config, discs, grab, kiosk, saved
 
 REAL_SHAPE = textwrap.dedent("""\
     [Log]
@@ -136,9 +136,9 @@ def machine(tmp_path, monkeypatch):
     monkeypatch.setattr(kiosk, "emulator_is_running", emulator.emulator_is_running)
     monkeypatch.setattr(kiosk, "emulator_uptime_seconds", emulator.emulator_uptime_seconds)
     monkeypatch.setattr(kiosk, "press_power", emulator.press_power)
-    # No X server in a test, so the screen cannot be read and nothing is
+    # No emulator in a test, so the screen cannot be grabbed and nothing is
     # claimed about it. A test that is about the screen says so itself.
-    monkeypatch.setattr(screen, "looks_alive", lambda: emulator.screen)
+    monkeypatch.setattr(grab, "looks_alive", lambda previous_config: emulator.screen)
     monkeypatch.setattr(kiosk, "quit_emulator", emulator.quit)
     return emulator
 

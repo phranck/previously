@@ -18,7 +18,9 @@ The rest is the system's own and is assumed rather than installed: `systemd` for
 
 `activity.py` needs none of them. It answers the same kind of question twice a second and reads `/proc` alone, because what is cheap at one answer every five seconds is not cheap at two a second. Measured on a Pi 5: a whole reading costs 0.42 ms while the emulator runs, against 9.9 ms for an answer to `/api/pi`, which forks `vcgencmd` twice and `ps` once at 1.5 ms a fork. Every figure it gives is the difference between two readings, since the kernel's counters are totals since the board started and a total says nothing about now. A reading older than five seconds is not compared against, because it was left by a window that has since been closed, and a difference across that pause would be its average rather than the present.
 
-What each is for: `cage` is the compositor the emulator runs in, `xwayland` is the X server cage runs it on, `7zip` unpacks the disk archive, `xdotool` presses the emulator's keys, and ImageMagick's `import` reads its screen, which is the only way to tell a machine that booted from one that did not. Both of the last two reach the emulator through that X server.
+What each is for: `cage` is the compositor the emulator runs in, `xwayland` is the X server cage runs it on, `7zip` unpacks the disk archive, `xdotool` presses the emulator's keys, and ImageMagick's `import` photographs its window for the Grab where Previous's own picture cannot be had. Both of the last two reach the emulator through that X server.
+
+Whether a machine booted is read from Previous's own grab, which `xdotool` asks for with its shortcut. A screen of one color is a machine that did not boot. `png.py` reads the picture with the standard library alone, because ImageMagick cannot read the emulator's window on a Pi 4.
 
 **To work on it**, `flake8` and `pytest` as well. They are not on the Pi and `install.sh` does not put them there, because nothing in running the service needs them.
 

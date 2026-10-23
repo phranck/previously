@@ -272,7 +272,7 @@ def test_a_guest_that_never_started_is_not_waited_for(tmp_path, world, monkeypat
     """The power key reaches NeXTSTEP, and where the screen is blank there is
     no NeXTSTEP to reach. Waiting the whole timeout for one is what left a
     machine that could not be changed back on 14 September 2026."""
-    monkeypatch.setattr(screen, "looks_alive", lambda: False)
+    monkeypatch.setattr(kiosk.grab, "looks_alive", lambda previous_config: False)
     monkeypatch.setattr(kiosk.screen, "press", lambda _key: True)
     world.shutdown_after_polls = 1
 
@@ -285,7 +285,7 @@ def test_a_guest_that_never_started_is_not_waited_for(tmp_path, world, monkeypat
 
 
 def test_a_blank_machine_that_will_not_even_quit_is_reported(tmp_path, world, monkeypatch):
-    monkeypatch.setattr(screen, "looks_alive", lambda: False)
+    monkeypatch.setattr(kiosk.grab, "looks_alive", lambda previous_config: False)
     monkeypatch.setattr(kiosk.screen, "press", lambda _key: False)
 
     finished, told = kiosk.stop(tmp_path, sleep=world.sleep)
@@ -295,14 +295,25 @@ def test_a_blank_machine_that_will_not_even_quit_is_reported(tmp_path, world, mo
 
 
 def test_a_screen_that_cannot_be_read_is_shut_down_the_usual_way(tmp_path, world, monkeypatch):
-    """Without an X server there is no reading, and a guest that is running
-    must still be asked politely."""
-    monkeypatch.setattr(screen, "looks_alive", lambda: None)
+    """Without a grab there is no reading, and a guest that is running must
+    still be asked politely."""
+    monkeypatch.setattr(kiosk.grab, "looks_alive", lambda previous_config: None)
 
     finished, _ = kiosk.stop(tmp_path, sleep=world.sleep)
 
     assert finished is True
     assert world.power_pressed == 1
+
+
+def test_the_screen_is_judged_from_the_grab_the_configuration_names(
+        tmp_path, world, monkeypatch):
+    asked = []
+    monkeypatch.setattr(kiosk.grab, "looks_alive",
+                        lambda previous_config: asked.append(previous_config))
+
+    kiosk.stop(tmp_path, sleep=world.sleep, previous_config=CONFIGURATION)
+
+    assert asked == [CONFIGURATION]
 
 
 # -- a guest that is still starting --------------------------------------
@@ -324,6 +335,9 @@ def pressing(world, monkeypatch):
         return True
 
     monkeypatch.setattr(kiosk, "press_power", press)
+    # A guest with something on its screen, which is what these tests are
+    # about: one that may still be starting rather than one that never did.
+    monkeypatch.setattr(kiosk.grab, "looks_alive", lambda previous_config: True)
     return pressed_at
 
 

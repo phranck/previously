@@ -1,81 +1,36 @@
-"""Reading the emulated screen.
+"""The wire that reaches the emulator.
 
-What is faked is the pair of commands that reach the X server. What is tested
-is the judgment made on what they answer, because that judgment decides
-whether a machine gets rolled back.
+What is faked is the command that asks the X server. What is tested is how the
+emulator's window is found, because every key this service sends goes to it.
 """
-
-import pytest
 
 from previously import screen
 
 
-@pytest.fixture
-def answers(monkeypatch):
-    """Lets a test say what the two commands reply.
+def asking(monkeypatch, answer):
+    """Lets a test say what xdotool replies to each search.
 
-    @returns dict keyed by the command's name.
+    @param answer - What it replies, given the pattern searched for.
+    @returns list of the commands that were run.
     """
-    replies = {"xdotool": "4194359", "import": "15045.3"}
+    asked = []
 
     def fake_ask(command):
-        return replies.get(command[0], "")
+        asked.append(command)
+        return answer(command[-1])
 
     monkeypatch.setattr(screen, "_ask", fake_ask)
     monkeypatch.setattr(screen.shutil, "which", lambda name: "/usr/bin/" + name)
-    return replies
+    return asked
 
 
-def test_a_screen_with_something_on_it_is_alive(answers):
-    assert screen.looks_alive() is True
-
-
-def test_a_screen_of_one_flat_color_is_not(answers):
-    """A machine that never booted. The emulator is running and its window is
-    there, and nothing has been drawn in it."""
-    answers["import"] = "0"
-
-    assert screen.looks_alive() is False
-
-
-def test_the_boot_panel_alone_is_enough(answers):
-    """The ROM puts its panel up before NeXTSTEP loads, so a machine caught
-    mid-boot must not read as blank."""
-    answers["import"] = "5311.26"
-
-    assert screen.looks_alive() is True
-
-
-def test_no_window_means_no_reading(answers):
-    """Not False: a machine that is not running has no screen to be blank."""
-    answers["xdotool"] = ""
-
-    assert screen.looks_alive() is None
-
-
-def test_an_answer_that_is_not_a_number_is_no_reading(answers):
-    answers["import"] = "import: unable to read X window image"
-
-    assert screen.looks_alive() is None
-
-
-def test_without_the_tools_nothing_is_claimed(answers, monkeypatch):
-    """A missing package must not make every machine look broken."""
-    monkeypatch.setattr(screen.shutil, "which", lambda name: None)
-
-    assert screen.looks_alive() is None
-
-
-def test_the_window_is_asked_for_by_name_first(answers, monkeypatch):
+def test_the_window_is_asked_for_by_name_first(monkeypatch):
     """Previous names its window after itself, and the id it gets from the X
     server changes at every start."""
-    asked = []
-    monkeypatch.setattr(screen, "_ask", lambda command: asked.append(command) or "12345")
+    asked = asking(monkeypatch, lambda pattern: "12345")
 
-    screen.looks_alive()
-
+    assert screen.window() == "12345"
     assert asked[0] == ["xdotool", "search", "--name", screen.WINDOW]
-    assert asked[1][:4] == ["import", "-window", "12345", "-trim"]
 
 
 def test_a_window_that_does_not_answer_to_its_name_is_still_found(monkeypatch):
@@ -83,20 +38,23 @@ def test_a_window_that_does_not_answer_to_its_name_is_still_found(monkeypatch):
     the only window on that display is the emulator's. Measured on the machine:
     searching for the name found nothing and searching for anything found
     4194359."""
-    asked = []
+    asked = asking(monkeypatch,
+                   lambda pattern: "4194359" if pattern == screen.ANY_WINDOW else "")
 
-    def fake_ask(command):
-        asked.append(command)
-        if command[0] == "import":
-            return "15045.3"
-        return "4194359" if command[-1] == screen.ANY_WINDOW else ""
-
-    monkeypatch.setattr(screen, "_ask", fake_ask)
-    monkeypatch.setattr(screen.shutil, "which", lambda name: "/usr/bin/" + name)
-
-    assert screen.looks_alive() is True
+    assert screen.window() == "4194359"
     assert asked[1] == ["xdotool", "search", "--name", screen.ANY_WINDOW]
-    assert asked[2][:4] == ["import", "-window", "4194359", "-trim"]
+
+
+def test_no_window_means_none(monkeypatch):
+    asking(monkeypatch, lambda pattern: "")
+
+    assert screen.window() is None
+
+
+def test_without_xdotool_there_is_no_window(monkeypatch):
+    monkeypatch.setattr(screen.shutil, "which", lambda name: None)
+
+    assert screen.window() is None
 
 
 # -- where the screen is -------------------------------------------------
