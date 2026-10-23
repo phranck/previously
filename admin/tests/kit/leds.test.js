@@ -31,9 +31,41 @@ function askForLessMovement(less) {
   window.happyDOM.settings.device.prefersReducedMotion = less ? "reduce" : "no-preference";
 }
 
-/** @param {number} ms @returns {Promise<void>} Once that long has passed. */
-function after(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** How far apart the frames are that a test hands out: those of a screen
+ *  drawing sixty a second. */
+const FRAME_MS = 1000 / 60;
+
+/**
+ * Takes the animation frames over for one test, so the row moves by a clock
+ * the test sets rather than by whenever the machine running the tests gets
+ * around to drawing. The row moves by the time a frame says has passed, so
+ * these frames move it exactly as far as real ones that far apart would.
+ *
+ * @param {import("node:test").TestContext} context - The test, which gets the
+ *   document's own frames back when it ends.
+ * @returns {(ms: number) => void} Lets that much time pass, a frame at a
+ *   time, and runs every frame asked for on the way.
+ */
+function framesByHand(context) {
+  const own = globalThis.requestAnimationFrame;
+  let waiting = [];
+  let asked = 0;
+  let now = 0;
+  globalThis.requestAnimationFrame = (callback) => {
+    waiting.push(callback);
+    asked += 1;
+    return asked;
+  };
+  context.after(() => { globalThis.requestAnimationFrame = own; });
+
+  return (ms) => {
+    for (const until = now + ms; now < until && waiting.length > 0;) {
+      now = Math.min(now + FRAME_MS, until);
+      const due = waiting;
+      waiting = [];
+      for (const callback of due) callback(now);
+    }
+  };
 }
 
 askForLessMovement(true);
@@ -123,7 +155,8 @@ test("the widest a row will say reaches its figure, before it is on the page or 
   }
 });
 
-test("a new share is followed rather than jumped to", async (context) => {
+test("a new share is followed rather than jumped to", (context) => {
+  const pass = framesByHand(context);
   askForLessMovement(false);
   context.after(() => askForLessMovement(true));
   const row = lay(`<nx-leds lamps="10"></nx-leds>`);
@@ -133,16 +166,16 @@ test("a new share is followed rather than jumped to", async (context) => {
   /* Nothing moves before the first frame, and the reading is stated at once. */
   assert.deepEqual(litLamps(row), []);
   assert.equal(row.getAttribute("aria-valuenow"), "100");
-  /* A third of the way and more within the first time constant, and not all
-     of it. */
-  await after(60);
+  /* Part of the way within the first time constant, and not all of it. */
+  pass(60);
   const underway = litLamps(row).length;
   assert.ok(underway > 0 && underway < 10, `${underway} of 10 lamps lit after 60 ms`);
-  await after(1000);
+  pass(1000);
   assert.equal(litLamps(row).length, 10);
 });
 
-test("a falling share is followed down as well", async (context) => {
+test("a falling share is followed down as well", (context) => {
+  const pass = framesByHand(context);
   const row = lay(`<nx-leds lamps="10"></nx-leds>`);
   row.value = 100;
   askForLessMovement(false);
@@ -150,9 +183,9 @@ test("a falling share is followed down as well", async (context) => {
 
   row.value = 0;
 
-  await after(60);
+  pass(60);
   const underway = litLamps(row).length;
   assert.ok(underway > 0 && underway < 10, `${underway} of 10 lamps lit after 60 ms`);
-  await after(1000);
+  pass(1000);
   assert.deepEqual(litLamps(row), []);
 });
