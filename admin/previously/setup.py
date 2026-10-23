@@ -94,7 +94,12 @@ TOOLS = ("cage", "7zip")
 
 #: What carries the sound. PipeWire connects the emulator to itself rather than
 #: to a card, so a speaker plugged in later is heard without restarting it.
-SOUND = ("pipewire", "wireplumber", "pipewire-alsa")
+SOUND = ("pipewire", "wireplumber")
+
+#: What the sound leaves out although wireplumber recommends it: PipeWire's
+#: server for PulseAudio programs. Previous reaches PipeWire through SDL's own
+#: driver, so nothing on the machine plays through PulseAudio.
+SOUND_LEFT_OUT = ("pipewire-pulse",)
 
 #: The archive Previous comes from, pinned so that nothing else does.
 REPOSITORY_URL = "https://wmlive.rumbero.org/repo"
@@ -904,13 +909,13 @@ def _swap_settings():
 
 
 def _tools(work):
-    """The compositor, the unpacker and the two tools that reach the emulator."""
+    """The compositor and the unpacker."""
     _packages(work, TOOLS)
 
 
 def _sound(work):
     """Sends sound to a speaker rather than to HDMI, and loudly enough to hear."""
-    _packages(work, SOUND)
+    _packages(work, SOUND, left_out=SOUND_LEFT_OUT)
 
     if SOUND_CONFIGURATION.exists():
         return
@@ -931,11 +936,13 @@ def _sound(work):
     work.undoes(lambda: SOUND_CONFIGURATION.unlink(missing_ok=True))
 
 
-def _packages(work, wanted):
+def _packages(work, wanted, left_out=()):
     """Installs whichever of these are not already here, and records the undo.
 
     @param work - The run.
     @param wanted - The package names.
+    @param left_out - Packages apt would bring along as a recommendation and
+      is told to leave out.
 
     Only what was missing is installed, and only what the installation put on
     the card is recorded, so undoing never takes away something the machine
@@ -944,14 +951,16 @@ def _packages(work, wanted):
     missing = [package for package in wanted if not installed(package)]
     if not missing:
         return
-    _put_in(work, missing)
+    _put_in(work, missing, left_out)
 
 
-def _put_in(work, packages):
+def _put_in(work, packages, left_out=()):
     """Installs packages, and records how to take back what came with them.
 
     @param work - The run.
     @param packages - The names asked for, none of them installed yet.
+    @param left_out - As `_packages` takes it. apt reads a name ending in "-"
+      as one to leave off the card, which keeps every other recommendation.
 
     What came is read off dpkg before and after rather than off the names,
     because apt installs a package with whatever it depends on, and taking back
@@ -961,7 +970,7 @@ def _put_in(work, packages):
     before = _packages_here()
     try:
         run(["apt-get", "update", "-qq"])
-        _apt_install(work, packages)
+        _apt_install(work, [*packages, *(name + "-" for name in left_out)])
     finally:
         gone, kept = _what_came(before, _packages_here(), packages)
         if gone or kept:

@@ -1158,6 +1158,23 @@ def test_what_apt_downloaded_is_cleared_once_the_packages_are_in(tmp_path,
     assert ["apt-get", "clean"] in commands[installing:]
 
 
+def test_the_sound_brings_pipewire_without_the_parts_nothing_uses(tmp_path, commands,
+                                                                  monkeypatch):
+    """Previous reaches PipeWire through SDL's own driver, so a plugin for ALSA
+    programs and a server for PulseAudio programs have nobody to serve.
+    wireplumber recommends the second, so apt is told to leave it out."""
+    monkeypatch.setattr(setup, "SOUND_CONFIGURATION", tmp_path / "50-nextstep.conf")
+    work = work_in(tmp_path)
+    work.at("sound", 10)
+
+    setup.STEPS["sound"](work)
+    installing = next(command for command in commands if "install" in command)
+
+    assert {"pipewire", "wireplumber", "pipewire-pulse-"} <= set(installing)
+    assert "pipewire-alsa" not in installing
+    assert "pipewire-pulse" not in installing
+
+
 def test_a_cache_that_cannot_be_cleared_does_not_stop_the_step(tmp_path,
                                                                monkeypatch):
     """The packages are in either way, and the room the cache keeps is what the
