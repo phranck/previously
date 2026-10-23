@@ -12,6 +12,7 @@ import importlib.util
 import pathlib
 import re
 import shutil
+import struct
 import subprocess
 
 import pytest
@@ -314,6 +315,40 @@ def test_the_console_never_gives_up_on_the_emulator(build, tmp_path):
 
     assert build.CONSOLE_LIMIT.startswith("usr/lib/systemd/system/getty@tty1.service.d/")
     assert lines.index("[Unit]") < lines.index("StartLimitIntervalSec=0")
+
+
+def pixels_of(cursor):
+    """@param cursor - bytes of an Xcursor file.
+    @returns list of int, the ARGB pixels of its one image.
+
+    Read as libXcursor's format lays it out: a header with the number of table
+    entries, the table naming each chunk's type and position, and an image
+    chunk with its own header before the pixels.
+    """
+    magic, header, _, entries = struct.unpack_from("<4sIII", cursor)
+    assert magic == b"Xcur" and entries == 1
+    kind, _, position = struct.unpack_from("<III", cursor, header)
+    assert kind == 0xFFFD0002, "the one entry is an image"
+    chunk, _, _, _, width, height = struct.unpack_from("<6I", cursor, position)
+    return list(struct.unpack_from("<%dI" % (width * height), cursor, position + chunk))
+
+
+def test_the_package_brings_a_pointer_nobody_sees(build, tmp_path):
+    """cage sets its own pointer whenever a mouse arrives, and it then stands
+    beside NeXTSTEP's, which draws its pointer itself. The theme cage loads its
+    pointer from holds a transparent pixel under both names cage asks for."""
+    build.lay_out(tmp_path)
+    theme = tmp_path / build.CURSORS / "default" / "cursors"
+
+    for name in ("left_ptr", "default"):
+        pixels = pixels_of((theme / name).read_bytes())
+        assert pixels and all(pixel >> 24 == 0 for pixel in pixels), name
+
+
+def test_the_console_and_the_package_name_the_same_pointer_theme(build):
+    from previously import setup
+
+    assert "/" + build.CURSORS == setup.CURSORS
 
 
 def test_the_package_brings_the_x_server_previous_draws_through(build):

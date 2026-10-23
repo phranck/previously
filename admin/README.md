@@ -336,7 +336,7 @@ A sudoers rule was the other way to do this, and it cannot work here: the servic
 
 ```sh
 while [ -f /run/previously/hold ]; do sleep 2; done
-SDL_VIDEO_DRIVER=x11,wayland cage -- /usr/bin/previous
+SDL_VIDEO_DRIVER=x11,wayland XCURSOR_PATH=/usr/share/previously/cursors cage -- /usr/bin/previous
 status=$?
 if [ "$status" -ne 0 ]; then
   if [ -d /run/previously ]; then
@@ -352,6 +352,8 @@ That path is a tmpfs and is empty at every boot, which is what makes restarting 
 **An emulator that cannot start is tried again every few seconds, for as long as it takes.** The session waits two seconds after a bad end, so the console does not restart as fast as a login takes. The package lifts systemd's start limit for `getty@tty1` in `/usr/lib/systemd/system/getty@tty1.service.d/50-previously.conf`. Without it, systemd stops the console for good after five starts within ten seconds, and only root can start it again.
 
 **Previous draws through cage's Xwayland.** cage sets every monitor to its native mode, and Previous fits its fixed 1120 by 832 into it with bars rather than stretching it. Previous grabs the mouse when it is clicked, and under Wayland alone SDL needs pointer constraints for that, which cage does not offer: the mouse stops reaching NeXTSTEP shortly after the first click. Xwayland holds the grab itself.
+
+**Only NeXTSTEP's pointer is ever on the screen.** NeXTSTEP draws its pointer itself. cage sets a pointer of its own whenever a mouse is plugged in, which then stands beside NeXTSTEP's, so the package brings a cursor theme in `/usr/share/previously/cursors` whose pointer is a transparent pixel, and the console hands it to cage as `XCURSOR_PATH`.
 
 **An emulator that ends badly says so in one line**, and the Raspberry Pi window reads it. The file is on that same tmpfs, so what is in it happened since this board came up and nothing has to work out when. The `exit` runs the session down exactly as `exec` did, so the console never falls through to a shell prompt.
 

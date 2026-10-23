@@ -214,6 +214,12 @@ CRASHES = RUNTIME + "/crashes"
 #: limit, so the console keeps trying either way.
 CRASH_PAUSE_SECONDS = 2
 
+#: Where the package keeps a cursor theme that shows nothing, which the console
+#: hands cage as its XCURSOR_PATH. cage sets its own pointer whenever a mouse
+#: arrives, and that pointer would then stand beside NeXTSTEP's, which the
+#: guest draws itself. `packaging/build.py` writes the theme to the same path.
+CURSORS = "/usr/share/previously/cursors"
+
 #: What a speaker is set to the first time it is seen. WirePlumber ships 0.064,
 #: which is inaudible once NeXTSTEP's own sounds are played through it. This is
 #: 85 per cent linear, cubed, because that is the scale the setting takes.
@@ -1799,12 +1805,15 @@ def _autostart_block(owner):
         "# the first click. Xwayland holds the grab itself. Wayland comes second, so a\n"
         "# machine without an X server still starts its emulator. The admin's keys\n"
         "# reach it through a virtual keyboard either way.\n"
+        "#\n"
+        "# cage takes its own pointer from a theme that shows nothing. It sets that\n"
+        "# pointer whenever a mouse is plugged in, and NeXTSTEP draws its own.\n"
         'if [ "$XDG_VTNR" = 1 ] && [ -z "$WAYLAND_DISPLAY" ]; then\n'
         "  clear\n"
         "  while [ -f %s ]; do sleep 2; done\n"
         "  mkdir -p %s\n"
         "  cd %s\n"
-        "  SDL_VIDEO_DRIVER=x11,wayland cage -- /usr/bin/previous\n"
+        "  SDL_VIDEO_DRIVER=x11,wayland XCURSOR_PATH=%s cage -- /usr/bin/previous\n"
         "  status=$?\n"
         '  if [ "$status" -ne 0 ]; then\n'
         "    if [ -d %s ]; then\n"
@@ -1816,7 +1825,7 @@ def _autostart_block(owner):
         "fi\n"
         "%s\n" % (AUTOSTART_OPENS, HOLD, HOLD,
                   owner.home / WORK_DIRECTORY,
-                  owner.home / WORK_DIRECTORY,
+                  owner.home / WORK_DIRECTORY, CURSORS,
                   RUNTIME, CRASHES, CRASH_PAUSE_SECONDS, AUTOSTART_CLOSES))
 
 
