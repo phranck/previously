@@ -49,7 +49,9 @@ Anyone who wants to read it first can read [the one file on GitHub](https://gith
 
 ## Checking the result
 
-The installation ends with the machine starting on the Pi's screen. The gray NeXT screen appears, followed within half a minute by the NeXTSTEP login panel. Log in as `me`, no password. A second account, `root`, has none either.
+The installation ends with the machine starting on the Pi's screen. The gray NeXT screen appears, and about a minute later NeXTSTEP 3.3 shows its Welcome panel, where a language and a keyboard are chosen. After OK it logs `me` in by itself and shows the Workspace. Every later start goes straight to the Workspace, which takes about a minute from the gray screen on a Pi 5 and a little longer on a Pi 4.
+
+A system fetched later in the Installer window starts with its Welcome panel as well, except NeXTSTEP 2.2, which goes straight to the Workspace. The account is `me`, with no password, and `root` has none either.
 
 Over SSH there is no screen to draw on, but the disk can still be checked:
 
