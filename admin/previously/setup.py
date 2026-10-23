@@ -87,10 +87,10 @@ OWNER_FILE = pathlib.Path("/etc/systemd/system/previously.service.d/owner.conf")
 ARCHITECTURE = "arm64"
 RELEASE = "trixie"
 
-#: The kiosk compositor, the unpacker for a system archive, and the two tools
-#: the admin uses to reach the emulator: xdotool presses its keys, the grab
-#: among them, and ImageMagick photographs its window where a grab fails.
-TOOLS = ("cage", "7zip", "xdotool", "imagemagick")
+#: The kiosk compositor and the unpacker for a system archive. The admin
+#: reaches the emulator through a virtual keyboard of its own, which needs no
+#: tool.
+TOOLS = ("cage", "7zip")
 
 #: What carries the sound. PipeWire connects the emulator to itself rather than
 #: to a card, so a speaker plugged in later is heard without restarting it.
@@ -123,13 +123,14 @@ REPOSITORY_ORIGIN = "wmlive.rumbero.org"
 REPOSITORY_KEY_SHIPPED = pathlib.Path(__file__).with_name("wmlive.asc")
 
 #: What the tools and the emulator put on the card, with their dependencies.
-#: Read off Raspberry Pi OS Lite trixie on 6 October 2026 with `apt-get -s
-#: remove --autoremove` and `apt-cache show`: 120 packages come with the tools,
-#: and 40 more are there only for the emulator. What apt-get downloads to
+#: Read off Raspberry Pi OS Lite trixie on 23 October 2026 with `apt-get -s
+#: remove --autoremove` and `dpkg-query`: 46 packages come with the tools, and
+#: 66 more are there only for the emulator. A package both need counts with
+#: the tools, because they are installed first. What apt-get downloads to
 #: install them is cleared once they are in, so it is not counted. A system is
 #: fetched after both, so it has whatever room they leave.
-TOOLS_BYTES = 535_692_288
-EMULATOR_BYTES = 90_655_744
+TOOLS_BYTES = 378_817_536
+EMULATOR_BYTES = 122_572_800
 
 #: How rpi-swap is asked what it is set to: through the tool its own generator
 #: reads its settings with, so the answer is the one the next boot acts on.
@@ -1746,12 +1747,11 @@ def _autostart_block(owner):
         "# nothing has to work out when. The exit runs the session down exactly as exec\n"
         "# did, so the console never falls through to a prompt.\n"
         "#\n"
-        "# Previous runs on cage's X server, because that is how the admin tool reaches\n"
-        "# it: xdotool presses its keys, the grab among them, and ImageMagick\n"
-        "# photographs its window where a grab fails, both through X.\n"
-        "# Previous is built against SDL3, which takes Wayland wherever it can, so it is\n"
-        "# told to try X first. Wayland comes second, so a machine without an X server\n"
-        "# still starts its emulator.\n"
+        "# Previous is built against SDL3, which takes Wayland wherever it can. It is\n"
+        "# told to try X first, because drawing through cage's Xwayland is the way it\n"
+        "# has been checked on a Pi 4 and a Pi 5. Wayland comes second, so a machine\n"
+        "# without an X server still starts its emulator. The admin's keys reach it\n"
+        "# through a virtual keyboard either way.\n"
         'if [ "$XDG_VTNR" = 1 ] && [ -z "$WAYLAND_DISPLAY" ]; then\n'
         "  clear\n"
         "  while [ -f %s ]; do sleep 2; done\n"

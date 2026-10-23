@@ -29,7 +29,7 @@ CONFIGURATION = "previous.cfg"
 def where(tmp_path, monkeypatch):
     """A directory standing in for the one the emulator writes into, named in
     a configuration beside it the way `setup.py` names it on the Pi."""
-    monkeypatch.setattr(grab, "_emulator_pid", lambda: 1)
+    monkeypatch.setattr(grab.emulator, "pid", lambda: 1)
     (tmp_path / CONFIGURATION).write_text(
         "[Printer]\nszPrintToFileName = %s\n" % tmp_path)
     return tmp_path
@@ -44,14 +44,14 @@ def writes(where, name=None, content=PICTURE):
 
 
 def test_the_picture_is_the_file_the_emulator_just_wrote(where, monkeypatch):
-    monkeypatch.setattr(grab.screen, "press", writes(where))
+    monkeypatch.setattr(grab.emulator, "press", writes(where))
 
     assert grab.grabbed(where / CONFIGURATION) == PICTURE
 
 
 def test_the_picture_is_taken_away_once_it_has_been_read(where, monkeypatch):
     """A directory that fills up with these is this service's doing."""
-    monkeypatch.setattr(grab.screen, "press", writes(where))
+    monkeypatch.setattr(grab.emulator, "press", writes(where))
 
     grab.grabbed(where / CONFIGURATION)
 
@@ -63,7 +63,7 @@ def test_a_grab_that_was_already_there_is_not_this_picture(where, monkeypatch):
     beside the new one is somebody else's and stays where it is."""
     older = where / "next_screen_000.png"
     older.write_bytes(grab.PNG_HEAD + b"an older one" + grab.PNG_TAIL)
-    monkeypatch.setattr(grab.screen, "press", writes(where, "next_screen_001.png"))
+    monkeypatch.setattr(grab.emulator, "press", writes(where, "next_screen_001.png"))
 
     picture = grab.grabbed(where / CONFIGURATION)
 
@@ -72,7 +72,7 @@ def test_a_grab_that_was_already_there_is_not_this_picture(where, monkeypatch):
 
 
 def test_nothing_comes_of_a_shortcut_that_was_not_sent(where, monkeypatch):
-    monkeypatch.setattr(grab.screen, "press", lambda keys: False)
+    monkeypatch.setattr(grab.emulator, "press", lambda keys: False)
 
     assert grab.grabbed(where / CONFIGURATION) is None
 
@@ -81,14 +81,14 @@ def test_nothing_comes_of_an_emulator_that_wrote_nothing(where, monkeypatch):
     """The key was sent and no file appeared, which is what a shortcut that
     reaches the wrong window looks like."""
     monkeypatch.setattr(grab, "GRAB_TIMEOUT_SECONDS", 0.3)
-    monkeypatch.setattr(grab.screen, "press", lambda keys: True)
+    monkeypatch.setattr(grab.emulator, "press", lambda keys: True)
 
     assert grab.grabbed(where / CONFIGURATION) is None
 
 
 def test_nothing_comes_of_an_emulator_that_is_not_running(where, monkeypatch):
-    monkeypatch.setattr(grab, "_emulator_pid", lambda: None)
-    monkeypatch.setattr(grab.screen, "press",
+    monkeypatch.setattr(grab.emulator, "pid", lambda: None)
+    monkeypatch.setattr(grab.emulator, "press",
                         lambda keys: pytest.fail("nothing to press at"))
 
     assert grab.grabbed(where / CONFIGURATION) is None
@@ -103,7 +103,7 @@ def test_the_picture_is_looked_for_where_previous_is_told_to_write_it(
     sent = where / "grabs"
     sent.mkdir()
     (where / CONFIGURATION).write_text("[Printer]\nszPrintToFileName = %s\n" % sent)
-    monkeypatch.setattr(grab.screen, "press", writes(sent))
+    monkeypatch.setattr(grab.emulator, "press", writes(sent))
 
     assert grab.grabbed(where / CONFIGURATION) == PICTURE
     assert list(sent.glob(grab.GRAB_GLOB)) == []
@@ -119,7 +119,7 @@ def test_a_configuration_that_names_no_directory_grabs_into_the_home(
     asked = []
     monkeypatch.setattr(grab.os, "access",
                         lambda path, mode: asked.append(path) or False)
-    monkeypatch.setattr(grab.screen, "press",
+    monkeypatch.setattr(grab.emulator, "press",
                         lambda keys: pytest.fail("the home would keep the picture"))
 
     assert grab.grabbed(where / CONFIGURATION) is None
@@ -129,42 +129,19 @@ def test_a_configuration_that_names_no_directory_grabs_into_the_home(
 def test_a_grab_that_cannot_be_removed_is_still_the_picture(where, monkeypatch):
     """The emulator's own directory is one this service may not be able to
     write in, and a picture already read is a picture either way."""
-    monkeypatch.setattr(grab.screen, "press", writes(where))
+    monkeypatch.setattr(grab.emulator, "press", writes(where))
     monkeypatch.setattr(grab.pathlib.Path, "unlink",
                         lambda self, **how: (_ for _ in ()).throw(PermissionError()))
 
     assert grab.grabbed(where / CONFIGURATION) == PICTURE
 
 
-def test_the_window_is_photographed_when_the_grab_gives_nothing(monkeypatch):
-    """The smaller picture, and the reason it is here."""
-    monkeypatch.setattr(grab, "grabbed", lambda previous_config: None)
-    monkeypatch.setattr(grab, "photographed", lambda: b"the window")
-
-    assert grab.take(CONFIGURATION) == b"the window"
-
-
-def test_the_grab_is_preferred_to_the_photograph(monkeypatch):
-    monkeypatch.setattr(grab, "grabbed", lambda previous_config: PICTURE)
-    monkeypatch.setattr(grab, "photographed",
-                        lambda: pytest.fail("the grab already answered"))
-
-    assert grab.take(CONFIGURATION) == PICTURE
-
-
-def test_no_picture_at_all_is_an_honest_nothing(monkeypatch):
-    monkeypatch.setattr(grab, "grabbed", lambda previous_config: None)
-    monkeypatch.setattr(grab, "photographed", lambda: None)
-
-    assert grab.take(CONFIGURATION) is None
-
-
 def test_a_directory_this_cannot_write_in_is_left_alone(where, monkeypatch):
     """A picture read and left on the disk is one this service put there, and
     at one per press the directory fills up. Where it cannot tidy up it does
-    not grab at all, and the window is photographed instead."""
+    not grab at all."""
     monkeypatch.setattr(grab.os, "access", lambda path, mode: False)
-    monkeypatch.setattr(grab.screen, "press",
+    monkeypatch.setattr(grab.emulator, "press",
                         lambda keys: pytest.fail("nowhere to put the picture"))
 
     assert grab.grabbed(where / CONFIGURATION) is None
@@ -175,7 +152,7 @@ def test_a_picture_still_being_written_is_not_the_picture(where, monkeypatch):
     it. Measured on the machine: 32768 bytes of a 62287 byte grab, which a
     browser draws half of."""
     monkeypatch.setattr(grab, "GRAB_TIMEOUT_SECONDS", 0.3)
-    monkeypatch.setattr(grab.screen, "press",
+    monkeypatch.setattr(grab.emulator, "press",
                         writes(where, content=grab.PNG_HEAD + b"half of it"))
 
     assert grab.grabbed(where / CONFIGURATION) is None
@@ -183,14 +160,14 @@ def test_a_picture_still_being_written_is_not_the_picture(where, monkeypatch):
 
 def test_a_picture_is_whole_once_it_carries_its_last_chunk(where, monkeypatch):
     whole = grab.PNG_HEAD + b"pixels" + grab.PNG_TAIL
-    monkeypatch.setattr(grab.screen, "press", writes(where, content=whole))
+    monkeypatch.setattr(grab.emulator, "press", writes(where, content=whole))
 
     assert grab.grabbed(where / CONFIGURATION) == whole
 
 
 def test_something_that_is_not_a_png_at_all_is_not_the_picture(where, monkeypatch):
     monkeypatch.setattr(grab, "GRAB_TIMEOUT_SECONDS", 0.3)
-    monkeypatch.setattr(grab.screen, "press",
+    monkeypatch.setattr(grab.emulator, "press",
                         writes(where, content=b"not a picture" + grab.PNG_TAIL))
 
     assert grab.grabbed(where / CONFIGURATION) is None

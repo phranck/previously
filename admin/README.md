@@ -12,15 +12,17 @@ make browser      # what only a browser can show, in Safari Technology Preview
 
 ## What it needs installed
 
-**To run, on the Pi**, six things beyond what Raspberry Pi OS already has: `cage`, `xwayland`, `7zip`, `xdotool`, `imagemagick`, and Previous itself out of the Window Maker Live archive. The package brings `xwayland`, `xdotool` and `imagemagick`, because the tool uses them itself, and the one-liner has the helper install the rest.
+**To run, on the Pi**, four things beyond what Raspberry Pi OS already has: `cage`, `xwayland`, `7zip`, and Previous itself out of the Window Maker Live archive. The package brings `xwayland`, because the console has Previous draw through it, and the one-liner has the helper install the rest.
 
 The rest is the system's own and is assumed rather than installed: `systemd` for `systemctl`, `procps` for `pgrep` and `ps`, `raspi-utils-core` for `vcgencmd`, and `python3`. A Pi without `vcgencmd` still runs this; the window shows one reading fewer, because every reading in `pi.py` answers with nothing rather than failing.
 
 `activity.py` needs none of them. It answers the same kind of question twice a second and reads `/proc` alone, because what is cheap at one answer every five seconds is not cheap at two a second. Measured on a Pi 5: a whole reading costs 0.42 ms while the emulator runs, against 9.9 ms for an answer to `/api/pi`, which forks `vcgencmd` twice and `ps` once at 1.5 ms a fork. Every figure it gives is the difference between two readings, since the kernel's counters are totals since the board started and a total says nothing about now. A reading older than five seconds is not compared against, because it was left by a window that has since been closed, and a difference across that pause would be its average rather than the present.
 
-What each is for: `cage` is the compositor the emulator runs in, `xwayland` is the X server cage runs it on, `7zip` unpacks the disk archive, `xdotool` presses the emulator's keys, and ImageMagick's `import` photographs its window for the Grab where Previous's own picture cannot be had. Both of the last two reach the emulator through that X server.
+What each is for: `cage` is the compositor the emulator runs in, `xwayland` is the X server cage runs it on, and `7zip` unpacks the disk archive.
 
-Whether a machine booted is read from Previous's own grab, which `xdotool` asks for with its shortcut. A screen of one color is a machine that did not boot. `png.py` reads the picture with the standard library alone, because ImageMagick cannot read the emulator's window on a Pi 4.
+**The emulator's keys go in through a virtual keyboard**, a device the kernel makes through `/dev/uinput`. The compositor reads it like any keyboard plugged into the Pi, so the keys reach Previous however it draws. The package gives `/dev/uinput` to the `input` group, and the service's unit adds that group. That takes a udev rule for the device and a tmpfiles entry for the node the board makes at boot, before the module is loaded, as systemd does for its own such nodes. A key goes only to a running emulator, because with no compositor holding the keyboard its keys would reach the text console.
+
+Whether a machine booted is read from Previous's own grab, which that keyboard asks for with Previous's shortcut. A screen of one color is a machine that did not boot, and `png.py` reads the picture with the standard library alone.
 
 **To work on it**, `flake8` and `pytest` as well. They are not on the Pi and `install.sh` does not put them there, because nothing in running the service needs them.
 
@@ -316,7 +318,7 @@ One key is not enough. NeXTSTEP answers the power key with a panel asking whethe
 
 **A guest that is still starting is watched first.** NeXTSTEP drops the power key while it brings up its window server, between "Startup complete" and the Workspace, and a key pressed then reaches nothing. So where the emulator is younger than three minutes, the tool grabs the screen once a second and presses the key once the grabs have stayed the same for fifteen seconds. It never presses the key a second time instead, because a power key that arrives while NeXTSTEP shuts down ends the shutdown early.
 
-The keys go in through the X server with `xdotool`, because Previous runs as an X client under the kiosk's Xwayland. It does so because the console tells it to: Previous is built against SDL3, which takes Wayland wherever it can, so the console starts it with `SDL_VIDEO_DRIVER=x11,wayland`. A Wayland virtual keyboard is not the way: it binds its protocol against the compositor and reports success, and the emulator never sees the key. Both directions were measured on the machine.
+The keys go in through the virtual keyboard. Previous draws through cage's Xwayland, because the console starts it with `SDL_VIDEO_DRIVER=x11,wayland`, and the keys reach it the same way whichever it draws through.
 
 **Restarting or switching off the board takes NeXTSTEP down first**, and waits for it. A board that reboots underneath a running emulator does the same damage as killing the emulator, and to a machine that then has to come back up.
 

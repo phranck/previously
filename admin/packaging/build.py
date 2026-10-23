@@ -5,8 +5,8 @@
 
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
-package copies Python, static files, seven unit files, one tmpfiles entry and
-one rpi-swap drop-in into place. Nothing is compiled, nothing is patched and
+package copies Python, static files, seven unit files, one udev rule, one
+tmpfiles entry and one rpi-swap drop-in into place. Nothing is compiled, nothing is patched and
 nothing is generated at install time, so the debhelper machinery would be a
 build system around a copy.
 
@@ -42,14 +42,11 @@ ARCHITECTURE = "all"
 #: declared rather than discovered.
 #:
 #:   python3          the service itself
-#:   xdotool          the keys that reach the emulator, in screen.press
-#:   imagemagick      the picture of the screen, in grab.photographed
-#:   xwayland         the X server both of those reach it through, which
-#:                    cage starts only where it is installed
+#:   xwayland         the X server the console has Previous draw through,
+#:                    which cage starts only where it is installed
 #:   openssh-client   the login behind the terminal, in terminal.Session
 #:   procps           pgrep and ps, which say whether the emulator runs
-DEPENDS = ["python3 (>= 3.11)", "xdotool", "imagemagick", "xwayland",
-           "openssh-client", "procps", "systemd"]
+DEPENDS = ["python3 (>= 3.11)", "xwayland", "openssh-client", "procps", "systemd"]
 
 #: The emulator this administers. A recommendation rather than a dependency,
 #: because it comes from an archive this package knows nothing about, and an
@@ -62,7 +59,19 @@ RECOMMENDS = ["previous"]
 LIB = "usr/lib/" + NAME
 UNITS = "lib/systemd/system"
 CONFIG = "etc/" + NAME
+
+#: What lets the service make its virtual keyboard. /dev/uinput belongs to
+#: root alone, and the service runs as the emulator's owner with this group
+#: added in its unit. It takes two files, as systemd's own static nodes do in
+#: its 50-udev-default.rules and static-nodes-permissions.conf: until the
+#: module is loaded, /dev/uinput is a node kmod-static-nodes made at boot,
+#: which udev does not know and no rule reaches, so tmpfiles gives it its
+#: rights; once the module is loaded, the rule gives the device the same ones.
+#: Under /usr/lib, because files there are the packages' and /etc is the
+#: administrator's.
+UDEV_RULE = "usr/lib/udev/rules.d/60-" + NAME + "-uinput.rules"
 TMPFILES = "usr/lib/tmpfiles.d/" + NAME + ".conf"
+UINPUT_GROUP = "input"
 
 #: Where the package keeps swap in memory, as a drop-in rpi-swap reads while the
 #: machine starts. Under /usr/lib, because swap.conf(5) leaves /etc to the
@@ -82,15 +91,6 @@ SWAP_DROP_IN = (
     "# one, such as /etc/rpi/swap.conf.d/80-mine.conf, overrides it.\n"
     "[Main]\n"
     "Mechanism=zram\n")
-
-#: Where the kiosk's X server keeps its socket, which the service binds into
-#: its private /tmp to press the emulator's keys. Trixie ages /tmp after ten
-#: days and takes this directory with it once its timestamps look that old,
-#: which a Pi without a clock battery reaches by booting at the time it was
-#: switched off. The package excludes it from that cleanup and puts it back
-#: where it is already gone. `screen.X11_SOCKETS` is the same path as the
-#: service reads it; this script does not import the service.
-X11_SOCKETS = "/tmp/.X11-unix"
 
 #: What git adds to the description of a tree that has something uncommitted
 #: in it, and therefore what the version of such a build ends in. A package
@@ -318,8 +318,8 @@ setup.refresh_console(setup.Owner(sys.argv[1]))
 ' "$owner" || true
 
     # The emulator's configuration, brought up to where this version has it
-    # write a screen grab, for the same reason. Not fatal: without it the admin
-    # photographs the window instead.
+    # write a screen grab, for the same reason. Not fatal: without it the Grab
+    # gives nothing.
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/%(lib)s python3 -c '
 import sys
 from previously import setup
@@ -335,11 +335,13 @@ from previously import setup
 setup.refresh_archive()
 ' || true
 
-    # systemd's own x11.conf is what makes the X server's socket directory, at
-    # boot. Applied here as well, because the /tmp cleanup may have taken it
-    # since, and the service binds it. Not fatal: without it the service still
-    # starts, and only pressing the emulator's keys fails.
-    systemd-tmpfiles --create --boot --prefix=%(x11)s || true
+    # The rights for the virtual keyboard, given to /dev/uinput now, because it
+    # was made at boot before the entry and the rule were there. Not fatal:
+    # without them the service still starts, and only pressing the emulator's
+    # keys fails.
+    systemd-tmpfiles --create /%(tmpfiles)s || true
+    udevadm control --reload-rules || true
+    udevadm trigger --subsystem-match=misc --sysname-match=uinput || true
 
     systemctl daemon-reload
     systemctl enable --now %(service)s
@@ -420,10 +422,19 @@ def lay_out(into):
     (into / CONFIG).mkdir(parents=True, exist_ok=True)
     shutil.copy(HERE / "config.ini", into / CONFIG / "config.ini")
 
-    # Written from the constant rather than shipped as a file, so the path the
-    # cleanup leaves alone is the path the postinst puts back.
+    # Written from the constant rather than shipped as files, so the group both
+    # name is the group `tests/test_packaging.py` holds the unit to.
+    (into / UDEV_RULE).parent.mkdir(parents=True, exist_ok=True)
+    (into / UDEV_RULE).write_text(
+        "# Written by the previously package. Lets the admin make the virtual\n"
+        "# keyboard it presses the emulator's keys with.\n"
+        'KERNEL=="uinput", SUBSYSTEM=="misc", GROUP="%s", MODE="0660", '
+        'OPTIONS+="static_node=uinput"\n' % UINPUT_GROUP, encoding="utf-8")
     (into / TMPFILES).parent.mkdir(parents=True, exist_ok=True)
-    (into / TMPFILES).write_text("x %s\n" % X11_SOCKETS, encoding="utf-8")
+    (into / TMPFILES).write_text(
+        "# Written by the previously package. The same rights for /dev/uinput\n"
+        "# before its module is loaded.\n"
+        "z /dev/uinput 0660 - %s -\n" % UINPUT_GROUP, encoding="utf-8")
 
     (into / SWAP).parent.mkdir(parents=True, exist_ok=True)
     (into / SWAP).write_text(SWAP_DROP_IN, encoding="utf-8")
@@ -439,7 +450,7 @@ def scripts():
     second time and agreeing with themselves.
     """
     words = {"name": NAME, "service": SERVICE, "units": UNITS, "lib": LIB,
-             "watchers": " ".join(WATCHERS), "x11": X11_SOCKETS,
+             "watchers": " ".join(WATCHERS), "tmpfiles": TMPFILES,
              "find_owner": FIND_OWNER.rstrip("\n"),
              "owner_file": OWNER_FILE,
              "owner_dir": "/" + str(pathlib.PurePosixPath(OWNER_FILE).parent),

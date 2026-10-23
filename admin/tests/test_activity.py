@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from previously import activity, hardware, pi, screen
+from previously import activity, emulator, hardware, pi
 
 
 @pytest.fixture(autouse=True)
@@ -173,15 +173,15 @@ def test_a_loadavg_that_is_not_there_is_not_invented(monkeypatch, tmp_path):
 def test_the_emulator_is_found_by_its_own_name(monkeypatch, tmp_path):
     proc(monkeypatch, tmp_path, [(0, 1)])
     a_process(tmp_path, 41, "cage")
-    a_process(tmp_path, 42, screen.EMULATOR, ticks=0, pages=1024)
+    a_process(tmp_path, 42, emulator.PROCESS, ticks=0, pages=1024)
     activity.readings()
-    a_process(tmp_path, 42, screen.EMULATOR,
+    a_process(tmp_path, 42, emulator.PROCESS,
               ticks=activity.TICKS_PER_SECOND, pages=1024)
 
-    emulator = activity.readings()["emulator"]
+    reading = activity.readings()["emulator"]
 
-    assert emulator["memory_mb"] == 1024 * os.sysconf("SC_PAGE_SIZE") // (1024 * 1024)
-    assert emulator["cpu_percent"] is not None
+    assert reading["memory_mb"] == 1024 * os.sysconf("SC_PAGE_SIZE") // (1024 * 1024)
+    assert reading["cpu_percent"] is not None
 
 
 def test_a_machine_with_no_emulator_says_so(monkeypatch, tmp_path):
@@ -221,7 +221,7 @@ def test_a_process_number_that_now_belongs_to_something_else_is_dropped(monkeypa
     between readings so the scan does not run at every one. What makes that
     safe is asking the process what it calls itself."""
     proc(monkeypatch, tmp_path, [(0, 1)])
-    a_process(tmp_path, 42, screen.EMULATOR)
+    a_process(tmp_path, 42, emulator.PROCESS)
     activity.readings()
     a_process(tmp_path, 42, "systemd-udevd")
 

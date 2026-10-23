@@ -29,7 +29,7 @@ import time
 # package copied beside it is put there by hand.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from previously import activity, grab, screen  # noqa: E402
+from previously import activity, emulator, grab  # noqa: E402
 from previously.settings import Settings  # noqa: E402
 
 #: Where the kernel reports its processes.
@@ -73,7 +73,7 @@ def main(argv):
     configuration = Settings.load().previous_config
     samples = []
     pictures = []
-    while _since_boot() < started_at + seconds and _named(pid) == screen.EMULATOR:
+    while _since_boot() < started_at + seconds and _named(pid) == emulator.PROCESS:
         at = _since_boot()
         samples.append({"at": at, "threads": _threads(pid), "processes": _processes()})
         picture = grab.grabbed(configuration)
@@ -104,7 +104,7 @@ def _wait_for_emulator():
     until = time.monotonic() + WAIT_FOR_EMULATOR_SECONDS
     while time.monotonic() < until:
         for entry in PROCESSES.iterdir():
-            if entry.name.isdigit() and _named(entry.name) == screen.EMULATOR:
+            if entry.name.isdigit() and _named(entry.name) == emulator.PROCESS:
                 return int(entry.name)
         time.sleep(LOOK_EVERY_SECONDS)
     return None
