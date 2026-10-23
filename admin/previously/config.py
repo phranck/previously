@@ -187,11 +187,13 @@ def note_written(path, state_directory):
         return False
 
 
-def _written_by_us(path, state_directory):
-    """Whether the file is still the one this service wrote.
+def written_by_us(path, state_directory):
+    """Whether the file is still the one Previously wrote last.
 
+    @param path - pathlib.Path to previous.cfg.
+    @param state_directory - Where the note of that write is kept, or None.
     @returns bool. False where there is no note, which is the honest answer:
-      this service has written nothing it can recognize.
+      Previously has written nothing it can recognize.
 
     Only one side of this is knowable. A file that does not match the note was
     written by somebody else, and Previous's own dialog and a text editor
@@ -200,10 +202,19 @@ def _written_by_us(path, state_directory):
     if state_directory is None:
         return False
     try:
-        noted = (state_directory / RECEIPT).read_text().strip()
+        written = (state_directory / RECEIPT).read_text().strip()
     except OSError:
         return False
-    return bool(noted) and noted == _digest(path)
+    return bool(written) and written == _digest(path)
+
+
+def noted(state_directory):
+    """Whether Previously has ever left a note of a write here.
+
+    @param state_directory - pathlib.Path where the note is kept.
+    @returns bool
+    """
+    return (state_directory / RECEIPT).is_file()
 
 
 def _digest(path):
@@ -244,7 +255,7 @@ def file_state(path, emulator_age_seconds, now=None, state_directory=None):
             changed_at is not None and started_at is not None
             and changed_at > started_at
         ),
-        "written_by_us": _written_by_us(path, state_directory),
+        "written_by_us": written_by_us(path, state_directory),
     }
 
 
