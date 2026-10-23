@@ -526,11 +526,49 @@ def test_the_autostart_is_fenced_so_it_can_be_taken_out_again(tmp_path, commands
 
     setup.STEPS["autostart"](work)
 
-    assert "cage -- /usr/bin/previous" in profile.read_text()
+    assert "-- /usr/bin/previous" in profile.read_text()
 
     setup.STEPS["no-autostart"](work)
 
     assert profile.read_text() == "export EDITOR=vi\n"
+
+
+def start_line(owner):
+    """@returns list of str, the words of the line in the autostart that
+    starts the emulator, which the console has in one place."""
+    block = setup._autostart_block(owner)
+    lines = [line for line in block.splitlines() if "/usr/bin/previous" in line]
+    assert len(lines) == 1, "the console starts Previous in one place"
+    return lines[0].split()
+
+
+def test_previous_draws_through_wayland_without_an_x_server(tmp_path):
+    words = start_line(Nobody(tmp_path))
+
+    assert "SDL_VIDEO_DRIVER=wayland" in words
+
+
+def test_cage_draws_the_window_decorations_itself(tmp_path):
+    """Left to SDL, a decorated window loads libdecor's GTK plugin, and on both
+    Pis Previous then waited for the compositor before its first frame and
+    never emulated."""
+    words = start_line(Nobody(tmp_path))
+
+    assert words[words.index("cage") + 1:words.index("--")].count("-d") == 1
+
+
+def test_a_board_without_a_monitor_still_gives_previous_a_screen(tmp_path):
+    """SDL's Wayland driver ends at once where the compositor has no output,
+    so cage starts a headless one first. Showing only the last output added
+    hands the picture to a monitor, whether it was there at the start or comes
+    later."""
+    words = start_line(Nobody(tmp_path))
+    backends = next(word for word in words if word.startswith("WLR_BACKENDS="))
+    options = words[words.index("cage") + 1:words.index("--")]
+
+    assert backends.split("=", 1)[1].split(",")[0] == "headless"
+    assert "drm" in backends.split("=", 1)[1].split(",")
+    assert options[options.index("-m") + 1] == "last"
 
 
 def test_an_autostart_that_is_already_there_is_not_written_twice(tmp_path, commands):
@@ -580,24 +618,6 @@ def test_bringing_it_up_to_date_can_be_undone(tmp_path, commands):
     work.reverse()
 
     assert profile.read_text() == was
-
-
-def test_the_console_starts_previous_on_x_where_there_is_one():
-    """The admin reaches the emulator through X: xdotool presses its keys and
-    ImageMagick reads its screen. Previous is built against SDL3, which takes
-    Wayland wherever cage offers it, and then the power key never arrives. X
-    goes first, and Wayland stays behind it, so a machine without an X server
-    still starts its emulator."""
-    class Somebody:
-        home = pathlib.Path("/home/next")
-
-    started = [line.split() for line in setup._autostart_block(Somebody()).splitlines()
-               if line.strip().endswith("cage -- /usr/bin/previous")]
-    assert len(started) == 1, "the console starts Previous in one place"
-
-    name, _, drivers = started[0][0].partition("=")
-    assert name == "SDL_VIDEO_DRIVER"
-    assert drivers.split(",") == ["x11", "wayland"]
 
 
 def test_the_package_brings_a_console_from_an_older_version_up_to_date(tmp_path):

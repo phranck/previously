@@ -305,11 +305,10 @@ def test_the_service_binds_nothing_from_tmp(unit):
     assert not re.findall(r"^BindReadOnlyPaths=", unit, re.M)
 
 
-def test_the_package_brings_the_x_server_previous_draws_through(build):
-    """The console tells Previous to draw through X first, and cage starts an
-    X server only where Xwayland is installed. The cage in the Raspberry Pi
-    archive no longer brings it along, so the package does."""
-    assert "xwayland" in build.DEPENDS
+def test_the_package_brings_no_x_server(build):
+    """Previous draws through Wayland into cage, and cage starts an X server
+    only where Xwayland is installed."""
+    assert "xwayland" not in build.DEPENDS
 
 
 def test_the_package_brings_the_console_up_to_date(build, tmp_path):

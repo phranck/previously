@@ -294,8 +294,9 @@ def test_a_machine_that_shows_something_is_left_alone(settings, machine):
 
 
 def test_a_screen_that_cannot_be_read_is_not_held_against_it(settings, machine):
-    """Without an X server, or without the tool that reads it, every machine
-    would otherwise look broken."""
+    """A configuration naming no directory the service may take grabs from
+    leaves the screen unread, and every machine would otherwise look
+    broken."""
     machine.screen = None
     machine.screen_after = None
 
