@@ -1650,21 +1650,24 @@ def refresh_console(owner):
 
 
 def refresh_configuration(owner, previous_config=None):
-    """Has an emulator configuration that is there write its grabs where the
-    admin reads them.
+    """Brings an emulator configuration that is there up to what this version
+    writes: its grabs where the admin reads them, and no ROM named.
 
     @param owner - Whose configuration it is.
     @param previous_config - pathlib.Path to it. Left out, the one the
       service's settings name in that owner's home.
     @returns bool, whether anything was written.
 
-    A file that names no directory, or names the home that is Previous's own
-    default, has the emulator leave every grab in the home, where the admin may
-    not remove it. A directory somebody chose for their printouts stays theirs,
-    and the admin photographs the window instead. A machine without a
-    configuration is given none, because writing one is setting the machine
-    up, which is the install job's to do. The package calls this from postinst
-    on every install and upgrade, as it does `refresh_console`.
+    A file that names no directory for grabs, or names the home that is
+    Previous's own default, has the emulator leave every grab in the home,
+    where the admin may not remove it. A directory somebody chose for their
+    printouts stays theirs, and the admin takes no grab there. A ROM the file
+    names is taken out whoever put it there, and `config.ROM_KEYS` says why.
+
+    A machine without a configuration is given none, because writing one is
+    setting the machine up, which is the install job's to do. The package calls
+    this from postinst on every install and upgrade, as it does
+    `refresh_console`.
 
     Written only where it changes something, because a file newer than the
     running machine is what the admin reports as a change nobody has tried.
@@ -1673,14 +1676,14 @@ def refresh_configuration(owner, previous_config=None):
         previous_config = Settings.load(home=owner.home).previous_config
     if not previous_config.is_file():
         return False
-    if config.output_directory(previous_config, owner.home) != owner.home:
-        return False
     try:
-        config.write(previous_config,
-                     config.writing_into(owner.home / WORK_DIRECTORY))
+        written = config.forget_roms(previous_config)
+        if config.output_directory(previous_config, owner.home) == owner.home:
+            written += config.write(previous_config,
+                                    config.writing_into(owner.home / WORK_DIRECTORY))
     except config.NotReadable:
         return False
-    return True
+    return written > 0
 
 
 def _the_block_in(text):

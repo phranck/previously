@@ -548,3 +548,86 @@ def test_a_file_that_cannot_be_read_sends_a_grab_home(tmp_path):
 def test_what_is_written_to_send_grabs_somewhere_is_one_key(tmp_path):
     assert config.writing_into(tmp_path) == {
         "Printer": {"szPrintToFileName": str(tmp_path)}}
+
+
+# -- the ROMs ------------------------------------------------------------------
+
+
+NAMING_ROMS = textwrap.dedent("""\
+    [ROM]
+    szRom030FileName = /usr/share/previous/Rev_1.0_v41.BIN
+    szRom040FileName = /usr/share/previous/Rev_2.5_v66.BIN
+    szRomTurboFileName = /usr/share/previous/ND_step1_v43.BIN
+    bUseCustomMac = FALSE
+
+    [Dimension]
+    bEnabled0 = TRUE
+    szRomFileName0 = /usr/share/previous/ND_step1_v43.BIN
+    szRomFileName1 = /usr/share/previous/ND_step1_v43.BIN
+    szRomFileName2 = /usr/share/previous/ND_step1_v43.BIN
+
+    [System]
+    nMachineType = 1
+    """)
+
+
+def test_every_rom_a_file_names_is_taken_out(tmp_path):
+    """Without them Previous loads the ROM it ships for the machine, which is
+    right for every machine and every version of Previous. Set by hand to the
+    NeXTdimension's ROM, the turbo key halted Previous's CPU on a Pi 5 on
+    23.10.2026."""
+    path = write(tmp_path, NAMING_ROMS)
+
+    assert config.forget_roms(path) == 6
+    assert path.read_text() == textwrap.dedent("""\
+        [ROM]
+        bUseCustomMac = FALSE
+
+        [Dimension]
+        bEnabled0 = TRUE
+
+        [System]
+        nMachineType = 1
+        """)
+
+
+def test_a_file_that_names_no_rom_is_left_as_it_was(tmp_path):
+    """Untouched rather than written again, because a file newer than the
+    running machine is what the admin reports as a change nobody has tried."""
+    path = write(tmp_path, CUBE_TURBO_WITH_DIMENSION)
+    os.utime(path, (0, 0))
+
+    assert config.forget_roms(path) == 0
+    assert path.read_text() == CUBE_TURBO_WITH_DIMENSION
+    assert path.stat().st_mtime == 0
+
+
+def test_a_section_left_empty_goes_with_its_last_key(tmp_path):
+    """A ROM written by hand is usually a section of its own, and a header
+    with nothing under it is what taking the key out would leave behind. Seen
+    on a Pi 4 and a Pi 5 on 23.10.2026."""
+    path = write(tmp_path, "[System]\nnMachineType = 1\n\n[ROM]\n"
+                           "szRomTurboFileName = /usr/share/previous/ND_step1_v43.BIN\n")
+
+    assert config.forget_roms(path) == 3
+    assert path.read_text() == "[System]\nnMachineType = 1\n"
+
+
+def test_a_section_that_was_empty_already_stays(tmp_path):
+    """It was there before this, so it is not this tool's to take."""
+    path = write(tmp_path, "[System]\nnMachineType = 1\n\n[ROM]\n")
+
+    assert config.forget_roms(path) == 0
+    assert path.read_text() == "[System]\nnMachineType = 1\n\n[ROM]\n"
+
+
+def test_a_rom_key_in_another_section_is_none_of_this(tmp_path):
+    """The same name under another header is another key."""
+    path = write(tmp_path, "[Printer]\nszRomTurboFileName = kept\n")
+
+    assert config.forget_roms(path) == 0
+
+
+def test_a_file_that_cannot_be_read_says_so_before_roms_are_forgotten(tmp_path):
+    with pytest.raises(config.NotReadable):
+        config.forget_roms(tmp_path / "absent.cfg")

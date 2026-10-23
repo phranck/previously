@@ -709,6 +709,7 @@ def test_a_post_from_this_page_is_not(service):
 
 
 @pytest.mark.parametrize("route,operation", [
+    ("/api/kiosk/start", "start"),
     ("/api/kiosk/stop", "stop"),
     ("/api/kiosk/restart", "restart"),
     ("/api/pi/reboot", "board"),

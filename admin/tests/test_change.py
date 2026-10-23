@@ -424,6 +424,29 @@ def test_a_disk_is_written_and_the_machine_comes_back(settings, machine, disks):
         == str(disks / "openstep-4.2.dd")
 
 
+#: A ROM set by hand that the machine cannot run: the NeXTdimension's, for a
+#: turbo board. It halted Previous's CPU on a Pi 5 on 23.10.2026.
+WRONG_ROM = "\n[ROM]\nszRomTurboFileName = /usr/share/previous/ND_step1_v43.BIN\n"
+
+
+def test_a_rom_somebody_set_is_taken_out_by_the_next_change(settings, machine):
+    settings.previous_config.write_text(REAL_SHAPE + WRONG_ROM)
+
+    finished, _ = run("nextcube-turbo", settings, machine)
+
+    assert finished is True
+    assert "szRomTurboFileName" not in settings.previous_config.read_text()
+
+
+def test_a_rom_somebody_set_is_taken_out_by_a_change_of_disk(settings, machine, disks):
+    settings.previous_config.write_text(REAL_SHAPE + WRONG_ROM)
+
+    finished, _ = boot("openstep-4.2", settings, machine)
+
+    assert finished is True
+    assert "szRomTurboFileName" not in settings.previous_config.read_text()
+
+
 def test_nothing_in_that_section_is_written_but_the_three_keys(settings, machine, disks):
     """The README says this tool leaves the disks, the sound, the network and
     the screen exactly as the file has them, and this is the one exception to

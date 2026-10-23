@@ -25,7 +25,7 @@ import json
 import subprocess
 import time
 
-from . import emulator, grab, machines, setup, systems
+from . import config, emulator, grab, machines, setup, systems
 from .answers import told
 
 #: How long to wait for systemctl before giving up. A query that hangs is worse
@@ -229,13 +229,18 @@ def stop(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.sleep,
     return True, told("guest.shut-itself-down")
 
 
-def start(runtime_directory):
+def start(runtime_directory, previous_config=None):
     """Lets the emulator come back.
 
     @param runtime_directory - The service's runtime directory.
+    @param previous_config - pathlib.Path to the emulator's configuration, or
+      None. With it, any ROM the file names is taken out first, so the machine
+      comes back on the ROM Previous ships for it, as `config.ROM_KEYS` says.
+      Previous reads the file when it starts, so this is the last moment the
+      file can be put right.
     @returns (bool, str)
 
-    Removing the file is the whole of it. The waiting profile on the console
+    Removing the hold is the rest of it. The waiting profile on the console
     notices within a couple of seconds and starts the emulator itself.
     """
     if not is_held(runtime_directory):
@@ -243,6 +248,11 @@ def start(runtime_directory):
             return True, told("emulator.already-running")
         return True, told("emulator.nothing-holding-it")
 
+    if previous_config is not None:
+        try:
+            config.forget_roms(previous_config)
+        except config.NotReadable:
+            pass
     hold_path(runtime_directory).unlink(missing_ok=True)
     return True, told("emulator.on-its-way-back")
 
@@ -299,7 +309,7 @@ def restart(runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS, sleep=time.slee
     finished, reason = stop(runtime_directory, timeout, sleep, previous_config)
     if not finished:
         return False, reason
-    return start(runtime_directory)
+    return start(runtime_directory, previous_config)
 
 
 def board(action, runtime_directory, timeout=SHUTDOWN_TIMEOUT_SECONDS,

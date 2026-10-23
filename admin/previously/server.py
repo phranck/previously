@@ -57,11 +57,13 @@ WEB_ROOT = pathlib.Path(__file__).resolve().parent.parent / "web"
 
 #: What a POST may ask of the emulator, each called with the service's
 #: settings. A map rather than a chain of comparisons, so the set of things
-#: this service can be asked to do is one list somebody can read. The two that
-#: take the guest down are told where its grabs land, so they can wait for a
-#: guest that is still starting.
+#: this service can be asked to do is one list somebody can read. All three are
+#: given the emulator's configuration. Stopping reads from it where the grabs
+#: land, to wait for a guest that is still starting, and starting takes any
+#: ROM out of it before the emulator reads it.
 KIOSK_OPERATIONS = {
-    "/api/kiosk/start": lambda settings: kiosk.start(settings.runtime_directory),
+    "/api/kiosk/start": lambda settings: kiosk.start(
+        settings.runtime_directory, previous_config=settings.previous_config),
     "/api/kiosk/stop": lambda settings: kiosk.stop(
         settings.runtime_directory, previous_config=settings.previous_config),
     "/api/kiosk/restart": lambda settings: kiosk.restart(

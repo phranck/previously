@@ -318,8 +318,9 @@ setup.refresh_console(setup.Owner(sys.argv[1]))
 ' "$owner" || true
 
     # The emulator's configuration, brought up to where this version has it
-    # write a screen grab, for the same reason. Not fatal: without it the Grab
-    # gives nothing.
+    # write a screen grab and with no ROM named, for the same reason. Not fatal:
+    # without it the Grab gives nothing, and a ROM is still taken out when the
+    # admin next starts the emulator.
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/%(lib)s python3 -c '
 import sys
 from previously import setup

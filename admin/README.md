@@ -212,7 +212,9 @@ Those values come from Previous itself, out of the function its own dialog runs 
 
 That also decides what this tool overwrites, which is the keys that make up a machine and the four written with it, and nothing else. Sound, network and the rest of the screen settings are left exactly as the file has them, whoever put them there.
 
-**Disks are the one exception, and it is three keys wide.** Which disk the machine boots is `szImageName0`, `nDeviceType0` and `bDiskInserted0`, and those are written when somebody activates a disk and at no other time. The six further slots, the write protection and everything else in `[HardDisk]` stay exactly as the file has them, so a disc somebody put on the bus is still on the bus afterwards. What it points at is always one of the disks this tool put on the card and never a path from anywhere else.
+**Disks are one exception, and it is three keys wide.** Which disk the machine boots is `szImageName0`, `nDeviceType0` and `bDiskInserted0`, and those are written when somebody activates a disk and at no other time. The six further slots, the write protection and everything else in `[HardDisk]` stay exactly as the file has them, so a disc somebody put on the bus is still on the bus afterwards. What it points at is always one of the disks this tool put on the card and never a path from anywhere else.
+
+**ROMs are the other exception, and they are taken out rather than written.** Previous loads the ROM for a machine by its type and ships one for each, so a file that names none boots the right one on every machine and with every version of Previous. A ROM the file names, from Previous's own dialog or from a hand edit, is taken out at every change this tool makes, every time it starts the emulator, and at every install of the package. A machine started on a ROM it cannot run halts its CPU and shows Previous's own dialog, which nothing here can answer.
 
 So: shut the guest down properly, copy the file beside itself as `previous.cfg.bak`, write, let it come back, and watch long enough to know that it did. Anything that does not come back is put straight back the way it was.
 
