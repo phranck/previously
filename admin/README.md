@@ -338,13 +338,18 @@ A sudoers rule was the other way to do this, and it cannot work here: the servic
 while [ -f /run/previously/hold ]; do sleep 2; done
 WLR_BACKENDS=headless,drm,libinput SDL_VIDEO_DRIVER=wayland cage -d -m last -- /usr/bin/previous
 status=$?
-if [ "$status" -ne 0 ] && [ -d /run/previously ]; then
-  printf "%s %s\n" "$(date +%s)" "$status" >> /run/previously/crashes
+if [ "$status" -ne 0 ]; then
+  if [ -d /run/previously ]; then
+    printf "%s %s\n" "$(date +%s)" "$status" >> /run/previously/crashes
+  fi
+  sleep 2
 fi
 exit "$status"
 ```
 
 That path is a tmpfs and is empty at every boot, which is what makes restarting the board work: the machine comes back and starts its emulator whoever switched it off before the last shutdown. On the card it would leave a board that reboots waiting for a file nobody is going to remove.
+
+**An emulator that cannot start is tried again every few seconds, for as long as it takes.** The session waits two seconds after a bad end, so the console does not restart as fast as a login takes. The package lifts systemd's start limit for `getty@tty1` in `/usr/lib/systemd/system/getty@tty1.service.d/50-previously.conf`. Without it, systemd stops the console for good after five starts within ten seconds, and only root can start it again.
 
 **Previous draws through Wayland straight into cage, with no X server.** cage sets every monitor to its native mode, and Previous fits its fixed 1120 by 832 into it with bars rather than stretching it. `cage -d` draws the window decorations, because a window SDL decorates itself loads a GTK plugin, and Previous then never starts. SDL's Wayland driver needs a screen to start at all, so `WLR_BACKENDS=headless,drm,libinput` gives cage a headless output before any monitor, and `-m last` shows only the output added last. A monitor, there from the start or plugged in later, takes the picture over, and a board without one still runs its emulator.
 

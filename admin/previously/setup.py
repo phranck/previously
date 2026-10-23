@@ -202,6 +202,13 @@ HOLD = RUNTIME + "/hold"
 #: saying a crash happened is what a person actually wants.
 CRASHES = RUNTIME + "/crashes"
 
+#: How long the console waits after an emulator that ended badly before its
+#: session ends. systemd starts the console again the moment it does, so an
+#: emulator that cannot start is tried every few seconds rather than as fast as
+#: a login takes. The package's drop-in for getty@tty1 lifts systemd's start
+#: limit, so the console keeps trying either way.
+CRASH_PAUSE_SECONDS = 2
+
 #: What a speaker is set to the first time it is seen. WirePlumber ships 0.064,
 #: which is inaudible once NeXTSTEP's own sounds are played through it. This is
 #: 85 per cent linear, cubed, because that is the scale the setting takes.
@@ -1772,7 +1779,10 @@ def _autostart_block(owner):
         "# reads. It goes in the runtime directory because that is a tmpfs: the file is\n"
         "# gone at every boot, so whatever is in it happened since this board came up and\n"
         "# nothing has to work out when. The exit runs the session down exactly as exec\n"
-        "# did, so the console never falls through to a prompt.\n"
+        "# did, so the console never falls through to a prompt. After a bad end the\n"
+        "# session waits a moment first: systemd starts the console again the moment it\n"
+        "# ends, and an emulator that cannot start would otherwise be tried as fast as a\n"
+        "# login takes.\n"
         "#\n"
         "# Previous draws through Wayland straight into cage, with no X server. cage\n"
         "# sets every monitor to its native mode, and Previous fits its fixed 1120 by\n"
@@ -1794,15 +1804,18 @@ def _autostart_block(owner):
         "  WLR_BACKENDS=headless,drm,libinput SDL_VIDEO_DRIVER=wayland"
         " cage -d -m last -- /usr/bin/previous\n"
         "  status=$?\n"
-        '  if [ "$status" -ne 0 ] && [ -d %s ]; then\n'
-        '    printf "%%s %%s\\n" "$(date +%%s)" "$status" >> %s\n'
+        '  if [ "$status" -ne 0 ]; then\n'
+        "    if [ -d %s ]; then\n"
+        '      printf "%%s %%s\\n" "$(date +%%s)" "$status" >> %s\n'
+        "    fi\n"
+        "    sleep %d\n"
         "  fi\n"
         '  exit "$status"\n'
         "fi\n"
         "%s\n" % (AUTOSTART_OPENS, HOLD, HOLD,
                   owner.home / WORK_DIRECTORY,
                   owner.home / WORK_DIRECTORY,
-                  RUNTIME, CRASHES, AUTOSTART_CLOSES))
+                  RUNTIME, CRASHES, CRASH_PAUSE_SECONDS, AUTOSTART_CLOSES))
 
 
 def _no_autostart(work):
