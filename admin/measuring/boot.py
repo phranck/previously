@@ -71,8 +71,9 @@ IDLE_AFTER_SECONDS = 10
 #: How many processes the report lists beside the emulator's threads.
 PROCESSES_LISTED = 8
 
-#: Processes the report lists however little they use, because they are what
-#: #571 and #572 take away, and a report after that says 0 for them.
+#: Processes the report lists however little they use. Xwayland and PipeWire's
+#: are what #571 and #572 take away, so a report after that says 0 for them,
+#: and cage stays as the compositor, so its share stays in view.
 WATCHED = ("cage", "Xwayland", "pipewire", "wireplumber", "pipewire-pulse")
 
 #: How the kernel's workers begin their names. The rest is a number and the
@@ -171,13 +172,20 @@ def _switch_back(target):
 def _reboot(target):
     """Restarts the board through the admin and waits until it answers again.
 
-    @raises RuntimeError where it does not come back in time.
+    @raises RuntimeError where the board refuses, or does not come back in
+      time.
+
+    The board reboots the moment the request is written, which can take the
+    SSH session down before the answer arrives. So no answer is no answer, and
+    the new boot id is what says the board restarted.
     """
     before = _boot_id(target)
-    _python(target, "from previously import kiosk, settings\n"
-                    "loaded = settings.Settings.load()\n"
-                    "print(kiosk.board('reboot', loaded.runtime_directory, "
-                    "previous_config=loaded.previous_config))\n")
+    said = _python(target, "import json\nfrom previously import kiosk, settings\n"
+                           "loaded = settings.Settings.load()\n"
+                           "print(json.dumps(kiosk.board('reboot', loaded.runtime_directory, "
+                           "previous_config=loaded.previous_config)))\n", quiet=True)
+    if said and not json.loads(said)[0]:
+        raise RuntimeError("%s did not restart: %s" % (target, said.strip()))
     until = time.monotonic() + BACK_WITHIN_SECONDS
     while time.monotonic() < until:
         time.sleep(ASK_EVERY_SECONDS)
@@ -225,13 +233,15 @@ def _remove(target):
                  % (UNIT, UNIT_PATH, REMOTE))
 
 
-def _python(target, program):
+def _python(target, program, quiet=False):
     """@returns What Python printed on the Pi, run against the copy.
+
+    @param quiet - As `_ssh` takes it.
 
     The program goes in on stdin, so no quote in it has to survive the shell
     on the Pi.
     """
-    return _ssh(target, "%s -" % REMOTE_PYTHON, program)
+    return _ssh(target, "%s -" % REMOTE_PYTHON, program, quiet=quiet)
 
 
 def _ssh(target, command, given=None, quiet=False):

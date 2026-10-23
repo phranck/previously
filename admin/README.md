@@ -12,13 +12,13 @@ make browser      # what only a browser can show, in Safari Technology Preview
 
 ## What it needs installed
 
-**To run, on the Pi**, four things beyond what Raspberry Pi OS already has: `cage`, `xwayland`, `7zip`, and Previous itself out of the Window Maker Live archive. The package brings `xwayland`, because the console has Previous draw through it, and the one-liner has the helper install the rest.
+**To run, on the Pi**, three things beyond what Raspberry Pi OS already has: `cage`, `7zip`, and Previous itself out of the Window Maker Live archive. The one-liner has the helper install them.
 
 The rest is the system's own and is assumed rather than installed: `systemd` for `systemctl`, `procps` for `pgrep` and `ps`, `raspi-utils-core` for `vcgencmd`, and `python3`. A Pi without `vcgencmd` still runs this; the window shows one reading fewer, because every reading in `pi.py` answers with nothing rather than failing.
 
 `activity.py` needs none of them. It answers the same kind of question twice a second and reads `/proc` alone, because what is cheap at one answer every five seconds is not cheap at two a second. Measured on a Pi 5: a whole reading costs 0.42 ms while the emulator runs, against 9.9 ms for an answer to `/api/pi`, which forks `vcgencmd` twice and `ps` once at 1.5 ms a fork. Every figure it gives is the difference between two readings, since the kernel's counters are totals since the board started and a total says nothing about now. A reading older than five seconds is not compared against, because it was left by a window that has since been closed, and a difference across that pause would be its average rather than the present.
 
-What each is for: `cage` is the compositor the emulator runs in, `xwayland` is the X server cage runs it on, and `7zip` unpacks the disk archive.
+What each is for: `cage` is the compositor the emulator runs in, and `7zip` unpacks the disk archive.
 
 **The emulator's keys go in through a virtual keyboard**, a device the kernel makes through `/dev/uinput`. The compositor reads it like any keyboard plugged into the Pi, so the keys reach Previous however it draws. The package gives `/dev/uinput` to the `input` group, and the service's unit adds that group. That takes a udev rule for the device and a tmpfiles entry for the node the board makes at boot, before the module is loaded, as systemd does for its own such nodes. A key goes only to a running emulator, because with no compositor holding the keyboard its keys would reach the text console.
 
@@ -322,7 +322,7 @@ One key is not enough. NeXTSTEP answers the power key with a panel asking whethe
 
 **A guest that is still starting is watched first.** NeXTSTEP drops the power key while it brings up its window server, between "Startup complete" and the Workspace, and a key pressed then reaches nothing. So where the emulator is younger than three minutes, the tool grabs the screen once a second and presses the key once the grabs have stayed the same for fifteen seconds. It never presses the key a second time instead, because a power key that arrives while NeXTSTEP shuts down ends the shutdown early.
 
-The keys go in through the virtual keyboard. Previous draws through cage's Xwayland, because the console starts it with `SDL_VIDEO_DRIVER=x11,wayland`, and the keys reach it the same way whichever it draws through.
+The keys go in through the virtual keyboard, which cage reads like any keyboard on the Pi.
 
 **Restarting or switching off the board takes NeXTSTEP down first**, and waits for it. A board that reboots underneath a running emulator does the same damage as killing the emulator, and to a machine that then has to come back up.
 
@@ -336,7 +336,7 @@ A sudoers rule was the other way to do this, and it cannot work here: the servic
 
 ```sh
 while [ -f /run/previously/hold ]; do sleep 2; done
-SDL_VIDEO_DRIVER=x11,wayland cage -- /usr/bin/previous
+WLR_BACKENDS=headless,drm,libinput SDL_VIDEO_DRIVER=wayland cage -d -m last -- /usr/bin/previous
 status=$?
 if [ "$status" -ne 0 ] && [ -d /run/previously ]; then
   printf "%s %s\n" "$(date +%s)" "$status" >> /run/previously/crashes
@@ -345,6 +345,8 @@ exit "$status"
 ```
 
 That path is a tmpfs and is empty at every boot, which is what makes restarting the board work: the machine comes back and starts its emulator whoever switched it off before the last shutdown. On the card it would leave a board that reboots waiting for a file nobody is going to remove.
+
+**Previous draws through Wayland straight into cage, with no X server.** cage sets every monitor to its native mode, and Previous fits its fixed 1120 by 832 into it with bars rather than stretching it. `cage -d` draws the window decorations, because a window SDL decorates itself loads a GTK plugin, and Previous then never starts. SDL's Wayland driver needs a screen to start at all, so `WLR_BACKENDS=headless,drm,libinput` gives cage a headless output before any monitor, and `-m last` shows only the output added last. A monitor, there from the start or plugged in later, takes the picture over, and a board without one still runs its emulator.
 
 **An emulator that ends badly says so in one line**, and the Raspberry Pi window reads it. The file is on that same tmpfs, so what is in it happened since this board came up and nothing has to work out when. The `exit` runs the session down exactly as `exec` did, so the console never falls through to a shell prompt.
 

@@ -42,7 +42,7 @@ With NeXTSTEP 3.3 the settled screen is the Workspace, because that system logs 
 
 A NeXTSTEP that has never been set up stops at its Welcome panel, where a language and a keyboard are chosen, and the screen settles there instead. Look at the last grab of a run before comparing it with another.
 
-The process table always lists `cage`, `Xwayland`, `pipewire`, `wireplumber` and `pipewire-pulse`, at 0 where they did not run, because they are what the slimmer Linux takes away. All of the kernel's workers are one line, `kworker`.
+The process table always lists `cage`, `Xwayland`, `pipewire`, `wireplumber` and `pipewire-pulse`, at 0 where they did not run. Xwayland and the three PipeWire processes are what the slimmer Linux takes away, and `cage` stays as the compositor. All of the kernel's workers are one line, `kworker`.
 
 The load tables give percent of one core. A figure over 100 is a name with several threads busy at once. "While booting" runs from Previous's start to the settled screen, and "Idle" from ten seconds after that to the end of the capture. The process table lists the eight that are busiest while idle. `python3` there is the admin service, because the capture leaves itself out.
 
