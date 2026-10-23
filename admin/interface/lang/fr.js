@@ -235,6 +235,7 @@ export const fr = {
   "busy.board-poweroff": "NeXTSTEP s'arrête, puis le Pi s'éteint",
 
   "note.no-console": "La console ne tourne pas. Allumer restera sans effet.",
+  "note.changed-outside": "La configuration a été modifiée en dehors de Previously, à la main ou via F12. De telles modifications ne peuvent peut-être pas être ajustées ici, car Previously ne prend pas encore en charge tous les réglages.",
   "note.not-set-up": "Rien n'est encore installé sur ce Pi. L'Installer y met l'émulateur et un système.",
   "note.no-service": "pas de liaison avec le service",
   "note.board-gone": "Plus de réponse. C'est ce à quoi il faut s'attendre pendant que le Pi s'éteint.",

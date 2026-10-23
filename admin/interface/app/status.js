@@ -93,6 +93,7 @@ function drawStatus(status) {
     const empty = ["info-cpu", "info-ram", "info-screen", "info-disk",
                    "info-file", "info-written"];
     for (const id of empty) show(id, NOTHING);
+    show("file-note", "");
     return;
   }
 
@@ -101,6 +102,9 @@ function drawStatus(status) {
 
   show("info-file", changedLine(status.file));
   show("info-written", writtenLine(status.file));
+  /* Only on a clear no. A status without the file says nothing about who
+     wrote it, and the note would then claim a change nobody made. */
+  show("file-note", status.file?.written_by_us === false ? t("note.changed-outside") : "");
   show("info-cpu", cpuOf(machine));
   show("info-ram", t("machine.memory", { mb: machine.memory_mb }));
   show("info-screen", screenOf(machine));

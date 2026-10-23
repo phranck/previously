@@ -237,7 +237,9 @@ def start(runtime_directory, previous_config=None):
       None. With it, any ROM the file names is taken out first, so the machine
       comes back on the ROM Previous ships for it, as `config.ROM_KEYS` says.
       Previous reads the file when it starts, so this is the last moment the
-      file can be put right.
+      file can be put right. No note of the write is kept: Previously never
+      writes a ROM, so a file that names one was changed from outside, and it
+      stays a file changed from outside.
     @returns (bool, str)
 
     Removing the hold is the rest of it. The waiting profile on the console

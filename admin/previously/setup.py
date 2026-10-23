@@ -1464,6 +1464,7 @@ def _configuration(work):
     work.owner.write(configuration, _written(work.machine, disk,
                                              work.owner.home / WORK_DIRECTORY))
     work.undoes(lambda: configuration.unlink(missing_ok=True))
+    _note(work.owner, configuration, work.settings.state_directory)
 
 
 def _written(machine, disk, grabs):
@@ -1649,13 +1650,15 @@ def refresh_console(owner):
     return True
 
 
-def refresh_configuration(owner, previous_config=None):
+def refresh_configuration(owner, previous_config=None, state_directory=None):
     """Brings an emulator configuration that is there up to what this version
     writes: its grabs where the admin reads them, and no ROM named.
 
     @param owner - Whose configuration it is.
     @param previous_config - pathlib.Path to it. Left out, the one the
       service's settings name in that owner's home.
+    @param state_directory - Where the service keeps its note of what it wrote
+      last. Left out, the one its settings name.
     @returns bool, whether anything was written.
 
     A file that names no directory for grabs, or names the home that is
@@ -1663,6 +1666,13 @@ def refresh_configuration(owner, previous_config=None):
     where the admin may not remove it. A directory somebody chose for their
     printouts stays theirs, and the admin takes no grab there. A ROM the file
     names is taken out whoever put it there, and `config.ROM_KEYS` says why.
+
+    The file stays Previously's where it was before, and stays changed from
+    outside where it was that, because an update must not make a hand edit look
+    like Previously's own. A file Previously never left a note of is taken as
+    its own once: there is nothing to compare it with, and a machine set up
+    before every write was noted would otherwise read as changed from outside
+    without anybody having touched it.
 
     A machine without a configuration is given none, because writing one is
     setting the machine up, which is the install job's to do. The package calls
@@ -1672,10 +1682,14 @@ def refresh_configuration(owner, previous_config=None):
     Written only where it changes something, because a file newer than the
     running machine is what the admin reports as a change nobody has tried.
     """
-    if previous_config is None:
-        previous_config = Settings.load(home=owner.home).previous_config
+    if previous_config is None or state_directory is None:
+        loaded = Settings.load(home=owner.home)
+        previous_config = previous_config or loaded.previous_config
+        state_directory = state_directory or loaded.state_directory
     if not previous_config.is_file():
         return False
+    ours = (config.written_by_us(previous_config, state_directory)
+            or not config.noted(state_directory))
     try:
         written = config.forget_roms(previous_config)
         if config.output_directory(previous_config, owner.home) == owner.home:
@@ -1683,7 +1697,17 @@ def refresh_configuration(owner, previous_config=None):
                                     config.writing_into(owner.home / WORK_DIRECTORY))
     except config.NotReadable:
         return False
+    if ours:
+        _note(owner, previous_config, state_directory)
     return written > 0
+
+
+def _note(owner, previous_config, state_directory):
+    """Leaves the service's note of a file Previously has just written, and
+    hands it to the service's user, since this runs as root and the service
+    writes its next note over this one."""
+    if config.note_written(previous_config, state_directory):
+        owner.owns(state_directory / config.RECEIPT)
 
 
 def _the_block_in(text):

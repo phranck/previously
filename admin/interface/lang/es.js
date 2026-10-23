@@ -235,6 +235,7 @@ export const es = {
   "busy.board-poweroff": "NeXTSTEP se apaga, luego el Pi se apaga",
 
   "note.no-console": "La consola no está en marcha. Encender no hará nada.",
+  "note.changed-outside": "La configuración se modificó fuera de Previously, a mano o mediante F12. Es posible que esos cambios no se puedan ajustar aquí, porque Previously aún no admite todos los ajustes.",
   "note.not-set-up": "En este Pi todavía no hay nada instalado. El Installer le pone el emulador y un sistema.",
   "note.no-service": "sin conexión con el servicio",
   "note.board-gone": "Ya no hay respuesta. Es lo que cabe esperar mientras el Pi se apaga.",

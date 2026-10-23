@@ -235,6 +235,7 @@ export const de = {
   "busy.board-poweroff": "NeXTSTEP fährt herunter, dann schaltet der Pi ab",
 
   "note.no-console": "Die Konsole läuft nicht. Einschalten bleibt wirkungslos.",
+  "note.changed-outside": "Die Konfiguration wurde außerhalb von Previously geändert, von Hand oder über F12. Solche Änderungen lassen sich hier womöglich nicht anpassen, weil Previously noch nicht alle Einstellungen unterstützt.",
   "note.not-set-up": "Auf diesem Pi ist noch nichts installiert. Der Installer bringt den Emulator und ein System darauf.",
   "note.no-service": "keine Verbindung zum Dienst",
   "note.board-gone": "Keine Antwort mehr. Das ist zu erwarten, wenn der Pi gerade abschaltet.",

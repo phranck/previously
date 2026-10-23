@@ -348,6 +348,20 @@ def test_a_file_this_service_wrote_is_recognized(tmp_path):
     assert config.file_state(path, None, state_directory=state)["written_by_us"] is True
 
 
+def test_whether_previously_wrote_the_file_is_asked_directly(tmp_path):
+    path = write(tmp_path, PLAIN_STATION)
+    state = tmp_path / "state"
+    state.mkdir()
+
+    assert config.noted(state) is False
+    config.note_written(path, state)
+
+    assert config.noted(state) is True
+    assert config.written_by_us(path, state) is True
+    path.write_text(PLAIN_STATION + "\n[Sound]\nbEnableSound = FALSE\n")
+    assert config.written_by_us(path, state) is False
+
+
 def test_a_file_somebody_else_wrote_is_not(tmp_path):
     """Previous's own dialog and a text editor look alike from here, so the
     answer is only ever yes or not-us."""

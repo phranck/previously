@@ -235,6 +235,7 @@ export const sv = {
   "busy.board-poweroff": "NeXTSTEP stängs av, sedan stängs Pi:n av",
 
   "note.no-console": "Konsolen är inte igång. Att slå på gör ingenting.",
+  "note.changed-outside": "Konfigurationen har ändrats utanför Previously, för hand eller via F12. Sådana ändringar går kanske inte att justera här, eftersom Previously ännu inte stöder alla inställningar.",
   "note.not-set-up": "På den här Pi:n är ingenting installerat än. Installer sätter dit emulatorn och ett system.",
   "note.no-service": "ingen förbindelse med tjänsten",
   "note.board-gone": "Inget svar längre. Det är väntat medan Pi:n stängs av.",

@@ -20,7 +20,7 @@ import pathlib
 import pytest
 
 from conftest import settings_for
-from previously import machines, setup, systems
+from previously import config, machines, setup, systems
 
 
 @pytest.fixture
@@ -721,6 +721,89 @@ def test_the_package_leaves_a_current_configuration_untouched(tmp_path):
 
     assert not setup.refresh_configuration(owner, path)
     assert path.stat().st_mtime == 0
+
+
+# -- who wrote the configuration last ---------------------------------------
+
+
+class Keeping(Nobody):
+    """An owner that says which files were handed to it."""
+
+    def __init__(self, home):
+        super().__init__(home)
+        self.given = []
+
+    def owns(self, path):
+        self.given.append(path)
+
+
+def state_noting(tmp_path, path):
+    """The service's state directory, holding a note of the file as it is."""
+    state = tmp_path / "state"
+    state.mkdir(exist_ok=True)
+    config.note_written(path, state)
+    return state
+
+
+def test_a_fresh_configuration_is_noted_as_previouslys(tmp_path, commands):
+    """Otherwise a machine that has just been set up reads as changed from
+    outside, and says so, before anybody has touched it."""
+    work = work_in(tmp_path)
+    disk = work.settings.disks / "nextstep-3.3.dd"
+    disk.parent.mkdir(parents=True)
+    disk.write_bytes(b"x")
+
+    setup.STEPS["configuration"](work)
+
+    assert config.written_by_us(work.settings.previous_config,
+                                work.settings.state_directory) is True
+
+
+def test_the_note_belongs_to_the_service_not_to_root(tmp_path):
+    """The helper and postinst run as root, and the service has to be able to
+    write its next note over this one."""
+    owner = Keeping(tmp_path)
+    path = older_configuration(tmp_path, "bPrinterConnected = FALSE")
+    state = state_noting(tmp_path, path)
+
+    setup.refresh_configuration(owner, path, state)
+
+    assert state / config.RECEIPT in owner.given
+
+
+def test_a_refresh_keeps_a_file_of_previouslys_its_own(tmp_path):
+    owner = Nobody(tmp_path)
+    path = older_configuration(tmp_path, "bPrinterConnected = FALSE")
+    state = state_noting(tmp_path, path)
+
+    assert setup.refresh_configuration(owner, path, state)
+    assert config.written_by_us(path, state) is True
+
+
+def test_a_change_from_outside_stays_one_through_a_refresh(tmp_path):
+    """An update must not make a hand edit look like Previously's own."""
+    owner = Nobody(tmp_path)
+    path = older_configuration(tmp_path, "bPrinterConnected = FALSE")
+    state = state_noting(tmp_path, path)
+    path.write_text(path.read_text() + "\n[Sound]\nbEnableSound = FALSE\n")
+
+    assert setup.refresh_configuration(owner, path, state)
+    assert config.written_by_us(path, state) is False
+
+
+def test_a_file_never_noted_is_taken_as_previouslys_once(tmp_path):
+    """A machine set up before every write was noted holds no note at all.
+    There is nothing to compare against, and reading it as changed from
+    outside would put the notice on every one of them."""
+    owner = Nobody(tmp_path)
+    path = older_configuration(
+        tmp_path, "szPrintToFileName = %s" % (tmp_path / setup.WORK_DIRECTORY))
+    state = tmp_path / "state"
+    state.mkdir()
+
+    setup.refresh_configuration(owner, path, state)
+
+    assert config.written_by_us(path, state) is True
 
 
 def test_an_installation_ends_with_the_machine_running(tmp_path, commands, monkeypatch):

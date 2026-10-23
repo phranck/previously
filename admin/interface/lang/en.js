@@ -248,6 +248,7 @@ export const en = {
   "busy.board-poweroff": "NeXTSTEP shuts down, then the Pi switches off",
 
   "note.no-console": "The console is not running. Switching on will do nothing.",
+  "note.changed-outside": "The configuration was changed outside Previously, by hand or through F12. Such changes may not be adjustable here, because Previously does not support every setting yet.",
   "note.not-set-up": "Nothing is installed on this Pi yet. The Installer puts the emulator and a system on it.",
   "note.no-service": "no contact with the service",
   "note.board-gone": "No more answer. That is what to expect while the Pi is switching off.",
