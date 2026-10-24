@@ -1,0 +1,13 @@
+# Starts previously-initramfs.service two minutes after the boot. That does
+# nothing unless the initramfs's boot picture did not fit this screen or this
+# board.
+
+[Unit]
+Description=Previously's boot picture, checked after the boot
+Documentation=https://github.com/phranck/previously
+
+[Timer]
+OnBootSec=2min
+
+[Install]
+WantedBy=timers.target

@@ -5,7 +5,7 @@
 
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
-package copies Python, static files, nine unit files, two udev rules, one
+package copies Python, static files, eleven unit files, two udev rules, one
 tmpfiles entry, one rpi-swap drop-in, one cursor theme, two pictures and two
 scripts for the initramfs into place. Nothing is compiled, nothing is patched
 and nothing is generated at install time, so the debhelper machinery would be
@@ -163,6 +163,17 @@ SCREEN_DEVICE = "/dev/" + FRAMEBUFFER
 #: there is before systemd.
 KERNEL_LOG = "/dev/kmsg"
 
+#: What the script leaves where it found no frame for the screen and the board
+#: there are. In /run, which initramfs-tools moves onto the root
+#: (`mount -n -o move /run ${rootmnt}/run` in its init), so INITRAMFS_UNIT sees
+#: it, and gone at the next boot.
+STALE = "/run/" + NAME + "-initramfs-stale"
+
+#: What builds the initramfs again where the script left that word: a unit,
+#: and the timer that starts it once the emulator has booted.
+INITRAMFS_UNIT = NAME + "-initramfs.service"
+INITRAMFS_TIMER = NAME + "-initramfs.timer"
+
 #: The header initramfs-tools(7) asks of every hook and boot script, which
 #: answers what each needs to run first. These two need nothing.
 INITRAMFS_HEADER = """PREREQ=""
@@ -207,28 +218,39 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/%(lib)s python3 -m previously.splash \\
 #: is switched on.
 INITRAMFS_SCRIPT_TEXT = """#!/bin/sh
 # Written by the previously package. Draws the boot picture the package's hook
-# laid out, where the root has the console switched on and fb0 is vc4's and
-# still the screen the frame was laid out for. Elsewhere it leaves the screen
-# to previously-splash@.service, which asks for the same link once systemd
-# runs and draws on a screen of any size.
+# laid out, where the root has the console switched on and fb0 is vc4's, on
+# the screen and the board the frame was laid out for. Elsewhere it leaves the
+# screen to previously-splash@.service, which asks for the same link once
+# systemd runs and draws on a screen of any size.
 %(header)s
 
 console="${rootmnt}%(console)s"
 picture=%(picture)s
 screen=%(screen)s
 device=%(device)s
+tree=%(tree)s
 log=%(log)s
+stale=%(stale)s
 
 said() { cat "$1" 2>/dev/null; }
 
 # The link is absolute, as systemctl makes it, so from here it points nowhere
-# and only its being there says anything. A screen that is not there, or an
-# initramfs the hook laid no picture out in, says nothing that matches.
+# and only its being there says anything. A board without a screen, or with
+# the firmware's framebuffer still standing, has nothing this could draw on.
 [ -L "$console" ] || exit 0
+[ -e "$screen/pan" ] || exit 0
 [ "$(said "$screen/name")" != "%(firmware)s" ] || exit 0
+
+# Anywhere but on the screen and the board it was laid out for, the frame would
+# land torn or show another board. The word left in /run then has the
+# initramfs built again for this screen and this board once the board is up.
 now="$(said "$screen/virtual_size") $(said "$screen/bits_per_pixel")"
 now="$now $(said "$screen/stride") $(said "$screen/pan")"
-[ "$now" = "$(said "$picture/%(geometry)s")" ] || exit 0
+if [ "$now" != "$(said "$picture/%(geometry)s")" ] \\
+        || [ "$(said "$tree")" != "$(said "$picture/%(board)s")" ]; then
+    : > "$stale"
+    exit 0
+fi
 cat "$picture/%(frame)s" > "$device" || exit 0
 # At the kernel's info level, which no console level this boot sets lets onto
 # the screen, so it is read with `journalctl -k` and nowhere else.
@@ -251,8 +273,9 @@ VERSION_FILE = "version.txt"
 #: are how the machine is changed without this service holding any privilege:
 #: it leaves a file in its runtime directory and a path unit running as root
 #: acts on it. Two of those do one exact command each, and the third installs.
-#: The last two draw the pictures: the boot picture, started by SPLASH_RULE,
-#: and the shutdown picture, which the console's unit wants.
+#: Two more draw the pictures: the boot picture, started by SPLASH_RULE, and
+#: the shutdown picture, which the console's unit wants. The last two build
+#: the initramfs again where its boot picture did not fit.
 SERVICE = NAME + ".service"
 SPLASH_UNIT = NAME + "-splash@.service"
 SHUTDOWN_SPLASH_UNIT = NAME + "-splash-shutdown.service"
@@ -260,7 +283,7 @@ UNIT_FILES = (SERVICE,
               NAME + "-poweroff.path", NAME + "-poweroff.service",
               NAME + "-reboot.path", NAME + "-reboot.service",
               NAME + "-setup.path", NAME + "-setup.service",
-              SPLASH_UNIT, SHUTDOWN_SPLASH_UNIT)
+              SPLASH_UNIT, SHUTDOWN_SPLASH_UNIT, INITRAMFS_UNIT, INITRAMFS_TIMER)
 
 #: Who the tool runs as, written by postinst as a drop-in beside the unit. The
 #: user is whoever the card was made with, so it is decided on the machine
@@ -523,6 +546,9 @@ setup.refresh_quiet()
     # These act for the service without it holding any privilege, so they are
     # part of it rather than something to switch on separately.
     systemctl enable --now %(watchers)s
+    # Switched on for the next boot rather than started, because what it looks
+    # for is left by a boot.
+    systemctl enable %(timer)s
 fi
 """
 
@@ -534,6 +560,7 @@ set -e
 if [ "$1" = remove ] || [ "$1" = upgrade ]; then
     systemctl disable --now %(service)s || true
     systemctl disable --now %(watchers)s || true
+    systemctl disable --now %(timer)s || true
 fi
 """
 
@@ -691,7 +718,9 @@ def initramfs_scripts():
              "lib": LIB, "framebuffer": FRAMEBUFFER, "picture": INITRAMFS_PICTURE,
              "console": setup.CONSOLE_SWITCHED_ON, "screen": SCREEN,
              "device": SCREEN_DEVICE, "log": KERNEL_LOG, "frame": splash.FRAME,
-             "geometry": splash.GEOMETRY, "firmware": splash.FIRMWARE_FRAMEBUFFER}
+             "geometry": splash.GEOMETRY, "board": splash.BOARD,
+             "tree": str(splash.hardware.COMPATIBLE), "stale": STALE,
+             "firmware": splash.FIRMWARE_FRAMEBUFFER}
     return {INITRAMFS_HOOK: INITRAMFS_HOOK_TEXT % words,
             INITRAMFS_SCRIPT: INITRAMFS_SCRIPT_TEXT % words}
 
@@ -706,7 +735,8 @@ def scripts():
     second time and agreeing with themselves.
     """
     words = {"name": NAME, "service": SERVICE, "units": UNITS, "lib": LIB,
-             "watchers": " ".join(WATCHERS), "tmpfiles": TMPFILES,
+             "watchers": " ".join(WATCHERS), "timer": INITRAMFS_TIMER,
+             "tmpfiles": TMPFILES,
              "find_owner": FIND_OWNER.rstrip("\n"),
              "owner_file": OWNER_FILE,
              "owner_dir": "/" + str(pathlib.PurePosixPath(OWNER_FILE).parent),

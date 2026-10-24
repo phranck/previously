@@ -71,11 +71,12 @@ DEVICES = pathlib.Path("/dev")
 #: from it at another mode, so nothing is drawn or laid out for it.
 FIRMWARE_FRAMEBUFFER = "simple"
 
-#: What the frame laid out for the initramfs and the screen it is for are
-#: called, in the directory they are written into. `packaging/build.py` writes
-#: the script that reads them with the same names.
+#: What the frame laid out for the initramfs, the screen it is for and the
+#: board it was laid out on are called, in the directory they are written into.
+#: `packaging/build.py` writes the script that reads them with the same names.
 FRAME = "frame"
 GEOMETRY = "geometry"
+BOARD = "board"
 
 #: The two requests from linux/fb.h, and the visual whose pixels are written as
 #: red, green and blue bitfields.
@@ -284,14 +285,19 @@ def draw(name, picture_path=None, devices=None):
 
 def lay_out(name, into, devices=None):
     """Writes this board's boot picture as the whole of one framebuffer's
-    screen, and what that screen is, for the initramfs to draw from.
+    screen, what that screen is, and which board this is, for the initramfs to
+    draw from.
 
     @param name - The framebuffer's name, such as `fb0`.
-    @param into - pathlib.Path of the directory both go into, which is made
-      where it is not there.
+    @param into - pathlib.Path of the directory all three go into, which is
+      made where it is not there.
     @param devices - As `draw` takes it.
     @raises Unsupported where the framebuffer is the firmware's, and as `draw`
       raises.
+
+    The board is the device tree's `compatible` as the file holds it, because
+    the script compares it with that file as it stands at boot. A card moved
+    into another Pi would otherwise draw the first one's board.
     """
     data = picture_of("boot").read_bytes()
     with open((devices or DEVICES) / name, "rb") as device:
@@ -299,9 +305,14 @@ def lay_out(name, into, devices=None):
     if screen.name == FIRMWARE_FRAMEBUFFER:
         raise Unsupported("it is the firmware's, which vc4 takes the screen from")
     laid = frame(data, screen)
+    try:
+        names = hardware.COMPATIBLE.read_bytes()
+    except OSError:
+        names = b""
     into.mkdir(parents=True, exist_ok=True)
     (into / FRAME).write_bytes(laid)
     (into / GEOMETRY).write_text(geometry(screen), encoding="utf-8")
+    (into / BOARD).write_bytes(names)
 
 
 def main(argv=None):

@@ -247,6 +247,26 @@ def test_the_initramfs_is_laid_out_for_the_board_it_is_built_on(tmp_path, frameb
     assert (tmp_path / "initramfs" / splash.FRAME).read_bytes() == bytes([0, 0xFF, 0, 0])
 
 
+@pytest.mark.parametrize("names", [b"raspberrypi,5-model-b\0brcm,bcm2712\0", None],
+                         ids=["a Pi 5", "no device tree"])
+def test_the_frame_says_which_board_it_was_laid_out_on(tmp_path, framebuffer, monkeypatch,
+                                                       names):
+    """A card moved into another Pi boots an initramfs laid out on the first,
+    and the script tells the two apart by the device tree's names, as they
+    stand in the file. A machine without a device tree writes nothing there,
+    which no Pi's names match."""
+    framebuffer(4, 2, 16, RGB565)
+    boot_picture(tmp_path, monkeypatch)
+    tree = tmp_path / "compatible"
+    if names is not None:
+        tree.write_bytes(names)
+    monkeypatch.setattr(splash.hardware, "COMPATIBLE", tree)
+
+    assert splash.main(["fb0", "--into", str(tmp_path / "initramfs")]) == 0
+
+    assert (tmp_path / "initramfs" / splash.BOARD).read_bytes() == (names or b"")
+
+
 def test_a_picture_nobody_has_is_refused(capsys):
     assert splash.main(["fb0", "farewell"]) == 2
 

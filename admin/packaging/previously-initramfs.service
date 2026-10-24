@@ -1,0 +1,20 @@
+# Builds the initramfs of the running kernel again where its boot picture did
+# not fit the screen or the board this boot found, which the package's script
+# in local-bottom says by leaving the file the condition names. The next boot
+# then draws the picture from the initramfs again. previously-initramfs.timer
+# starts this two minutes after the boot, once the emulator has started and
+# fb0 has the size the boot gave it, which is the size the hook lays the
+# picture out for.
+
+[Unit]
+Description=Previously's boot picture, laid out again for this screen
+Documentation=https://github.com/phranck/previously
+ConditionPathExists=/run/previously-initramfs-stale
+
+[Service]
+Type=oneshot
+# %v is the running kernel's release, as uname -r says it.
+ExecStart=/usr/sbin/update-initramfs -u -k %v
+# At the lowest priority, because NeXTSTEP runs beside it.
+Nice=19
+IOSchedulingClass=idle
