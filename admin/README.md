@@ -24,10 +24,10 @@ What each is for: `cage` is the compositor the emulator runs in, `xwayland` is t
 
 Whether a machine booted is read from Previous's own grab, which that keyboard asks for with Previous's shortcut. A screen of one color is a machine that did not boot, and `png.py` reads the picture with the standard library alone.
 
-**To work on it**, what `requirements-check.txt` names as well. Those packages are not on the Pi and `install.sh` does not put them there, because nothing in running the service needs them. They go into a virtual environment, on a Mac and on the Pi alike, and the Makefile is pointed at its Python:
+**To work on it**, what `requirements-check.txt` names as well. Those packages are not on the Pi and `install.sh` does not put them there, because nothing in running the service needs them. They go into a virtual environment made from the Python the Pi runs, which `.python-version` at the root names. On the Pi that is its own, and on a Mac Homebrew has it as `python@` with that version. `make check` refuses any other Python, because code that needs a newer one would pass here and fail on the Pi.
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements-check.txt
+make venv                                            # once, and again whenever .python-version changes
 make check PYTHON=.venv/bin/python
 ```
 
@@ -47,7 +47,7 @@ Four declaration files say what the comments cannot. `interface/answers.d.ts` ho
 **`make browser` runs what only a browser laying out the page can show**, such as whether a scroller's knob matches what there is to scroll. It starts the service in a temporary home on a free port and drives Safari Technology Preview through that browser's own `safaridriver`. So it needs Safari Technology Preview with remote automation allowed, and Selenium in the virtual environment. The suite skips where either is missing, and `make check` does not run it.
 
 ```bash
-.venv/bin/pip install selenium                                                       # once
+.venv/bin/pip install selenium                                                       # after every make venv
 "/Applications/Safari Technology Preview.app/Contents/MacOS/safaridriver" --enable   # once, allows remote automation
 make browser PYTHON=.venv/bin/python
 ```

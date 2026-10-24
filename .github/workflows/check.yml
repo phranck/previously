@@ -36,11 +36,16 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # The Python the Pi runs, which .python-version names, because the
+      # runner's own is newer and code that needs a newer one fails on the Pi.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: .python-version
+
       - name: Lint and test
         working-directory: admin
         run: |
-          python3 -m pip install --quiet --break-system-packages \
-            -r requirements-check.txt
+          python3 -m pip install --quiet -r requirements-check.txt
           # What the browser gets is committed and is built with this. Without
           # it here, the test that holds those files to their sources skips
           # rather than fails, and a stale bundle would be packaged and shipped.
