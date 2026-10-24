@@ -600,6 +600,46 @@ def forget_roms(path):
     return removed
 
 
+def rehome(path, old, new):
+    """Moves every path the file names inside one home into another, and
+    leaves the rest as it was.
+
+    @param path - pathlib.Path to previous.cfg.
+    @param old - pathlib.Path of the home the paths name.
+    @param new - pathlib.Path of the home they are to name.
+    @returns int, how many lines changed.
+    @raises NotReadable where the file cannot be read or written.
+
+    A user who is renamed keeps their files and moves with them into a home of
+    the new name, while the file names the disk the machine boots, a disc on
+    the bus and where grabs go by absolute path. A path outside the old home is
+    somebody's choice and stays.
+
+    Not written at all where nothing names the old home, as `forget_roms`.
+    """
+    try:
+        lines = path.read_text().splitlines(keepends=True)
+    except OSError as error:
+        raise NotReadable("cannot read %s: %s" % (path, error)) from error
+
+    moved = []
+    changed = 0
+    for line in lines:
+        key = _key_of(line)
+        value = line.split("=", 1)[1].strip() if key else ""
+        if value == str(old) or value.startswith(str(old) + "/"):
+            line = "%s = %s%s\n" % (key, new, value[len(str(old)):])
+            changed += 1
+        moved.append(line)
+
+    if changed:
+        try:
+            path.write_text("".join(moved))
+        except OSError as error:
+            raise NotReadable("cannot write %s: %s" % (path, error)) from error
+    return changed
+
+
 def _sections(lines):
     """@returns list of (section name, its lines from its header up to the
     next), with None for what stands before the first header."""

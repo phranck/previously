@@ -1,0 +1,25 @@
+# Points the service and the console at their owner again where that user was
+# renamed. Raspberry Pi OS renames the first user at the first boot of an
+# image to the name set in Raspberry Pi Imager, and rename-user does the same
+# later, and the user's files move with them into a home of the new name.
+#
+# cloud-init renames the user before sysinit.target, and the service and the
+# console start after basic.target, so this runs between the two. The
+# condition asks the owner file in the shell, so a boot whose owner is there
+# starts no Python at all.
+
+[Unit]
+Description=Previously's owner, under the name the user has now
+Documentation=https://github.com/phranck/previously
+ConditionPathExists=/etc/systemd/system/previously.service.d/owner.conf
+Before=previously.service previously-console.service
+
+[Service]
+Type=oneshot
+ExecCondition=/bin/sh -c '! getent passwd "$$(sed -n "s/^User=//p" /etc/systemd/system/previously.service.d/owner.conf)" >/dev/null'
+ExecStart=/usr/bin/python3 -c "from previously import setup; setup.follow_owner()"
+Environment=PYTHONPATH=/usr/lib/previously
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+[Install]
+WantedBy=multi-user.target

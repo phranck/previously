@@ -5,7 +5,7 @@
 
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
-package copies Python, static files, eleven unit files, two udev rules, one
+package copies Python, static files, twelve unit files, two udev rules, one
 tmpfiles entry, one rpi-swap drop-in, one cursor theme, two pictures and two
 scripts for the initramfs into place. Nothing is compiled, nothing is patched
 and nothing is generated at install time, so the debhelper machinery would be
@@ -274,16 +274,20 @@ VERSION_FILE = "version.txt"
 #: it leaves a file in its runtime directory and a path unit running as root
 #: acts on it. Two of those do one exact command each, and the third installs.
 #: Two more draw the pictures: the boot picture, started by SPLASH_RULE, and
-#: the shutdown picture, which the console's unit wants. The last two build
-#: the initramfs again where its boot picture did not fit.
+#: the shutdown picture, which the console's unit wants. Two build the
+#: initramfs again where its boot picture did not fit. The last points the
+#: service and the console at their owner again where that user was renamed,
+#: with `setup.follow_owner`.
 SERVICE = NAME + ".service"
 SPLASH_UNIT = NAME + "-splash@.service"
 SHUTDOWN_SPLASH_UNIT = NAME + "-splash-shutdown.service"
+OWNER_UNIT = NAME + "-owner.service"
 UNIT_FILES = (SERVICE,
               NAME + "-poweroff.path", NAME + "-poweroff.service",
               NAME + "-reboot.path", NAME + "-reboot.service",
               NAME + "-setup.path", NAME + "-setup.service",
-              SPLASH_UNIT, SHUTDOWN_SPLASH_UNIT, INITRAMFS_UNIT, INITRAMFS_TIMER)
+              SPLASH_UNIT, SHUTDOWN_SPLASH_UNIT, INITRAMFS_UNIT, INITRAMFS_TIMER,
+              OWNER_UNIT)
 
 #: Who the tool runs as, written by postinst as a drop-in beside the unit. The
 #: user is whoever the card was made with, so it is decided on the machine
@@ -314,15 +318,14 @@ WRITABLE_IN_HOME = (".config/previous", ".config/previously",
                     ".cache/previously", "Previously")
 
 #: Finds who the tool runs as: the user in an owner file already there, so an
-#: upgrade keeps it; otherwise next, which every machine set up before there
-#: was an owner file ran as; otherwise the user with UID 1000, which is the one
-#: Raspberry Pi Imager creates. One statement, filled into preinst and postinst
-#: alike, so the two cannot answer differently.
+#: upgrade keeps it, otherwise the first user, `setup.FIRST_UID`, which is the
+#: one Raspberry Pi Imager creates under whatever name was chosen there. One
+#: statement, filled into preinst and postinst alike, so the two cannot answer
+#: differently.
 FIND_OWNER = (
     "    owner=$(sed -n 's/^User=//p' /%s 2>/dev/null || true)\n"
-    "    if [ -z \"$owner\" ] && getent passwd next >/dev/null; then owner=next; fi\n"
-    "    if [ -z \"$owner\" ]; then owner=$(getent passwd 1000 | cut -d: -f1); fi\n"
-    % OWNER_FILE)
+    "    if [ -z \"$owner\" ]; then owner=$(getent passwd %d | cut -d: -f1); fi\n"
+    % (OWNER_FILE, setup.FIRST_UID))
 
 #: Which of those are switched on when the package is installed. A path unit
 #: costs nothing while nothing is asked of it: it watches for one file and
@@ -547,8 +550,10 @@ setup.refresh_quiet()
     # part of it rather than something to switch on separately.
     systemctl enable --now %(watchers)s
     # Switched on for the next boot rather than started, because what it looks
-    # for is left by a boot.
+    # for is left by a boot. The owner's unit as well, because a rename takes
+    # effect at a boot.
     systemctl enable %(timer)s
+    systemctl enable %(owner_unit)s
 fi
 """
 
@@ -561,6 +566,7 @@ if [ "$1" = remove ] || [ "$1" = upgrade ]; then
     systemctl disable --now %(service)s || true
     systemctl disable --now %(watchers)s || true
     systemctl disable --now %(timer)s || true
+    systemctl disable %(owner_unit)s || true
 fi
 """
 
@@ -736,7 +742,7 @@ def scripts():
     """
     words = {"name": NAME, "service": SERVICE, "units": UNITS, "lib": LIB,
              "watchers": " ".join(WATCHERS), "timer": INITRAMFS_TIMER,
-             "tmpfiles": TMPFILES,
+             "owner_unit": OWNER_UNIT, "tmpfiles": TMPFILES,
              "find_owner": FIND_OWNER.rstrip("\n"),
              "owner_file": OWNER_FILE,
              "owner_dir": "/" + str(pathlib.PurePosixPath(OWNER_FILE).parent),

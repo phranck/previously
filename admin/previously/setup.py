@@ -87,6 +87,12 @@ PROGRESS = "progress.json"
 #: than named again here, because a second copy would be a second answer.
 OWNER_FILE = pathlib.Path("/etc/systemd/system/previously.service.d/owner.conf")
 
+#: The user the tool runs as where nothing names another: the first one on the
+#: card, which Raspberry Pi Imager creates, under whatever name was chosen
+#: there. Raspberry Pi OS renames this user at the first boot to that name,
+#: through userconf-pi, and its rename-user does the same later on request.
+FIRST_UID = 1000
+
 #: What the machine has to be for the emulator's package to fit. Raspberry Pi
 #: OS before trixie carries no SDL3, and Previous is built against it.
 ARCHITECTURE = "arm64"
@@ -1952,8 +1958,7 @@ def refresh_configuration(owner, previous_config=None, state_directory=None):
         state_directory = state_directory or loaded.state_directory
     if not previous_config.is_file():
         return False
-    ours = (config.written_by_us(previous_config, state_directory)
-            or not config.noted(state_directory))
+    ours = _ours(previous_config, state_directory)
     try:
         written = config.forget_roms(previous_config)
         if config.output_directory(previous_config, owner.home) == owner.home:
@@ -1964,6 +1969,107 @@ def refresh_configuration(owner, previous_config=None, state_directory=None):
     if ours:
         _note(owner, previous_config, state_directory)
     return written > 0
+
+
+def follow_owner(unit=OWNER_FILE, previous_config=None, state_directory=None):
+    """Points the tool at the first user again, where the owner file names a
+    user who is gone.
+
+    @param unit - The owner file, as the package writes it.
+    @param previous_config - pathlib.Path to the emulator's configuration.
+      Left out, the one the service's settings name in the new home.
+    @param state_directory - Where the service keeps its note of what it wrote
+      last. Left out, the one its settings name.
+    @returns bool, whether anything was written.
+
+    Raspberry Pi OS renames the first user at the first boot of an image to
+    the name set in Raspberry Pi Imager, and to pi where none is set, and
+    rename-user does the same later. The user keeps their files and moves with
+    them into a home of the new name, while the owner file, the console and
+    previous.cfg still name the old one. `previously-owner.service` runs this
+    before the service and the console start, which is after cloud-init has
+    renamed the user.
+
+    The owner file is changed rather than written again, because the package
+    is what writes it, and this changes in it only the name, the group and the
+    home. A configuration that was Previously's stays Previously's, and one
+    changed from outside stays changed, as `refresh_configuration` keeps them.
+    """
+    try:
+        text = unit.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    named = re.search(r"^User=(.+)$", text, re.M)
+    owner = _first_user()
+    if not named or _is_a_user(named.group(1).strip()) or owner is None:
+        return False
+
+    old = _home_in(text)
+    moved = re.sub(r"^User=.*$", "User=%s" % owner.name, text, flags=re.M)
+    moved = re.sub(r"^Group=.*$", "Group=%s" % owner.group, moved, flags=re.M)
+    if old is not None:
+        moved = moved.replace("=-%s/" % old, "=-%s/" % owner.home)
+    unit.write_text(moved, encoding="utf-8")
+
+    refresh_console(owner)
+
+    if previous_config is None or state_directory is None:
+        loaded = Settings.load(home=owner.home)
+        previous_config = previous_config or loaded.previous_config
+        state_directory = state_directory or loaded.state_directory
+    if old is not None and previous_config.is_file():
+        ours = _ours(previous_config, state_directory)
+        try:
+            config.rehome(previous_config, old, owner.home)
+        except config.NotReadable:
+            ours = False
+        if ours:
+            _note(owner, previous_config, state_directory)
+
+    run(["systemctl", "daemon-reload"])
+    return True
+
+
+def _first_user():
+    """@returns Owner, the user with FIRST_UID, or None where there is none."""
+    try:
+        return Owner(pwd.getpwuid(FIRST_UID).pw_name)
+    except KeyError:
+        return None
+
+
+def _is_a_user(name):
+    """@returns bool - Whether this system has a user of that name."""
+    try:
+        pwd.getpwnam(name)
+    except KeyError:
+        return False
+    return True
+
+
+def _home_in(text):
+    """@returns pathlib.Path, the home an owner file opens the directory the
+    emulator runs in under, or None where it opens none.
+
+    That directory is WORK_DIRECTORY in every home, so the entry naming it says
+    which home the rest of the file means.
+    """
+    found = re.search(r"^ReadWritePaths=-(.+)/%s$" % re.escape(WORK_DIRECTORY),
+                      text, re.M)
+    return pathlib.Path(found.group(1)) if found else None
+
+
+def _ours(previous_config, state_directory):
+    """@returns bool - Whether the configuration is Previously's, before this
+    changes it.
+
+    A file Previously never left a note of counts as its own: there is nothing
+    to compare it with, and a machine set up before every write was noted
+    would otherwise read as changed from outside without anybody having
+    touched it.
+    """
+    return (config.written_by_us(previous_config, state_directory)
+            or not config.noted(state_directory))
 
 
 def _note(owner, previous_config, state_directory):

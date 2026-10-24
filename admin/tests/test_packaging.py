@@ -106,16 +106,18 @@ def test_the_package_creates_that_directory(build):
 
 def test_the_package_runs_as_the_user_the_card_was_made_with(build):
     """The Imager asks for a user name and creates that user first, so it is
-    the one with UID 1000. A machine that already has an owner file keeps the
-    user in it, and one that ran as next before keeps next, so an upgrade never
-    moves the tool into somebody else's home."""
+    the one with UID 1000, whatever it is called. A machine that already has an
+    owner file keeps the user in it, so an upgrade never moves the tool into
+    somebody else's home. No name of the package's own comes into it."""
+    from previously import setup
+
     postinst = build.scripts()["postinst"]
 
     kept = postinst.index("/" + build.OWNER_FILE)
-    before = postinst.index("getent passwd next")
-    first = postinst.index("getent passwd 1000")
+    first = postinst.index("getent passwd %d" % setup.FIRST_UID)
 
-    assert kept < before < first
+    assert kept < first
+    assert not re.search(r"getent passwd [a-z]", build.FIND_OWNER)
     assert "User=$owner" in postinst
     assert "Group=$group" in postinst
 
@@ -132,18 +134,12 @@ def test_a_card_with_nobody_to_run_as_is_refused_before_anything_lands(build):
     assert "exit 1" in preinst
 
 
-@pytest.mark.parametrize("written, users, expected", [
-    ("[Service]\nUser=kept\n", {"next": 1000}, "kept"),
-    ("", {"next": 1001, "pi": 1000}, "next"),
-    ("", {"pi": 1000}, "pi"),
-    ("", {}, ""),
-])
-def test_who_the_tool_runs_as(build, tmp_path, written, users, expected):
-    """The statement itself, run by a shell, with getent answering for the
-    users the case names and the owner file put somewhere a test can write."""
-    owner_file = tmp_path / "owner.conf"
-    if written:
-        owner_file.write_text(written, encoding="utf-8")
+def a_getent(tmp_path, users):
+    """A getent that knows these users alone, by name and by UID.
+
+    @param users - dict of name to UID.
+    @returns pathlib.Path of the directory it is in, for the front of PATH.
+    """
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     lines = "".join('  %s|%s) echo "%s:x:%d:%d::/home/%s:/bin/sh" ;;\n'
@@ -152,12 +148,30 @@ def test_who_the_tool_runs_as(build, tmp_path, written, users, expected):
     getent.write_text('#!/bin/sh\ncase "$2" in\n%s  *) exit 2 ;;\nesac\n' % lines,
                       encoding="utf-8")
     getent.chmod(0o755)
+    return bin_dir
+
+
+@pytest.mark.parametrize("written, users, expected", [
+    ("[Service]\nUser=kept\n", {"chosen": 1000}, "kept"),
+    ("", {"another": 1001, "chosen": 1000}, "chosen"),
+    # The name phranck's own machines run under, which once came first.
+    ("", {"next": 1001, "chosen": 1000}, "chosen"),
+    ("", {}, ""),
+])
+def test_who_the_tool_runs_as(build, tmp_path, written, users, expected):
+    """The statement itself, run by a shell, with getent answering for the
+    users the case names and the owner file put somewhere a test can write.
+    Another user beside the first one changes nothing, whatever it is
+    called."""
+    owner_file = tmp_path / "owner.conf"
+    if written:
+        owner_file.write_text(written, encoding="utf-8")
 
     snippet = build.FIND_OWNER.replace("/" + build.OWNER_FILE, str(owner_file))
     finished = subprocess.run(
         ["sh", "-c", snippet + 'printf "%s" "$owner"'],
         capture_output=True, text=True, check=True,
-        env={"PATH": "%s:/usr/bin:/bin" % bin_dir})
+        env={"PATH": "%s:/usr/bin:/bin" % a_getent(tmp_path, users)})
 
     assert finished.stdout == expected
 
@@ -173,6 +187,47 @@ def test_the_helper_reads_the_owner_where_the_package_writes_it(build):
     from previously import setup
 
     assert "/" + build.OWNER_FILE == str(setup.OWNER_FILE)
+
+
+def test_the_owner_is_followed_before_the_service_and_the_console_start(build):
+    """Raspberry Pi OS's cloud-init renames the first user before
+    sysinit.target, and the service and the console run as the owner after
+    basic.target, so a unit ordered before both finds the new name and points
+    them at it before either starts."""
+    from previously import setup
+
+    unit = (PACKAGING / build.OWNER_UNIT).read_text(encoding="utf-8")
+    before = re.search(r"^Before=(.*)$", unit, re.M).group(1).split()
+
+    assert build.SERVICE in before
+    assert setup.CONSOLE in before
+    assert "ConditionPathExists=/" + build.OWNER_FILE in unit.splitlines()
+    assert re.search(r'^ExecStart=/usr/bin/python3 -c '
+                     r'"from previously import setup; setup\.follow_owner\(\)"$', unit, re.M)
+    assert build.OWNER_UNIT in build.UNIT_FILES
+    assert "systemctl enable %s" % build.OWNER_UNIT in build.scripts()["postinst"]
+    assert build.OWNER_UNIT in build.scripts()["prerm"]
+
+
+@pytest.mark.parametrize("users, follows", [
+    ({"chosen": 1000}, True),
+    ({"kept": 1000}, False),
+], ids=["renamed", "there"])
+def test_python_starts_only_where_the_owner_has_gone(build, tmp_path, users, follows):
+    """The unit stands in front of the service and the console at every boot,
+    so the question is asked in the shell, and a boot whose owner is there
+    starts no Python at all. systemd reads `$$` as one dollar sign."""
+    unit = (PACKAGING / build.OWNER_UNIT).read_text(encoding="utf-8")
+    condition = re.search(r"^ExecCondition=/bin/sh -c '(.*)'$", unit, re.M).group(1)
+    owner_file = tmp_path / "owner.conf"
+    owner_file.write_text("[Service]\nUser=kept\n", encoding="utf-8")
+
+    finished = subprocess.run(
+        ["sh", "-c", condition.replace("$$", "$").replace("/" + build.OWNER_FILE,
+                                                          str(owner_file))],
+        env={"PATH": "%s:/usr/bin:/bin" % a_getent(tmp_path, users)}, check=False)
+
+    assert (finished.returncode == 0) is follows
 
 
 def test_purging_removes_the_owner_file(build):

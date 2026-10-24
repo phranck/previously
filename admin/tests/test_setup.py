@@ -2309,6 +2309,116 @@ def test_a_unit_that_is_not_there_stops_the_work(tmp_path):
         setup.Owner.from_unit(tmp_path / "never-installed.service")
 
 
+# -- an owner under a new name --------------------------------------------
+
+
+#: A user no machine running the suite has, which is what the owner file names
+#: once Raspberry Pi OS has renamed the first user.
+GONE = "previously-test-renamed-away"
+
+
+@pytest.fixture
+def renamed(tmp_path, monkeypatch, commands):
+    """A machine set up for a user who has since been renamed: the owner file,
+    the console and previous.cfg name the old name and the old home, and the
+    files themselves have moved to the new home with the user, as userconf-pi
+    moves them.
+
+    @returns a namespace with the owner file, the old and the new home, the
+      new owner, previous.cfg and the service's state directory.
+    """
+    old = tmp_path / "home" / GONE
+    new = tmp_path / "home" / "test"
+    owner = Nobody(new)
+    monkeypatch.setattr(setup, "_first_user", lambda: owner)
+
+    unit = tmp_path / "owner.conf"
+    unit.write_text("[Service]\nUser=%s\nGroup=%s\n" % (GONE, GONE) + "".join(
+        "ReadWritePaths=-%s/%s\n" % (old, place) for place in (
+            ".config/previous", ".config/previously", setup.WORK_DIRECTORY,
+            "Previously")), encoding="utf-8")
+
+    was = types.SimpleNamespace(name=GONE, uid=owner.uid, home=old)
+    for path, (text, mode) in setup._console_files(was).items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    configuration = new / ".config" / "previous" / "previous.cfg"
+    configuration.parent.mkdir(parents=True)
+    configuration.write_text(
+        "[HardDisk]\nszImageName0 = %s/nextstep/nextstep-3.3.dd\n"
+        "szImageName1 = /media/usb/OPENSTEP.iso\n\n[Printer]\n"
+        "szPrintToFileName = %s/%s\n" % (old, old, setup.WORK_DIRECTORY),
+        encoding="utf-8")
+    state = tmp_path / "state"
+    state.mkdir()
+    config.note_written(configuration, state)
+
+    return types.SimpleNamespace(unit=unit, old=old, new=new, owner=owner,
+                                 configuration=configuration, state=state)
+
+
+def test_an_owner_who_was_renamed_is_followed(renamed, commands):
+    """Raspberry Pi OS renames the first user at the first boot to the name set
+    in Raspberry Pi Imager, and to pi where none is set, and rename-user does
+    it later on request. The owner file, the console and previous.cfg then
+    name a user and a home that are gone."""
+    assert setup.follow_owner(renamed.unit, renamed.configuration, renamed.state)
+
+    unit = renamed.unit.read_text(encoding="utf-8")
+    assert "User=test\n" in unit
+    assert "Group=test\n" in unit
+    assert str(renamed.old) not in unit
+    assert "ReadWritePaths=-%s/%s\n" % (renamed.new, setup.WORK_DIRECTORY) in unit
+
+    console = (setup.SYSTEM_UNITS / setup.CONSOLE).read_text(encoding="utf-8")
+    assert console == setup._console_unit(renamed.owner)
+    assert setup.CONSOLE_SCRIPT.read_text(encoding="utf-8") == \
+        setup._console_script(renamed.owner)
+
+    written = renamed.configuration.read_text(encoding="utf-8")
+    assert "szImageName0 = %s/nextstep/nextstep-3.3.dd\n" % renamed.new in written
+    assert "szPrintToFileName = %s/%s\n" % (renamed.new, setup.WORK_DIRECTORY) in written
+    assert "szImageName1 = /media/usb/OPENSTEP.iso\n" in written
+    assert config.written_by_us(renamed.configuration, renamed.state)
+
+    assert ["systemctl", "daemon-reload"] in commands
+
+
+def test_a_configuration_changed_from_outside_stays_so_when_followed(renamed):
+    """An owner who moved must not make a hand edit look like Previously's
+    own."""
+    renamed.configuration.write_text(
+        renamed.configuration.read_text(encoding="utf-8")
+        + "\n[Sound]\nbEnableSound = FALSE\n", encoding="utf-8")
+
+    setup.follow_owner(renamed.unit, renamed.configuration, renamed.state)
+
+    assert not config.written_by_us(renamed.configuration, renamed.state)
+
+
+def test_an_owner_who_is_there_is_left_alone(renamed, commands):
+    import pwd
+
+    me = pwd.getpwuid(os.getuid()).pw_name
+    renamed.unit.write_text(renamed.unit.read_text(encoding="utf-8").replace(
+        "User=%s\n" % GONE, "User=%s\n" % me), encoding="utf-8")
+    was = renamed.unit.read_text(encoding="utf-8")
+
+    assert not setup.follow_owner(renamed.unit, renamed.configuration, renamed.state)
+    assert renamed.unit.read_text(encoding="utf-8") == was
+    assert commands == []
+
+
+def test_without_a_first_user_there_is_nobody_to_follow(renamed, commands, monkeypatch):
+    monkeypatch.setattr(setup, "_first_user", lambda: None)
+    was = renamed.unit.read_text(encoding="utf-8")
+
+    assert not setup.follow_owner(renamed.unit, renamed.configuration, renamed.state)
+    assert renamed.unit.read_text(encoding="utf-8") == was
+    assert commands == []
+
+
 # -- running a command ----------------------------------------------------
 
 
