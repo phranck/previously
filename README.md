@@ -15,11 +15,22 @@
 
 A Raspberry Pi 4 or 5 that starts straight into NeXTSTEP. No desktop behind it, no login to get past, nothing on the screen but the gray NeXT panel. The emulator underneath is [Previous](https://previous.nextcommunity.net/), and the machine it pretends to be is a NeXTcube Turbo, one of eleven it can be.
 
-One line sets all of it up, and afterwards a web admin takes over that looks like the machine it configures.
+A ready image or one line sets all of it up, and afterwards a web admin takes over that looks like the machine it configures.
 
 ## Installing it
 
-You need a Raspberry Pi 4 or 5 with a card imaged with Raspberry Pi OS Lite, 64 bit, based on Debian 13. On the Pi, over SSH:
+There are two ways, and both end in the same machine.
+
+**Write the ready image** to a card or a USB stick of 8 GB or more with [Raspberry Pi Imager](https://www.raspberrypi.com/software/) 2, started with Previously's list:
+
+```bash
+open -a "Raspberry Pi Imager" --args --repo https://github.com/phranck/previously/releases/latest/download/os-list.json   # macOS
+rpi-imager --repo https://github.com/phranck/previously/releases/latest/download/os-list.json                           # Linux
+```
+
+Choose your Raspberry Pi 4 or 5 and Previously, then set a user name, a hostname, a password and the Wi-Fi as you would for Raspberry Pi OS. Any names will do. The Pi starts straight into NeXTSTEP, and the admin answers at `http://<hostname>.local:8810`.
+
+**Or install it on Raspberry Pi OS Lite**, 64 bit, based on Debian 13, on a Raspberry Pi 4 or 5. On the Pi, over SSH:
 
 ```bash
 curl -fsSL https://previous.li/install.sh | bash

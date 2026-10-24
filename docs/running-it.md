@@ -2,7 +2,22 @@
 
 Everything the README leaves out: how a machine is set up, how to check the result, and how to get back into one whose screen now belongs to a NeXT.
 
-## Setting a machine up
+## Writing the ready image
+
+Every release carries an image beside the package: Raspberry Pi OS Lite as pi-gen builds it, with the admin tool installed and the same setup job run on it that the one-line script asks for. `.github/workflows/image.yml` builds it from `image/` in this repository, and the release attaches it as `previously-raspberry-pi.img.xz` together with `os-list.json`, the list Raspberry Pi Imager reads it from. Both names stay the same in every release, so `releases/latest/download/` always names the newest.
+
+Start Raspberry Pi Imager 2 with that list, as the README shows, and choose the board and Previously. The Imager offers its settings only for an image a list describes, which is why the list is there. Set the user name, the hostname, the password and the Wi-Fi as for Raspberry Pi OS. Any names work, and SSH is on, because the admin's Terminal logs in through it.
+
+At the first start:
+
+- The root partition grows to the whole card or stick.
+- cloud-init applies the Imager's settings and renames the image's first user, `pi`, to the name you set. `previously-owner.service` then points the admin and the console at that user and their home, before either starts.
+- The console starts NeXTSTEP once cloud-init is through, which `previously-first-boot.service` sees to on this one start.
+- cloud-init switches itself off for every later start, as on a machine set up with the script.
+
+The image is only as large as what it holds. NeXTSTEP's disk is two gigabytes long and takes up only what NeXTSTEP has written to it, and the root partition is sized by what its files take, so the download stays well under the 2 GiB a release allows.
+
+## Setting a machine up with one line
 
 One line, on the Pi, over SSH:
 
