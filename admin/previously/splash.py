@@ -1,11 +1,23 @@
-"""Draws the boot picture or the shutdown picture onto a framebuffer.
+"""Draws the boot picture or the shutdown picture onto a framebuffer, or lays
+the boot picture out for the initramfs to draw.
 
     python3 -m previously.splash fb0
     python3 -m previously.splash fb0 shutdown
+    python3 -m previously.splash fb0 --into DIRECTORY
+
+The package's initramfs hook runs the third while an initramfs is built. It
+writes the whole screen as fb0 holds it at that moment, with the boot picture
+in the middle, and what that screen is, in the form /sys/class/graphics/fb0
+says it. The package's script in local-bottom copies the frame onto fb0 once
+the root is mounted, where the console is switched on and fb0 is still that
+screen. vc4 comes up in the initramfs as well, so that is the first moment
+the Pi can show anything after the firmware.
 
 previously-splash@.service runs the first when udev sees a framebuffer appear,
-which on a Raspberry Pi is the moment vc4 takes the screen over from the
-firmware. From there the picture stands until cage sets the screen's mode.
+which on a Raspberry Pi is vc4's, and again when systemd replays udev's events
+for one that appeared in the initramfs. It draws the same picture over the
+initramfs's, and it is what draws it on a screen the initramfs had no frame
+for. From there the picture stands until cage takes the screen.
 
 previously-splash-shutdown.service runs the second when it stops, which on the
 way down is after the console, so cage has given the screen back and the text
@@ -24,8 +36,9 @@ framebuffer's own format, as the kernel describes it through
 FBIOGET_VSCREENINFO, so the same picture is right at 16 bits a pixel on a Pi 4
 and at whatever another board uses.
 
-It runs as an unprivileged user in the video group, which may write the
-framebuffer and nothing else this needs.
+Drawing runs as an unprivileged user in the video group, which may write the
+framebuffer and nothing else this needs. Laying out runs inside
+update-initramfs, as root, and only reads the framebuffer.
 """
 
 import fcntl
@@ -43,6 +56,17 @@ PICTURES = {
 
 #: Where the framebuffers are, by the name udev hands over.
 DEVICES = pathlib.Path("/dev")
+
+#: What the firmware's framebuffer is called, which simplefb names it
+#: (drivers/video/fbdev/simplefb.c in raspberrypi/linux). vc4 takes the screen
+#: from it at another mode, so nothing is drawn or laid out for it.
+FIRMWARE_FRAMEBUFFER = "simple"
+
+#: What the frame laid out for the initramfs and the screen it is for are
+#: called, in the directory they are written into. `packaging/build.py` writes
+#: the script that reads them with the same names.
+FRAME = "frame"
+GEOMETRY = "geometry"
 
 #: The two requests from linux/fb.h, and the visual whose pixels are written as
 #: red, green and blue bitfields.
@@ -82,10 +106,12 @@ class Screen:
     def __init__(self, var, fix):
         fields = VAR_SCREENINFO.unpack(var)
         self.width, self.height = fields[0], fields[1]
+        self.virtual_width, self.virtual_height = fields[2], fields[3]
         self.x_offset, self.y_offset = fields[4], fields[5]
         self.bits = fields[6]
         self.red, self.green, self.blue = fields[8:10], fields[11:13], fields[14:16]
         fixed = FIX_SCREENINFO.unpack(fix)
+        self.name = fixed[0].split(b"\0", 1)[0].decode("ascii", "replace")
         self.visual = fixed[5]
         self.stride = fixed[9]
         if self.visual != FB_VISUAL_TRUECOLOR or self.bits % 8 or not self.bits:
@@ -136,8 +162,74 @@ def placed(size, screen):
     return (screen - shown) // 2, clipped, shown
 
 
+def frame(data, screen):
+    """The whole visible screen with the picture in the middle, as the
+    framebuffer holds it.
+
+    @param data - bytes of the TGA.
+    @param screen - The Screen it is laid out for.
+    @returns bytes, `screen.stride` bytes for each of the screen's lines, and
+      black wherever the picture is not.
+    @raises Unsupported as `picture` does.
+
+    The whole screen rather than the picture's lines alone, so whatever the
+    text console left on it, such as a line the kernel printed, is gone with
+    everything else, and so the initramfs can put it onto the screen with one
+    copy.
+    """
+    width, height, pixels = picture(data)
+    out = bytearray(screen.stride * screen.height)
+    left, skip_x, shown_x = placed(width, screen.width)
+    top, skip_y, shown_y = placed(height, screen.height)
+    size = screen.bits // 8
+    # The picture has a few hundred colours, so each is turned into the
+    # framebuffer's format once rather than once per pixel.
+    formats = {}
+    for row in range(shown_y):
+        start = ((skip_y + row) * width + skip_x) * 3
+        line = pixels[start:start + shown_x * 3]
+        turned = bytearray()
+        for at in range(0, len(line), 3):
+            colour = line[at:at + 3]
+            if colour not in formats:
+                formats[colour] = screen.pixel(colour[2], colour[1], colour[0])
+            turned += formats[colour]
+        begins = (top + row) * screen.stride + left * size
+        out[begins:begins + len(turned)] = turned
+    return bytes(out)
+
+
+def geometry(screen):
+    """@returns str, what the screen is, as /sys/class/graphics/fb0 says it:
+    `virtual_size`, `bits_per_pixel`, `stride` and `pan`, one after another,
+    which on next5 on 24.10.2026 was `1024,600 16 2048 0,0`.
+
+    @param screen - The Screen.
+
+    The initramfs compares this with what sysfs says as text, because a shell
+    there has nothing else to compare with. A frame laid out for one screen
+    and copied onto another is torn rather than a picture.
+    """
+    return "%d,%d %d %d %d,%d\n" % (screen.virtual_width, screen.virtual_height,
+                                    screen.bits, screen.stride,
+                                    screen.x_offset, screen.y_offset)
+
+
+def _screen_of(device):
+    """@returns Screen, what the kernel says of an open framebuffer.
+
+    @param device - The open file.
+    @raises Unsupported as Screen does.
+    """
+    var = bytearray(VAR_SCREENINFO.size)
+    fix = bytearray(FIX_SCREENINFO.size)
+    fcntl.ioctl(device, FBIOGET_VSCREENINFO, var)
+    fcntl.ioctl(device, FBIOGET_FSCREENINFO, fix)
+    return Screen(bytes(var), bytes(fix))
+
+
 def draw(name, picture_path=None, devices=None):
-    """Draws the picture onto one framebuffer.
+    """Draws the picture onto one framebuffer, as the whole of its screen.
 
     @param name - The framebuffer's name, such as `fb0`.
     @param picture_path - pathlib.Path of the TGA, the boot picture where left
@@ -145,52 +237,70 @@ def draw(name, picture_path=None, devices=None):
     @param devices - Where the device files are, DEVICES where left out.
     @raises Unsupported, and OSError where the device cannot be opened.
     """
-    width, height, pixels = picture((picture_path or PICTURES["boot"]).read_bytes())
+    data = (picture_path or PICTURES["boot"]).read_bytes()
     with open((devices or DEVICES) / name, "r+b", buffering=0) as device:
-        var = bytearray(VAR_SCREENINFO.size)
-        fix = bytearray(FIX_SCREENINFO.size)
-        fcntl.ioctl(device, FBIOGET_VSCREENINFO, var)
-        fcntl.ioctl(device, FBIOGET_FSCREENINFO, fix)
-        screen = Screen(bytes(var), bytes(fix))
+        screen = _screen_of(device)
+        device.seek(screen.y_offset * screen.stride
+                    + screen.x_offset * (screen.bits // 8))
+        device.write(frame(data, screen))
 
-        left, skip_x, shown_x = placed(width, screen.width)
-        top, skip_y, shown_y = placed(height, screen.height)
-        # The picture has a few hundred colours, so each is turned into the
-        # framebuffer's format once rather than once per pixel.
-        formats = {}
-        for row in range(shown_y):
-            start = ((skip_y + row) * width + skip_x) * 3
-            line = pixels[start:start + shown_x * 3]
-            out = bytearray()
-            for at in range(0, len(line), 3):
-                colour = line[at:at + 3]
-                if colour not in formats:
-                    formats[colour] = screen.pixel(colour[2], colour[1], colour[0])
-                out += formats[colour]
-            device.seek((screen.y_offset + top + row) * screen.stride
-                        + (screen.x_offset + left) * (screen.bits // 8))
-            device.write(out)
+
+def lay_out(name, into, devices=None):
+    """Writes the boot picture as the whole of one framebuffer's screen, and
+    what that screen is, for the initramfs to draw from.
+
+    @param name - The framebuffer's name, such as `fb0`.
+    @param into - pathlib.Path of the directory both go into, which is made
+      where it is not there.
+    @param devices - As `draw` takes it.
+    @raises Unsupported where the framebuffer is the firmware's, and as `draw`
+      raises.
+    """
+    data = PICTURES["boot"].read_bytes()
+    with open((devices or DEVICES) / name, "rb") as device:
+        screen = _screen_of(device)
+    if screen.name == FIRMWARE_FRAMEBUFFER:
+        raise Unsupported("it is the firmware's, which vc4 takes the screen from")
+    laid = frame(data, screen)
+    into.mkdir(parents=True, exist_ok=True)
+    (into / FRAME).write_bytes(laid)
+    (into / GEOMETRY).write_text(geometry(screen), encoding="utf-8")
 
 
 def main(argv=None):
     """@returns int, the exit status.
 
     @param argv - The framebuffer's name, and optionally which of PICTURES to
-      draw, the boot picture where left out.
+      draw, the boot picture where left out. Or the framebuffer's name, then
+      `--into` and a directory, to lay the boot picture out there instead.
     """
     arguments = sys.argv[1:] if argv is None else argv
+    into = None
+    if len(arguments) == 3 and arguments[1] == "--into":
+        into = pathlib.Path(arguments[2])
+        arguments = arguments[:1]
     if not 1 <= len(arguments) <= 2 or "/" in arguments[0]:
-        print("usage: python3 -m previously.splash fb0 [%s]" % "|".join(PICTURES),
-              file=sys.stderr)
+        print("usage: python3 -m previously.splash fb0 [%s]\n"
+              "       python3 -m previously.splash fb0 --into DIRECTORY"
+              % "|".join(PICTURES), file=sys.stderr)
         return 2
+    name = arguments[0]
+    if into is not None:
+        try:
+            lay_out(name, into)
+        except (Unsupported, OSError) as failure:
+            print("no boot picture laid out for %s: %s" % (name, failure),
+                  file=sys.stderr)
+            return 1
+        return 0
     kind = arguments[1] if len(arguments) == 2 else "boot"
     if kind not in PICTURES:
         print("no picture called %s" % kind, file=sys.stderr)
         return 2
     try:
-        draw(arguments[0], PICTURES[kind])
+        draw(name, PICTURES[kind])
     except (Unsupported, OSError) as failure:
-        print("no %s picture on %s: %s" % (kind, arguments[0], failure), file=sys.stderr)
+        print("no %s picture on %s: %s" % (kind, name, failure), file=sys.stderr)
         return 1
     return 0
 

@@ -435,8 +435,9 @@ def test_the_picture_is_drawn_only_where_the_console_is_switched_on(build):
     console = setup._console_unit(owner)
 
     assert re.search(r"^WantedBy=multi-user\.target$", console, re.M)
-    assert ("ConditionPathExists=%s" % (setup.SYSTEM_UNITS / "multi-user.target.wants"
-                                        / setup.CONSOLE)) in unit.splitlines()
+    assert setup.CONSOLE_SWITCHED_ON == (setup.SYSTEM_UNITS / "multi-user.target.wants"
+                                         / setup.CONSOLE)
+    assert "ConditionPathExists=%s" % setup.CONSOLE_SWITCHED_ON in unit.splitlines()
 
 
 def test_the_drawer_runs_as_nobody_in_particular(build):
@@ -447,6 +448,195 @@ def test_the_drawer_runs_as_nobody_in_particular(build):
     assert "DynamicUser=yes" in unit.splitlines()
     assert "SupplementaryGroups=video" in unit.splitlines()
     assert not re.search(r"^User=", unit, re.M)
+
+
+# -- the boot picture from the initramfs ------------------------------------
+
+
+def test_initramfs_tools_finds_what_the_package_brings(build, tmp_path):
+    """initramfs-tools(7) reads hooks from /usr/share/initramfs-tools/hooks and
+    boot scripts from /usr/share/initramfs-tools/scripts, which is the part of
+    it that belongs to packages. local-bottom runs once the root is mounted."""
+    build.lay_out(tmp_path / "tree")
+
+    for path, directory in ((build.INITRAMFS_HOOK, "usr/share/initramfs-tools/hooks/"),
+                            (build.INITRAMFS_SCRIPT,
+                             "usr/share/initramfs-tools/scripts/local-bottom/")):
+        assert path.startswith(directory)
+        assert (tmp_path / "tree" / path).stat().st_mode & 0o111, path
+
+
+def hook_run(build, tmp_path, with_vc4):
+    """Runs the package's hook as mkinitramfs would, with hook-functions and
+    python3 standing in for the real ones.
+
+    @param with_vc4 - Whether the kernel the initramfs is built for has vc4.
+    @returns (str, str): what force_load was asked for, and what python3 was
+      run with, its PYTHONPATH first.
+    """
+    build.lay_out(tmp_path / "tree")
+    destination = tmp_path / "initramfs"
+    destination.mkdir()
+    modules = tmp_path / "modules"
+    (modules / "kernel" / "drivers" / "gpu" / "drm" / "vc4").mkdir(parents=True)
+    if with_vc4:
+        (modules / "kernel" / "drivers" / "gpu" / "drm" / "vc4" / "vc4.ko.xz").touch()
+    functions = tmp_path / "hook-functions"
+    functions.write_text('force_load() { echo "$@" >> "%s/loaded"; }\n' % tmp_path,
+                         encoding="utf-8")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    python = bin_dir / "python3"
+    python.write_text('#!/bin/sh\necho "$PYTHONPATH $*" > "%s/python"\n' % tmp_path,
+                      encoding="utf-8")
+    python.chmod(0o755)
+
+    hook = (tmp_path / "tree" / build.INITRAMFS_HOOK).read_text(encoding="utf-8")
+    subprocess.run(["sh", "-c", hook.replace(build.HOOK_FUNCTIONS, str(functions))],
+                   check=True, env={"PATH": "%s:/usr/bin:/bin" % bin_dir,
+                                    "DESTDIR": str(destination),
+                                    "MODULESDIR": str(modules), "version": "6.18"})
+    loaded = tmp_path / "loaded"
+    return (loaded.read_text(encoding="utf-8").strip() if loaded.exists() else "",
+            (tmp_path / "python").read_text(encoding="utf-8").strip())
+
+
+def test_the_initramfs_brings_vc4_up_and_lays_the_picture_out(build, tmp_path):
+    """vc4 is loaded in the initramfs, which on next5 on 24.10.2026 had it take
+    the screen at 0.99 s rather than at 3.60 s, and the picture is laid out
+    for the screen as it is, into the place the script draws it from."""
+    loaded, python = hook_run(build, tmp_path, with_vc4=True)
+
+    assert loaded == "vc4"
+    assert python == "/%s -m previously.splash fb0 --into %s%s" % (
+        build.LIB, tmp_path / "initramfs", build.INITRAMFS_PICTURE)
+
+
+def test_an_initramfs_for_a_kernel_without_vc4_is_built_all_the_same(build, tmp_path):
+    """A kernel that is not a Raspberry Pi's has no vc4, and asking for it
+    would fail the whole initramfs."""
+    loaded, _ = hook_run(build, tmp_path, with_vc4=False)
+
+    assert loaded == ""
+
+
+#: What the screen was when the frame was laid out, in the four fields the
+#: script reads from sysfs.
+LAID_OUT_FOR = {"virtual_size": "4,2", "bits_per_pixel": "32", "stride": "16",
+                "pan": "0,0"}
+
+
+def bottom_run(build, tmp_path, console=True, name="vc4drmfb", screen=None,
+               laid_out=True):
+    """Runs the package's script in local-bottom against a root, a sysfs and a
+    framebuffer that are files in the test's directory.
+
+    @param console - Whether the root has the console switched on.
+    @param name - What sysfs calls fb0.
+    @param screen - What sysfs says fb0 is, LAID_OUT_FOR where left out.
+    @param laid_out - Whether the initramfs carries a frame at all.
+    @returns (bytes, str): what fb0 holds afterwards, and what the script
+      wrote into the kernel's log.
+    """
+    from previously import setup, splash
+
+    root = tmp_path / "root"
+    if console:
+        link = root / str(setup.CONSOLE_SWITCHED_ON).lstrip("/")
+        link.parent.mkdir(parents=True)
+        # Absolute, as `systemctl enable` makes it, and so pointing nowhere from
+        # inside the initramfs.
+        link.symlink_to(setup.SYSTEM_UNITS / setup.CONSOLE)
+    picture = tmp_path / "picture"
+    picture.mkdir()
+    if laid_out:
+        (picture / splash.FRAME).write_bytes(b"the boot picture")
+        var = [0] * 40
+        var[0:4] = [4, 2, 4, 2]
+        var[6] = 32
+        var[8:16] = [16, 8, 0, 8, 8, 0, 0, 8]
+        fix = splash.FIX_SCREENINFO.pack(b"vc4drmfb", 0, 32, 0, 0,
+                                         splash.FB_VISUAL_TRUECOLOR, 0, 0, 0, 16,
+                                         0, 0, 0, 0, 0, 0)
+        (picture / splash.GEOMETRY).write_text(
+            splash.geometry(splash.Screen(splash.VAR_SCREENINFO.pack(*var), fix)),
+            encoding="utf-8")
+    sysfs = tmp_path / "sys"
+    sysfs.mkdir()
+    for field, value in {"name": name, **(screen or LAID_OUT_FOR)}.items():
+        (sysfs / field).write_text(value + "\n", encoding="utf-8")
+    device = tmp_path / "fb0"
+    device.write_bytes(b"what the console left")
+    log = tmp_path / "kmsg"
+    log.touch()
+
+    script = (tmp_path / "tree" / build.INITRAMFS_SCRIPT).read_text(encoding="utf-8")
+    for constant, here in ((build.SCREEN, sysfs), (build.INITRAMFS_PICTURE, picture),
+                           (build.SCREEN_DEVICE, device), (build.KERNEL_LOG, log)):
+        assert script.count("=%s\n" % constant) == 1, constant
+        script = script.replace("=%s\n" % constant, "=%s\n" % here)
+    subprocess.run(["sh", "-c", script], check=True,
+                   env={"PATH": "/usr/bin:/bin", "rootmnt": str(root)})
+    return device.read_bytes(), log.read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def laid_out_tree(build, tmp_path):
+    build.lay_out(tmp_path / "tree")
+
+
+def test_the_initramfs_draws_the_picture_once_the_root_is_mounted(
+        build, tmp_path, laid_out_tree):
+    """Read as sysfs gives it and compared with what splash.geometry wrote, so
+    the two say a screen the same way. The kernel's log says so at its info
+    level, which no console level of this boot lets onto the screen."""
+    shown, logged = bottom_run(build, tmp_path)
+
+    assert shown == b"the boot picture"
+    assert logged.startswith("<6>previously: ")
+
+
+@pytest.mark.parametrize("case", [
+    {"console": False},
+    {"name": "simple"},
+    {"screen": {**LAID_OUT_FOR, "virtual_size": "8,2"}},
+    {"screen": {**LAID_OUT_FOR, "pan": "0,2"}},
+    {"laid_out": False},
+], ids=["console off", "the firmware's", "another screen", "panned", "no frame"])
+def test_the_initramfs_leaves_the_screen_alone(build, tmp_path, laid_out_tree, case):
+    """Where the console is off, previously-splash@.service draws nothing
+    either and the login prompt comes, and a picture over it would stand there.
+    Where fb0 is still the firmware's, vc4 is about to take the screen. Where
+    it is another screen, the frame would land torn, and the drawer systemd
+    starts draws it instead."""
+    assert bottom_run(build, tmp_path, **case) == (b"what the console left", "")
+
+
+def test_the_initramfs_asks_what_the_drawer_asks(build, tmp_path, laid_out_tree):
+    """The console's link on the root, which is the condition
+    previously-splash@.service starts on, so the two draw on the same
+    machines."""
+    from previously import setup
+
+    script = (tmp_path / "tree" / build.INITRAMFS_SCRIPT).read_text(encoding="utf-8")
+
+    assert "${rootmnt}%s" % setup.CONSOLE_SWITCHED_ON in script
+
+
+def test_the_package_builds_the_initramfs_of_the_kernel_the_board_runs(build):
+    """initramfs-tools' own trigger runs `update-initramfs -u`, which builds the
+    newest kernel's alone, and on Raspberry Pi OS that is 6.18.50+rpt-rpi-v8,
+    the Pi 4's, on a Pi 5 as well (`linux-version sort` on next5 on
+    24.10.2026). On removal it is built again without the hook, which has gone
+    with the package."""
+    postinst = build.scripts()["postinst"]
+    postrm = build.scripts()["postrm"]
+    built = 'update-initramfs -u -k "$(uname -r)" || true'
+
+    assert postinst.index("refresh_console") < postinst.index(built)
+    assert postinst.index(built) < postinst.index("systemctl enable --now")
+    removing = re.search(r'^if \[ "\$1" = remove \]; then\n(.*?)^fi$', postrm, re.M | re.S)
+    assert removing and built in removing.group(1)
 
 
 def test_the_package_brings_the_console_up_to_date(build, tmp_path):

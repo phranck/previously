@@ -25,18 +25,21 @@ def tga(width, height, colour):
     return header + bytes([blue, green, red]) * (width * height)
 
 
-def screeninfo(width, height, bits, fields, stride, visual):
+def screeninfo(width, height, bits, fields, stride, visual, name=b"vc4drmfb", pan=(0, 0)):
     """@returns (bytes, bytes), the two structs the kernel answers with.
 
     @param fields - ((offset, length) of red, of green, of blue).
     @param visual - The visual, as linux/fb.h numbers them.
+    @param name - What the driver calls its framebuffer.
+    @param pan - Where the visible part starts, across and down.
     """
     var = [0] * 40
     var[0], var[1], var[2], var[3] = width, height, width, height
+    var[4], var[5] = pan
     var[6] = bits
     for index, (offset, length) in zip((8, 11, 14), fields):
         var[index], var[index + 1] = offset, length
-    fix = splash.FIX_SCREENINFO.pack(b"vc4drmfb", 0, stride * height, 0, 0, visual,
+    fix = splash.FIX_SCREENINFO.pack(name, 0, stride * height, 0, 0, visual,
                                      0, 0, 0, stride, 0, 0, 0, 0, 0, 0)
     return splash.VAR_SCREENINFO.pack(*var), fix
 
@@ -55,7 +58,8 @@ XRGB8888 = ((16, 8), (8, 8), (0, 8))
 def framebuffer(tmp_path, monkeypatch):
     """A framebuffer as a file, and the kernel's answers about it.
 
-    @returns a function taking width, height, bits, fields and the visual,
+    @returns a function taking width, height, bits, fields, the visual, the
+      driver's name for it and how many bytes each line has beyond its pixels,
       which makes the file and answers with its path and its stride.
     """
     answers = {}
@@ -65,9 +69,10 @@ def framebuffer(tmp_path, monkeypatch):
 
     monkeypatch.setattr(splash.fcntl, "ioctl", ioctl)
 
-    def make(width, height, bits, fields, visual=splash.FB_VISUAL_TRUECOLOR):
-        stride = width * bits // 8
-        var, fix = screeninfo(width, height, bits, fields, stride, visual)
+    def make(width, height, bits, fields, visual=splash.FB_VISUAL_TRUECOLOR,
+             name=b"vc4drmfb", padding=0):
+        stride = width * bits // 8 + padding
+        var, fix = screeninfo(width, height, bits, fields, stride, visual, name)
         answers[splash.FBIOGET_VSCREENINFO] = var
         answers[splash.FBIOGET_FSCREENINFO] = fix
         device = tmp_path / "fb0"
@@ -200,3 +205,64 @@ def test_the_structs_are_as_long_as_the_kernels():
     A shorter buffer would have the kernel write past its end."""
     assert splash.VAR_SCREENINFO.size == 160
     assert splash.FIX_SCREENINFO.size == 80
+
+
+def test_drawing_clears_what_the_screen_showed_beside_the_picture(tmp_path, framebuffer):
+    """The picture is written as the whole screen, so text the console left
+    there, such as a line the kernel printed, goes with what was under it."""
+    device, stride = framebuffer(4, 2, 32, XRGB8888, padding=8)
+    device.write_bytes(b"\xff" * (stride * 2))
+
+    written = drawn(tmp_path, tga(2, 1, (0, 0, 0xFF)))
+
+    assert [offset for offset in range(len(written)) if written[offset]] == [4, 8]
+
+
+def boot_picture(tmp_path, monkeypatch, colour=(0xFF, 0x80, 0x10)):
+    """Makes a boot picture of two pixels the module draws from, and has it
+    open the framebuffers in the test's directory."""
+    picture = tmp_path / "boot.tga"
+    picture.write_bytes(tga(2, 1, colour))
+    monkeypatch.setitem(splash.PICTURES, "boot", picture)
+    monkeypatch.setattr(splash, "DEVICES", tmp_path)
+
+
+def test_the_frame_for_the_initramfs_is_what_drawing_writes(tmp_path, framebuffer,
+                                                            monkeypatch):
+    """The hook lays the boot picture out for the screen as it is, and the
+    initramfs copies it onto the screen as it stands, so the two have to be
+    the same bytes."""
+    framebuffer(4, 2, 16, RGB565, padding=4)
+    boot_picture(tmp_path, monkeypatch)
+
+    assert splash.main(["fb0", "--into", str(tmp_path / "initramfs")]) == 0
+    laid_out = (tmp_path / "initramfs" / splash.FRAME).read_bytes()
+    assert splash.main(["fb0"]) == 0
+
+    assert laid_out == (tmp_path / "fb0").read_bytes()
+
+
+def test_the_geometry_is_said_the_way_sysfs_says_it(tmp_path, framebuffer, monkeypatch):
+    """virtual_size, bits_per_pixel, stride and pan, in that order and form, as
+    /sys/class/graphics/fb0 gives them: `1024,600 16 2048 0,0` on next5 on
+    24.10.2026. The initramfs compares the two as text."""
+    framebuffer(1024, 600, 16, RGB565)
+    boot_picture(tmp_path, monkeypatch)
+
+    assert splash.main(["fb0", "--into", str(tmp_path / "initramfs")]) == 0
+
+    said = (tmp_path / "initramfs" / splash.GEOMETRY).read_text(encoding="utf-8")
+    assert said == "1024,600 16 2048 0,0\n"
+
+
+def test_no_frame_is_laid_out_for_the_firmwares_framebuffer(tmp_path, framebuffer,
+                                                            monkeypatch, capsys):
+    """vc4 takes the screen from it, so a frame laid out for it is one the
+    initramfs would never find a screen for."""
+    framebuffer(4, 2, 32, XRGB8888, name=splash.FIRMWARE_FRAMEBUFFER.encode())
+    boot_picture(tmp_path, monkeypatch)
+    into = tmp_path / "initramfs"
+
+    assert splash.main(["fb0", "--into", str(into)]) == 1
+    assert not into.exists()
+    assert "firmware" in capsys.readouterr().err
