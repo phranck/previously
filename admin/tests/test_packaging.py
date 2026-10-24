@@ -734,6 +734,20 @@ def test_the_package_brings_the_archive_source_up_to_date(build):
     assert "refresh_console" not in archive[0]
 
 
+def test_the_package_keeps_a_quiet_boot_quiet(build):
+    """On every install and upgrade, so a board made quiet before the kernel's
+    console level was held keeps the kernel's messages off its screen. A
+    program of its own, so a console that cannot be brought up to date does not
+    hold it back."""
+    postinst = build.scripts()["postinst"]
+
+    programs = re.findall(r"python3 -c '(.*?)'", postinst, re.S)
+    quiet = [program for program in programs if "setup.refresh_quiet()" in program]
+
+    assert len(quiet) == 1, "postinst does not keep a quiet boot quiet"
+    assert "refresh_console" not in quiet[0]
+
+
 # -- swap ----------------------------------------------------------------
 
 
