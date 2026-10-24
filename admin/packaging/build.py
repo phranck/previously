@@ -6,9 +6,10 @@
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
 package copies Python, static files, nine unit files, two udev rules, one
-tmpfiles entry, one rpi-swap drop-in, one cursor theme and two pictures into
-place. Nothing is compiled, nothing is patched and nothing is generated at
-install time, so the debhelper machinery would be a build system around a copy.
+tmpfiles entry, one rpi-swap drop-in, one cursor theme, two pictures and two
+scripts for the initramfs into place. Nothing is compiled, nothing is patched
+and nothing is generated at install time, so the debhelper machinery would be
+a build system around a copy.
 
 The release is `previously.server.RELEASE` and is read from there rather than
 written down again here. A package built between two releases carries that
@@ -31,10 +32,11 @@ ADMIN = HERE.parent
 
 # The boot picture is read with the service's own PNG reader, which is the
 # standard library and nothing else, so the build needs no image library. The
-# service sits beside this script rather than being installed, so it goes on
-# the path by hand.
+# scripts for the initramfs take the names of what they read from the drawer
+# and the setup, which say them once. The service sits beside this script
+# rather than being installed, so it goes on the path by hand.
 sys.path.insert(0, str(ADMIN))
-from previously import png  # noqa: E402
+from previously import png, setup, splash  # noqa: E402
 
 #: What the package is called, which is what the service, its directory under
 #: /usr/lib and its state under /var/lib are already called.
@@ -84,14 +86,11 @@ UINPUT_GROUP = "input"
 #: What starts the boot picture: a rule that wants an instance of the drawing
 #: unit for every framebuffer that appears, by its name. By the name rather
 #: than by the path, because vc4's sits at /sys/devices/platform/gpu on a Pi 4
-#: and at /sys/devices/platform/axi/axi:gpu on a Pi 5.
+#: and at /sys/devices/platform/axi/axi:gpu on a Pi 5. The rule leaves the
+#: firmware's framebuffer out, `splash.FIRMWARE_FRAMEBUFFER`: vc4 replaces it
+#: within a second at another mode, so a picture drawn there flashes up and
+#: goes before the one that stays.
 SPLASH_RULE = "usr/lib/udev/rules.d/60-" + NAME + "-splash.rules"
-
-#: The name the firmware's framebuffer carries, which simplefb gives it
-#: (drivers/video/fbdev/simplefb.c in raspberrypi/linux). The rule leaves it
-#: out: vc4 replaces it within a second at another mode, so a picture drawn
-#: there flashes up and goes before the one that stays.
-FIRMWARE_FRAMEBUFFER = "simple"
 
 #: Where the package keeps swap in memory, as a drop-in rpi-swap reads while the
 #: machine starts. Under /usr/lib, because swap.conf(5) leaves /etc to the
@@ -139,6 +138,104 @@ SPLASHES = {SPLASH: HERE / "splash.png", SHUTDOWN_SPLASH: HERE / "splash-shutdow
 #: decoder and takes the rows in the order they go onto the screen.
 TGA_TRUE_COLOUR = 2
 TGA_FROM_THE_TOP = 0x20
+
+#: What brings the boot picture forward to the first moment the Pi can show
+#: anything after its firmware: a hook that puts vc4 and a frame of the
+#: picture into the initramfs, and a script that draws the frame once the root
+#: is mounted. Under /usr/share, which initramfs-tools(7) reads for packages,
+#: so /etc/initramfs-tools stays the administrator's. On next5 on 24.10.2026
+#: vc4 had the screen at 0.99 s from the initramfs rather than at 3.60 s from
+#: the root, and a frame drawn there stood unchanged until cage.
+INITRAMFS_HOOK = "usr/share/initramfs-tools/hooks/" + NAME
+INITRAMFS_SCRIPT = "usr/share/initramfs-tools/scripts/local-bottom/" + NAME
+
+#: Where a hook reads initramfs-tools' helpers from, `force_load` among them,
+#: which adds a module and loads it before init-premount.
+HOOK_FUNCTIONS = "/usr/share/initramfs-tools/hook-functions"
+
+#: Where in the initramfs the hook lays the picture out, and which framebuffer
+#: it is for, as sysfs and /dev name it.
+INITRAMFS_PICTURE = "/" + NAME
+FRAMEBUFFER = "fb0"
+SCREEN = "/sys/class/graphics/" + FRAMEBUFFER
+SCREEN_DEVICE = "/dev/" + FRAMEBUFFER
+
+#: Where a boot script writes into the kernel's log, which is the one log
+#: there is before systemd.
+KERNEL_LOG = "/dev/kmsg"
+
+#: The header initramfs-tools(7) asks of every hook and boot script, which
+#: answers what each needs to run first. These two need nothing.
+INITRAMFS_HEADER = """PREREQ=""
+prereqs()
+{
+    echo "$PREREQ"
+}
+
+case $1 in
+prereqs)
+    prereqs
+    exit 0
+    ;;
+esac
+"""
+
+#: The hook, run whenever an initramfs is built.
+INITRAMFS_HOOK_TEXT = """#!/bin/sh
+# Written by the previously package. Brings vc4 into the initramfs, so it
+# takes the screen within a second of the kernel's start rather than when udev
+# loads it from the root, and lays the boot picture out for the screen as it
+# is now, for the package's script in local-bottom to draw. Neither asks about
+# the console: that script asks the root while the board starts.
+%(header)s
+
+. %(functions)s
+
+# A kernel that is not a Raspberry Pi's has no vc4, and asking for a module
+# that is not there fails the whole initramfs.
+if [ -n "$(find "${MODULESDIR}" -name 'vc4.ko*' -print -quit 2>/dev/null)" ]; then
+    force_load vc4
+fi
+
+# Not fatal: a board without a screen has no framebuffer to lay the picture
+# out for, and the picture then comes when systemd draws it.
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/%(lib)s python3 -m previously.splash \\
+    %(framebuffer)s --into "${DESTDIR}%(picture)s" || true
+"""
+
+#: The boot script, run in the initramfs once the root is mounted at
+#: ${rootmnt}, which is the first moment the root can say whether the console
+#: is switched on.
+INITRAMFS_SCRIPT_TEXT = """#!/bin/sh
+# Written by the previously package. Draws the boot picture the package's hook
+# laid out, where the root has the console switched on and fb0 is vc4's and
+# still the screen the frame was laid out for. Elsewhere it leaves the screen
+# to previously-splash@.service, which asks for the same link once systemd
+# runs and draws on a screen of any size.
+%(header)s
+
+console="${rootmnt}%(console)s"
+picture=%(picture)s
+screen=%(screen)s
+device=%(device)s
+log=%(log)s
+
+said() { cat "$1" 2>/dev/null; }
+
+# The link is absolute, as systemctl makes it, so from here it points nowhere
+# and only its being there says anything. A screen that is not there, or an
+# initramfs the hook laid no picture out in, says nothing that matches.
+[ -L "$console" ] || exit 0
+[ "$(said "$screen/name")" != "%(firmware)s" ] || exit 0
+now="$(said "$screen/virtual_size") $(said "$screen/bits_per_pixel")"
+now="$now $(said "$screen/stride") $(said "$screen/pan")"
+[ "$now" = "$(said "$picture/%(geometry)s")" ] || exit 0
+cat "$picture/%(frame)s" > "$device" || exit 0
+# At the kernel's info level, which no console level this boot sets lets onto
+# the screen, so it is read with `journalctl -k` and nowhere else.
+echo "<6>previously: the boot picture is drawn from the initramfs" > "$log"
+exit 0
+"""
 
 #: What git adds to the description of a tree that has something uncommitted
 #: in it, and therefore what the version of such a build ends in. A package
@@ -399,6 +496,13 @@ from previously import setup
 setup.refresh_archive()
 ' || true
 
+    # The initramfs of the kernel this board runs, built again so it brings vc4
+    # up and carries the boot picture as this version lays it out. Named by its
+    # kernel, because initramfs-tools' own trigger builds the newest kernel's
+    # alone, and on Raspberry Pi OS that is the Pi 4's on a Pi 5 as well. Not
+    # fatal: without it vc4 and the picture come later in the boot.
+    update-initramfs -u -k "$(uname -r)" || true
+
     # The rights for the virtual keyboard, given to /dev/uinput now, because it
     # was made at boot before the entry and the rule were there. Not fatal:
     # without them the service still starts, and only pressing the emulator's
@@ -449,6 +553,13 @@ if [ "$1" = remove ] || [ "$1" = purge ]; then
     # PYTHONDONTWRITEBYTECODE. dpkg leaves the directory standing for them, so
     # this is what makes removal complete.
     rm -rf /usr/lib/%(name)s
+fi
+
+if [ "$1" = remove ]; then
+    # The initramfs of the kernel this board runs, built again without the hook
+    # and the script, which have gone with the package, so the board draws no
+    # picture of a tool that is not there.
+    update-initramfs -u -k "$(uname -r)" || true
 fi
 
 if [ "$1" = purge ]; then
@@ -504,7 +615,12 @@ def lay_out(into):
         "# framebuffer the moment it appears, apart from the firmware's.\n"
         'ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb[0-9]*", '
         'ATTR{name}!="%s", TAG+="systemd", ENV{SYSTEMD_WANTS}+="%s"\n'
-        % (FIRMWARE_FRAMEBUFFER, SPLASH_UNIT.replace("@", "@%k")), encoding="utf-8")
+        % (splash.FIRMWARE_FRAMEBUFFER, SPLASH_UNIT.replace("@", "@%k")),
+        encoding="utf-8")
+    for path, text in initramfs_scripts().items():
+        (into / path).parent.mkdir(parents=True, exist_ok=True)
+        (into / path).write_text(text, encoding="utf-8")
+        (into / path).chmod(0o755)
 
     (into / SWAP).parent.mkdir(parents=True, exist_ok=True)
     (into / SWAP).write_text(SWAP_DROP_IN, encoding="utf-8")
@@ -553,6 +669,24 @@ def splash_tga(picture):
         turned[0::3], turned[1::3], turned[2::3] = line[2::3], line[1::3], line[0::3]
         pixels += turned
     return header + bytes(pixels)
+
+
+def initramfs_scripts():
+    """The hook and the boot script for the initramfs, filled in.
+
+    @returns dict of where each goes in the package to what it holds.
+
+    The names they share with the drawer and the setup are filled in from
+    there, so the frame the hook has laid out is the file the script looks for
+    and the link the script asks the root about is the one systemctl makes.
+    """
+    words = {"header": INITRAMFS_HEADER.rstrip("\n"), "functions": HOOK_FUNCTIONS,
+             "lib": LIB, "framebuffer": FRAMEBUFFER, "picture": INITRAMFS_PICTURE,
+             "console": setup.CONSOLE_SWITCHED_ON, "screen": SCREEN,
+             "device": SCREEN_DEVICE, "log": KERNEL_LOG, "frame": splash.FRAME,
+             "geometry": splash.GEOMETRY, "firmware": splash.FIRMWARE_FRAMEBUFFER}
+    return {INITRAMFS_HOOK: INITRAMFS_HOOK_TEXT % words,
+            INITRAMFS_SCRIPT: INITRAMFS_SCRIPT_TEXT % words}
 
 
 def scripts():

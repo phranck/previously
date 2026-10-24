@@ -172,6 +172,12 @@ CONSOLE = "previously-console.service"
 CONSOLE_SCRIPT = pathlib.Path("/usr/local/libexec/previously-console")
 CONSOLE_PAM = pathlib.Path("/etc/pam.d/previously-console")
 
+#: The link `systemctl enable` makes for the console, which its unit's
+#: `WantedBy=multi-user.target` decides. It is what says the console is
+#: switched on, so the boot picture asks for it: previously-splash@.service in
+#: its condition, and the package's script in the initramfs on the root.
+CONSOLE_SWITCHED_ON = SYSTEM_UNITS / "multi-user.target.wants" / CONSOLE
+
 #: The unit the package ships that draws the shutdown picture when it stops.
 #: The console wants it, so it runs wherever the console does.
 SHUTDOWN_PICTURE = "previously-splash-shutdown.service"
