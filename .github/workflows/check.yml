@@ -1,0 +1,58 @@
+# The checks a commit needs, on every pull request and before every release.
+#
+# A pull request runs this on its own, and release.yml calls it before it
+# packages, so what a pull request is checked with is what a release is checked
+# with. Both run `make check` with the packages admin/requirements-check.txt
+# names, which is also how a commit is checked on a laptop.
+#
+# Nothing here writes anywhere, so the token can only read.
+#
+# Every action is pinned to the commit of a release, with that release beside
+# it, for the reason release.yml gives.
+
+name: Check
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # A run that hangs is worse than one that fails, because it says nothing.
+    # The suite takes about two minutes, so ten minutes is a ceiling rather
+    # than a budget.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The Node the interface is checked with, which .nvmrc names for every
+      # machine that checks it, so the runner does not decide it by whatever
+      # its image happens to carry.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Lint and test
+        working-directory: admin
+        run: |
+          python3 -m pip install --quiet --break-system-packages \
+            -r requirements-check.txt
+          # What the browser gets is committed and is built with this. Without
+          # it here, the test that holds those files to their sources skips
+          # rather than fails, and a stale bundle would be packaged and shipped.
+          npm install --global --silent esbuild
+          # And the linter for the other half of this repository, which flake8
+          # cannot see. It matters most where the interface imports: a name
+          # that is not imported bundles without a word and fails when
+          # somebody presses the thing that needs it.
+          npm install --silent
+          # Every test named and timed, because a test that waits here and not
+          # on a laptop is waiting for something this machine does not have,
+          # and a suite that stops without saying which test it stopped in says
+          # nothing at all. A minute is far past any test here: none takes
+          # more than a few seconds.
+          make check PYTEST_FLAGS="-v --timeout=60 --durations=5"

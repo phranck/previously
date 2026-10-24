@@ -1,4 +1,5 @@
-# Builds the admin tool's package and puts it on a draft release for a tag.
+# Builds the admin tool's package and puts it on a draft release for a tag,
+# once the checks in check.yml have passed for that tag.
 #
 # A draft, because a release is never public without its package. The draft is
 # made public by hand once the package on it has been checked, with
@@ -19,10 +20,10 @@
 # never interpolated into a shell.
 #
 # Every action is pinned to the commit of a release, with that release beside
-# it. A tag can be moved to other code by whoever owns the action, and this
-# job's token can rewrite releases, so only a change in this file changes what
-# runs here. Raising an action means reading the commit of its new release off
-# its own repository and writing both down.
+# it. A tag can be moved to other code by whoever owns the action, and the
+# packaging job's token can rewrite releases, so only a change in this file
+# changes what runs here. Raising an action means reading the commit of its
+# new release off its own repository and writing both down.
 
 name: Release
 
@@ -33,14 +34,25 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  # The checks every pull request runs, so nothing is packaged that they
+  # refuse. Read only, and named again here, because a job that calls another
+  # workflow and names no permissions hands it the token's defaults.
+  check:
+    uses: ./.github/workflows/check.yml
+    permissions:
+      contents: read
+
   package:
+    needs: check
     runs-on: ubuntu-latest
+    # The one job that writes, because it puts the package on a release.
+    permissions:
+      contents: write
     # A run that hangs is worse than one that fails: it says nothing and holds
-    # the tag. The suite takes about two minutes, so ten minutes is a ceiling
-    # rather than a budget.
+    # the tag.
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,39 +61,6 @@ jobs:
           # from what `git describe` says and the default checkout takes one
           # commit and no tags at all.
           fetch-depth: 0
-
-      # The Node the interface is checked with, which .nvmrc names for every
-      # machine that checks it, so the runner does not decide it by whatever
-      # its image happens to carry.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          # No cache in a job whose token can write releases, because what a
-          # poisoned cache brings runs with that token. The action caches by
-          # itself once package.json names npm as its package manager, so this
-          # says no before anything can turn that on.
-          package-manager-cache: false
-
-      - name: Check the service before packaging it
-        working-directory: admin
-        run: |
-          python3 -m pip install --quiet --break-system-packages \
-            -r requirements-check.txt
-          # What the browser gets is committed and is built with this. Without
-          # it here, the test that holds those files to their sources skips
-          # rather than fails, and a stale bundle would be packaged and shipped.
-          npm install --global --silent esbuild
-          # And the linter for the other half of this repository, which flake8
-          # cannot see. It matters most where the interface imports: a name
-          # that is not imported bundles without a word and fails when
-          # somebody presses the thing that needs it.
-          npm install --silent
-          # The gate a commit needs, with every test named and timed, because a
-          # test that waits here and not on a laptop is waiting for something
-          # this machine does not have, and a suite that stops without saying
-          # which test it stopped in says nothing at all. A minute is far past
-          # any test here: none takes more than a few seconds.
-          make check PYTEST_FLAGS="-v --timeout=60 --durations=5"
 
       - name: Build the package
         working-directory: admin
