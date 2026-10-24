@@ -95,6 +95,21 @@ def test_status_carries_the_machine_and_whether_it_runs(service):
     assert payload["uptime_seconds"] is None
 
 
+def test_status_says_which_boot_of_the_board_it_comes_from(service, tmp_path, monkeypatch):
+    """The page waiting for a restart of the board ends when this changes,
+    because a request for the status that falls into the restart does not
+    fail: on next5 on 24.10.2026 none of thirty did."""
+    from previously import pi
+
+    boot_id = tmp_path / "boot_id"
+    boot_id.write_text("6f1c2a4e-0b8d-4c7e-9a51-3d2f8e7b6c10\n", encoding="utf-8")
+    monkeypatch.setattr(pi, "BOOT_ID", boot_id)
+
+    _, _, body = fetch(service + "/api/status")
+
+    assert json.loads(body)["boot"] == "6f1c2a4e-0b8d-4c7e-9a51-3d2f8e7b6c10"
+
+
 def test_the_running_time_is_the_emulators_own(service, monkeypatch):
     """The console unit holds a login shell that outlives any one emulator, so
     after a change of machine the unit is hours old and the emulator seconds.

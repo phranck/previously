@@ -52,6 +52,10 @@ SOUND_CARDS = pathlib.Path("/proc/asound")
 #: somewhere else, the way it can with the sound cards above.
 MEMINFO = pathlib.Path("/proc/meminfo")
 
+#: What the kernel calls the boot it is running, a new one at every start.
+#: Named here so a test can point it somewhere else.
+BOOT_ID = pathlib.Path("/proc/sys/kernel/random/boot_id")
+
 #: What the console writes down when the emulator ends badly, inside the
 #: service's own runtime directory. One line each, and the whole file is gone
 #: at every boot because that directory is a tmpfs. `setup.py` writes the line
@@ -126,6 +130,18 @@ def _uptime_seconds():
         return int(float(first))
     except (OSError, ValueError, IndexError):
         return None
+
+
+def boot():
+    """@returns str, what the kernel calls the boot it is running, or None
+    where it will not say.
+
+    A new one at every start of the board, which is what tells the page that
+    the board has restarted. Whether a request for the status failed does not:
+    one that falls into the restart waits for the board and comes back like
+    any other, and on next5 on 24.10.2026 none of thirty failed.
+    """
+    return _first_line(BOOT_ID) or None
 
 
 def _temperature():
