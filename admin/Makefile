@@ -71,7 +71,7 @@ browser: python-version
 lint: lint-service lint-interface types
 
 lint-service: python-version
-	$(PYTHON) -m flake8 previously tests browser measuring build_web.py
+	$(PYTHON) -m flake8 previously tests browser measuring build_web.py ../image
 
 # The other half of this repository, which flake8 cannot see, by the rules in
 # .oxlintrc.json. `no-undef` is what matters most, because the interface is

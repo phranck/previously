@@ -1,5 +1,6 @@
-# Builds the admin tool's package and puts it on a draft release for a tag,
-# once the checks in check.yml have passed for that tag.
+# Builds the admin tool's package and the image for Raspberry Pi Imager, and
+# puts both on a draft release for a tag, with the OS list the Imager reads
+# the image from, once the checks in check.yml have passed for that tag.
 #
 # A draft, because a release is never public without its package. The draft is
 # made public by hand once the package on it has been checked, with
@@ -45,15 +46,22 @@ jobs:
     permissions:
       contents: read
 
+  # The image, from image.yml, which builds it on an arm64 runner beside the
+  # checks rather than after them.
+  image:
+    uses: ./.github/workflows/image.yml
+    permissions:
+      contents: read
+
   package:
-    needs: check
+    needs: [check, image]
     runs-on: ubuntu-latest
     # The one job that writes, because it puts the package on a release.
     permissions:
       contents: write
     # A run that hangs is worse than one that fails: it says nothing and holds
-    # the tag.
-    timeout-minutes: 10
+    # the tag. Unpacking the image to measure it is the long part.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -69,6 +77,28 @@ jobs:
           cp packaging/build/previously_*_all.deb packaging/build/previously_all.deb
           dpkg-deb --info packaging/build/previously_all.deb
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: previously-image
+          path: ${{ runner.temp }}/image
+
+      # Under one name in every release, so releases/latest/download names the
+      # newest image, and beside the list the Imager reads it from and the
+      # picture of each board, which rsvg-convert draws. A file on a release
+      # has to stay under 2 GiB.
+      - name: Name the image and list it for Raspberry Pi Imager
+        run: |
+          image=admin/packaging/build/previously-raspberry-pi.img.xz
+          mv "$RUNNER_TEMP"/image/*.img.xz "$image"
+          size=$(stat -c %s "$image")
+          if [ "$size" -ge 2147483648 ]; then
+            echo "The image is $size bytes, and a release takes no file of 2 GiB." >&2
+            exit 1
+          fi
+          sudo apt-get install -y -qq librsvg2-bin
+          python3 image/os_list.py "$image" --into admin/packaging/build/imager
+          cat admin/packaging/build/imager/os-list.json
+
       # Creates the release as a draft with the package on it. A release that
       # is public already keeps that state, because the action leaves an
       # existing release's draft flag as it found it.
@@ -77,13 +107,21 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           draft: true
-          files: admin/packaging/build/previously_all.deb
+          files: |
+            admin/packaging/build/previously_all.deb
+            admin/packaging/build/previously-raspberry-pi.img.xz
+            admin/packaging/build/imager/*
           fail_on_unmatched_files: true
 
-      - name: Keep it on the run, where there is no tag
+      - name: Keep them on the run, where there is no tag
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: previously_all.deb
-          path: admin/packaging/build/previously_all.deb
+          name: release
+          path: |
+            admin/packaging/build/previously_all.deb
+            admin/packaging/build/previously-raspberry-pi.img.xz
+            admin/packaging/build/imager/*
           if-no-files-found: error
+          # The image is xz already.
+          compression-level: 0
