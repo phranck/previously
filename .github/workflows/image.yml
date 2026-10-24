@@ -15,9 +15,15 @@ name: Image
 
 on:
   workflow_dispatch:
-  # A change to how the image is built is built before it is merged.
+  # A change to how the image is built is built before it is merged: the
+  # stage and this workflow, the package, and the setup that runs in pi-gen's
+  # chroot.
   pull_request:
-    paths: ["image/**", ".github/workflows/image.yml"]
+    paths:
+      - "image/**"
+      - ".github/workflows/image.yml"
+      - "admin/packaging/**"
+      - "admin/previously/setup.py"
 
 permissions:
   contents: read

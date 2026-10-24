@@ -134,6 +134,35 @@ def test_a_card_with_nobody_to_run_as_is_refused_before_anything_lands(build):
     assert "exit 1" in preinst
 
 
+def units_on(script, verb):
+    """@returns set of str, the units a maintainer script hands
+    `systemctl <verb>`, over every line that does."""
+    found = set()
+    for line in script.splitlines():
+        named = re.match(r"^\s*systemctl %s (.+)$" % verb, line)
+        if named:
+            found.update(named.group(1).split())
+    return found
+
+
+def test_the_package_starts_nothing_where_systemd_does_not_run(build):
+    """An image is set up in pi-gen's chroot, where systemd runs nothing and
+    the systemctl of Raspberry Pi OS trixie refuses `enable --now` outright,
+    which failed the package there. Everything is switched on, and started only
+    where systemd runs the machine, as `setup.booted` asks it."""
+    from previously import setup
+
+    postinst = build.scripts()["postinst"]
+    starting = re.search(r"^    if \[ -d (\S+) \]; then\n        systemctl start (.*)\n    fi$",
+                         postinst, re.M)
+
+    assert not re.search(r"^\s*systemctl .*--now", postinst, re.M)
+    assert starting and starting.group(1) == str(setup.BOOTED)
+    assert set(starting.group(2).split()) == {build.SERVICE, *build.WATCHERS}
+    assert units_on(postinst, "enable") == {build.SERVICE, *build.WATCHERS,
+                                            build.INITRAMFS_TIMER, build.OWNER_UNIT}
+
+
 def a_getent(tmp_path, users):
     """A getent that knows these users alone, by name and by UID.
 
@@ -205,7 +234,7 @@ def test_the_owner_is_followed_before_the_service_and_the_console_start(build):
     assert re.search(r'^ExecStart=/usr/bin/python3 -c '
                      r'"from previously import setup; setup\.follow_owner\(\)"$', unit, re.M)
     assert build.OWNER_UNIT in build.UNIT_FILES
-    assert "systemctl enable %s" % build.OWNER_UNIT in build.scripts()["postinst"]
+    assert build.OWNER_UNIT in units_on(build.scripts()["postinst"], "enable")
     assert build.OWNER_UNIT in build.scripts()["prerm"]
 
 
@@ -358,8 +387,8 @@ def test_the_package_gives_the_node_its_rights_before_starting(build):
     given = postinst.index("systemd-tmpfiles --create /" + build.TMPFILES)
     reloaded = postinst.index("udevadm control --reload-rules")
 
-    assert given < postinst.index("systemctl enable --now")
-    assert reloaded < postinst.index("systemctl enable --now")
+    assert given < postinst.index("systemctl start")
+    assert reloaded < postinst.index("systemctl start")
 
 
 def test_the_package_needs_neither_xdotool_nor_imagemagick(build):
@@ -729,7 +758,7 @@ def test_the_initramfs_is_built_again_once_the_emulator_has_booted(build):
     assert "OnBootSec=2min" in timer
     assert "WantedBy=timers.target" in timer
     assert {build.INITRAMFS_UNIT, build.INITRAMFS_TIMER} <= set(build.UNIT_FILES)
-    assert "systemctl enable %s" % build.INITRAMFS_TIMER in build.scripts()["postinst"]
+    assert build.INITRAMFS_TIMER in units_on(build.scripts()["postinst"], "enable")
     assert build.INITRAMFS_TIMER in build.scripts()["prerm"]
 
 
@@ -755,7 +784,7 @@ def test_the_package_builds_the_initramfs_of_the_kernel_the_board_runs(build):
     built = 'update-initramfs -u -k "$(uname -r)" || true'
 
     assert postinst.index("refresh_console") < postinst.index(built)
-    assert postinst.index(built) < postinst.index("systemctl enable --now")
+    assert postinst.index(built) < postinst.index("systemctl enable")
     removing = re.search(r'^if \[ "\$1" = remove \]; then\n(.*?)^fi$', postrm, re.M | re.S)
     assert removing and built in removing.group(1)
 
