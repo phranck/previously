@@ -87,6 +87,12 @@ UINPUT_GROUP = "input"
 #: and at /sys/devices/platform/axi/axi:gpu on a Pi 5.
 SPLASH_RULE = "usr/lib/udev/rules.d/60-" + NAME + "-splash.rules"
 
+#: The name the firmware's framebuffer carries, which simplefb gives it
+#: (drivers/video/fbdev/simplefb.c in raspberrypi/linux). The rule leaves it
+#: out: vc4 replaces it within a second at another mode, so a picture drawn
+#: there flashes up and goes before the one that stays.
+FIRMWARE_FRAMEBUFFER = "simple"
+
 #: Where the package keeps swap in memory, as a drop-in rpi-swap reads while the
 #: machine starts. Under /usr/lib, because swap.conf(5) leaves /etc to the
 #: machine's administrator, and named to sort before the names its own examples
@@ -491,10 +497,10 @@ def lay_out(into):
         "z /dev/uinput 0660 - %s -\n" % UINPUT_GROUP, encoding="utf-8")
     (into / SPLASH_RULE).write_text(
         "# Written by the previously package. Draws the boot picture on a\n"
-        "# framebuffer the moment it appears.\n"
+        "# framebuffer the moment it appears, apart from the firmware's.\n"
         'ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb[0-9]*", '
-        'TAG+="systemd", ENV{SYSTEMD_WANTS}+="%s"\n'
-        % SPLASH_UNIT.replace("@", "@%k"), encoding="utf-8")
+        'ATTR{name}!="%s", TAG+="systemd", ENV{SYSTEMD_WANTS}+="%s"\n'
+        % (FIRMWARE_FRAMEBUFFER, SPLASH_UNIT.replace("@", "@%k")), encoding="utf-8")
 
     (into / SWAP).parent.mkdir(parents=True, exist_ok=True)
     (into / SWAP).write_text(SWAP_DROP_IN, encoding="utf-8")

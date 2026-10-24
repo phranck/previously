@@ -387,13 +387,16 @@ def test_the_drawer_reads_the_picture_where_the_package_puts_it(build):
 def test_every_framebuffer_that_appears_gets_the_picture(build, tmp_path):
     """By its name rather than by its path, because vc4's framebuffer sits at
     /sys/devices/platform/gpu on a Pi 4 and at /sys/devices/platform/axi/axi:gpu
-    on a Pi 5, read on 24.10.2026."""
+    on a Pi 5, read on 24.10.2026. The firmware's is left out: vc4 replaced it
+    within a second on next4, and the picture drawn there flashed up and went
+    before the one that stays."""
     build.lay_out(tmp_path / "tree")
     rule = (tmp_path / "tree" / build.SPLASH_RULE).read_text(encoding="utf-8")
     lines = [line for line in rule.splitlines() if line and not line.startswith("#")]
 
     assert lines == ['ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb[0-9]*", '
-                     'TAG+="systemd", ENV{SYSTEMD_WANTS}+="previously-splash@%k.service"']
+                     'ATTR{name}!="simple", TAG+="systemd", '
+                     'ENV{SYSTEMD_WANTS}+="previously-splash@%k.service"']
     assert build.SPLASH_UNIT == "previously-splash@.service"
     assert build.SPLASH_UNIT in build.UNIT_FILES
 
