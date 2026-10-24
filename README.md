@@ -21,14 +21,13 @@ A ready image or one line sets all of it up, and afterwards a web admin takes ov
 
 There are two ways, and both end in the same machine.
 
-**Write the ready image** to a card or a USB stick of 8 GB or more with [Raspberry Pi Imager](https://www.raspberrypi.com/software/) 2, started with Previously's list:
+**Write the ready image** to a card or a USB stick of 8 GB or more:
 
-```bash
-open -a "Raspberry Pi Imager" --args --repo https://github.com/phranck/previously/releases/latest/download/os-list.json   # macOS
-rpi-imager --repo https://github.com/phranck/previously/releases/latest/download/os-list.json                           # Linux
-```
+1. Install [Raspberry Pi Imager](https://www.raspberrypi.com/software/) 2, or update an older one. Version 1 cannot set up Raspberry Pi OS trixie, which the image is built on.
+2. Download [Previously for Raspberry Pi Imager](https://github.com/phranck/previously/releases/latest/download/previously.rpi-imager-manifest) and open the file. Raspberry Pi Imager starts with Previously in its list.
+3. Choose your Raspberry Pi 4 or 5 and Previously, then set a user name, a hostname, a password and the Wi-Fi as you would for Raspberry Pi OS. Any names will do.
 
-Choose your Raspberry Pi 4 or 5 and Previously, then set a user name, a hostname, a password and the Wi-Fi as you would for Raspberry Pi OS. Any names will do. The Pi starts straight into NeXTSTEP, and the admin answers at `http://<hostname>.local:8810`.
+The Pi starts straight into NeXTSTEP, and the admin answers at `http://<hostname>.local:8810`.
 
 **Or install it on Raspberry Pi OS Lite**, 64 bit, based on Debian 13, on a Raspberry Pi 4 or 5. On the Pi, over SSH:
 
