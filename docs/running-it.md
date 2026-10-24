@@ -10,7 +10,7 @@ One line, on the Pi, over SSH:
 curl -fsSL https://previous.li/install.sh | bash
 ```
 
-It installs the admin tool as a Debian package and hands the rest to the tool's helper, which runs the same job the Installer window runs from a browser. The helper installs `cage` and `7zip`, adds the signed [Window Maker Live archive](https://wmlive.rumbero.org/repo/) pinned to Previous alone, and installs Previous from it. A network that cannot reach the archive gets the same packages from its copy at `https://previous.li/apt/wmlive/`, which the archive's signature covers as well. The helper then fetches NeXTSTEP 3.3, writes `~/.config/previous/previous.cfg`, logs the first console in, silences the startup and has that console start Previous. It switches off what Raspberry Pi OS starts and NeXTSTEP does not need: cloud-init, which has applied Raspberry Pi Imager's settings by then, the wait for the network, the ext4 checks for LVM, desktop drive mounting and the switch that turns SSH on from the boot partition. Last, it sends the sound to a speaker and starts the machine. The script shows each step as it happens, and at the end NeXTSTEP is on the Pi's screen. It then says where the admin answers, which is `http://<hostname>.local:8810`. Open it and choose a password.
+It installs the admin tool as a Debian package and hands the rest to the tool's helper, which runs the same job the Installer window runs from a browser. The helper installs `cage` and `7zip`, adds the signed [Window Maker Live archive](https://wmlive.rumbero.org/repo/) pinned to Previous alone, and installs Previous from it. A network that cannot reach the archive gets the same packages from its copy at `https://previous.li/apt/wmlive/`, which the archive's signature covers as well. The helper then fetches NeXTSTEP 3.3, writes `~/.config/previous/previous.cfg`, silences the startup and hands the first screen to a console of its own, which starts Previous without waiting for the network. It switches off what Raspberry Pi OS starts and NeXTSTEP does not need: cloud-init, which has applied Raspberry Pi Imager's settings by then, the wait for the network, the ext4 checks for LVM, desktop drive mounting and the switch that turns SSH on from the boot partition. Last, it sends the sound to a speaker and starts the machine. The script shows each step as it happens, and at the end NeXTSTEP is on the Pi's screen. It then says where the admin answers, which is `http://<hostname>.local:8810`. Open it and choose a password.
 
 Run it as the user the machine will belong to, not under `sudo`. It raises its own privileges where it needs them, asking for your password once, before it prints anything else. The pipe does not get in the way of that, because `sudo` reads the password from the terminal device rather than from stdin.
 
@@ -34,7 +34,7 @@ A step that fails puts back what it changed, and the steps before it as well, in
 
 Ctrl+C while the admin tool is being installed takes the tool off again. Once the helper has the job, the Pi carries on by itself. Ctrl+C then stops the script from watching and nothing else, and the Installer window shows how far it is.
 
-Only this run's own changes are reversed. A package that was already installed stays, an existing configuration is not touched, and exactly the fenced block is removed from `~/.profile` rather than the file. A step that skipped itself records nothing, so it can never take away what it found in place.
+Only this run's own changes are reversed. A package that was already installed stays, and an existing configuration is not touched. A step that skipped itself records nothing, so it can never take away what it found in place.
 
 The refreshed package lists are the one thing left behind. They are more current than before and harm nothing.
 
@@ -63,7 +63,7 @@ ditool -im ~/nextstep/nextstep-3.3.dd -p a -ls
 Names like `NextLibrary` and `NextApps` in the listing mean the image and its path are right. To start it on the Pi's own screen from an SSH session:
 
 ```bash
-sudo systemctl restart getty@tty1
+sudo systemctl restart previously-console
 ```
 
 ## Using your own disk image
@@ -75,7 +75,7 @@ Put it into `~/nextstep` as `nextstep-3.3.dd` before running the script. It find
 Shut NeXTSTEP down from within NeXTSTEP first. Then stop the kiosk, because systemd restarts the console after Previous exits and the emulator would be back within seconds, holding the image file open:
 
 ```bash
-sudo systemctl stop getty@tty1
+sudo systemctl stop previously-console
 ```
 
 Copy the disk image aside, then:
@@ -85,7 +85,7 @@ sudo apt update
 sudo apt install --only-upgrade previous
 ```
 
-Afterwards `sudo systemctl start getty@tty1` brings the machine back.
+Afterwards `sudo systemctl start previously-console` brings the machine back.
 
 The package owns `/usr/bin` and `/usr/share/previous`. The disk image and the configuration belong to you and are never touched by a package operation. What does cause damage is quitting Previous while NeXTSTEP is still running, and that damage shows up after the update rather than before it.
 
@@ -128,7 +128,7 @@ sudo systemctl restart previously
 
 ## Getting back in
 
-The first console belongs to Previous once the kiosk is active. SSH sessions carry no `XDG_VTNR`, so they fall through the autostart and remain the way to change anything on the system. Make sure SSH works before handing the screen over: from the boot-silencing step onwards the screen shows no error messages either, and `journalctl -b -e` over the network is then the only way to find out why something did not start.
+The first console belongs to Previous once the kiosk is active. The kiosk is a unit of its own, `previously-console.service`, so an SSH session is an ordinary shell and remains the way to change anything on the system. Make sure SSH works before handing the screen over: from the boot-silencing step onwards the screen shows no error messages either, and `journalctl -b -e` over the network is then the only way to find out why something did not start.
 
 Inside Previous, F12 opens the settings and F11 leaves full screen.
 

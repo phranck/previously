@@ -425,7 +425,7 @@ wait_for_a_run_under_way() {
 # that finds its work done is over in a few milliseconds, which is quicker than
 # this looks, so the record often names a later step than the last one shown,
 # and every step in between is closed from this list.
-readonly INSTALL_STEPS=(host tools archive emulator system configuration autologin quiet lean autostart sound start)
+readonly INSTALL_STEPS=(host tools archive emulator system configuration quiet lean autostart sound start)
 
 # Where a step stands in that list, or -1.
 step_index() {
@@ -450,7 +450,6 @@ step_label() {
     emulator) echo "The Previous emulator" ;;
     system) echo "The system's disk" ;;
     configuration) echo "The emulator's configuration" ;;
-    autologin) echo "Logging in on the console" ;;
     quiet) echo "Silencing the startup" ;;
     lean) echo "Leaving out what NeXTSTEP does not need" ;;
     autostart) echo "Starting on the first console" ;;

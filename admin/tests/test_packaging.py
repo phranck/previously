@@ -306,17 +306,6 @@ def test_the_service_binds_nothing_from_tmp(unit):
     assert not re.findall(r"^BindReadOnlyPaths=", unit, re.M)
 
 
-def test_the_console_never_gives_up_on_the_emulator(build, tmp_path):
-    """An emulator that ends at once ends the console's session with it.
-    systemd's start limit would stop the console for good after five of those
-    within ten seconds, and nothing but root starts it again."""
-    build.lay_out(tmp_path)
-    lines = (tmp_path / build.CONSOLE_LIMIT).read_text(encoding="utf-8").splitlines()
-
-    assert build.CONSOLE_LIMIT.startswith("usr/lib/systemd/system/getty@tty1.service.d/")
-    assert lines.index("[Unit]") < lines.index("StartLimitIntervalSec=0")
-
-
 def pixels_of(cursor):
     """@param cursor - bytes of an Xcursor file.
     @returns list of int, the ARGB pixels of its one image.

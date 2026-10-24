@@ -6,10 +6,9 @@
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
 package copies Python, static files, seven unit files, one udev rule, one
-tmpfiles entry, one rpi-swap drop-in, one drop-in for the console and one
-cursor theme into place. Nothing is compiled, nothing is patched and
-nothing is generated at install time, so the debhelper machinery would be a
-build system around a copy.
+tmpfiles entry, one rpi-swap drop-in and one cursor theme into place. Nothing
+is compiled, nothing is patched and nothing is generated at install time, so
+the debhelper machinery would be a build system around a copy.
 
 The release is `previously.server.RELEASE` and is read from there rather than
 written down again here. A package built between two releases carries that
@@ -93,14 +92,6 @@ SWAP_DROP_IN = (
     "# one, such as /etc/rpi/swap.conf.d/80-mine.conf, overrides it.\n"
     "[Main]\n"
     "Mechanism=zram\n")
-
-#: Where the package lifts systemd's start limit for the console. The console
-#: starts the emulator, and an emulator that ends at once ends the console's
-#: session with it; after five of those within ten seconds systemd would stop
-#: the console for good, and nothing but root starts it again. A drop-in of its
-#: own beside the one raspi-config writes for the login, under /usr/lib for the
-#: same reason as the udev rule.
-CONSOLE_LIMIT = "usr/lib/systemd/system/getty@tty1.service.d/50-" + NAME + ".conf"
 
 #: A cursor theme that shows nothing, at the path `setup.CURSORS` hands cage
 #: as its XCURSOR_PATH. cage loads its pointer from the theme `default` under
@@ -329,9 +320,10 @@ if [ "$1" = configure ]; then
 
     # The console that starts the emulator, brought up to what this version of
     # the helper writes where the machine has one, and left out where it has
-    # none. Here rather than in any one way of updating, so the browser, a shell
-    # and apt all leave the tool and its console in step. Not fatal: the console
-    # that is there still starts the machine.
+    # none. A console in ~/.profile is moved over to the console's unit. Here
+    # rather than in any one way of updating, so the browser, a shell and apt
+    # all leave the tool and its console in step. Not fatal: the console that is
+    # there still starts the machine.
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/%(lib)s python3 -c '
 import sys
 from previously import setup
@@ -474,13 +466,6 @@ def lay_out(into):
     theme.mkdir(parents=True, exist_ok=True)
     for name in CURSOR_NAMES:
         (theme / name).write_bytes(transparent_cursor())
-
-    (into / CONSOLE_LIMIT).parent.mkdir(parents=True, exist_ok=True)
-    (into / CONSOLE_LIMIT).write_text(
-        "# Written by the previously package. The console keeps starting the\n"
-        "# emulator however often it ends at once.\n"
-        "[Unit]\n"
-        "StartLimitIntervalSec=0\n", encoding="utf-8")
 
 
 def transparent_cursor():
