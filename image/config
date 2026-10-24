@@ -1,0 +1,12 @@
+# What pi-gen builds Previously's image with. .github/workflows/image.yml
+# passes it to build.sh and adds STAGE_LIST, which names this repository's
+# stage after pi-gen's Stage 0 to 2, so the image is Raspberry Pi OS Lite with
+# Previously on it, as install.sh leaves a card.
+#
+# No user name and no hostname: Raspberry Pi Imager sets both, and pi-gen's
+# own, pi and raspberrypi, apply where it sets none, as on Raspberry Pi OS.
+IMG_NAME=previously
+RELEASE=trixie
+DEPLOY_COMPRESSION=xz
+# The admin's Terminal logs in through the SSH server on the loopback.
+ENABLE_SSH=1

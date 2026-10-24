@@ -104,6 +104,39 @@ def test_the_package_creates_that_directory(build):
     assert where_they_live() in postinst
 
 
+def test_the_package_makes_a_missing_config_directory_the_owners(build):
+    """install makes a missing parent as root's. On an image the home has no
+    ~/.config yet, and pi-gen then closes the first user's ~/.config to
+    everybody but its owner, which left root holding it and Previous unable
+    to read its own configuration on next4 on 24.10.2026."""
+    postinst = build.scripts()["postinst"]
+
+    parent = postinst.index('[ -d "$home/.config" ] || install -d -o "$owner" -g "$group"')
+
+    assert parent < postinst.index('"$home/.config/%s"' % build.NAME)
+
+
+def test_an_image_starts_the_console_again_once_cloud_init_is_through(build):
+    """cloud-init renames the first user through userconf-pi, which ends in
+    cancel-rename, and that starts getty@tty1 on its own, in a job of its own
+    that pushed the console's start out of the first boot of an image on
+    next4 on 24.10.2026. Started again after cloud-init and before the getty,
+    the console's conflict stops the getty before it ever runs."""
+    from previously import setup
+
+    unit = (PACKAGING / build.FIRST_BOOT_UNIT).read_text(encoding="utf-8").splitlines()
+    before = next(line for line in unit if line.startswith("Before=")).split("=", 1)[1].split()
+
+    assert "ConditionFirstBoot=yes" in unit
+    assert "ConditionPathExists=%s" % setup.CONSOLE_SWITCHED_ON in unit
+    assert "After=cloud-init-network.service" in unit
+    assert {setup.CONSOLE, setup.GETTY} <= set(before)
+    assert "ExecStart=/usr/bin/systemctl --no-block start %s" % setup.CONSOLE in unit
+    assert build.FIRST_BOOT_UNIT in build.UNIT_FILES
+    assert build.FIRST_BOOT_UNIT in units_on(build.scripts()["postinst"], "enable")
+    assert build.FIRST_BOOT_UNIT in build.scripts()["prerm"]
+
+
 def test_the_package_runs_as_the_user_the_card_was_made_with(build):
     """The Imager asks for a user name and creates that user first, so it is
     the one with UID 1000, whatever it is called. A machine that already has an
@@ -132,6 +165,36 @@ def test_a_card_with_nobody_to_run_as_is_refused_before_anything_lands(build):
     assert build.FIND_OWNER in build.scripts()["postinst"]
     assert 'if [ -z "$owner" ]' in preinst
     assert "exit 1" in preinst
+
+
+def units_on(script, verb):
+    """@returns set of str, the units a maintainer script hands
+    `systemctl <verb>`, over every line that does."""
+    found = set()
+    for line in script.splitlines():
+        named = re.match(r"^\s*systemctl %s (.+)$" % verb, line)
+        if named:
+            found.update(named.group(1).split())
+    return found
+
+
+def test_the_package_starts_nothing_where_systemd_does_not_run(build):
+    """An image is set up in pi-gen's chroot, where systemd runs nothing and
+    the systemctl of Raspberry Pi OS trixie refuses `enable --now` outright,
+    which failed the package there. Everything is switched on, and started only
+    where systemd runs the machine, as `setup.booted` asks it."""
+    from previously import setup
+
+    postinst = build.scripts()["postinst"]
+    starting = re.search(r"^    if \[ -d (\S+) \]; then\n        systemctl start (.*)\n    fi$",
+                         postinst, re.M)
+
+    assert not re.search(r"^\s*systemctl .*--now", postinst, re.M)
+    assert starting and starting.group(1) == str(setup.BOOTED)
+    assert set(starting.group(2).split()) == {build.SERVICE, *build.WATCHERS}
+    assert units_on(postinst, "enable") == {build.SERVICE, *build.WATCHERS,
+                                            build.INITRAMFS_TIMER, build.OWNER_UNIT,
+                                            build.FIRST_BOOT_UNIT}
 
 
 def a_getent(tmp_path, users):
@@ -205,7 +268,7 @@ def test_the_owner_is_followed_before_the_service_and_the_console_start(build):
     assert re.search(r'^ExecStart=/usr/bin/python3 -c '
                      r'"from previously import setup; setup\.follow_owner\(\)"$', unit, re.M)
     assert build.OWNER_UNIT in build.UNIT_FILES
-    assert "systemctl enable %s" % build.OWNER_UNIT in build.scripts()["postinst"]
+    assert build.OWNER_UNIT in units_on(build.scripts()["postinst"], "enable")
     assert build.OWNER_UNIT in build.scripts()["prerm"]
 
 
@@ -358,8 +421,8 @@ def test_the_package_gives_the_node_its_rights_before_starting(build):
     given = postinst.index("systemd-tmpfiles --create /" + build.TMPFILES)
     reloaded = postinst.index("udevadm control --reload-rules")
 
-    assert given < postinst.index("systemctl enable --now")
-    assert reloaded < postinst.index("systemctl enable --now")
+    assert given < postinst.index("systemctl start")
+    assert reloaded < postinst.index("systemctl start")
 
 
 def test_the_package_needs_neither_xdotool_nor_imagemagick(build):
@@ -729,7 +792,7 @@ def test_the_initramfs_is_built_again_once_the_emulator_has_booted(build):
     assert "OnBootSec=2min" in timer
     assert "WantedBy=timers.target" in timer
     assert {build.INITRAMFS_UNIT, build.INITRAMFS_TIMER} <= set(build.UNIT_FILES)
-    assert "systemctl enable %s" % build.INITRAMFS_TIMER in build.scripts()["postinst"]
+    assert build.INITRAMFS_TIMER in units_on(build.scripts()["postinst"], "enable")
     assert build.INITRAMFS_TIMER in build.scripts()["prerm"]
 
 
@@ -755,7 +818,7 @@ def test_the_package_builds_the_initramfs_of_the_kernel_the_board_runs(build):
     built = 'update-initramfs -u -k "$(uname -r)" || true'
 
     assert postinst.index("refresh_console") < postinst.index(built)
-    assert postinst.index(built) < postinst.index("systemctl enable --now")
+    assert postinst.index(built) < postinst.index("systemctl enable")
     removing = re.search(r'^if \[ "\$1" = remove \]; then\n(.*?)^fi$', postrm, re.M | re.S)
     assert removing and built in removing.group(1)
 
@@ -921,6 +984,21 @@ def test_the_asset_a_release_carries_is_the_one_the_update_fetches(build):
     assert release.ASSET == "%s_%s.deb" % (build.NAME, build.ARCHITECTURE)
     assert release.ASSET in workflow
     assert release.ASSET in script
+
+
+def test_the_image_names_the_copy_of_cmdline_the_setup_keeps():
+    """pi-gen fills the root partition into cmdline.txt alone, and the image's
+    own step fills it into the copy the setup keeps for the remove job. A copy
+    of another name would keep ROOTDEV and not boot once it is put back."""
+    from previously import setup
+
+    repository = PACKAGING.parent.parent
+    step = (repository / "image" / "export-image" / "04-set-partuuid-previously"
+            / "00-run.sh").read_text(encoding="utf-8")
+    copy = setup.CMDLINE.with_suffix(setup.CMDLINE.suffix + setup.BACKUP)
+
+    assert 'backup="${ROOTFS_DIR}%s"' % copy in step
+    assert '"${ROOTFS_DIR}%s"' % setup.CMDLINE in step
 
 
 def test_the_release_is_read_off_the_service(build):

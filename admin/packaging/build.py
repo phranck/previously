@@ -5,7 +5,7 @@
 
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
-package copies Python, static files, twelve unit files, two udev rules, one
+package copies Python, static files, thirteen unit files, two udev rules, one
 tmpfiles entry, one rpi-swap drop-in, one cursor theme, two pictures and two
 scripts for the initramfs into place. Nothing is compiled, nothing is patched
 and nothing is generated at install time, so the debhelper machinery would be
@@ -275,19 +275,21 @@ VERSION_FILE = "version.txt"
 #: acts on it. Two of those do one exact command each, and the third installs.
 #: Two more draw the pictures: the boot picture, started by SPLASH_RULE, and
 #: the shutdown picture, which the console's unit wants. Two build the
-#: initramfs again where its boot picture did not fit. The last points the
-#: service and the console at their owner again where that user was renamed,
-#: with `setup.follow_owner`.
+#: initramfs again where its boot picture did not fit. One points the service
+#: and the console at their owner again where that user was renamed, with
+#: `setup.follow_owner`, and the last starts the console again on an image's
+#: first boot, once cloud-init has set the user up.
 SERVICE = NAME + ".service"
 SPLASH_UNIT = NAME + "-splash@.service"
 SHUTDOWN_SPLASH_UNIT = NAME + "-splash-shutdown.service"
 OWNER_UNIT = NAME + "-owner.service"
+FIRST_BOOT_UNIT = NAME + "-first-boot.service"
 UNIT_FILES = (SERVICE,
               NAME + "-poweroff.path", NAME + "-poweroff.service",
               NAME + "-reboot.path", NAME + "-reboot.service",
               NAME + "-setup.path", NAME + "-setup.service",
               SPLASH_UNIT, SHUTDOWN_SPLASH_UNIT, INITRAMFS_UNIT, INITRAMFS_TIMER,
-              OWNER_UNIT)
+              OWNER_UNIT, FIRST_BOOT_UNIT)
 
 #: Who the tool runs as, written by postinst as a drop-in beside the unit. The
 #: user is whoever the card was made with, so it is decided on the machine
@@ -478,6 +480,10 @@ if [ "$1" = configure ]; then
     # service that runs and refuses to save, saying why, which is a better state
     # to hand somebody than a package dpkg has left half configured.
     if [ -n "$home" ] && [ -d "$home" ]; then
+        # ~/.config as the owner's where it is missing, because install makes
+        # a missing parent as root's, and on an image pi-gen then closes the
+        # first user's ~/.config to everybody but whoever holds it.
+        [ -d "$home/.config" ] || install -d -o "$owner" -g "$group" -m 0755 "$home/.config" || true
         install -d -o "$owner" -g "$group" -m 0700 "$home/.config/%(name)s" || true
     fi
 
@@ -545,15 +551,17 @@ setup.refresh_quiet()
     udevadm trigger --subsystem-match=misc --sysname-match=uinput || true
 
     systemctl daemon-reload
-    systemctl enable --now %(service)s
-    # These act for the service without it holding any privilege, so they are
-    # part of it rather than something to switch on separately.
-    systemctl enable --now %(watchers)s
-    # Switched on for the next boot rather than started, because what it looks
-    # for is left by a boot. The owner's unit as well, because a rename takes
-    # effect at a boot.
-    systemctl enable %(timer)s
-    systemctl enable %(owner_unit)s
+    # The service, and the watchers that act for it without it holding any
+    # privilege, which are part of it rather than something to switch on
+    # separately. The timer and the units for the owner and the first boot act
+    # at a boot, because what they look for is left by one.
+    systemctl enable %(service)s %(watchers)s %(timer)s %(owner_unit)s %(first_boot_unit)s
+    # Started where systemd runs the machine, as setup.booted asks it. An
+    # image being set up in pi-gen's chroot starts them at its first boot, and
+    # the systemctl there refuses to start anything, --now included.
+    if [ -d %(booted)s ]; then
+        systemctl start %(service)s %(watchers)s
+    fi
 fi
 """
 
@@ -566,7 +574,7 @@ if [ "$1" = remove ] || [ "$1" = upgrade ]; then
     systemctl disable --now %(service)s || true
     systemctl disable --now %(watchers)s || true
     systemctl disable --now %(timer)s || true
-    systemctl disable %(owner_unit)s || true
+    systemctl disable %(owner_unit)s %(first_boot_unit)s || true
 fi
 """
 
@@ -742,7 +750,8 @@ def scripts():
     """
     words = {"name": NAME, "service": SERVICE, "units": UNITS, "lib": LIB,
              "watchers": " ".join(WATCHERS), "timer": INITRAMFS_TIMER,
-             "owner_unit": OWNER_UNIT, "tmpfiles": TMPFILES,
+             "owner_unit": OWNER_UNIT, "first_boot_unit": FIRST_BOOT_UNIT,
+             "booted": setup.BOOTED, "tmpfiles": TMPFILES,
              "find_owner": FIND_OWNER.rstrip("\n"),
              "owner_file": OWNER_FILE,
              "owner_dir": "/" + str(pathlib.PurePosixPath(OWNER_FILE).parent),
