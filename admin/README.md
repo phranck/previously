@@ -381,7 +381,7 @@ Stopping writes that file, presses F10 and waits for the guest to go. Starting r
 
 Somebody with a bare Raspberry Pi OS installs one package and does everything else in a browser. What that takes is root, twenty-five times over: apt sources, packages, files in `/etc/systemd/system`, the kernel's command line in `/boot/firmware`. The tool has none of that and gets none of it.
 
-**A second program has it, and knows one job.** `previously-setup.path` watches for `/run/previously/setup`, and the unit it starts runs `previously/setup.py` as root. That file is the whole of the privileged surface: no routes, nothing parsed from the network, and nothing that arrives from a browser is ever a path, a URL or a command.
+**A second program has it, and knows one job.** `previously-setup.path` watches for `/run/previously/setup`, and the unit it starts runs `previously/setup.py` as root. That file is the whole of the privileged surface: no routes, nothing parsed from the network, and nothing that arrives from a browser is ever a path, a URL or a command. The image build runs the same program in pi-gen's chroot with the job and the system on its command line, `python3 -m previously.setup install nextstep-3.3`, because no tool runs there to leave a request.
 
 **A request is three names.** A job, a system and a machine. Every one of them is looked up in a table that ships with this package, and a name that is not in its table refuses the whole request before anything is touched. So the disk image, which was the one free value in the whole of `install.sh`, stops being free: the helper is asked for one of six systems by name and holds the addresses itself.
 

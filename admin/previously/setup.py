@@ -1,11 +1,14 @@
 """What root does to this machine, and the only thing root does.
 
     python3 -m previously.setup
+    python3 -m previously.setup install nextstep-3.3
 
 Started by `previously-setup.path` when the admin tool leaves a request in its
-runtime directory, and by nothing else. It reads that request, does the work,
-writes down what it is doing as it goes, and ends. The tool itself stays
-unprivileged: it writes a small file and reads another one.
+runtime directory. It reads that request, does the work, writes down what it
+is doing as it goes, and ends. The tool itself stays unprivileged: it writes a
+small file and reads another one. The second form names the job and the
+system itself, which is how the image is set up in pi-gen's chroot, where no
+tool runs to leave a request.
 
 This module is the whole of the privileged surface added for installing. There
 are no routes in it, nothing is parsed from the network, and nothing that
@@ -23,11 +26,13 @@ backwards.
 
 These steps are written here and nowhere else. `install.sh` installs this tool
 and asks for the `install` job, which is the job the Installer window asks for
-too. The package's postinst calls `refresh_console` and `refresh_archive` from
-here, which is how a console and an archive source that are already there
-follow the tool from one version to the next.
+too, and the image build asks for it on the command line. The package's
+postinst calls `refresh_console` and `refresh_archive` from here, which is how
+a console and an archive source that are already there follow the tool from
+one version to the next.
 """
 
+import argparse
 import datetime
 import grp
 import hashlib
@@ -248,6 +253,19 @@ LEFT_OUT = (
 #: comes before the setup, and runs at every boot after that with nothing left
 #: to do, 3.8 s on a Pi 4 before anything else may start.
 CLOUD_INIT_OFF = pathlib.Path("/etc/cloud/cloud-init.disabled")
+
+#: Where cloud-init runs a script once, at the first boot it sees, in the
+#: module `scripts_per_once` of its final stage. An image is set up before
+#: that boot, and cloud-init has to apply Raspberry Pi Imager's settings in
+#: it, so an image keeps cloud-init away with this script rather than with
+#: CLOUD_INIT_OFF.
+CLOUD_INIT_ONCE = pathlib.Path(
+    "/var/lib/cloud/scripts/per-once/previously-cloud-init-off")
+
+#: Where systemd keeps what it says while it runs, which is what sd_booted(3)
+#: asks after. An image being set up in pi-gen's chroot has none, because
+#: pi-gen mounts an empty /run of its own there and nothing has booted it.
+BOOTED = pathlib.Path("/run/systemd/system")
 
 #: A machine set up with its console in `~/.profile` carries it between these
 #: markers. Moving the machine over to the unit takes the block out and leaves
@@ -523,6 +541,16 @@ def unit_active(unit):
     this says so.
     """
     return _said(["systemctl", "is-active", unit]) == "active"
+
+
+def booted():
+    """@returns bool - Whether systemd runs this machine, as sd_booted(3) asks.
+
+    False for an image being set up in pi-gen's chroot. systemctl switches
+    units on and off there as it does anywhere, and starts nothing, so what a
+    step would start comes up at the first boot instead.
+    """
+    return BOOTED.is_dir()
 
 
 def _packages_here():
@@ -1769,15 +1797,23 @@ def _lean(work):
 def _left_out():
     """Switches off whichever of `LEFT_OUT` are on, and keeps cloud-init away.
 
-    @returns list of str, the units switched off, with cloud-init's file as one
-      more entry where this wrote it.
+    @returns list of str, the units switched off, with the file that keeps
+      cloud-init away as one more entry where this wrote one.
+
+    A machine that is running keeps cloud-init away from its next boot on.
+    An image keeps it for its first boot, which applies what Raspberry Pi
+    Imager set, and away from every boot after that.
     """
     on = [unit for unit in LEFT_OUT if unit_state(unit) == "enabled"]
     if on:
         run(["systemctl", "disable", *on])
     if CLOUD_INIT_OFF.parent.is_dir() and not CLOUD_INIT_OFF.exists():
-        CLOUD_INIT_OFF.touch()
-        on.append(str(CLOUD_INIT_OFF))
+        if booted():
+            CLOUD_INIT_OFF.touch()
+            on.append(str(CLOUD_INIT_OFF))
+        elif _made_to_hold(CLOUD_INIT_ONCE, _cloud_init_once().encode("utf-8"),
+                           0o755):
+            on.append(str(CLOUD_INIT_ONCE))
     return on
 
 
@@ -1786,18 +1822,31 @@ def _brought_back(off):
 
     @param off - What it answered.
     """
-    units = [unit for unit in off if unit != str(CLOUD_INIT_OFF)]
+    files = (CLOUD_INIT_OFF, CLOUD_INIT_ONCE)
+    units = [unit for unit in off if unit not in {str(path) for path in files}]
     if units:
         run(["systemctl", "enable", *units])
-    if str(CLOUD_INIT_OFF) in off:
-        CLOUD_INIT_OFF.unlink(missing_ok=True)
+    for path in files:
+        if str(path) in off:
+            path.unlink(missing_ok=True)
+
+
+def _cloud_init_once():
+    """@returns str - The script at CLOUD_INIT_ONCE."""
+    return (
+        "#!/bin/sh\n"
+        "# Written by Previously's setup, which takes it away again when Previous\n"
+        "# is removed. cloud-init runs this once, at the first boot, after it has\n"
+        "# applied what Raspberry Pi Imager set, and stays away from every boot\n"
+        "# after that one.\n"
+        "touch %s\n" % CLOUD_INIT_OFF)
 
 
 def _full(work):
     """Switches on again every unit of `LEFT_OUT` this system has, and lets
     cloud-init start."""
     _brought_back([unit for unit in LEFT_OUT if unit_state(unit) == "disabled"]
-                  + [str(CLOUD_INIT_OFF)])
+                  + [str(CLOUD_INIT_OFF), str(CLOUD_INIT_ONCE)])
 
 
 def refresh_services(owner):
@@ -2253,8 +2302,10 @@ def _start(work):
 
     Left alone where the emulator is already running, since restarting the
     console under a running guest costs whatever that guest had not written.
+    Left alone as well on an image nothing has booted yet, whose console is
+    switched on and starts at its first boot.
     """
-    if _the_guest_is_running():
+    if not booted() or _the_guest_is_running():
         return
     pathlib.Path(HOLD).unlink(missing_ok=True)
     run(["systemctl", "restart", CONSOLE])
@@ -2527,39 +2578,81 @@ def _said_of(failure):
 
 
 def main(argv=None):
-    """Reads one request and carries it out.
+    """Carries out one job: the one the tool asked for, or the one named on
+    the command line.
 
-    @param argv - Ignored. There are no options: what to do arrives in the
-      request, and a program root starts is not one to give a command line to.
+    @param argv - What follows the program's name, or None for the command
+      line this was started with. `previously-setup.service` names nothing,
+      and the request the tool left says what to do. A job and a system named
+      here are carried out directly, which is how an image is set up in
+      pi-gen's chroot, where no tool runs to leave a request. Both are looked
+      up in the same tables a request's names are.
     @returns int, the exit status.
 
     The configuration is read twice, and the second time with the owner's home,
     because a path in it written as `~/nextstep` means their home and this runs
     as root. The first reading is only for the runtime directory, which is
     `/run/previously` and is also written into the path unit that starts this.
+
+    A run named on the command line prints how it ended, because whoever
+    started it is reading a build log rather than the tool's window.
     """
-    request = taken(Settings.load().runtime_directory / REQUEST)
+    named = sys.argv[1:] if argv is None else argv
+    if named:
+        request = _named(named)
+    else:
+        request = taken(Settings.load().runtime_directory / REQUEST)
     if request is None:
         # Nothing to do. The path unit fires on a file appearing, and a file
         # that is gone or unreadable by the time this runs is not an error
         # worth a failed unit in the journal.
         return 0
 
+    work = _work_for(request)
+    finished = work.finished_at is None and carry_out(work)
+    if named:
+        print(json.dumps(work.reading(), ensure_ascii=False, indent=2))
+    return 0 if finished else 1
+
+
+def _named(arguments):
+    """@returns dict, the request a command line makes, as the tool would
+    leave it.
+
+    @param arguments - The command line after the program's name.
+    """
+    parser = argparse.ArgumentParser(
+        prog="python3 -m previously.setup",
+        description="Carries out one job of Previously's setup.")
+    parser.add_argument("job", help="what to do, as JOBS names it")
+    parser.add_argument("system", nargs="?",
+                        help="the system to put on the machine, as systems.py names it")
+    parsed = parser.parse_args(arguments)
+    return {"do": parsed.job, "system": parsed.system}
+
+
+def _work_for(request):
+    """@returns Work, the run a request asks for, or one that has already
+    ended by refusing it.
+
+    @param request - What was asked for, as `asked_for` reads it.
+    """
     try:
         job, steps, system, machine, backup = asked_for(request)
     except Refused as refusal:
-        Work("?", (), None, None, None).ends(False, dict(refusal.told))
-        return 1
+        work = Work("?", (), None, None, None)
+        work.ends(False, dict(refusal.told))
+        return work
 
     try:
         owner = Owner.from_unit()
     except Refused as refusal:
-        Work(job, steps, None, system, machine).ends(False, dict(refusal.told))
-        return 1
+        work = Work(job, steps, None, system, machine)
+        work.ends(False, dict(refusal.told))
+        return work
 
-    work = Work(job, steps, owner, system, machine,
+    return Work(job, steps, owner, system, machine,
                 Settings.load(home=owner.home), backup)
-    return 0 if carry_out(work) else 1
 
 
 if __name__ == "__main__":

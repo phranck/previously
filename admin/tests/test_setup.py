@@ -28,13 +28,27 @@ from previously import config, machines, setup, systems
 @pytest.fixture(autouse=True)
 def system_files(tmp_path, monkeypatch):
     """The console's files and the autologin, in the test's own directory, so
-    that no test reaches into /etc or /usr however it goes wrong."""
+    that no test reaches into /etc or /usr however it goes wrong.
+
+    And a machine systemd runs, which is what every test is about unless it
+    asks for one nothing has booted. Neither depends on the machine running the
+    suite, which may be a Mac."""
     units = tmp_path / "etc" / "systemd" / "system"
     monkeypatch.setattr(setup, "SYSTEM_UNITS", units)
     monkeypatch.setattr(setup, "AUTOLOGIN", units / (setup.GETTY + ".d") / "autologin.conf")
     monkeypatch.setattr(setup, "CONSOLE_SCRIPT",
                         tmp_path / "usr" / "local" / "libexec" / "previously-console")
     monkeypatch.setattr(setup, "CONSOLE_PAM", tmp_path / "etc" / "pam.d" / "previously-console")
+    booted = tmp_path / "booted" / "run" / "systemd" / "system"
+    booted.mkdir(parents=True)
+    monkeypatch.setattr(setup, "BOOTED", booted)
+
+
+@pytest.fixture
+def not_booted(system_files, tmp_path, monkeypatch):
+    """A machine nothing has booted, which is an image being set up in pi-gen's
+    chroot: it mounts an empty /run of its own."""
+    monkeypatch.setattr(setup, "BOOTED", tmp_path / "chroot" / "run" / "systemd" / "system")
 
 
 @pytest.fixture
@@ -213,6 +227,42 @@ def test_a_name_that_is_not_in_a_table_refuses_the_whole_request(request_, reaso
         setup.asked_for(request_)
 
     assert refused.value.told["reason"] == reason
+
+
+def test_a_job_named_on_the_command_line_is_carried_out(tmp_path, monkeypatch,
+                                                        capsys):
+    """Which is how an image is set up in pi-gen's chroot, where no tool runs to
+    leave a request. How the run ended is printed for the build's log."""
+    ran = []
+
+    def carried_out(work):
+        ran.append(work)
+        work.ends(True)
+        return True
+
+    monkeypatch.setattr(setup.Owner, "from_unit",
+                        classmethod(lambda cls: Nobody(tmp_path / "home")))
+    monkeypatch.setattr(setup.Settings, "load",
+                        classmethod(lambda cls, home=None: settings_for(tmp_path)))
+    monkeypatch.setattr(setup, "carry_out", carried_out)
+
+    assert setup.main(["install", "nextstep-3.3"]) == 0
+    work, = ran
+
+    assert work.job == "install"
+    assert work.steps == setup.JOBS["install"]
+    assert work.system.identifier == "nextstep-3.3"
+    assert json.loads(capsys.readouterr().out)["ok"] is True
+
+
+def test_a_name_on_the_command_line_is_looked_up_as_a_requests_is(monkeypatch,
+                                                                  capsys):
+    monkeypatch.setattr(setup, "carry_out",
+                        lambda work: pytest.fail("carried it out anyway"))
+
+    assert setup.main(["install", "../../etc/passwd"]) == 1
+    assert json.loads(capsys.readouterr().out)["failed"]["reason"] == \
+        "setup.no-such-system"
 
 
 # -- the order of the work, and what happens when it fails ----------------
@@ -959,8 +1009,8 @@ def test_no_getty_is_put_under_an_emulator_that_still_runs(tmp_path, commands, c
 @pytest.fixture
 def units(monkeypatch, tmp_path):
     """The board's units by the state `systemctl is-enabled` names, each of
-    the left-out ones switched on unless a test says otherwise, and the file
-    that keeps cloud-init away somewhere the test can see it.
+    the left-out ones switched on unless a test says otherwise, and the two
+    files that keep cloud-init away somewhere the test can see them.
 
     @returns dict of unit to state, which a test changes in place.
     """
@@ -968,6 +1018,8 @@ def units(monkeypatch, tmp_path):
     monkeypatch.setattr(setup, "unit_state", lambda unit: states.get(unit, ""))
     (tmp_path / "cloud").mkdir()
     monkeypatch.setattr(setup, "CLOUD_INIT_OFF", tmp_path / "cloud" / "cloud-init.disabled")
+    monkeypatch.setattr(setup, "CLOUD_INIT_ONCE",
+                        tmp_path / "lib" / "cloud" / "scripts" / "per-once" / "cloud-init-off")
     return states
 
 
@@ -1022,6 +1074,50 @@ def test_removing_brings_back_what_was_left_out(tmp_path, commands, units):
 def test_installing_leaves_out_and_removing_brings_back():
     assert "lean" in setup.JOBS["install"]
     assert "full" in setup.JOBS["remove"]
+
+
+def test_an_image_keeps_cloud_init_for_its_first_boot(tmp_path, commands, units,
+                                                      not_booted):
+    """cloud-init applies what Raspberry Pi Imager set at the first boot, and
+    an image is set up before that boot. So cloud-init switches itself off once
+    that boot is through, with a script it runs once."""
+    work = work_in(tmp_path)
+    work.at("lean", 9)
+
+    setup.STEPS["lean"](work)
+
+    assert not setup.CLOUD_INIT_OFF.exists()
+    assert setup.CLOUD_INIT_ONCE.stat().st_mode & 0o777 == 0o755
+    assert work.changed == ["lean"]
+
+    subprocess.run(["sh", str(setup.CLOUD_INIT_ONCE)], check=True)
+
+    assert setup.CLOUD_INIT_OFF.exists()
+
+
+def test_a_failed_image_takes_the_script_back(tmp_path, commands, units, not_booted):
+    work = work_in(tmp_path)
+    work.at("lean", 9)
+
+    setup.STEPS["lean"](work)
+    assert setup.CLOUD_INIT_ONCE.exists()
+    work.reverse()
+
+    assert not setup.CLOUD_INIT_ONCE.exists()
+
+
+def test_removing_takes_the_script_away_from_a_machine_set_up_as_an_image(
+        tmp_path, commands, units):
+    """It ran at the first boot, and cloud-init does not run it again, but a
+    removal leaves nothing of Previously's behind."""
+    setup.CLOUD_INIT_ONCE.parent.mkdir(parents=True)
+    setup.CLOUD_INIT_ONCE.write_text("#!/bin/sh\n", encoding="utf-8")
+    setup.CLOUD_INIT_OFF.touch()
+
+    setup.STEPS["full"](work_in(tmp_path, job="remove"))
+
+    assert not setup.CLOUD_INIT_ONCE.exists()
+    assert not setup.CLOUD_INIT_OFF.exists()
 
 
 @pytest.mark.parametrize("set_up_with", ["unit", "profile"])
@@ -1336,6 +1432,20 @@ def test_a_machine_that_is_already_running_is_not_restarted(tmp_path, commands,
     setup.STEPS["start"](work)
 
     assert hold.exists()
+    assert commands == []
+    assert work.changed == []
+
+
+def test_an_image_starts_its_console_at_its_first_boot(tmp_path, commands,
+                                                       monkeypatch, not_booted):
+    """systemd runs nothing in pi-gen's chroot, so there is nothing to start.
+    The console's unit is switched on by then, and the first boot starts it."""
+    monkeypatch.setattr(setup, "_the_guest_is_running", lambda: False)
+    work = work_in(tmp_path)
+    work.at("start", len(setup.JOBS["install"]))
+
+    setup.STEPS["start"](work)
+
     assert commands == []
     assert work.changed == []
 
