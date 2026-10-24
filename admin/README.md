@@ -31,9 +31,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-check.txt
 make check PYTHON=.venv/bin/python
 ```
 
-Pillow is for `measuring/boot.py`, which reads the pictures of a measured boot on the Mac. The service never imports it. The release workflow installs from the same file and runs `make check`, so a package added there reaches both.
+Pillow is for `measuring/boot.py`, which reads the pictures of a measured boot on the Mac. The service never imports it. The check workflow, which runs on every pull request and before every release, installs from the same file and runs `make check`, so a package added there reaches both.
 
-The interface is checked by Oxlint, by the rules in `.oxlintrc.json`, and by `tsc`, both from `package.json` beside it, and is built by `esbuild`. The kit's elements are tested in Node against happy-dom's document, from the same `package.json`: `tests/kit/` lays markup out with the kit's own stylesheet and reads back what the elements made of it. `tests/page/` does the same with the page's own markup and its modules, with the service answered by a `fetch` the test writes, for what the page does with an answer. `make test` runs both before the Python. None of it ever reaches the Pi: what ships is the built interface, and that is committed. `.nvmrc` at the root names the Node all of it runs on, here and in the release workflow.
+The interface is checked by Oxlint, by the rules in `.oxlintrc.json`, and by `tsc`, both from `package.json` beside it, and is built by `esbuild`. The kit's elements are tested in Node against happy-dom's document, from the same `package.json`: `tests/kit/` lays markup out with the kit's own stylesheet and reads back what the elements made of it. `tests/page/` does the same with the page's own markup and its modules, with the service answered by a `fetch` the test writes, for what the page does with an answer. `make test` runs both before the Python. None of it ever reaches the Pi: what ships is the built interface, and that is committed. `.nvmrc` at the root names the Node all of it runs on, here and in the check workflow.
 
 ```bash
 npm install                                          # oxlint, tsc and happy-dom, into admin/node_modules

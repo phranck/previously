@@ -6,7 +6,7 @@
 # to install it and point PYTHON at it.
 
 PYTHON ?= python3
-# The release workflow runs `make check` too, and names and times every test.
+# The check workflow runs `make check` too, and names and times every test.
 PYTEST_FLAGS ?= -q
 OXLINT ?= node_modules/.bin/oxlint
 TSC ?= node_modules/.bin/tsc
