@@ -18,11 +18,17 @@ are. Run this again whenever the website's mark or those pictures change.
 
 import io
 import pathlib
+import sys
 import urllib.request
 
 from PIL import Image
 
 HERE = pathlib.Path(__file__).parent
+
+# Which pictures there are is the admin's to say, one pair for every board it
+# knows, so its module is read from beside this folder rather than installed.
+sys.path.insert(0, str(HERE.parent / "admin"))
+from previously import splash  # noqa: E402
 PARTS = HERE.parent / "admin" / "web" / "parts"
 #: Where the boot picture goes: beside the package build that turns it into a
 #: TGA, because the admin's interface does not show it.
@@ -37,10 +43,10 @@ WEBSITE = "https://raw.githubusercontent.com/phranck/previous.li/main/site/"
 SOURCE = WEBSITE + "logo.png"
 FAVICON = "favicon.ico"
 
-#: The pictures shown while the Pi starts and while it shuts down. Already at
-#: the size and in the colours they are shown in, so they are copied byte for
-#: byte.
-SPLASHES = ("splash.png", "splash-shutdown.png")
+#: The pictures shown while the Pi starts and while it shuts down, a pair for
+#: every board the admin knows. Already at the size and in the colours they are
+#: shown in, so they are copied byte for byte.
+SPLASHES = [stem + ".png" for stem in splash.stems()]
 
 #: How tall the admin's copy is, in pixels: four times the 48 an icon is drawn
 #: at, so it stays sharp on a display that doubles every pixel and on a desk

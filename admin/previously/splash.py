@@ -29,10 +29,12 @@ drivers/video/logo/logo.c answers nothing once `logos_freed` is set. vc4 is a
 module and arrives later, so the logo is drawn on the firmware's framebuffer
 alone, which stood for 1.4 s at 720 by 480 on a Pi 4 on 24.10.2026.
 
-The picture is the TGA the package build writes. Like the kernel's logo it is
-never scaled: it is centred where it is smaller than the screen and clipped
-evenly on both sides where it is larger. Each pixel is written in the
-framebuffer's own format, as the kernel describes it through
+The pictures are the TGAs the package build writes, a pair for every board the
+admin knows, and each board draws its own, as the admin's windows show it.
+Like the kernel's logo a picture is never scaled: it is centred where it is
+smaller than the screen and clipped evenly on both sides where it is larger.
+Each pixel is written in the framebuffer's own format, as the kernel describes
+it through
 FBIOGET_VSCREENINFO, so the same picture is right at 16 bits a pixel on a Pi 4
 and at whatever another board uses.
 
@@ -46,13 +48,20 @@ import pathlib
 import struct
 import sys
 
-#: The pictures, by the name a caller asks for: the one shown while the Pi
-#: starts and the one shown while it shuts down. `packaging/build.py` writes
-#: them there, and `tests/test_packaging.py` holds the two to the same paths.
-PICTURES = {
-    "boot": pathlib.Path("/usr/share/previously/splash.tga"),
-    "shutdown": pathlib.Path("/usr/share/previously/splash-shutdown.tga"),
-}
+from . import hardware
+
+#: Where the package keeps the pictures, and what each kind a caller asks for
+#: is called there in front of the board it shows: the one shown while the Pi
+#: starts and the one shown while it shuts down, so `splash-pi4.tga` is a Pi 4's
+#: boot picture. `packaging/build.py` writes a pair for every board in
+#: `hardware.BOARDS`, and `tests/test_packaging.py` holds the two to the same
+#: names.
+PICTURE_DIRECTORY = pathlib.Path("/usr/share/previously")
+KINDS = {"boot": "splash", "shutdown": "splash-shutdown"}
+
+#: The board whose pictures a board the service does not know shows, which is
+#: what every board showed before each had pictures of its own.
+FALLBACK_BOARD = "pi5"
 
 #: Where the framebuffers are, by the name udev hands over.
 DEVICES = pathlib.Path("/dev")
@@ -88,6 +97,34 @@ FIX_SCREENINFO = struct.Struct("@16sLIIIIHHHILIIH2H0L")
 #: The TGA's header, as packaging/build.py writes it: 18 bytes, the width and
 #: the height at bytes 12 to 15, the depth at byte 16.
 TGA_HEADER = 18
+
+
+def stem(kind, board):
+    """@returns str, what the picture of one kind for one board is called
+    without its extension, such as `splash-pi4`, which is also what previous.li
+    calls the PNG it is made from.
+
+    @param kind - A key of KINDS.
+    @param board - A name out of `hardware.BOARDS`.
+    """
+    return "%s-%s" % (KINDS[kind], board)
+
+
+def stems():
+    """@returns list of str, the stem of every picture there is: both kinds for
+    every board in `hardware.BOARDS`, which is what the package carries and what
+    design/mark.py fetches."""
+    return [stem(kind, board) for board in sorted(set(hardware.BOARDS.values()))
+            for kind in KINDS]
+
+
+def picture_of(kind):
+    """@returns pathlib.Path, the picture of one kind for the board this runs
+    on, or FALLBACK_BOARD's on a board the service does not know.
+
+    @param kind - A key of KINDS.
+    """
+    return PICTURE_DIRECTORY / (stem(kind, hardware.board() or FALLBACK_BOARD) + ".tga")
 
 
 class Unsupported(Exception):
@@ -232,12 +269,12 @@ def draw(name, picture_path=None, devices=None):
     """Draws the picture onto one framebuffer, as the whole of its screen.
 
     @param name - The framebuffer's name, such as `fb0`.
-    @param picture_path - pathlib.Path of the TGA, the boot picture where left
-      out.
+    @param picture_path - pathlib.Path of the TGA, this board's boot picture
+      where left out.
     @param devices - Where the device files are, DEVICES where left out.
     @raises Unsupported, and OSError where the device cannot be opened.
     """
-    data = (picture_path or PICTURES["boot"]).read_bytes()
+    data = (picture_path or picture_of("boot")).read_bytes()
     with open((devices or DEVICES) / name, "r+b", buffering=0) as device:
         screen = _screen_of(device)
         device.seek(screen.y_offset * screen.stride
@@ -246,8 +283,8 @@ def draw(name, picture_path=None, devices=None):
 
 
 def lay_out(name, into, devices=None):
-    """Writes the boot picture as the whole of one framebuffer's screen, and
-    what that screen is, for the initramfs to draw from.
+    """Writes this board's boot picture as the whole of one framebuffer's
+    screen, and what that screen is, for the initramfs to draw from.
 
     @param name - The framebuffer's name, such as `fb0`.
     @param into - pathlib.Path of the directory both go into, which is made
@@ -256,7 +293,7 @@ def lay_out(name, into, devices=None):
     @raises Unsupported where the framebuffer is the firmware's, and as `draw`
       raises.
     """
-    data = PICTURES["boot"].read_bytes()
+    data = picture_of("boot").read_bytes()
     with open((devices or DEVICES) / name, "rb") as device:
         screen = _screen_of(device)
     if screen.name == FIRMWARE_FRAMEBUFFER:
@@ -270,7 +307,7 @@ def lay_out(name, into, devices=None):
 def main(argv=None):
     """@returns int, the exit status.
 
-    @param argv - The framebuffer's name, and optionally which of PICTURES to
+    @param argv - The framebuffer's name, and optionally which of KINDS to
       draw, the boot picture where left out. Or the framebuffer's name, then
       `--into` and a directory, to lay the boot picture out there instead.
     """
@@ -282,7 +319,7 @@ def main(argv=None):
     if not 1 <= len(arguments) <= 2 or "/" in arguments[0]:
         print("usage: python3 -m previously.splash fb0 [%s]\n"
               "       python3 -m previously.splash fb0 --into DIRECTORY"
-              % "|".join(PICTURES), file=sys.stderr)
+              % "|".join(KINDS), file=sys.stderr)
         return 2
     name = arguments[0]
     if into is not None:
@@ -294,11 +331,11 @@ def main(argv=None):
             return 1
         return 0
     kind = arguments[1] if len(arguments) == 2 else "boot"
-    if kind not in PICTURES:
+    if kind not in KINDS:
         print("no picture called %s" % kind, file=sys.stderr)
         return 2
     try:
-        draw(name, PICTURES[kind])
+        draw(name, picture_of(kind))
     except (Unsupported, OSError) as failure:
         print("no %s picture on %s: %s" % (kind, name, failure), file=sys.stderr)
         return 1

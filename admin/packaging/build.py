@@ -122,15 +122,14 @@ CURSOR_NAMES = ("left_ptr", "default")
 XCURSOR_IMAGE = 0xFFFD0002
 CURSOR_SIZE = 24
 
-#: The pictures the Pi shows while it starts and while it shuts down, by where
-#: the package keeps each as the TGA previously/splash.py draws from, and the
-#: PNG design/mark.py fetches from previous.li for it. `splash.PICTURES` names
-#: the same paths. Beside this script rather than among the interface's
-#: pictures, because the admin does not show them and serves nothing it does
-#: not show.
-SPLASH = "usr/share/" + NAME + "/splash.tga"
-SHUTDOWN_SPLASH = "usr/share/" + NAME + "/splash-shutdown.tga"
-SPLASHES = {SPLASH: HERE / "splash.png", SHUTDOWN_SPLASH: HERE / "splash-shutdown.png"}
+#: The pictures the Pi shows while it starts and while it shuts down, a pair
+#: for every board the admin knows, by where the package keeps each as the TGA
+#: previously/splash.py draws from, and the PNG design/mark.py fetches from
+#: previous.li for it. The names are `splash.stems()`. Beside this script
+#: rather than among the interface's pictures, because the admin does not show
+#: them and serves nothing it does not show.
+SPLASHES = {"%s/%s.tga" % (str(splash.PICTURE_DIRECTORY).lstrip("/"), stem): HERE / (stem + ".png")
+            for stem in splash.stems()}
 
 #: The TGA image type for uncompressed true colour, and the bit of its
 #: descriptor that says the rows run from the top. `splash.picture` reads that

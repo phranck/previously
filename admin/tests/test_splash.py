@@ -82,6 +82,27 @@ def framebuffer(tmp_path, monkeypatch):
     return make
 
 
+def the_board(monkeypatch, tmp_path, board):
+    """Has the module run on a board of that name, read its pictures from the
+    test's directory and open the framebuffers there.
+
+    @param board - What `hardware.board()` answers, None for a board the
+      service does not know.
+    @returns pathlib.Path, where the pictures go.
+    """
+    monkeypatch.setattr(splash.hardware, "board", lambda: board)
+    share = tmp_path / "share"
+    share.mkdir(exist_ok=True)
+    monkeypatch.setattr(splash, "PICTURE_DIRECTORY", share)
+    monkeypatch.setattr(splash, "DEVICES", tmp_path)
+    return share
+
+
+def put(share, kind, board, picture):
+    """Puts a picture of one kind for one board where the module looks."""
+    (share / (splash.stem(kind, board) + ".tga")).write_bytes(picture)
+
+
 def drawn(tmp_path, picture):
     """Draws a picture onto fb0 in the test's directory. @returns its bytes."""
     path = tmp_path / "splash.tga"
@@ -172,10 +193,7 @@ def test_the_name_has_to_be_a_framebuffers(capsys):
 
 def test_a_framebuffer_that_is_not_there_ends_quietly(tmp_path, monkeypatch, capsys):
     """The boot goes on without its picture, and the journal says why."""
-    picture = tmp_path / "splash.tga"
-    picture.write_bytes(tga(1, 1, (0, 0, 0)))
-    monkeypatch.setitem(splash.PICTURES, "boot", picture)
-    monkeypatch.setattr(splash, "DEVICES", tmp_path)
+    put(the_board(monkeypatch, tmp_path, "pi5"), "boot", "pi5", tga(1, 1, (0, 0, 0)))
 
     assert splash.main(["fb7"]) == 1
     said = capsys.readouterr().err
@@ -186,14 +204,47 @@ def test_a_framebuffer_that_is_not_there_ends_quietly(tmp_path, monkeypatch, cap
 def test_the_shutdown_picture_is_the_one_asked_for(tmp_path, framebuffer, monkeypatch):
     """Drawn by the same code as the boot picture, out of its own file."""
     framebuffer(1, 1, 32, XRGB8888)
+    share = the_board(monkeypatch, tmp_path, "pi5")
     for kind, colour in (("boot", (0, 0, 0xFF)), ("shutdown", (0xFF, 0, 0))):
-        path = tmp_path / ("%s.tga" % kind)
-        path.write_bytes(tga(1, 1, colour))
-        monkeypatch.setitem(splash.PICTURES, kind, path)
-    monkeypatch.setattr(splash, "DEVICES", tmp_path)
+        put(share, kind, "pi5", tga(1, 1, colour))
 
     assert splash.main(["fb0", "shutdown"]) == 0
     assert (tmp_path / "fb0").read_bytes() == bytes([0, 0, 0xFF, 0])
+
+
+@pytest.mark.parametrize("kind", ["boot", "shutdown"])
+def test_a_board_shows_its_own_board(tmp_path, framebuffer, monkeypatch, kind):
+    """A Pi 4 shows a Pi 4's board, as the admin's windows do, while it starts
+    and while it shuts down."""
+    framebuffer(1, 1, 32, XRGB8888)
+    share = the_board(monkeypatch, tmp_path, "pi4")
+    put(share, kind, "pi4", tga(1, 1, (0, 0xFF, 0)))
+    put(share, kind, "pi5", tga(1, 1, (0, 0, 0xFF)))
+
+    assert splash.main(["fb0", kind]) == 0
+    assert (tmp_path / "fb0").read_bytes() == bytes([0, 0xFF, 0, 0])
+
+
+def test_a_board_the_service_does_not_know_shows_the_pi_5s(
+        tmp_path, framebuffer, monkeypatch):
+    """Which is what every board showed before there was a picture for each."""
+    framebuffer(1, 1, 32, XRGB8888)
+    put(the_board(monkeypatch, tmp_path, None), "boot", "pi5", tga(1, 1, (0, 0, 0xFF)))
+
+    assert splash.main(["fb0"]) == 0
+    assert (tmp_path / "fb0").read_bytes() == bytes([0xFF, 0, 0, 0])
+
+
+def test_the_initramfs_is_laid_out_for_the_board_it_is_built_on(tmp_path, framebuffer,
+                                                                monkeypatch):
+    """The hook runs on the board itself, so what it asks is that board."""
+    framebuffer(1, 1, 32, XRGB8888)
+    share = the_board(monkeypatch, tmp_path, "cm5")
+    put(share, "boot", "cm5", tga(1, 1, (0, 0xFF, 0)))
+    put(share, "boot", "pi5", tga(1, 1, (0, 0, 0xFF)))
+
+    assert splash.main(["fb0", "--into", str(tmp_path / "initramfs")]) == 0
+    assert (tmp_path / "initramfs" / splash.FRAME).read_bytes() == bytes([0, 0xFF, 0, 0])
 
 
 def test_a_picture_nobody_has_is_refused(capsys):
@@ -219,12 +270,9 @@ def test_drawing_clears_what_the_screen_showed_beside_the_picture(tmp_path, fram
 
 
 def boot_picture(tmp_path, monkeypatch, colour=(0xFF, 0x80, 0x10)):
-    """Makes a boot picture of two pixels the module draws from, and has it
-    open the framebuffers in the test's directory."""
-    picture = tmp_path / "boot.tga"
-    picture.write_bytes(tga(2, 1, colour))
-    monkeypatch.setitem(splash.PICTURES, "boot", picture)
-    monkeypatch.setattr(splash, "DEVICES", tmp_path)
+    """Makes a boot picture of two pixels for a Pi 5, which the module draws
+    from on a Pi 5, and has it open the framebuffers in the test's directory."""
+    put(the_board(monkeypatch, tmp_path, "pi5"), "boot", "pi5", tga(2, 1, colour))
 
 
 def test_the_frame_for_the_initramfs_is_what_drawing_writes(tmp_path, framebuffer,

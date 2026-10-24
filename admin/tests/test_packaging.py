@@ -362,30 +362,45 @@ def test_the_package_brings_the_x_server_previous_draws_through(build):
 # -- the boot picture ----------------------------------------------------
 
 
-@pytest.mark.parametrize("which", ["boot", "shutdown"])
-def test_the_package_carries_the_pictures_pixel_for_pixel(build, tmp_path, which):
+def test_the_package_carries_the_pictures_pixel_for_pixel(build, tmp_path):
     """Each TGA is written from the PNG design/mark.py fetches, and the drawer
     reads it back. Every pixel has to arrive as the PNG holds it, turned from
     red, green and blue into the blue, green and red a TGA stores."""
     from previously import png, splash
 
-    tga = {"boot": build.SPLASH, "shutdown": build.SHUTDOWN_SPLASH}[which]
     build.lay_out(tmp_path / "tree")
-    width, height, pixels = splash.picture((tmp_path / "tree" / tga).read_bytes())
-    wide, high, lines = png.rgb(build.SPLASHES[tga].read_bytes())
+    for tga, source in build.SPLASHES.items():
+        width, height, pixels = splash.picture((tmp_path / "tree" / tga).read_bytes())
+        wide, high, lines = png.rgb(source.read_bytes())
 
-    assert (width, height) == (wide, high)
-    turned = b"".join(bytes(line[at + 2 - channel] for at in range(0, len(line), 3)
-                            for channel in range(3)) for line in lines)
-    assert pixels == turned
+        assert (width, height) == (wide, high), tga
+        turned = b"".join(bytes(line[at + 2 - channel] for at in range(0, len(line), 3)
+                                for channel in range(3)) for line in lines)
+        assert pixels == turned, tga
 
 
-def test_the_drawer_reads_the_pictures_where_the_package_puts_them(build):
-    from previously import splash
+def test_the_drawer_reads_the_pictures_where_the_package_puts_them(build, monkeypatch):
+    """For every board the service knows, both pictures are where the drawer
+    looks on that board."""
+    from previously import hardware, splash
 
-    assert "/" + build.SPLASH == str(splash.PICTURES["boot"])
-    assert "/" + build.SHUTDOWN_SPLASH == str(splash.PICTURES["shutdown"])
-    assert set(build.SPLASHES) == {build.SPLASH, build.SHUTDOWN_SPLASH}
+    for board in set(hardware.BOARDS.values()):
+        monkeypatch.setattr(splash.hardware, "board", lambda board=board: board)
+        for kind in splash.KINDS:
+            assert str(splash.picture_of(kind)).lstrip("/") in build.SPLASHES, (board, kind)
+
+
+def test_the_package_has_both_pictures_for_every_board_the_service_knows(build):
+    """previous.li draws them for the boards its own site/splash.py names, and
+    it cannot read hardware.BOARDS, so this is what holds the two lists to one
+    another. A board without its pictures would leave the package build without
+    a file to turn into a TGA."""
+    from previously import hardware, splash
+
+    for board in set(hardware.BOARDS.values()):
+        for kind in splash.KINDS:
+            assert (PACKAGING / (splash.stem(kind, board) + ".png")).is_file(), (board, kind)
+    assert splash.FALLBACK_BOARD in hardware.BOARDS.values()
 
 
 def test_the_shutdown_picture_is_drawn_after_the_console_has_stopped(build):
