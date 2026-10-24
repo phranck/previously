@@ -47,7 +47,6 @@ def settings_for(tmp_path, **overrides):
         "port": "0",
         "previous_config": str(tmp_path / "previous.cfg"),
         "documents": str(tmp_path / "Previously"),
-        "kiosk_unit": "does-not-exist.service",
         "password_file": str(tmp_path / "password"),
         "runtime_directory": str(tmp_path),
         # Where the disks would be and where the privileged helper would say

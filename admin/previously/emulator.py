@@ -11,7 +11,7 @@ then reaches nobody.
 
 A key goes only to a running emulator. The keyboard belongs to the whole
 board: with no compositor holding it, its keys reach the text console on tty1,
-where the login shell that starts the emulator is waiting.
+where the console's script waits to start the next emulator.
 """
 
 import fcntl
@@ -22,8 +22,8 @@ import threading
 import time
 
 #: What Previous calls its process. Whether it is running is the only honest
-#: signal that the guest has finished shutting down, because the unit stays
-#: active either way: it holds a login shell, not the emulator.
+#: signal that the guest has finished shutting down, because the console's unit
+#: stays active either way: it runs a script that waits, not the emulator.
 PROCESS = "previous"
 
 #: How long to wait for pgrep. It answers at once or not at all.

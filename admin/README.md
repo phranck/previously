@@ -330,9 +330,13 @@ The keys go in through the virtual keyboard, which cage reads like any keyboard 
 
 A sudoers rule was the other way to do this, and it cannot work here: the service sets `NoNewPrivileges=yes`, which is exactly what stops `sudo` from becoming root, and that flag is worth more than the convenience.
 
-**Keeping it down is a file, not a systemd command.** `getty@tty1` restarts itself the instant a session ends, and the console's `~/.profile` starts the emulator. So when the guest powers off, a fresh emulator is booting a second later, and anything arriving after that to stop the unit would kill a guest that had just begun writing.
+**The console is a unit of its own, and it does not wait for the network.** `previously-console.service` runs Previous on tty1 as the emulator's owner, in a session that logind opens through the PAM service `previously-console`. It conflicts with `getty@tty1`, so no getty starts on that terminal. A getty waits for `systemd-user-sessions.service`, and with it for the network. The owner's user manager, where PipeWire runs, waits for the same unit, and opening the session waits for the user manager. So the PAM service opens the session as `user-early`, and `/etc/systemd/system/user@<uid>.service.d/10-login-barrier.conf` lets the user manager start early, as systemd's own `user@0.service.d` does for root. The console stays out of utmp, because systemd's wall message before a reboot goes to every terminal utmp lists and would stand on the screen. `setup.py` writes the unit, its script, the PAM service and that drop-in, the install job switches the unit on, and the remove job takes all four away again.
 
-`~/.profile` therefore waits on `/run/previously/hold` rather than starting the emulator unconditionally:
+A machine whose console is still the block in `~/.profile` is moved over the next time the package is installed or upgraded: the block and its autologin go, and the unit comes. Where an emulator is running on the old console at that moment, the old console stays until the next boot, because it is what brings the next emulator up when the admin restarts it.
+
+**Keeping it down is a file, not a systemd command.** The console's unit restarts itself the instant its script ends, and that script starts the emulator. So when the guest powers off, a fresh emulator is booting a second later, and anything arriving after that to stop the unit would kill a guest that had just begun writing.
+
+The script, `/usr/local/libexec/previously-console`, therefore waits on `/run/previously/hold` rather than starting the emulator unconditionally:
 
 ```sh
 while [ -f /run/previously/hold ]; do sleep 2; done
@@ -349,13 +353,13 @@ exit "$status"
 
 That path is a tmpfs and is empty at every boot, which is what makes restarting the board work: the machine comes back and starts its emulator whoever switched it off before the last shutdown. On the card it would leave a board that reboots waiting for a file nobody is going to remove.
 
-**An emulator that cannot start is tried again every few seconds, for as long as it takes.** The session waits two seconds after a bad end, so the console does not restart as fast as a login takes. The package lifts systemd's start limit for `getty@tty1` in `/usr/lib/systemd/system/getty@tty1.service.d/50-previously.conf`. Without it, systemd stops the console for good after five starts within ten seconds, and only root can start it again.
+**An emulator that cannot start is tried again every few seconds, for as long as it takes.** The script waits two seconds after a bad end, so the console does not restart as fast as systemd can start a process. The unit lifts systemd's start limit with `StartLimitIntervalSec=0`. Without it, systemd stops the console for good after five starts within ten seconds, and only root can start it again.
 
 **Previous draws through cage's Xwayland.** cage sets every monitor to its native mode, and Previous fits its fixed 1120 by 832 into it with bars rather than stretching it. Previous grabs the mouse when it is clicked, and under Wayland alone SDL needs pointer constraints for that, which cage does not offer: the mouse stops reaching NeXTSTEP shortly after the first click. Xwayland holds the grab itself.
 
 **Only NeXTSTEP's pointer is ever on the screen.** NeXTSTEP draws its pointer itself. cage sets a pointer of its own whenever a mouse is plugged in, which then stands beside NeXTSTEP's, so the package brings a cursor theme in `/usr/share/previously/cursors` whose pointer is a transparent pixel, and the console hands it to cage as `XCURSOR_PATH`.
 
-**An emulator that ends badly says so in one line**, and the Raspberry Pi window reads it. The file is on that same tmpfs, so what is in it happened since this board came up and nothing has to work out when. The `exit` runs the session down exactly as `exec` did, so the console never falls through to a shell prompt.
+**An emulator that ends badly says so in one line**, and the Raspberry Pi window reads it. The file is on that same tmpfs, so what is in it happened since this board came up and nothing has to work out when.
 
 **No core dumps.** Debian sets the soft core limit to 0 for every user in `/etc/security/limits.d/10-coredump-debian.conf`, and this project leaves that as it is rather than writing a limit of its own, because the platform already answers the question. It is also the right answer here: a machine that boots into an emulator and is looked after through a browser has nobody to read a 37 MB dump, and nine of them once sat in the home for two days without anybody opening one. What a person wants is to know that it crashed, which is the line above.
 
@@ -401,7 +405,7 @@ What NeXT called the application that puts things on a machine and takes them of
 
 **Two tabs**, because they are not the same kind of thing: a package and a two gigabyte disk. The row above them is the same cell the Config Editor gives its five subjects, and the group below takes its turn.
 
-**Previous Emulator** is installed, updated and removed as one thing, because Previous on its own is not a machine that boots: what goes with it is the compositor it runs in, the console that logs in by itself, the silenced startup and the start on the first console. Removing it is that list backwards, and it is the half to get right rather than the half to leave out, since a tool that can only install is one nobody dares press.
+**Previous Emulator** is installed, updated and removed as one thing, because Previous on its own is not a machine that boots: what goes with it is the compositor it runs in, the silenced startup and the console that starts it on the first screen. Removing it is that list backwards, and it is the half to get right rather than the half to leave out, since a tool that can only install is one nobody dares press.
 
 A line under the group says what each button does. Update is not there at all unless the archive has something newer, and where it is, it names the version it would bring: a button that would fetch the version already installed is a button that does nothing. That takes two facts, `dpkg-query` for what is here and `apt-cache policy` for what apt would install, and `dpkg --compare-versions` to decide between them, because Debian's ordering is its own and a string comparison calls 4.10 older than 4.9. All three are read-only and want no privilege, and what they said is kept for a few seconds, since the window asks twice a second while it is open.
 

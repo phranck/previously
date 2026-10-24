@@ -17,11 +17,24 @@ import json
 import os
 import pathlib
 import subprocess
+import types
 
 import pytest
 
 from conftest import settings_for
 from previously import config, machines, setup, systems
+
+
+@pytest.fixture(autouse=True)
+def system_files(tmp_path, monkeypatch):
+    """The console's files and the autologin, in the test's own directory, so
+    that no test reaches into /etc or /usr however it goes wrong."""
+    units = tmp_path / "etc" / "systemd" / "system"
+    monkeypatch.setattr(setup, "SYSTEM_UNITS", units)
+    monkeypatch.setattr(setup, "AUTOLOGIN", units / (setup.GETTY + ".d") / "autologin.conf")
+    monkeypatch.setattr(setup, "CONSOLE_SCRIPT",
+                        tmp_path / "usr" / "local" / "libexec" / "previously-console")
+    monkeypatch.setattr(setup, "CONSOLE_PAM", tmp_path / "etc" / "pam.d" / "previously-console")
 
 
 @pytest.fixture
@@ -519,26 +532,240 @@ def test_everything_that_draws_on_the_screen_is_silenced():
     assert len(quietened.splitlines()) == 1, "the kernel reads one line"
 
 
-def test_the_autostart_is_fenced_so_it_can_be_taken_out_again(tmp_path, commands):
+@pytest.fixture
+def console(monkeypatch, commands):
+    """What systemd says about the console's unit, and whether an emulator
+    runs, as a test sets them.
+
+    @returns a namespace whose `enabled`, `active` and `guest` a test changes
+      in place. All three start out false, which is a machine whose console has
+      never been switched on.
+    """
+    state = types.SimpleNamespace(enabled=False, active=False, guest=False)
+    monkeypatch.setattr(setup, "unit_state", lambda unit: (
+        ("enabled" if state.enabled else "disabled") if unit == setup.CONSOLE else ""))
+    monkeypatch.setattr(setup, "unit_active",
+                        lambda unit: unit == setup.CONSOLE and state.active)
+    monkeypatch.setattr(setup, "_the_guest_is_running", lambda: state.guest)
+    return state
+
+
+def console_unit(owner):
+    """@returns configparser.ConfigParser, the console's unit as it is
+    written, read the way its sections and keys are laid out."""
+    unit = configparser.ConfigParser(interpolation=None)
+    unit.optionxform = str
+    unit.read_string(setup._console_unit(owner))
+    return unit
+
+
+def a_profile_console(owner):
+    """Gives the owner the console an older setup wrote: a fenced block in
+    `~/.profile` and the autologin that runs it.
+
+    @returns str, what the profile held before the block, which is what it is
+      to hold once the console has moved over.
+    """
+    owner.home.mkdir(parents=True, exist_ok=True)
+    (owner.home / setup.PROFILE).write_text(
+        "export EDITOR=vi\n\n%s\ncage -- /usr/bin/previous\n%s\n"
+        % (setup.AUTOSTART_OPENS, setup.AUTOSTART_CLOSES), encoding="utf-8")
+    setup.AUTOLOGIN.parent.mkdir(parents=True, exist_ok=True)
+    setup.AUTOLOGIN.write_text(
+        "[Service]\nExecStart=\nExecStart=-/sbin/agetty --autologin next %I $TERM\n",
+        encoding="utf-8")
+    return "export EDITOR=vi\n"
+
+
+def test_the_console_is_written_and_taken_away_again(tmp_path, commands, console):
     work = work_in(tmp_path)
-    work.owner.home.mkdir(parents=True)
-    profile = work.owner.home / setup.PROFILE
-    profile.write_text("export EDITOR=vi\n", encoding="utf-8")
+    work.at("autostart", 9)
 
     setup.STEPS["autostart"](work)
 
-    assert "-- /usr/bin/previous" in profile.read_text()
+    files = setup._console_files(work.owner)
+    for path, (text, mode) in files.items():
+        assert path.read_text(encoding="utf-8") == text
+        assert path.stat().st_mode & 0o777 == mode, path
+    assert ["systemctl", "enable", setup.CONSOLE] in commands
+    assert work.changed == ["autostart"]
+
+    console.enabled = console.active = True
+    setup.STEPS["no-autostart"](work)
+
+    assert not any(path.exists() for path in files)
+    assert not setup._login_barrier(work.owner).parent.exists()
+    assert ["systemctl", "disable", setup.CONSOLE] in commands
+    assert ["systemctl", "stop", setup.CONSOLE] in commands
+
+
+def test_a_console_is_written_once(tmp_path, commands, console):
+    """Asking for an installation a second time changes nothing the second
+    time, so a later failure has nothing of this step's to put back."""
+    setup.STEPS["autostart"](work_in(tmp_path))
+    console.enabled = True
+    del commands[:]
+    again = work_in(tmp_path)
+    again.at("autostart", 9)
+
+    setup.STEPS["autostart"](again)
+
+    assert again.changed == []
+    assert commands == []
+
+
+def test_an_emulator_that_is_running_keeps_its_console_when_it_is_removed(
+        tmp_path, commands, console):
+    """Stopping the unit would take the guest down with whatever it had not
+    written. systemd does not start a unit again whose file has gone by the time
+    it ends, so the files can go now and the console with the emulator."""
+    work = work_in(tmp_path, job="remove")
+    setup.STEPS["autostart"](work)
+    console.enabled = console.active = console.guest = True
 
     setup.STEPS["no-autostart"](work)
 
-    assert profile.read_text() == "export EDITOR=vi\n"
+    assert ["systemctl", "stop", setup.CONSOLE] not in commands
+    assert not (setup.SYSTEM_UNITS / setup.CONSOLE).exists()
+
+
+def test_the_console_does_not_wait_for_the_network(tmp_path):
+    """It waits for logind, which opens its session, and for nothing that
+    waits for the network. getty@tty1 was ordered after the network through
+    systemd-user-sessions.service, and that was 8.5 s on a Pi 4."""
+    unit = console_unit(Nobody(tmp_path))
+    after = unit["Unit"]["After"].split()
+
+    assert "systemd-logind.service" in after
+    assert "network.target" not in after
+    assert "systemd-user-sessions.service" not in after
+    assert unit["Service"]["Type"] == "exec"
+
+
+def test_the_console_takes_the_first_screen_from_the_getty(tmp_path):
+    """The conflict takes getty@tty1 out of the boot, which a Pi 5 showed on
+    24.10.2026: it never started."""
+    unit = console_unit(Nobody(tmp_path))
+
+    assert unit["Unit"]["Conflicts"] == setup.GETTY
+    assert setup.GETTY in unit["Unit"]["After"].split()
+    assert unit["Service"]["TTYPath"] == "/dev/" + setup.TTY
+    assert unit["Service"]["StandardInput"] == "tty-fail"
+
+
+def test_the_console_stays_out_of_utmp(tmp_path):
+    """systemd's wall message before a reboot goes to every terminal utmp
+    lists. With the console in utmp it stood on the screen of a Pi 5 after the
+    guest had shut down, and systemd.exec(5) creates no entry where no
+    identifier is set."""
+    service = console_unit(Nobody(tmp_path))["Service"]
+
+    assert "UtmpIdentifier" not in service
+    assert "UtmpMode" not in service
+
+
+def test_the_console_never_gives_up_on_the_emulator(tmp_path):
+    """An emulator that ends at once ends the console with it. systemd's start
+    limit would stop the console for good after five of those within ten
+    seconds, and nothing but root starts it again."""
+    unit = console_unit(Nobody(tmp_path))
+
+    assert unit["Unit"]["StartLimitIntervalSec"] == "0"
+    assert unit["Service"]["Restart"] == "always"
+
+
+def test_the_console_runs_as_the_owner_through_its_own_pam_service(tmp_path):
+    owner = Nobody(tmp_path)
+    service = console_unit(owner)["Service"]
+
+    assert service["User"] == owner.name
+    assert service["ExecStart"] == str(setup.CONSOLE_SCRIPT)
+    assert service["PAMName"] == setup.CONSOLE_PAM.name
+
+
+def test_the_session_opens_before_logins_are_permitted(tmp_path):
+    """Opening the session waits for the owner's user manager, and systemd
+    holds that back until logins are permitted, after the network. On a Pi 5
+    cage started at 6.71 s with the early session alone and at 4.36 s with the
+    barrier lifted as well."""
+    owner = Nobody(tmp_path)
+    barrier = setup._login_barrier(owner)
+
+    assert "session  required pam_systemd.so class=user-early" in \
+        setup._console_pam().splitlines()
+    assert barrier.parent.name == "user@%d.service.d" % owner.uid
+    assert barrier.name == "10-login-barrier.conf"
+    # Empty apart from comments, because it takes the place of systemd's own
+    # file of that name and an ordering written here would put one back.
+    assert all(line.startswith("#")
+               for line in setup.LOGIN_BARRIER_TEXT.splitlines())
+
+
+def test_a_console_in_the_profile_is_moved_over(tmp_path, commands, console):
+    work = work_in(tmp_path)
+    kept = a_profile_console(work.owner)
+
+    setup.STEPS["autostart"](work)
+
+    assert (work.owner.home / setup.PROFILE).read_text() == kept
+    assert not setup.AUTOLOGIN.exists()
+    assert (setup.SYSTEM_UNITS / setup.CONSOLE).exists()
+
+
+def test_a_console_in_the_profile_stays_while_an_emulator_runs_on_it(
+        tmp_path, commands, console):
+    """The profile's console is what brings the next emulator up when the
+    admin restarts it. Without it the restart would end at a login prompt."""
+    console.guest = True
+    work = work_in(tmp_path)
+    a_profile_console(work.owner)
+    was = (work.owner.home / setup.PROFILE).read_text()
+
+    setup.STEPS["autostart"](work)
+
+    assert (work.owner.home / setup.PROFILE).read_text() == was
+    assert setup.AUTOLOGIN.exists()
+    assert (setup.SYSTEM_UNITS / setup.CONSOLE).exists()
+
+
+def test_the_profile_console_goes_once_the_unit_runs_the_emulator(
+        tmp_path, commands, console):
+    """Which is how a machine looks after the boot that handed it over."""
+    console.guest = console.active = console.enabled = True
+    work = work_in(tmp_path)
+    kept = a_profile_console(work.owner)
+
+    setup.STEPS["autostart"](work)
+
+    assert (work.owner.home / setup.PROFILE).read_text() == kept
+    assert not setup.AUTOLOGIN.exists()
+
+
+def test_moving_over_can_be_undone(tmp_path, commands, console):
+    """A later step that fails walks every one of them backwards, and this
+    one has to leave the console the way it found it."""
+    work = work_in(tmp_path)
+    a_profile_console(work.owner)
+    was = (work.owner.home / setup.PROFILE).read_text()
+    autologin = setup.AUTOLOGIN.read_text()
+    work.at("autostart", 9)
+
+    setup.STEPS["autostart"](work)
+    work.reverse()
+
+    assert (work.owner.home / setup.PROFILE).read_text() == was
+    assert setup.AUTOLOGIN.read_text() == autologin
+    assert not any(path.exists() for path in setup._console_files(work.owner))
+    assert not setup._login_barrier(work.owner).parent.exists()
+    assert ["systemctl", "disable", setup.CONSOLE] in commands
 
 
 def start_line(owner):
-    """@returns list of str, the words of the line in the autostart that
-    starts the emulator, which the console has in one place."""
-    block = setup._autostart_block(owner)
-    lines = [line for line in block.splitlines() if "/usr/bin/previous" in line]
+    """@returns list of str, the words of the line in the console's script
+    that starts the emulator, which the console has in one place."""
+    script = setup._console_script(owner)
+    lines = [line for line in script.splitlines()
+             if "/usr/bin/previous" in line and not line.startswith("#")]
     assert len(lines) == 1, "the console starts Previous in one place"
     return lines[0].split()
 
@@ -564,12 +791,11 @@ def test_cage_takes_its_pointer_from_the_packages_theme(tmp_path):
 
 
 def run_the_console(tmp_path, monkeypatch, cage_exits):
-    """Runs the autostart the way the console's login shell does, with a cage
-    that ends at once and a sleep that only writes down how long it was asked
-    to wait.
+    """Runs the console's script the way its unit does, with a cage that ends
+    at once and a sleep that only writes down how long it was asked to wait.
 
     @param cage_exits - The status cage ends with.
-    @returns (int, list of str, str): the session's status, every wait asked
+    @returns (int, list of str, str): the script's status, every wait asked
       for, and what the crash file holds.
     """
     runtime = tmp_path / "run"
@@ -581,18 +807,16 @@ def run_the_console(tmp_path, monkeypatch, cage_exits):
     tools.mkdir()
     slept = tmp_path / "slept"
     for name, body in (("cage", "exit %d" % cage_exits),
-                       ("clear", "exit 0"),
                        ("sleep", 'echo "$1" >> %s' % slept)):
         (tools / name).write_text("#!/bin/sh\n%s\n" % body, encoding="utf-8")
         (tools / name).chmod(0o755)
     owner = Nobody(tmp_path / "home")
     owner.home.mkdir()
-    profile = tmp_path / "profile"
-    profile.write_text(setup._autostart_block(owner), encoding="utf-8")
+    script = tmp_path / "previously-console"
+    script.write_text(setup._console_script(owner), encoding="utf-8")
 
     finished = subprocess.run(
-        ["sh", "-c", '. "$1"', "console", str(profile)],
-        env={"PATH": "%s:/usr/bin:/bin" % tools, "XDG_VTNR": "1"},
+        ["sh", str(script)], env={"PATH": "%s:/usr/bin:/bin" % tools},
         capture_output=True, text=True, check=False)
     crashes = runtime / "crashes"
     return (finished.returncode,
@@ -601,9 +825,9 @@ def run_the_console(tmp_path, monkeypatch, cage_exits):
 
 
 def test_an_emulator_that_ends_badly_is_written_down_and_waited_for(tmp_path, monkeypatch):
-    """systemd starts the console again the moment its session ends, so an
-    emulator that cannot start would otherwise be tried as fast as a login
-    takes."""
+    """systemd starts the console again the moment it ends, so an emulator
+    that cannot start would otherwise be tried as fast as systemd can start a
+    process."""
     status, slept, crashes = run_the_console(tmp_path, monkeypatch, 3)
 
     assert status == 3
@@ -611,12 +835,29 @@ def test_an_emulator_that_ends_badly_is_written_down_and_waited_for(tmp_path, mo
     assert slept == [str(setup.CRASH_PAUSE_SECONDS)]
 
 
-def test_an_emulator_that_ends_well_ends_the_session_at_once(tmp_path, monkeypatch):
+def test_an_emulator_that_ends_well_ends_the_console_at_once(tmp_path, monkeypatch):
     status, slept, crashes = run_the_console(tmp_path, monkeypatch, 0)
 
     assert status == 0
     assert slept == []
     assert crashes == ""
+
+
+def test_the_first_console_asks_who_is_there_where_nothing_holds_it(
+        tmp_path, commands, console):
+    setup.STEPS["no-autologin"](work_in(tmp_path, job="remove"))
+
+    assert ["systemctl", "start", setup.GETTY] in commands
+
+
+def test_no_getty_is_put_under_an_emulator_that_still_runs(tmp_path, commands, console):
+    """A getty on that terminal would take it from under the emulator, so the
+    prompt comes with the next boot."""
+    console.active = True
+
+    setup.STEPS["no-autologin"](work_in(tmp_path, job="remove"))
+
+    assert ["systemctl", "start", setup.GETTY] not in commands
 
 
 @pytest.fixture
@@ -687,13 +928,17 @@ def test_installing_leaves_out_and_removing_brings_back():
     assert "full" in setup.JOBS["remove"]
 
 
+@pytest.mark.parametrize("set_up_with", ["unit", "profile"])
 def test_the_package_leaves_out_the_same_on_a_machine_that_is_set_up(
-        tmp_path, commands, units):
+        tmp_path, commands, units, set_up_with):
     """On every install and upgrade, so a machine set up before this version
-    starts as lean as a new one."""
+    starts as lean as a new one, whichever console it has."""
     owner = Nobody(tmp_path / "home")
-    owner.home.mkdir()
-    (owner.home / setup.PROFILE).write_text(setup._autostart_block(owner), encoding="utf-8")
+    if set_up_with == "unit":
+        setup.SYSTEM_UNITS.mkdir(parents=True)
+        (setup.SYSTEM_UNITS / setup.CONSOLE).write_text(setup._console_unit(owner))
+    else:
+        a_profile_console(owner)
 
     assert setup.refresh_services(owner) is True
     assert set(systemctl(commands, "disable")) == set(setup.LEFT_OUT)
@@ -709,90 +954,73 @@ def test_the_package_leaves_the_services_of_a_machine_without_a_console(
     assert commands == []
 
 
-def test_an_autostart_that_is_already_there_is_not_written_twice(tmp_path, commands):
-    work = work_in(tmp_path)
-    work.owner.home.mkdir(parents=True)
-    profile = work.owner.home / setup.PROFILE
-
-    setup.STEPS["autostart"](work)
-    once = profile.read_text()
-    setup.STEPS["autostart"](work)
-
-    assert profile.read_text() == once
-
-
-def test_an_autostart_from_an_older_version_is_brought_up_to_date(tmp_path, commands):
-    """The block is generated, so a machine set up a year ago carries a
-    year-old console. The change that matters most is the one nobody would
-    notice: the line that writes down a crash."""
-    work = work_in(tmp_path)
-    work.owner.home.mkdir(parents=True)
-    profile = work.owner.home / setup.PROFILE
-    profile.write_text(
-        "export EDITOR=vi\n\n%s\nexec cage -- /usr/bin/previous\n%s\n"
-        % (setup.AUTOSTART_OPENS, setup.AUTOSTART_CLOSES), encoding="utf-8")
-
-    setup.STEPS["autostart"](work)
-    written = profile.read_text()
-
-    assert "exec cage" not in written
-    assert "crashes" in written
-    assert written.startswith("export EDITOR=vi\n")
-    assert written.count(setup.AUTOSTART_OPENS) == 1
-
-
-def test_bringing_it_up_to_date_can_be_undone(tmp_path, commands):
-    """A later step that fails walks every one of them backwards, and this
-    one has to leave the console the way it found it."""
-    work = work_in(tmp_path)
-    work.owner.home.mkdir(parents=True)
-    profile = work.owner.home / setup.PROFILE
-    was = ("export EDITOR=vi\n\n%s\nexec cage -- /usr/bin/previous\n%s\n"
-           % (setup.AUTOSTART_OPENS, setup.AUTOSTART_CLOSES))
-    profile.write_text(was, encoding="utf-8")
-
-    work.at("autostart", 1)
-    setup.STEPS["autostart"](work)
-    work.reverse()
-
-    assert profile.read_text() == was
-
-
-def test_the_package_brings_a_console_from_an_older_version_up_to_date(tmp_path):
-    """The package does this on every install and upgrade, so a tool replaced
-    from the browser does not go on running beside a console that starts its
-    emulator where the tool cannot reach it."""
-    owner = Nobody(tmp_path)
-    profile = tmp_path / setup.PROFILE
-    profile.write_text(
-        "export EDITOR=vi\n\n%s\ncage -- /usr/bin/previous\n%s\n"
-        % (setup.AUTOSTART_OPENS, setup.AUTOSTART_CLOSES), encoding="utf-8")
+def test_the_package_moves_a_console_from_the_profile_over_and_starts_it(
+        tmp_path, commands, console):
+    """Nothing else would start the unit before the next boot, and the admin's
+    stop and start talk to whichever console holds the screen."""
+    owner = Nobody(tmp_path / "home")
+    kept = a_profile_console(owner)
 
     assert setup.refresh_console(owner)
-    assert profile.read_text() == "export EDITOR=vi\n" + setup._autostart_block(owner)
+    assert (owner.home / setup.PROFILE).read_text() == kept
+    assert not setup.AUTOLOGIN.exists()
+    assert ["systemctl", "start", setup.CONSOLE] in commands
 
 
-def test_the_package_gives_a_machine_without_a_console_none(tmp_path):
+def test_the_package_leaves_an_emulator_running_on_the_profiles_console(
+        tmp_path, commands, console):
+    """An update from the browser runs while NeXTSTEP does. The next boot hands
+    the screen to the unit."""
+    console.guest = True
+    owner = Nobody(tmp_path / "home")
+    a_profile_console(owner)
+    was = (owner.home / setup.PROFILE).read_text()
+
+    assert setup.refresh_console(owner)
+    assert (owner.home / setup.PROFILE).read_text() == was
+    assert (setup.SYSTEM_UNITS / setup.CONSOLE).exists()
+    assert ["systemctl", "start", setup.CONSOLE] not in commands
+
+
+def test_the_package_brings_a_console_from_an_older_version_up_to_date(
+        tmp_path, commands, console):
+    """The console is generated, so a machine set up a year ago carries a
+    year-old one. A running console is left running and takes the change up
+    the next time it starts."""
+    console.enabled = console.active = True
+    owner = Nobody(tmp_path / "home")
+    unit = setup.SYSTEM_UNITS / setup.CONSOLE
+    unit.parent.mkdir(parents=True)
+    unit.write_text("[Service]\nExecStart=/bin/false\n")
+
+    assert setup.refresh_console(owner)
+    assert unit.read_text() == setup._console_unit(owner)
+    assert ["systemctl", "daemon-reload"] in commands
+    assert not any(command[1] in ("start", "restart", "stop")
+                   for command in commands if command[0] == "systemctl")
+
+
+def test_the_package_gives_a_machine_without_a_console_none(tmp_path, commands, console):
     """Installing the tool is not setting the machine up. A console is written
     by the install job, and the package only keeps one that is there current."""
-    owner = Nobody(tmp_path)
-    profile = tmp_path / setup.PROFILE
-    profile.write_text("export EDITOR=vi\n", encoding="utf-8")
+    owner = Nobody(tmp_path / "home")
+    owner.home.mkdir()
+    (owner.home / setup.PROFILE).write_text("export EDITOR=vi\n", encoding="utf-8")
 
     assert not setup.refresh_console(owner)
-    assert profile.read_text() == "export EDITOR=vi\n"
+    assert not any(path.exists() for path in setup._console_files(owner))
+    assert (owner.home / setup.PROFILE).read_text() == "export EDITOR=vi\n"
     assert not setup.refresh_console(Nobody(tmp_path / "nobody-home"))
 
 
-def test_the_package_leaves_a_current_console_alone(tmp_path, commands):
+def test_the_package_leaves_a_current_console_alone(tmp_path, commands, console):
     work = work_in(tmp_path)
-    work.owner.home.mkdir(parents=True)
     setup.STEPS["autostart"](work)
-    profile = work.owner.home / setup.PROFILE
-    once = profile.read_text()
+    console.enabled = console.active = True
+    del commands[:]
 
     assert not setup.refresh_console(work.owner)
-    assert profile.read_text() == once
+    assert commands == []
 
 
 def older_configuration(home, printer):
@@ -966,8 +1194,8 @@ def test_a_file_never_noted_is_taken_as_previouslys_once(tmp_path):
 
 def test_an_installation_ends_with_the_machine_running(tmp_path, commands, monkeypatch):
     """Everything up to here leaves a machine that is installed and shows
-    nothing, because the console has been at a login prompt since before any of
-    it existed. So the console is restarted, and the hold that would stop it
+    nothing, because a getty has held the first console since before any of it
+    existed. So the console is started, and the hold that would stop it
     starting the emulator goes first."""
     monkeypatch.setattr(setup, "_the_guest_is_running", lambda: False)
     hold = tmp_path / "hold"
@@ -979,7 +1207,7 @@ def test_an_installation_ends_with_the_machine_running(tmp_path, commands, monke
     setup.STEPS["start"](work)
 
     assert not hold.exists()
-    assert ["systemctl", "restart", work.settings.kiosk_unit] in commands
+    assert ["systemctl", "restart", setup.CONSOLE] in commands
     assert work.changed == ["start"]
 
 

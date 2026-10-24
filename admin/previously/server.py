@@ -460,18 +460,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """What the machine is set to and whether it is running.
 
         "running" is about the emulator, not about the unit, because that is
-        what somebody means by the question. The unit stays active either way:
-        what it holds is a login shell, and the emulator is its grandchild. The
-        running time is the emulator's own for the same reason, since the unit
-        outlives every emulator it starts.
+        what somebody means by the question. The console's unit stays active
+        either way: what it runs is a script that waits while the emulator is
+        held, and the emulator is its grandchild. The running time is the
+        emulator's own for the same reason, since the unit outlives every
+        emulator it starts.
         """
-        unit = self.settings.kiosk_unit
         running = kiosk.emulator_is_running()
         age = kiosk.emulator_uptime_seconds()
         answer = {
             "running": running,
             "held": kiosk.is_held(self.settings.runtime_directory),
-            "console_active": kiosk.is_running(unit),
+            "console_active": kiosk.console_is_active(),
             "uptime_seconds": age if running else None,
         }
         try:

@@ -17,7 +17,6 @@ def test_a_missing_file_gives_a_working_configuration(tmp_path):
 
     assert settings.port == int(DEFAULTS["port"])
     assert settings.address == DEFAULTS["address"]
-    assert settings.kiosk_unit == DEFAULTS["kiosk_unit"]
 
 
 def test_a_file_naming_one_key_names_one_key(tmp_path):

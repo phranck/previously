@@ -160,10 +160,32 @@ STAT_BLOCK_BYTES = 512
 #: `/etc/previously/config.ini`, which is the same file the tool reads.
 DEFAULT_MACHINE = "nextcube-turbo"
 
-#: Where the console logs in without being asked, and what tells `login` to keep
-#: quiet about the message of the day.
-AUTOLOGIN = pathlib.Path("/etc/systemd/system/getty@tty1.service.d/autologin.conf")
-HUSHLOGIN = ".hushlogin"
+#: Where systemd keeps the units an administrator writes.
+SYSTEM_UNITS = pathlib.Path("/etc/systemd/system")
+
+#: The console that runs Previous on the first screen: a unit of its own, the
+#: script it runs, and the PAM service its session is opened with. All of it is
+#: written here rather than shipped in the package, because the unit and the
+#: script name the emulator's owner, and a console that stands on its own keeps
+#: starting its machine whatever happens to this package.
+CONSOLE = "previously-console.service"
+CONSOLE_SCRIPT = pathlib.Path("/usr/local/libexec/previously-console")
+CONSOLE_PAM = pathlib.Path("/etc/pam.d/previously-console")
+
+#: What lets the owner's user manager start before logins are permitted, in the
+#: drop-in directory of that user's `user@.service`. It carries the name of
+#: systemd's own drop-in in /usr/lib/systemd/system/user@.service.d, so it takes
+#: that one's place for this user, as systemd's user@0.service.d does for root.
+LOGIN_BARRIER = "10-login-barrier.conf"
+
+#: The text console the screen shows, and the getty that logs somebody in on it
+#: wherever the console does not hold it.
+TTY = "tty1"
+GETTY = "getty@%s.service" % TTY
+
+#: Where a console in `~/.profile` is logged in without being asked. Moving such
+#: a machine over to the unit takes it away with the block.
+AUTOLOGIN = SYSTEM_UNITS / (GETTY + ".d") / "autologin.conf"
 
 #: The two files that decide what the screen shows before NeXTSTEP does, and
 #: what a copy of one of them is called while this holds it.
@@ -197,8 +219,9 @@ LEFT_OUT = (
 #: to do, 3.8 s on a Pi 4 before anything else may start.
 CLOUD_INIT_OFF = pathlib.Path("/etc/cloud/cloud-init.disabled")
 
-#: Where the console's autostart is written, and what fences it so that taking
-#: it out again leaves whatever else the file holds.
+#: A machine set up with its console in `~/.profile` carries it between these
+#: markers. Moving the machine over to the unit takes the block out and leaves
+#: whatever else the file holds.
 PROFILE = ".profile"
 AUTOSTART_OPENS = "# >>> nextstep-rpi >>>"
 AUTOSTART_CLOSES = "# <<< nextstep-rpi <<<"
@@ -211,8 +234,8 @@ WORK_DIRECTORY = ".cache/previously"
 #: The service's own runtime directory, which is a tmpfs the unit makes.
 RUNTIME = "/run/previously"
 
-#: The file the tool creates to hold the emulator down, which the autostart
-#: below waits on.
+#: The file the tool creates to hold the emulator down, which the console's
+#: script waits on.
 HOLD = RUNTIME + "/hold"
 
 #: Where the console writes down an emulator that ended badly, one line each.
@@ -227,11 +250,11 @@ HOLD = RUNTIME + "/hold"
 #: saying a crash happened is what a person actually wants.
 CRASHES = RUNTIME + "/crashes"
 
-#: How long the console waits after an emulator that ended badly before its
-#: session ends. systemd starts the console again the moment it does, so an
+#: How long the console waits after an emulator that ended badly before it
+#: ends itself. systemd starts the console again the moment it does, so an
 #: emulator that cannot start is tried every few seconds rather than as fast as
-#: a login takes. The package's drop-in for getty@tty1 lifts systemd's start
-#: limit, so the console keeps trying either way.
+#: systemd can start a process. The unit lifts systemd's start limit, so the
+#: console keeps trying either way.
 CRASH_PAUSE_SECONDS = 2
 
 #: Where the package keeps a cursor theme that shows nothing, which the console
@@ -320,8 +343,8 @@ class Refused(Exception):
 #: already done, so asking for it twice changes nothing the second time.
 JOBS = {
     "install": ("host", "tools", "archive", "emulator", "system",
-                "configuration", "autologin", "quiet", "lean", "autostart",
-                "sound", "start"),
+                "configuration", "quiet", "lean", "autostart", "sound",
+                "start"),
     "update": ("archive", "newest-emulator"),
     # This tool replacing itself. Two steps because the second one is where the
     # service running the browser somebody is watching is stopped and started
@@ -459,6 +482,17 @@ def unit_state(unit):
     except OSError:
         return ""
     return answer.stdout.strip()
+
+
+def unit_active(unit):
+    """@returns bool - Whether systemd has a unit running. False where it is
+    not, and where systemctl cannot be asked, because neither is a unit that
+    holds anything.
+
+    A unit whose file has gone is still running until its process ends, and
+    this says so.
+    """
+    return _said(["systemctl", "is-active", unit]) == "active"
 
 
 def _packages_here():
@@ -1147,12 +1181,13 @@ def _archive_files():
     }
 
 
-def _made_to_hold(path, content):
+def _made_to_hold(path, content, mode=0o644):
     """Writes content to a file where it holds anything else.
 
-    @param path - pathlib.Path of the file, left readable by everyone, as the
-      files beside it in /etc/apt are.
+    @param path - pathlib.Path of the file.
     @param content - bytes.
+    @param mode - What the file may be done with. Readable by everyone unless
+      said otherwise, as the files beside it in /etc/apt and /etc/systemd are.
     @returns a function that puts back what the file held, and takes it away
       where there was none, or None where it already held content.
     """
@@ -1164,7 +1199,7 @@ def _made_to_hold(path, content):
         return None
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(content)
-    path.chmod(0o644)
+    path.chmod(mode)
     if before is None:
         return lambda: path.unlink(missing_ok=True)
     return lambda: path.write_bytes(before)
@@ -1563,17 +1598,17 @@ def _written(machine, disk, grabs):
         for name, keys in sections.items())
 
 
-def _autologin(work):
-    """Logs in on the text console without asking."""
-    if AUTOLOGIN.exists():
-        return
-    run(["raspi-config", "nonint", "do_boot_behaviour", "B2"])
-    work.undoes(_no_autologin_now)
-
-
 def _no_autologin(work):
-    """Puts the console back to asking who is there."""
+    """Puts the first console back to asking who is there.
+
+    A login prompt comes up where nothing holds the screen any more. Where an
+    emulator still runs on the console the step before left alone, the prompt
+    comes with the next boot instead, because a getty on that terminal would
+    take it from under the emulator.
+    """
     _no_autologin_now()
+    if not unit_active(CONSOLE):
+        run(["systemctl", "start", GETTY])
 
 
 def _no_autologin_now():
@@ -1582,30 +1617,15 @@ def _no_autologin_now():
 
 
 def _quiet(work):
-    """Silences the five things that draw on the screen before NeXTSTEP does.
+    """Silences the four things that draw on the screen before NeXTSTEP does.
 
     The firmware splash, the kernel logo and its messages, systemd's status
-    list, the blinking cursor of the text console, and the login banner. The
-    banner is the one that outlasts the boot: the console waits for the
-    emulator rather than exiting, so nothing overwrites what login printed.
+    list, and the blinking cursor of the text console.
     """
     _kept_quiet(CONFIG_TXT, NO_SPLASH, work)
     # The kernel's own logo, because a stock command line already carries
     # `quiet` and would read as done before anything had been changed.
     _kept_quiet(CMDLINE, "logo.nologo", work)
-
-    hushlogin = work.owner.home / HUSHLOGIN
-    if not hushlogin.exists():
-        work.owner.write(hushlogin, "")
-        work.undoes(lambda: hushlogin.unlink(missing_ok=True))
-
-    written = AUTOLOGIN.read_text(encoding="utf-8") if AUTOLOGIN.exists() else ""
-    if "--noissue" not in written and written:
-        AUTOLOGIN.write_text(
-            written.replace(
-                "agetty --autologin", "agetty --noissue --autologin"),
-            encoding="utf-8")
-        run(["systemctl", "daemon-reload"])
 
 
 def _kept_quiet(path, already, work):
@@ -1659,7 +1679,6 @@ def _loud(work):
         backup = path.with_suffix(path.suffix + BACKUP)
         if backup.exists():
             shutil.move(str(backup), str(path))
-    (work.owner.home / HUSHLOGIN).unlink(missing_ok=True)
 
 
 def _lean(work):
@@ -1714,65 +1733,56 @@ def refresh_services(owner):
     @param owner - Whose console it is.
     @returns bool, whether anything was switched off.
 
-    A machine without the console's block is one somebody has not set up or
-    has taken it off again, and its services stay as they are. The package
-    calls this from postinst on every install and upgrade, as it does
-    `refresh_console`, so a machine set up before this version starts as lean
-    as a new one.
+    A machine without a console is one somebody has not set up or has taken it
+    off again, and its services stay as they are. The package calls this from
+    postinst on every install and upgrade, as it does `refresh_console`, so a
+    machine set up before this version starts as lean as a new one.
     """
-    try:
-        text = (owner.home / PROFILE).read_text(encoding="utf-8")
-    except OSError:
-        return False
-    if AUTOSTART_OPENS not in text:
+    if not _has_a_console(owner):
         return False
     return bool(_left_out())
 
 
 def _autostart(work):
-    """Hands the first console to the emulator, and leaves SSH alone.
+    """Hands the first screen to the emulator, and leaves SSH alone.
 
-    Fenced by markers, so taking it out again leaves whatever else the file
-    holds.
+    Every file of the console that says something other than what this
+    version writes is written again, so a machine set up a year ago does not
+    go on with a year-old console.
 
-    A block that is already there and no longer says what this version writes
-    is replaced rather than left. It is generated, so a machine set up a year
-    ago carries a year-old console, and the one change that matters most is
-    the one nobody would notice: the line that writes down a crash.
+    A machine whose console is still the one in `~/.profile` is moved over,
+    unless an emulator is running on that one. The profile's console is then
+    what brings the next emulator up when the admin restarts it, and the next
+    boot hands the screen to the unit by itself.
     """
-    profile = work.owner.home / PROFILE
-    text = profile.read_text(encoding="utf-8") if profile.exists() else ""
-    if AUTOSTART_OPENS in text:
-        if refresh_console(work.owner):
-            work.undoes(lambda: work.owner.write(profile, text))
-        return
-
-    work.owner.write(profile, text + _autostart_block(work.owner))
-    work.undoes(lambda: _without_autostart(profile))
+    for undo in (_console_written(work.owner), _moved_over(work.owner)):
+        if undo:
+            work.undoes(undo)
 
 
 def refresh_console(owner):
     """Brings a console that is there up to what this version writes.
 
-    @param owner - Whose profile it is.
+    @param owner - Whose console it is.
     @returns bool, whether anything was written.
 
-    A profile without the block is given none, because writing one is setting
+    A machine without a console is given none, because writing one is setting
     the machine up, which is the install job's to do. The package calls this
     from postinst on every install and upgrade, so a tool replaced from the
     browser, from a shell or by apt does not go on running beside a console
     that starts the emulator where the tool cannot reach it.
+
+    A machine whose console is still the one in `~/.profile` is moved over as
+    `_autostart` moves it. Where no emulator is running, the unit is started
+    as well, because nothing else would start it before the next boot.
     """
-    profile = owner.home / PROFILE
-    try:
-        text = profile.read_text(encoding="utf-8")
-    except OSError:
+    if not _has_a_console(owner):
         return False
-    wanted = _autostart_block(owner)
-    if AUTOSTART_OPENS not in text or _the_block_in(text) == wanted.strip("\n"):
-        return False
-    owner.write(profile, _without_the_block(text) + wanted)
-    return True
+    written = _console_written(owner) is not None
+    moved = _moved_over(owner) is not None
+    if moved and not unit_active(CONSOLE):
+        run(["systemctl", "start", CONSOLE])
+    return written or moved
 
 
 def refresh_configuration(owner, previous_config=None, state_directory=None):
@@ -1835,20 +1845,61 @@ def _note(owner, previous_config, state_directory):
         owner.owns(state_directory / config.RECEIPT)
 
 
-def _the_block_in(text):
-    """@returns str - The fenced block as it stands, markers and all, or ""."""
-    opens = text.find(AUTOSTART_OPENS)
-    closes = text.find(AUTOSTART_CLOSES)
-    if opens == -1 or closes == -1:
+def _has_a_console(owner):
+    """@returns bool - Whether this machine has a console, as the unit or as
+    the block in `~/.profile` that a machine set up with that one carries."""
+    return (SYSTEM_UNITS / CONSOLE).exists() or AUTOSTART_OPENS in _profile_of(owner)
+
+
+def _profile_of(owner):
+    """@returns str - What the owner's `~/.profile` holds, or "" where there is
+    none."""
+    try:
+        return (owner.home / PROFILE).read_text(encoding="utf-8")
+    except OSError:
         return ""
-    return text[opens:closes + len(AUTOSTART_CLOSES)]
+
+
+def _moved_over(owner):
+    """Takes the console in `~/.profile` away, with the autologin that runs it.
+
+    @param owner - Whose console it is.
+    @returns a function that puts both back, or None where there was no such
+      console, or where an emulator is still running on it.
+
+    Left where an emulator runs and the unit does not, because the emulator is
+    then running on the profile's console. That console brings the next one up
+    when the admin restarts it, and without it the restart would end at a login
+    prompt. The next boot hands the screen to the unit, and the next install or
+    upgrade takes the block away.
+    """
+    text = _profile_of(owner)
+    if AUTOSTART_OPENS not in text:
+        return None
+    if not unit_active(CONSOLE) and _the_guest_is_running():
+        return None
+
+    profile = owner.home / PROFILE
+    owner.write(profile, _without_the_block(text))
+    autologin = AUTOLOGIN.read_bytes() if AUTOLOGIN.exists() else None
+    if autologin is not None:
+        AUTOLOGIN.unlink()
+        run(["systemctl", "daemon-reload"])
+
+    def put_back():
+        owner.write(profile, text)
+        if autologin is not None:
+            AUTOLOGIN.write_bytes(autologin)
+            run(["systemctl", "daemon-reload"])
+
+    return put_back
 
 
 def _without_the_block(text):
     """@returns str - The same text with the fenced block taken out.
 
-    The blank line in front of it goes too, because the block is written with
-    one and replacing it twice would otherwise gain a line each time.
+    The blank line in front of it goes too, because the block was written with
+    one, so the file is left as it was before the block came.
     """
     kept = []
     inside = False
@@ -1864,27 +1915,160 @@ def _without_the_block(text):
     return "".join(kept)
 
 
-def _autostart_block(owner):
-    """@returns str - What is added to the profile, markers and all.
+def _console_written(owner):
+    """Writes every file of the console that does not hold what this version
+    writes, and switches the unit on.
 
-    The one statement of the console. The install job writes it, and
-    `refresh_console` replaces a block that no longer says this, so a change
-    here reaches every machine with the next install or upgrade of the
-    package.
+    @param owner - Whose console it is.
+    @returns a function that puts all of it back as it was, or None where all
+      of it was there already.
+
+    A running console is left running, so the guest on it keeps whatever it
+    has not written yet. systemd reads the unit again here, and the console
+    runs the script as it now stands the next time it starts.
     """
+    undos = []
+    drop_ins = _login_barrier(owner).parent
+    if not drop_ins.is_dir():
+        drop_ins.mkdir(parents=True)
+        undos.append(drop_ins.rmdir)
+    for path, (text, mode) in _console_files(owner).items():
+        undo = _made_to_hold(path, text.encode("utf-8"), mode)
+        if undo:
+            undos.append(undo)
+    if undos:
+        run(["systemctl", "daemon-reload"])
+    if unit_state(CONSOLE) != "enabled":
+        run(["systemctl", "enable", CONSOLE])
+        undos.append(lambda: run(["systemctl", "disable", CONSOLE]))
+    if not undos:
+        return None
+
+    def put_back():
+        for undo in reversed(undos):
+            undo()
+        run(["systemctl", "daemon-reload"])
+
+    return put_back
+
+
+def _console_files(owner):
+    """@returns dict of pathlib.Path to (str, int), what each file of the
+    console holds and the mode it is written with.
+
+    The one statement of the console. The install job writes it, the package
+    brings an older one up to it through `refresh_console`, and the remove job
+    takes it away. In this order, so the unit comes last and never names a
+    script, a PAM service or a user manager that is not ready for it.
+    """
+    return {
+        CONSOLE_SCRIPT: (_console_script(owner), 0o755),
+        CONSOLE_PAM: (_console_pam(), 0o644),
+        _login_barrier(owner): (LOGIN_BARRIER_TEXT, 0o644),
+        SYSTEM_UNITS / CONSOLE: (_console_unit(owner), 0o644),
+    }
+
+
+def _login_barrier(owner):
+    """@returns pathlib.Path - Where the file that lets the owner's user
+    manager start early goes."""
+    return SYSTEM_UNITS / ("user@%d.service.d" % owner.uid) / LOGIN_BARRIER
+
+
+#: What that file holds. Nothing but a comment, because what it does is take
+#: the place of systemd's own file of the same name.
+LOGIN_BARRIER_TEXT = (
+    "# Written by Previously's setup, which takes it away again when Previous\n"
+    "# is removed.\n"
+    "#\n"
+    "# Takes the place of systemd's own\n"
+    "# /usr/lib/systemd/system/user@.service.d/10-login-barrier.conf for this\n"
+    "# user, as systemd's user@0.service.d does for root. That file holds the\n"
+    "# user manager back until logins are permitted, which is after the network,\n"
+    "# and the session of %s waits for the user manager.\n" % CONSOLE)
+
+
+def _console_unit(owner):
+    """@returns str - The console's unit, as it goes into SYSTEM_UNITS."""
     return (
-        "\n%s\n"
-        "# Hand the first console to Previous. XDG_VTNR carries the number of the text\n"
-        "# console and is set only where one is actually behind the login, so an SSH\n"
-        "# session falls through and stays the way in once the screen is taken.\n"
+        "# Written by Previously's setup, which takes it away again when Previous\n"
+        "# is removed.\n"
+        "#\n"
+        "# Runs Previous on the first screen as %(user)s, in a session logind opens\n"
+        "# through the PAM service %(pam)s. It starts once the local file systems\n"
+        "# and logind are up, without waiting for the network: the PAM service opens\n"
+        "# the session early, and %(barrier)s\n"
+        "# lets the user manager the session waits for start early as well.\n"
+        "#\n"
+        "# The conflict keeps %(getty)s out of the boot. Nothing writes this\n"
+        "# terminal into utmp, so systemd's wall message before a reboot does not\n"
+        "# reach the screen. What cage and Previous print goes to the journal.\n"
+        "#\n"
+        "# It starts again the moment it ends, however often, because only root\n"
+        "# could start it again once systemd had given up on it.\n"
+        "[Unit]\n"
+        "Description=Previous on the first screen\n"
+        "Documentation=https://github.com/phranck/previously\n"
+        "Wants=dbus.socket systemd-logind.service\n"
+        "After=dbus.socket systemd-logind.service %(getty)s\n"
+        "Conflicts=%(getty)s\n"
+        "ConditionPathExists=/dev/tty0\n"
+        "StartLimitIntervalSec=0\n"
+        "\n"
+        "[Service]\n"
+        "Type=exec\n"
+        "User=%(user)s\n"
+        "ExecStart=%(script)s\n"
+        "Restart=always\n"
+        "RestartSec=0\n"
+        "TTYPath=/dev/%(tty)s\n"
+        "TTYReset=yes\n"
+        "TTYVHangup=yes\n"
+        "TTYVTDisallocate=yes\n"
+        "StandardInput=tty-fail\n"
+        "StandardOutput=journal\n"
+        "StandardError=journal\n"
+        "PAMName=%(pam)s\n"
+        "\n"
+        "[Install]\n"
+        "WantedBy=multi-user.target\n" % {
+            "user": owner.name, "pam": CONSOLE_PAM.name, "getty": GETTY,
+            "barrier": _login_barrier(owner), "script": CONSOLE_SCRIPT,
+            "tty": TTY})
+
+
+def _console_pam():
+    """@returns str - The PAM service the console's session is opened with."""
+    return (
+        "# Written by Previously's setup, which takes it away again when Previous\n"
+        "# is removed.\n"
+        "#\n"
+        "# The session of %s. Nobody logs in through it, so\n"
+        "# like systemd's own systemd-user service it has no auth stack. pam_systemd\n"
+        "# opens it as user-early, which systemd does not hold back until logins\n"
+        "# are permitted, and permitting them waits for the network.\n"
+        "@include common-account\n"
+        "session  required pam_loginuid.so\n"
+        "session  required pam_limits.so\n"
+        "@include common-session-noninteractive\n"
+        "session  optional pam_keyinit.so force revoke\n"
+        "session  required pam_systemd.so class=user-early\n" % CONSOLE)
+
+
+def _console_script(owner):
+    """@returns str - The program the console's unit runs, at CONSOLE_SCRIPT."""
+    work = owner.home / WORK_DIRECTORY
+    return (
+        "#!/bin/sh\n"
+        "# Written by Previously's setup, which takes it away again when Previous\n"
+        "# is removed. %s runs this on the first screen.\n"
         "#\n"
         "# The wait is how the admin tool stops and starts the emulator without any\n"
         "# privileges at all: it creates %s to hold it down and removes the\n"
-        "# file to let it come back. Waiting rather than exiting matters twice. It keeps\n"
-        "# the console from falling through to a shell prompt while the emulator is\n"
-        "# held, and it avoids the race that stopping through systemd would have, since\n"
-        "# this unit restarts itself the moment a session ends and would bring a fresh\n"
-        "# emulator up underneath whatever stopped the last one.\n"
+        "# file to let it come back. Waiting rather than exiting matters, because the\n"
+        "# unit starts this again the moment it ends, and stopping the unit instead\n"
+        "# would race the restart and bring a fresh emulator up underneath whatever\n"
+        "# stopped the last one.\n"
         "#\n"
         "# The file is on a tmpfs, so a board that has just booted never finds one and\n"
         "# always starts its emulator.\n"
@@ -1896,11 +2080,9 @@ def _autostart_block(owner):
         "# An emulator that ends badly says so in one line, which the Raspberry Pi window\n"
         "# reads. It goes in the runtime directory because that is a tmpfs: the file is\n"
         "# gone at every boot, so whatever is in it happened since this board came up and\n"
-        "# nothing has to work out when. The exit runs the session down exactly as exec\n"
-        "# did, so the console never falls through to a prompt. After a bad end the\n"
-        "# session waits a moment first: systemd starts the console again the moment it\n"
-        "# ends, and an emulator that cannot start would otherwise be tried as fast as a\n"
-        "# login takes.\n"
+        "# nothing has to work out when. After a bad end this waits a moment first,\n"
+        "# because an emulator that cannot start would otherwise be tried as fast as\n"
+        "# systemd can start a process.\n"
         "#\n"
         "# Previous draws through cage's Xwayland. It grabs the mouse when it is\n"
         "# clicked, and under Wayland alone SDL needs pointer constraints for that,\n"
@@ -1911,54 +2093,68 @@ def _autostart_block(owner):
         "#\n"
         "# cage takes its own pointer from a theme that shows nothing. It sets that\n"
         "# pointer whenever a mouse is plugged in, and NeXTSTEP draws its own.\n"
-        'if [ "$XDG_VTNR" = 1 ] && [ -z "$WAYLAND_DISPLAY" ]; then\n'
-        "  clear\n"
-        "  while [ -f %s ]; do sleep 2; done\n"
-        "  mkdir -p %s\n"
-        "  cd %s\n"
-        "  SDL_VIDEO_DRIVER=x11,wayland XCURSOR_PATH=%s cage -- /usr/bin/previous\n"
-        "  status=$?\n"
-        '  if [ "$status" -ne 0 ]; then\n'
-        "    if [ -d %s ]; then\n"
-        '      printf "%%s %%s\\n" "$(date +%%s)" "$status" >> %s\n'
-        "    fi\n"
-        "    sleep %d\n"
+        "while [ -f %s ]; do sleep 2; done\n"
+        "mkdir -p %s\n"
+        "cd %s\n"
+        "SDL_VIDEO_DRIVER=x11,wayland XCURSOR_PATH=%s cage -- /usr/bin/previous\n"
+        "status=$?\n"
+        'if [ "$status" -ne 0 ]; then\n'
+        "  if [ -d %s ]; then\n"
+        '    printf "%%s %%s\\n" "$(date +%%s)" "$status" >> %s\n'
         "  fi\n"
-        '  exit "$status"\n'
+        "  sleep %d\n"
         "fi\n"
-        "%s\n" % (AUTOSTART_OPENS, HOLD, HOLD,
-                  owner.home / WORK_DIRECTORY,
-                  owner.home / WORK_DIRECTORY, CURSORS,
-                  RUNTIME, CRASHES, CRASH_PAUSE_SECONDS, AUTOSTART_CLOSES))
+        'exit "$status"\n'
+        % (CONSOLE, HOLD, HOLD, work, work, CURSORS, RUNTIME, CRASHES,
+           CRASH_PAUSE_SECONDS))
 
 
 def _no_autostart(work):
-    """Gives the first console back to whoever logs in on it."""
+    """Gives the first screen back, and leaves an emulator that is running.
+
+    The console's files go, and so does a console in `~/.profile`. One that
+    holds no emulator is stopped. One that does keeps running until the
+    emulator ends, and systemd does not start a unit again whose file has gone
+    by the time it ends, which a Pi 5 showed on 24.10.2026.
+    """
+    if unit_state(CONSOLE) == "enabled":
+        run(["systemctl", "disable", CONSOLE])
+    if unit_active(CONSOLE) and not _the_guest_is_running():
+        run(["systemctl", "stop", CONSOLE])
+
+    gone = False
+    for path in reversed(list(_console_files(work.owner))):
+        if path.exists():
+            path.unlink()
+            gone = True
+    try:
+        _login_barrier(work.owner).parent.rmdir()
+    except OSError:
+        pass
+    if gone:
+        run(["systemctl", "daemon-reload"])
     _without_autostart(work.owner.home / PROFILE)
 
 
 def _without_autostart(profile):
-    """Takes the fenced block out and leaves the rest of the file alone.
-
-    The blank line that was put in front of the block goes with it, so adding
-    the block and taking it away again leaves the file exactly as it was. A
-    file that gains one empty line per installation is not left as it was.
-    """
+    """Takes the fenced block out of a profile and leaves the rest of the file
+    alone, with the blank line in front of the block, as `_without_the_block`
+    takes it out. A profile without the block is not written at all."""
     try:
         text = profile.read_text(encoding="utf-8")
     except OSError:
         return
-    profile.write_text(_without_the_block(text), encoding="utf-8")
+    if AUTOSTART_OPENS in text:
+        profile.write_text(_without_the_block(text), encoding="utf-8")
 
 
 def _start(work):
     """Starts the emulator, so an installation ends with a machine running.
 
-    The console is what starts it: it logs itself in on the first text console
-    and the profile written a step earlier runs Previous there. That console
-    has been sitting at a login prompt since before any of this existed, so it
-    is restarted to pick both of them up. Without this the machine is fully
-    installed and shows nothing until somebody reboots it.
+    The console is what starts it, and it is started here, which takes the
+    first console from the getty that has held it since before any of this
+    existed. Without this the machine is fully installed and shows nothing
+    until somebody reboots it.
 
     The hold goes first, because the tool leaves that file behind when somebody
     switched the emulator off, and a console that finds it waits rather than
@@ -1970,7 +2166,7 @@ def _start(work):
     if _the_guest_is_running():
         return
     pathlib.Path(HOLD).unlink(missing_ok=True)
-    run(["systemctl", "restart", work.settings.kiosk_unit])
+    run(["systemctl", "restart", CONSOLE])
     work.did()
 
 
@@ -1989,7 +2185,6 @@ STEPS = {
     "system": _system,
     "no-system": _no_system,
     "configuration": _configuration,
-    "autologin": _autologin,
     "no-autologin": _no_autologin,
     "quiet": _quiet,
     "loud": _loud,

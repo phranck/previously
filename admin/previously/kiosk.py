@@ -98,15 +98,15 @@ BOARD_REQUESTS = ("reboot", "poweroff")
 SETUP_REQUEST = "setup"
 
 
-def is_running(unit):
-    """Whether the kiosk unit is active.
+def console_is_active():
+    """Whether the console that runs the emulator is.
 
-    @param unit - The unit's name, such as `getty@tty1.service`.
-    @returns bool. False where systemctl is absent, times out or errors, since
-      the question being unanswerable and the answer being no look the same
-      from the page and neither is worth an exception.
+    @returns bool, as `setup.unit_active` answers it for the console's unit.
+      False where systemctl is absent, times out or errors, since the question
+      being unanswerable and the answer being no look the same from the page
+      and neither is worth an exception.
     """
-    return _ask(["systemctl", "is-active", unit]) == "active"
+    return setup.unit_active(setup.CONSOLE)
 
 
 def hold_path(runtime_directory):
@@ -117,13 +117,13 @@ def hold_path(runtime_directory):
     @returns pathlib.Path
 
     This file is the whole start and stop mechanism, and the reason the tool
-    needs no privileges. ~/.profile waits on it rather than starting the
-    emulator unconditionally, so creating it holds the emulator down and
+    needs no privileges. The console's script waits on it rather than starting
+    the emulator unconditionally, so creating it holds the emulator down and
     removing it lets the emulator come back.
 
-    The obvious alternative does not work. getty@tty1 carries Restart=always
-    with RestartSec=0, so when the guest powers off and the session ends,
-    systemd has a fresh emulator booting within a second or two. Waiting for
+    The obvious alternative does not work. The console's unit carries
+    Restart=always with RestartSec=0, so when the guest powers off and the
+    script ends, systemd has a fresh emulator booting within a second or two. Waiting for
     the emulator to disappear would therefore never see it gone, and a
     systemctl stop arriving afterwards would kill a guest that had just begun
     writing, which is the damage this avoids, moved one boot later.
@@ -152,8 +152,9 @@ def emulator_is_running():
     @returns bool. False where pgrep is absent or fails, because a question
       that cannot be answered and an answer of no look the same from the page.
 
-    Distinct from is_running, which answers about the unit. The unit is active
-    whether the emulator runs or not, because what it holds is a login shell.
+    Distinct from console_is_active, which answers about the unit. The unit is
+    active whether the emulator runs or not, because what it runs is the
+    console's script, which waits while the emulator is held down.
     """
     return emulator.pid() is not None
 
@@ -163,9 +164,9 @@ def emulator_uptime_seconds():
 
     @returns int, or None where it is not running.
 
-    Its own age rather than the unit's. The unit holds a login shell that
-    outlives any one emulator, so after a restart the unit is old and the
-    emulator is new. This is also what tells a machine that came up and stayed
+    Its own age rather than the unit's. The console's unit outlives any one
+    emulator, because it starts the next one, so after a restart the unit is
+    old and the emulator is new. This is also what tells a machine that came up and stayed
     up from one that is restarting over and over because it cannot run the
     configuration it was given.
     """
@@ -242,8 +243,8 @@ def start(runtime_directory, previous_config=None):
       stays a file changed from outside.
     @returns (bool, str)
 
-    Removing the hold is the rest of it. The waiting profile on the console
-    notices within a couple of seconds and starts the emulator itself.
+    Removing the hold is the rest of it. The console's waiting script notices
+    within a couple of seconds and starts the emulator itself.
     """
     if not is_held(runtime_directory):
         if emulator_is_running():

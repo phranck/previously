@@ -52,7 +52,6 @@ DEFAULTS = {
     # unpacked straight from its archive lands, so such a machine has its disk
     # here already.
     "disks": "~/nextstep",
-    "kiosk_unit": "getty@tty1.service",
     "state_directory": STATE_DIRECTORY,
     "runtime_directory": RUNTIME_DIRECTORY,
     "setup_directory": SETUP_DIRECTORY,
@@ -97,7 +96,6 @@ class Settings:
         self.machines_file = _path(values["machines_file"], home)
         self.documents = _path(values["documents"], home)
         self.disks = _path(values["disks"], home)
-        self.kiosk_unit = values["kiosk_unit"]
         self.state_directory = _path(values["state_directory"], home)
         self.runtime_directory = _path(values["runtime_directory"], home)
         self.setup_directory = _path(values["setup_directory"], home)
