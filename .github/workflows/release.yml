@@ -97,7 +97,6 @@ jobs:
           fi
           sudo apt-get install -y -qq librsvg2-bin
           python3 image/os_list.py "$image" --into admin/packaging/build/imager
-          cat admin/packaging/build/imager/os-list.json
 
       # Creates the release as a draft with the package on it. A release that
       # is public already keeps that state, because the action leaves an

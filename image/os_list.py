@@ -6,9 +6,11 @@ the picture of each board beside it.
 
 The Imager customises an image, which is how it sets the user, the hostname
 and the Wi-Fi, only where a list says how (rpi-imager
-doc/os_customisation_formats.md), and it reads such a list when it is started
-with `--repo <URL>`. The release attaches this one beside the image, so
-`releases/latest/download/os-list.json` is always the newest.
+doc/os_customisation_formats.md). It opens such a list when the file is
+double-clicked, and reads one when it is started with `--repo <URL>`. The
+release attaches this one beside the image, so
+`releases/latest/download/previously.rpi-imager-manifest` is always the
+newest.
 
 The list has an entry for each board, both for the same image. The Imager
 shows only the entries whose devices carry a tag of the board chosen a step
@@ -41,9 +43,11 @@ PARTS = ADMIN / "web" / "parts"
 
 #: What the release attaches the image and the list as, the same in every
 #: release, so an address under releases/latest/download is always the newest.
-#: Each board's picture goes beside them as ICON.
+#: The list carries the type Raspberry Pi Imager opens as its list with a
+#: double click (rpi-imager src/main.cpp), so nobody needs a terminal, and the
+#: same file works with --repo. Each board's picture goes beside them as ICON.
 ASSET = "previously-raspberry-pi.img.xz"
-LIST = "os-list.json"
+LIST = "previously.rpi-imager-manifest"
 ICON = "previously-%s.png"
 
 #: Where a file of a given release is, by its tag and the file's name.
@@ -169,11 +173,13 @@ def main():
         official = json.load(answer)
     written = listing(arguments.image, official,
                       datetime.datetime.now(datetime.timezone.utc).date().isoformat())
-    (arguments.into / LIST).write_text(json.dumps(written, indent=2) + "\n",
-                                       encoding="utf-8")
+    text = json.dumps(written, indent=2) + "\n"
+    (arguments.into / LIST).write_text(text, encoding="utf-8")
     for board in BOARDS.values():
         rendered(PARTS / ("board-%s.svg" % board), arguments.into / (ICON % board))
-    print("wrote %s and %d pictures into %s" % (LIST, len(BOARDS), arguments.into))
+    # Into the log as well, so a release says what it lists without anybody
+    # downloading anything.
+    print("wrote %s and %d pictures into %s\n%s" % (LIST, len(BOARDS), arguments.into, text))
 
 
 if __name__ == "__main__":

@@ -134,11 +134,15 @@ def test_a_picture_is_square_and_keeps_the_drawing_whole(os_list):
 
 
 def test_the_release_attaches_the_image_and_its_list_under_these_names(os_list):
-    """The release workflow names the files and the list names the image, so
-    the two have to agree, and a link to releases/latest/download needs the
-    same name in every release."""
+    """The release workflow names the image and the list names it too, so the
+    two have to agree, and a link to releases/latest/download needs the same
+    name in every release. The list is a file Raspberry Pi Imager opens with a
+    double click, which it does for the type .rpi-imager-manifest (rpi-imager
+    src/main.cpp), and it is the one place that name is written."""
     workflow = (IMAGE.parent / ".github" / "workflows" / "release.yml").read_text(
         encoding="utf-8")
 
     assert os_list.ASSET in workflow
     assert "os_list.py" in workflow
+    assert os_list.LIST.endswith(".rpi-imager-manifest")
+    assert "os-list.json" not in workflow
