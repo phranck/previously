@@ -540,20 +540,29 @@ def test_an_initramfs_for_a_kernel_without_vc4_is_built_all_the_same(build, tmp_
 LAID_OUT_FOR = {"virtual_size": "4,2", "bits_per_pixel": "32", "stride": "16",
                 "pan": "0,0"}
 
+#: What /proc/device-tree/compatible holds on a Pi 5 and on a Pi 4: the names
+#: one after another, each ending in a null.
+A_PI_5 = b"raspberrypi,5-model-b\0brcm,bcm2712\0"
+A_PI_4 = b"raspberrypi,4-model-b\0brcm,bcm2711\0"
+
 
 def bottom_run(build, tmp_path, console=True, name="vc4drmfb", screen=None,
-               laid_out=True):
-    """Runs the package's script in local-bottom against a root, a sysfs and a
-    framebuffer that are files in the test's directory.
+               laid_out=True, booted_on=A_PI_5):
+    """Runs the package's script in local-bottom against a root, a sysfs, a
+    device tree and a framebuffer that are files in the test's directory.
 
     @param console - Whether the root has the console switched on.
     @param name - What sysfs calls fb0.
-    @param screen - What sysfs says fb0 is, LAID_OUT_FOR where left out.
-    @param laid_out - Whether the initramfs carries a frame at all.
-    @returns (bytes, str): what fb0 holds afterwards, and what the script
-      wrote into the kernel's log.
+    @param screen - What sysfs says fb0 is, LAID_OUT_FOR where left out, and
+      False where there is no fb0 at all.
+    @param laid_out - Whether the initramfs carries a frame at all. One that
+      does was laid out on a Pi 5.
+    @param booted_on - What the device tree of the board it boots says.
+    @returns (bytes, str, bool): what fb0 holds afterwards, what the script
+      wrote into the kernel's log, and whether it left word that the initramfs
+      wants building again.
     """
-    from previously import setup, splash
+    from previously import hardware, setup, splash
 
     root = tmp_path / "root"
     if console:
@@ -576,23 +585,30 @@ def bottom_run(build, tmp_path, console=True, name="vc4drmfb", screen=None,
         (picture / splash.GEOMETRY).write_text(
             splash.geometry(splash.Screen(splash.VAR_SCREENINFO.pack(*var), fix)),
             encoding="utf-8")
+        (picture / splash.BOARD).write_bytes(A_PI_5)
     sysfs = tmp_path / "sys"
     sysfs.mkdir()
-    for field, value in {"name": name, **(screen or LAID_OUT_FOR)}.items():
-        (sysfs / field).write_text(value + "\n", encoding="utf-8")
+    if screen is not False:
+        for field, value in {"name": name, **(screen or LAID_OUT_FOR)}.items():
+            (sysfs / field).write_text(value + "\n", encoding="utf-8")
+    tree = tmp_path / "compatible"
+    tree.write_bytes(booted_on)
     device = tmp_path / "fb0"
     device.write_bytes(b"what the console left")
     log = tmp_path / "kmsg"
     log.touch()
+    stale = tmp_path / "run" / "stale"
+    stale.parent.mkdir()
 
     script = (tmp_path / "tree" / build.INITRAMFS_SCRIPT).read_text(encoding="utf-8")
     for constant, here in ((build.SCREEN, sysfs), (build.INITRAMFS_PICTURE, picture),
-                           (build.SCREEN_DEVICE, device), (build.KERNEL_LOG, log)):
+                           (build.SCREEN_DEVICE, device), (build.KERNEL_LOG, log),
+                           (str(hardware.COMPATIBLE), tree), (build.STALE, stale)):
         assert script.count("=%s\n" % constant) == 1, constant
         script = script.replace("=%s\n" % constant, "=%s\n" % here)
     subprocess.run(["sh", "-c", script], check=True,
                    env={"PATH": "/usr/bin:/bin", "rootmnt": str(root)})
-    return device.read_bytes(), log.read_text(encoding="utf-8")
+    return device.read_bytes(), log.read_text(encoding="utf-8"), stale.exists()
 
 
 @pytest.fixture
@@ -603,28 +619,63 @@ def laid_out_tree(build, tmp_path):
 def test_the_initramfs_draws_the_picture_once_the_root_is_mounted(
         build, tmp_path, laid_out_tree):
     """Read as sysfs gives it and compared with what splash.geometry wrote, so
-    the two say a screen the same way. The kernel's log says so at its info
-    level, which no console level of this boot lets onto the screen."""
-    shown, logged = bottom_run(build, tmp_path)
+    the two say a screen the same way, on the board the frame was laid out on.
+    The kernel's log says so at its info level, which no console level of this
+    boot lets onto the screen."""
+    shown, logged, stale = bottom_run(build, tmp_path)
 
     assert shown == b"the boot picture"
     assert logged.startswith("<6>previously: ")
+    assert not stale
 
 
 @pytest.mark.parametrize("case", [
     {"console": False},
     {"name": "simple"},
-    {"screen": {**LAID_OUT_FOR, "virtual_size": "8,2"}},
-    {"screen": {**LAID_OUT_FOR, "pan": "0,2"}},
-    {"laid_out": False},
-], ids=["console off", "the firmware's", "another screen", "panned", "no frame"])
+    {"screen": False},
+], ids=["console off", "the firmware's", "no screen"])
 def test_the_initramfs_leaves_the_screen_alone(build, tmp_path, laid_out_tree, case):
     """Where the console is off, previously-splash@.service draws nothing
     either and the login prompt comes, and a picture over it would stand there.
     Where fb0 is still the firmware's, vc4 is about to take the screen. Where
-    it is another screen, the frame would land torn, and the drawer systemd
-    starts draws it instead."""
-    assert bottom_run(build, tmp_path, **case) == (b"what the console left", "")
+    there is no screen, there is nothing to lay a picture out for, and building
+    the initramfs again would find nothing either."""
+    assert bottom_run(build, tmp_path, **case) == (b"what the console left", "", False)
+
+
+@pytest.mark.parametrize("case", [
+    {"screen": {**LAID_OUT_FOR, "virtual_size": "8,2"}},
+    {"screen": {**LAID_OUT_FOR, "pan": "0,2"}},
+    {"laid_out": False},
+    {"booted_on": A_PI_4},
+], ids=["another screen", "panned", "no frame", "another board"])
+def test_the_initramfs_asks_to_be_built_again_where_its_picture_does_not_fit(
+        build, tmp_path, laid_out_tree, case):
+    """The frame would land torn or show another board's picture, so the
+    drawer systemd starts draws instead, and the word left in /run has the
+    initramfs built again for the screen and the board there are. On next5 on
+    24.10.2026 a monitor plugged in after the boot made fb0 1024 by 768, where
+    the boot makes it 1024 by 600."""
+    assert bottom_run(build, tmp_path, **case) == (b"what the console left", "", True)
+
+
+def test_the_initramfs_is_built_again_once_the_emulator_has_booted(build):
+    """Two minutes after the boot, by which time the emulator has started and
+    fb0 has the size the boot gave it, at the lowest priority, and only where
+    the script left word, so a board whose picture fits does nothing. %v is
+    the running kernel's release, as `uname -r` says it (systemd.unit(5))."""
+    service = (PACKAGING / build.INITRAMFS_UNIT).read_text(encoding="utf-8").splitlines()
+    timer = (PACKAGING / build.INITRAMFS_TIMER).read_text(encoding="utf-8").splitlines()
+
+    assert "ConditionPathExists=%s" % build.STALE in service
+    assert "ExecStart=/usr/sbin/update-initramfs -u -k %v" in service
+    assert "Nice=19" in service
+    assert "IOSchedulingClass=idle" in service
+    assert "OnBootSec=2min" in timer
+    assert "WantedBy=timers.target" in timer
+    assert {build.INITRAMFS_UNIT, build.INITRAMFS_TIMER} <= set(build.UNIT_FILES)
+    assert "systemctl enable %s" % build.INITRAMFS_TIMER in build.scripts()["postinst"]
+    assert build.INITRAMFS_TIMER in build.scripts()["prerm"]
 
 
 def test_the_initramfs_asks_what_the_drawer_asks(build, tmp_path, laid_out_tree):
