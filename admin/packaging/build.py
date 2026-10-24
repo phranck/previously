@@ -5,10 +5,10 @@
 
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
-package copies Python, static files, seven unit files, one udev rule, one
-tmpfiles entry, one rpi-swap drop-in and one cursor theme into place. Nothing
-is compiled, nothing is patched and nothing is generated at install time, so
-the debhelper machinery would be a build system around a copy.
+package copies Python, static files, eight unit files, two udev rules, one
+tmpfiles entry, one rpi-swap drop-in, one cursor theme and one boot picture
+into place. Nothing is compiled, nothing is patched and nothing is generated at
+install time, so the debhelper machinery would be a build system around a copy.
 
 The release is `previously.server.RELEASE` and is read from there rather than
 written down again here. A package built between two releases carries that
@@ -28,6 +28,13 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 ADMIN = HERE.parent
+
+# The boot picture is read with the service's own PNG reader, which is the
+# standard library and nothing else, so the build needs no image library. The
+# service sits beside this script rather than being installed, so it goes on
+# the path by hand.
+sys.path.insert(0, str(ADMIN))
+from previously import png  # noqa: E402
 
 #: What the package is called, which is what the service, its directory under
 #: /usr/lib and its state under /var/lib are already called.
@@ -74,6 +81,12 @@ UDEV_RULE = "usr/lib/udev/rules.d/60-" + NAME + "-uinput.rules"
 TMPFILES = "usr/lib/tmpfiles.d/" + NAME + ".conf"
 UINPUT_GROUP = "input"
 
+#: What starts the boot picture: a rule that wants an instance of the drawing
+#: unit for every framebuffer that appears, by its name. By the name rather
+#: than by the path, because vc4's sits at /sys/devices/platform/gpu on a Pi 4
+#: and at /sys/devices/platform/axi/axi:gpu on a Pi 5.
+SPLASH_RULE = "usr/lib/udev/rules.d/60-" + NAME + "-splash.rules"
+
 #: Where the package keeps swap in memory, as a drop-in rpi-swap reads while the
 #: machine starts. Under /usr/lib, because swap.conf(5) leaves /etc to the
 #: machine's administrator, and named to sort before the names its own examples
@@ -104,6 +117,21 @@ CURSOR_NAMES = ("left_ptr", "default")
 XCURSOR_IMAGE = 0xFFFD0002
 CURSOR_SIZE = 24
 
+#: The boot picture, as design/mark.py fetches it from previous.li, and where
+#: the package keeps it as the TGA previously/splash.py draws from.
+#: `splash.PICTURE` is the same path. Beside this script rather than among the
+#: interface's pictures, because the admin does not show it and serves nothing
+#: it does not show.
+SPLASH_PICTURE = HERE / "splash.png"
+SPLASH = "usr/share/" + NAME + "/splash.tga"
+
+#: The TGA image type for uncompressed true colour, and the bit of its
+#: descriptor that says the rows run from the top. `splash.picture` reads that
+#: type at 24 bits with that bit set and nothing else, so the drawer needs no
+#: decoder and takes the rows in the order they go onto the screen.
+TGA_TRUE_COLOUR = 2
+TGA_FROM_THE_TOP = 0x20
+
 #: What git adds to the description of a tree that has something uncommitted
 #: in it, and therefore what the version of such a build ends in. A package
 #: that claims a commit it was not built from is worse than one that says it
@@ -115,15 +143,18 @@ MODIFIED = ".modified"
 #: its own modules and falls back to the release where there is none.
 VERSION_FILE = "version.txt"
 
-#: The unit files, and which of them is the service itself. The other six are
-#: how the machine is changed without this service holding any privilege: it
-#: leaves a file in its runtime directory and a path unit running as root acts
-#: on it. Two of those do one exact command each, and the third installs.
+#: The unit files, and which of them is the service itself. Six of the others
+#: are how the machine is changed without this service holding any privilege:
+#: it leaves a file in its runtime directory and a path unit running as root
+#: acts on it. Two of those do one exact command each, and the third installs.
+#: The last draws the boot picture, started by SPLASH_RULE.
 SERVICE = NAME + ".service"
+SPLASH_UNIT = NAME + "-splash@.service"
 UNIT_FILES = (SERVICE,
               NAME + "-poweroff.path", NAME + "-poweroff.service",
               NAME + "-reboot.path", NAME + "-reboot.service",
-              NAME + "-setup.path", NAME + "-setup.service")
+              NAME + "-setup.path", NAME + "-setup.service",
+              SPLASH_UNIT)
 
 #: Who the tool runs as, written by postinst as a drop-in beside the unit. The
 #: user is whoever the card was made with, so it is decided on the machine
@@ -458,6 +489,12 @@ def lay_out(into):
         "# Written by the previously package. The same rights for /dev/uinput\n"
         "# before its module is loaded.\n"
         "z /dev/uinput 0660 - %s -\n" % UINPUT_GROUP, encoding="utf-8")
+    (into / SPLASH_RULE).write_text(
+        "# Written by the previously package. Draws the boot picture on a\n"
+        "# framebuffer the moment it appears.\n"
+        'ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb[0-9]*", '
+        'TAG+="systemd", ENV{SYSTEMD_WANTS}+="%s"\n'
+        % SPLASH_UNIT.replace("@", "@%k"), encoding="utf-8")
 
     (into / SWAP).parent.mkdir(parents=True, exist_ok=True)
     (into / SWAP).write_text(SWAP_DROP_IN, encoding="utf-8")
@@ -466,6 +503,9 @@ def lay_out(into):
     theme.mkdir(parents=True, exist_ok=True)
     for name in CURSOR_NAMES:
         (theme / name).write_bytes(transparent_cursor())
+
+    (into / SPLASH).parent.mkdir(parents=True, exist_ok=True)
+    (into / SPLASH).write_bytes(splash_tga())
 
 
 def transparent_cursor():
@@ -481,6 +521,25 @@ def transparent_cursor():
     table = struct.pack("<III", XCURSOR_IMAGE, CURSOR_SIZE, len(header) + 12)
     image = struct.pack("<9I", 36, XCURSOR_IMAGE, CURSOR_SIZE, 1, 1, 1, 0, 0, 0)
     return header + table + image + struct.pack("<I", 0)
+
+
+def splash_tga():
+    """@returns bytes, the boot picture as previously/splash.py reads it.
+
+    An 18 byte header and then every pixel as blue, green and red, without a
+    colour map and without compression: the type at byte 2, the width and the
+    height at bytes 12 to 15, the depth at byte 16 and the descriptor at byte
+    17. The rows go in from the top, as the PNG holds them.
+    """
+    width, height, lines = png.rgb(SPLASH_PICTURE.read_bytes())
+    header = struct.pack("<BBBHHBHHHHBB", 0, 0, TGA_TRUE_COLOUR, 0, 0, 0, 0, 0,
+                         width, height, 24, TGA_FROM_THE_TOP)
+    pixels = bytearray()
+    for line in lines:
+        turned = bytearray(len(line))
+        turned[0::3], turned[1::3], turned[2::3] = line[2::3], line[1::3], line[0::3]
+        pixels += turned
+    return header + bytes(pixels)
 
 
 def scripts():

@@ -4,7 +4,8 @@ The service imports nothing from outside it, so this is what reads the grabs
 Previous writes. It reads the shapes Previous writes and no more: one image,
 not interlaced, at any of the format's color types and depths. That covers a
 NeXTcube's two-bit gray and a NeXTdimension's RGB, both measured on a Pi 5 on
-23.10.2026.
+23.10.2026. The package build reads the boot picture with it as well, so the
+build needs no image library either.
 
 Most of the work is undoing the filters. An encoder may filter each row with
 one of five predictors from the PNG specification, section 9, and libpng picks
@@ -58,6 +59,25 @@ def rows(data):
     return _read(data)[1]
 
 
+def rgb(data):
+    """The pixels of a picture in RGB at eight bits to a sample.
+
+    @param data - The bytes of a PNG.
+    @returns (int, int, list of bytes): its width, its height, and its rows
+      from the top, three bytes to a pixel in the order red, green, blue.
+    @raises Unreadable where the bytes are not a PNG this reads, or one in any
+      other color type or depth.
+
+    For the package build, which writes the boot picture as the TGA the kernel
+    draws. A palette or an alpha channel would need translating first, and the
+    picture is stored without either.
+    """
+    header, lines = _read(data)
+    if header["colour"] != 2 or header["depth"] != 8:
+        raise Unreadable("not RGB at eight bits to a sample")
+    return header["width"], header["height"], list(lines)
+
+
 def _read(data):
     """@returns (header, iterator of rows). @raises Unreadable."""
     header, compressed = _chunks(data)
@@ -108,6 +128,7 @@ def _header(body):
         raise Unreadable("a color type, an interlace or a size this does not read")
     bits = CHANNELS[colour] * depth
     return {"width": width, "height": height, "depth": depth,
+            "channels": CHANNELS[colour], "colour": colour,
             "stride": (width * bits + 7) // 8, "distance": max(1, bits // 8)}
 
 

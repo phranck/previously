@@ -664,6 +664,17 @@ def test_the_console_stays_out_of_utmp(tmp_path):
     assert "UtmpMode" not in service
 
 
+def test_the_console_leaves_the_terminal_as_it_is(tmp_path):
+    """The boot picture stands on tty1 until cage takes the screen, and
+    resetting or clearing the terminal takes the picture with it. On next4 on
+    24.10.2026 the picture stood from vc4's framebuffer at 9.7 s through the
+    console's start at 14.2 s until cage's mode at 23.9 s."""
+    service = console_unit(Nobody(tmp_path))["Service"]
+
+    assert "TTYReset" not in service
+    assert "TTYVTDisallocate" not in service
+
+
 def test_the_console_never_gives_up_on_the_emulator(tmp_path):
     """An emulator that ends at once ends the console with it. systemd's start
     limit would stop the console for good after five of those within ten

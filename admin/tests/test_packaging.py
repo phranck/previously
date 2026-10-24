@@ -14,6 +14,7 @@ import re
 import shutil
 import struct
 import subprocess
+import types
 
 import pytest
 
@@ -345,6 +346,70 @@ def test_the_package_brings_the_x_server_previous_draws_through(build):
     X server only where Xwayland is installed. The cage in the Raspberry Pi
     archive does not bring it along, so the package does."""
     assert "xwayland" in build.DEPENDS
+
+
+# -- the boot picture ----------------------------------------------------
+
+
+def test_the_package_carries_the_boot_picture_pixel_for_pixel(build, tmp_path):
+    """The TGA is written from the PNG design/mark.py fetches, and the drawer
+    reads it back. Every pixel has to arrive as the PNG holds it, turned from
+    red, green and blue into the blue, green and red a TGA stores."""
+    from previously import png, splash
+
+    build.lay_out(tmp_path / "tree")
+    width, height, pixels = splash.picture((tmp_path / "tree" / build.SPLASH).read_bytes())
+    wide, high, lines = png.rgb(build.SPLASH_PICTURE.read_bytes())
+
+    assert (width, height) == (wide, high)
+    turned = b"".join(bytes(line[at + 2 - channel] for at in range(0, len(line), 3)
+                            for channel in range(3)) for line in lines)
+    assert pixels == turned
+
+
+def test_the_drawer_reads_the_picture_where_the_package_puts_it(build):
+    from previously import splash
+
+    assert "/" + build.SPLASH == str(splash.PICTURE)
+
+
+def test_every_framebuffer_that_appears_gets_the_picture(build, tmp_path):
+    """By its name rather than by its path, because vc4's framebuffer sits at
+    /sys/devices/platform/gpu on a Pi 4 and at /sys/devices/platform/axi/axi:gpu
+    on a Pi 5, read on 24.10.2026."""
+    build.lay_out(tmp_path / "tree")
+    rule = (tmp_path / "tree" / build.SPLASH_RULE).read_text(encoding="utf-8")
+    lines = [line for line in rule.splitlines() if line and not line.startswith("#")]
+
+    assert lines == ['ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb[0-9]*", '
+                     'TAG+="systemd", ENV{SYSTEMD_WANTS}+="previously-splash@%k.service"']
+    assert build.SPLASH_UNIT == "previously-splash@.service"
+    assert build.SPLASH_UNIT in build.UNIT_FILES
+
+
+def test_the_picture_is_drawn_only_where_the_console_is_switched_on(build):
+    """A machine whose console was taken away again shows its login prompt, and
+    a picture over it would stand there for good. The condition is the link
+    `systemctl enable` makes for the console, so the two name one place."""
+    from previously import setup
+
+    unit = (PACKAGING / build.SPLASH_UNIT).read_text(encoding="utf-8")
+    owner = types.SimpleNamespace(name="next", uid=1000, home=pathlib.Path("/home/next"))
+    console = setup._console_unit(owner)
+
+    assert re.search(r"^WantedBy=multi-user\.target$", console, re.M)
+    assert ("ConditionPathExists=%s" % (setup.SYSTEM_UNITS / "multi-user.target.wants"
+                                        / setup.CONSOLE)) in unit.splitlines()
+
+
+def test_the_drawer_runs_as_nobody_in_particular(build):
+    """It writes the framebuffer and nothing else, and the framebuffer belongs
+    to the video group."""
+    unit = (PACKAGING / build.SPLASH_UNIT).read_text(encoding="utf-8")
+
+    assert "DynamicUser=yes" in unit.splitlines()
+    assert "SupplementaryGroups=video" in unit.splitlines()
+    assert not re.search(r"^User=", unit, re.M)
 
 
 def test_the_package_brings_the_console_up_to_date(build, tmp_path):
