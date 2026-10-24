@@ -1,5 +1,5 @@
-# Draws Previously's shutdown picture, the boot picture with "Shutting down..."
-# under it, when the Pi shuts down or restarts.
+# Draws Previously's shutdown picture, the board of the boot picture with
+# "Shutting down..." under it, when the Pi shuts down or restarts.
 #
 # It does its work when it stops. The console's unit wants it, and it is
 # ordered before the console, so systemd stops it after the console on the way
