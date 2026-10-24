@@ -708,7 +708,7 @@ def test_a_console_in_the_profile_is_moved_over(tmp_path, commands, console):
     setup.STEPS["autostart"](work)
 
     assert (work.owner.home / setup.PROFILE).read_text() == kept
-    assert not setup.AUTOLOGIN.exists()
+    assert not setup.AUTOLOGIN.parent.exists()
     assert (setup.SYSTEM_UNITS / setup.CONSOLE).exists()
 
 

@@ -1884,15 +1884,26 @@ def _moved_over(owner):
     autologin = AUTOLOGIN.read_bytes() if AUTOLOGIN.exists() else None
     if autologin is not None:
         AUTOLOGIN.unlink()
+        _gone_if_empty(AUTOLOGIN.parent)
         run(["systemctl", "daemon-reload"])
 
     def put_back():
         owner.write(profile, text)
         if autologin is not None:
+            AUTOLOGIN.parent.mkdir(parents=True, exist_ok=True)
             AUTOLOGIN.write_bytes(autologin)
             run(["systemctl", "daemon-reload"])
 
     return put_back
+
+
+def _gone_if_empty(directory):
+    """Takes a drop-in directory away where nothing is left in it, and leaves
+    it where something else is, because that is somebody else's drop-in."""
+    try:
+        directory.rmdir()
+    except OSError:
+        pass
 
 
 def _without_the_block(text):
@@ -2127,10 +2138,7 @@ def _no_autostart(work):
         if path.exists():
             path.unlink()
             gone = True
-    try:
-        _login_barrier(work.owner).parent.rmdir()
-    except OSError:
-        pass
+    _gone_if_empty(_login_barrier(work.owner).parent)
     if gone:
         run(["systemctl", "daemon-reload"])
     _without_autostart(work.owner.home / PROFILE)
