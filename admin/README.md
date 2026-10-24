@@ -326,7 +326,7 @@ The keys go in through the virtual keyboard, which cage reads like any keyboard 
 
 **Restarting or switching off the board takes NeXTSTEP down first**, and waits for it. A board that reboots underneath a running emulator does the same damage as killing the emulator, and to a machine that then has to come back up.
 
-**The tool still needs no privileges for that.** Only root may power a machine down, so the tool does not: it leaves a file in its own runtime directory, and a systemd path unit running as root does the one thing that file means. `previously-reboot.path` watches for `/run/previously/reboot` and starts a unit whose whole body is `ExecStart=/usr/bin/systemctl reboot`. The name of the file is the whole of the request, so there is nothing to pass and no shell to pass it through.
+**The tool still needs no privileges for that.** Only root may power a machine down, so the tool does not: it leaves a file in its own runtime directory, and a systemd path unit running as root does the one thing that file means. `previously-reboot.path` watches for `/run/previously/reboot` and starts a unit whose whole body is `ExecStart=/usr/bin/systemctl --no-wall reboot`. It sends no wall message, because systemd writes that onto the console's tty1, where it would stand over the boot picture until the Pi goes dark. The name of the file is the whole of the request, so there is nothing to pass and no shell to pass it through.
 
 A sudoers rule was the other way to do this, and it cannot work here: the service sets `NoNewPrivileges=yes`, which is exactly what stops `sudo` from becoming root, and that flag is worth more than the convenience.
 

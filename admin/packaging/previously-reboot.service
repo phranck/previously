@@ -12,4 +12,6 @@ Type=oneshot
 # Removed first, so a command that fails does not leave a request standing that
 # the path unit would act on again.
 ExecStartPre=/bin/rm -f /run/previously/reboot
-ExecStart=/usr/bin/systemctl reboot
+# Without the wall message, because systemd writes it onto the console's tty1,
+# where it would stand over the boot picture until the Pi goes dark.
+ExecStart=/usr/bin/systemctl --no-wall reboot
