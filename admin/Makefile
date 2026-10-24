@@ -6,14 +6,18 @@
 # to install it and point PYTHON at it.
 
 PYTHON ?= python3
+# The Python the Pi runs, as ../.python-version names it for every machine
+# that checks this, the check workflow included.
+PYTHON_VERSION := $(shell cat ../.python-version)
 # The check workflow runs `make check` too, and names and times every test.
 PYTEST_FLAGS ?= -q
 OXLINT ?= node_modules/.bin/oxlint
 TSC ?= node_modules/.bin/tsc
 
-.PHONY: help run test test-dom browser lint lint-service lint-interface types check kit web clean
+.PHONY: help venv python-version run test test-dom browser lint lint-service lint-interface types check kit web clean
 
 help:
+	@echo 'venv     make .venv from the Python the Pi runs, with what the checks need'
 	@echo 'run      start the service in the foreground'
 	@echo 'test     run the test suite: the service, and the kit and the page against a DOM'
 	@echo 'browser  run what only a browser can show, in Safari Technology Preview'
@@ -34,10 +38,20 @@ kit:
 web:
 	$(PYTHON) build_web.py
 
+venv:
+	python$(PYTHON_VERSION) -m venv --clear .venv
+	.venv/bin/pip install --quiet -r requirements-check.txt
+
+# Code that needs a newer Python than the Pi's passes every check run under
+# that newer one and fails on the Pi, so the checks refuse to start under any
+# other.
+python-version:
+	@$(PYTHON) -c 'import sys; have = "%d.%d" % sys.version_info[:2]; sys.exit(have != "$(PYTHON_VERSION)" and "$(PYTHON) is Python " + have + ", and the checks need $(PYTHON_VERSION): make venv")'
+
 run:
 	$(PYTHON) -m previously
 
-test: test-dom
+test: python-version test-dom
 	$(PYTHON) -m pytest tests $(PYTEST_FLAGS)
 
 # The kit's elements and the page's own modules, run in Node against happy-dom
@@ -51,12 +65,12 @@ test-dom:
 # against what there is to scroll. Safari Technology Preview through its own
 # safaridriver, against the real service in a temporary home. Not part of
 # `check`, because it drives a browser. Run it when the kit's behavior changes.
-browser:
+browser: python-version
 	$(PYTHON) -m pytest browser -q
 
 lint: lint-service lint-interface types
 
-lint-service:
+lint-service: python-version
 	$(PYTHON) -m flake8 previously tests browser measuring build_web.py
 
 # The other half of this repository, which flake8 cannot see, by the rules in
