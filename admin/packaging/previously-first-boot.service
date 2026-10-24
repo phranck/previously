@@ -1,0 +1,25 @@
+# Starts the console again at an image's first boot, once cloud-init has set
+# the user up. Raspberry Pi OS's cloud-init renames the first user through
+# userconf-pi, which ends in cancel-rename, and that starts getty@tty1 on its
+# own. A start in a job of its own takes the place of the console's start the
+# boot had already queued, because the two conflict. Started again here, after
+# cloud-init and before the getty, the console's conflict stops the getty
+# before it ever runs.
+#
+# Only at the first boot and only where the console is switched on, so every
+# other boot passes this by.
+
+[Unit]
+Description=Previous on the first screen, once cloud-init has set the user up
+Documentation=https://github.com/phranck/previously
+ConditionFirstBoot=yes
+ConditionPathExists=/etc/systemd/system/multi-user.target.wants/previously-console.service
+After=cloud-init-network.service
+Before=previously-console.service getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl --no-block start previously-console.service
+
+[Install]
+WantedBy=multi-user.target

@@ -104,6 +104,39 @@ def test_the_package_creates_that_directory(build):
     assert where_they_live() in postinst
 
 
+def test_the_package_makes_a_missing_config_directory_the_owners(build):
+    """install makes a missing parent as root's. On an image the home has no
+    ~/.config yet, and pi-gen then closes the first user's ~/.config to
+    everybody but its owner, which left root holding it and Previous unable
+    to read its own configuration on next4 on 24.10.2026."""
+    postinst = build.scripts()["postinst"]
+
+    parent = postinst.index('[ -d "$home/.config" ] || install -d -o "$owner" -g "$group"')
+
+    assert parent < postinst.index('"$home/.config/%s"' % build.NAME)
+
+
+def test_an_image_starts_the_console_again_once_cloud_init_is_through(build):
+    """cloud-init renames the first user through userconf-pi, which ends in
+    cancel-rename, and that starts getty@tty1 on its own, in a job of its own
+    that pushed the console's start out of the first boot of an image on
+    next4 on 24.10.2026. Started again after cloud-init and before the getty,
+    the console's conflict stops the getty before it ever runs."""
+    from previously import setup
+
+    unit = (PACKAGING / build.FIRST_BOOT_UNIT).read_text(encoding="utf-8").splitlines()
+    before = next(line for line in unit if line.startswith("Before=")).split("=", 1)[1].split()
+
+    assert "ConditionFirstBoot=yes" in unit
+    assert "ConditionPathExists=%s" % setup.CONSOLE_SWITCHED_ON in unit
+    assert "After=cloud-init-network.service" in unit
+    assert {setup.CONSOLE, setup.GETTY} <= set(before)
+    assert "ExecStart=/usr/bin/systemctl --no-block start %s" % setup.CONSOLE in unit
+    assert build.FIRST_BOOT_UNIT in build.UNIT_FILES
+    assert build.FIRST_BOOT_UNIT in units_on(build.scripts()["postinst"], "enable")
+    assert build.FIRST_BOOT_UNIT in build.scripts()["prerm"]
+
+
 def test_the_package_runs_as_the_user_the_card_was_made_with(build):
     """The Imager asks for a user name and creates that user first, so it is
     the one with UID 1000, whatever it is called. A machine that already has an
@@ -160,7 +193,8 @@ def test_the_package_starts_nothing_where_systemd_does_not_run(build):
     assert starting and starting.group(1) == str(setup.BOOTED)
     assert set(starting.group(2).split()) == {build.SERVICE, *build.WATCHERS}
     assert units_on(postinst, "enable") == {build.SERVICE, *build.WATCHERS,
-                                            build.INITRAMFS_TIMER, build.OWNER_UNIT}
+                                            build.INITRAMFS_TIMER, build.OWNER_UNIT,
+                                            build.FIRST_BOOT_UNIT}
 
 
 def a_getent(tmp_path, users):
