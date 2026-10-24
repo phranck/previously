@@ -213,6 +213,17 @@ def test_the_package_switches_on_every_watcher_it_ships(build):
         assert unit in prerm, unit
 
 
+@pytest.mark.parametrize("action", ["reboot", "poweroff"])
+def test_the_board_goes_down_without_a_wall_message(action):
+    """systemd writes its wall message onto the console's tty1, where it stood
+    over the boot picture for two seconds before a reboot on next4 on
+    24.10.2026."""
+    unit = (PACKAGING / ("previously-%s.service" % action)).read_text(encoding="utf-8")
+
+    assert re.findall(r"^ExecStart=(.*)$", unit, re.M) == [
+        "/usr/bin/systemctl --no-wall %s" % action]
+
+
 def test_the_privileged_helper_watches_where_the_service_writes(build):
     """Three files have to agree about one path: the setting the service writes
     the request through, the `PathExists=` the watcher fires on, and the name
