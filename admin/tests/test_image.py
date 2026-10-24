@@ -9,6 +9,7 @@ import hashlib
 import importlib.util
 import lzma
 import pathlib
+import re
 
 import pytest
 
@@ -46,43 +47,61 @@ def image(tmp_path):
     return path, held
 
 
-def test_an_entry_says_what_the_imager_checks_the_image_against(os_list, image):
+@pytest.fixture
+def entries(os_list, image):
+    """@returns list of dict, the entries the list carries for that image."""
+    return os_list.listing(image[0], OFFICIAL, "2026-10-25")["os_list"]
+
+
+def test_there_is_one_entry_for_each_board_with_its_own_picture(os_list, entries):
+    """The Imager shows only the entries whose devices carry a tag of the board
+    chosen a step before (rpi-imager os-list-schema.json), so each board gets
+    an entry of its own and sees its own drawing beside it."""
+    from previously import server
+
+    assert [entry["devices"] for entry in entries] == [["pi5-64bit"], ["pi4-64bit"]]
+    assert [entry["icon"] for entry in entries] == [
+        os_list.RELEASE_ASSET % (server.RELEASE, "previously-%s.png" % board)
+        for board in ("pi5", "pi4")]
+
+
+def test_both_entries_write_the_same_image(entries):
+    assert len({(entry["url"], entry["extract_sha256"]) for entry in entries}) == 1
+
+
+def test_an_entry_says_what_the_imager_checks_the_image_against(image, entries):
     """The Imager checks what it wrote against the size and the digest of the
     image as it is unpacked, not as it was downloaded (rpi-imager
     doc/schema-notes.md)."""
     path, held = image
 
-    entry, = os_list.listing(path, OFFICIAL, "2026-10-25")["os_list"]
+    for entry in entries:
+        assert entry["extract_size"] == len(held)
+        assert entry["extract_sha256"] == hashlib.sha256(held).hexdigest()
+        assert entry["image_download_size"] == path.stat().st_size
+        assert entry["release_date"] == "2026-10-25"
 
-    assert entry["extract_size"] == len(held)
-    assert entry["extract_sha256"] == hashlib.sha256(held).hexdigest()
-    assert entry["image_download_size"] == path.stat().st_size
-    assert entry["release_date"] == "2026-10-25"
 
-
-def test_an_entry_has_every_field_the_imager_requires(os_list, image):
+def test_an_entry_has_every_field_the_imager_requires(entries):
     """The fields rpi-imager's schema notes list as required for an entry, and
     the customisation Raspberry Pi OS trixie itself is given, which is how the
     Imager sets the user, the hostname and the Wi-Fi."""
-    entry, = os_list.listing(image[0], OFFICIAL, "2026-10-25")["os_list"]
-
-    for field in ("name", "description", "icon", "url", "extract_size",
-                  "extract_sha256", "image_download_size", "release_date",
-                  "devices"):
-        assert entry[field], field
-    assert entry["init_format"] == "cloudinit-rpi"
-    assert entry["devices"] == ["pi5-64bit", "pi4-64bit"]
+    for entry in entries:
+        for field in ("name", "description", "icon", "url", "extract_size",
+                      "extract_sha256", "image_download_size", "release_date",
+                      "devices"):
+            assert entry[field], field
+        assert entry["init_format"] == "cloudinit-rpi"
 
 
-def test_the_entry_points_at_the_image_of_its_own_release(os_list, image):
+def test_the_entry_points_at_the_image_of_its_own_release(os_list, entries):
     """At the release that carries this list rather than at the newest one, so
     the digest in a list always belongs to the image it names."""
     from previously import server
 
-    entry, = os_list.listing(image[0], OFFICIAL, "2026-10-25")["os_list"]
-
-    assert entry["url"] == ("https://github.com/phranck/previously/releases/download/"
-                            "v%s/%s" % (server.RELEASE, os_list.ASSET))
+    for entry in entries:
+        assert entry["url"] == ("https://github.com/phranck/previously/releases/download/"
+                                "v%s/%s" % (server.RELEASE, os_list.ASSET))
 
 
 def test_the_list_carries_the_boards_the_image_is_for_and_no_others(os_list, image):
@@ -93,6 +112,27 @@ def test_the_list_carries_the_boards_the_image_is_for_and_no_others(os_list, ima
     assert [device["name"] for device in devices] == ["Raspberry Pi 5", "Raspberry Pi 4"]
 
 
+def test_a_picture_is_the_admins_own_drawing_of_its_board(os_list):
+    """Every board the list names has its drawing in the admin, which is where
+    the picture is made from rather than a second copy of it."""
+    for board in os_list.BOARDS.values():
+        assert (os_list.PARTS / ("board-%s.svg" % board)).is_file(), board
+
+
+def test_a_picture_is_square_and_keeps_the_drawing_whole(os_list):
+    """The drawing is wider than it is high, and the Imager's own pictures are
+    square. Only the size changes, so the drawing keeps its proportions and
+    stands in the middle, as SVG places a viewBox in a box of another shape."""
+    drawing = (os_list.PARTS / "board-pi5.svg").read_text(encoding="utf-8")
+    root = re.search(r"<svg[^>]*>", os_list.squared(drawing)).group(0)
+
+    assert 'width="%d"' % os_list.ICON_SIDE in root
+    assert 'height="%d"' % os_list.ICON_SIDE in root
+    assert re.search(r'viewBox="0 0 72 48"', root)
+    assert os_list.squared(drawing).replace(root, "") == drawing.replace(
+        re.search(r"<svg[^>]*>", drawing).group(0), "")
+
+
 def test_the_release_attaches_the_image_and_its_list_under_these_names(os_list):
     """The release workflow names the files and the list names the image, so
     the two have to agree, and a link to releases/latest/download needs the
@@ -101,4 +141,4 @@ def test_the_release_attaches_the_image_and_its_list_under_these_names(os_list):
         encoding="utf-8")
 
     assert os_list.ASSET in workflow
-    assert os_list.LIST in workflow
+    assert "os_list.py" in workflow

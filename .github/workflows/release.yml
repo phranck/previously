@@ -83,8 +83,9 @@ jobs:
           path: ${{ runner.temp }}/image
 
       # Under one name in every release, so releases/latest/download names the
-      # newest image, and beside the list the Imager reads it from. A file on
-      # a release has to stay under 2 GiB.
+      # newest image, and beside the list the Imager reads it from and the
+      # picture of each board, which rsvg-convert draws. A file on a release
+      # has to stay under 2 GiB.
       - name: Name the image and list it for Raspberry Pi Imager
         run: |
           image=admin/packaging/build/previously-raspberry-pi.img.xz
@@ -94,7 +95,9 @@ jobs:
             echo "The image is $size bytes, and a release takes no file of 2 GiB." >&2
             exit 1
           fi
-          python3 image/os_list.py "$image" --into admin/packaging/build/os-list.json
+          sudo apt-get install -y -qq librsvg2-bin
+          python3 image/os_list.py "$image" --into admin/packaging/build/imager
+          cat admin/packaging/build/imager/os-list.json
 
       # Creates the release as a draft with the package on it. A release that
       # is public already keeps that state, because the action leaves an
@@ -107,7 +110,7 @@ jobs:
           files: |
             admin/packaging/build/previously_all.deb
             admin/packaging/build/previously-raspberry-pi.img.xz
-            admin/packaging/build/os-list.json
+            admin/packaging/build/imager/*
           fail_on_unmatched_files: true
 
       - name: Keep them on the run, where there is no tag
@@ -118,7 +121,7 @@ jobs:
           path: |
             admin/packaging/build/previously_all.deb
             admin/packaging/build/previously-raspberry-pi.img.xz
-            admin/packaging/build/os-list.json
+            admin/packaging/build/imager/*
           if-no-files-found: error
           # The image is xz already.
           compression-level: 0

@@ -4,9 +4,9 @@ Everything the README leaves out: how a machine is set up, how to check the resu
 
 ## Writing the ready image
 
-Every release carries an image beside the package: Raspberry Pi OS Lite as pi-gen builds it, with the admin tool installed and the same setup job run on it that the one-line script asks for. `.github/workflows/image.yml` builds it from `image/` in this repository, and the release attaches it as `previously-raspberry-pi.img.xz` together with `os-list.json`, the list Raspberry Pi Imager reads it from. Both names stay the same in every release, so `releases/latest/download/` always names the newest.
+Every release carries an image beside the package: Raspberry Pi OS Lite as pi-gen builds it, with the admin tool installed and the same setup job run on it that the one-line script asks for. `.github/workflows/image.yml` builds it from `image/` in this repository, and the release attaches it as `previously-raspberry-pi.img.xz` together with `os-list.json`, the list Raspberry Pi Imager reads it from, and a picture of each board for that list. The names stay the same in every release, so `releases/latest/download/` always names the newest.
 
-Start Raspberry Pi Imager 2 with that list, as the README shows, and choose the board and Previously. The Imager offers its settings only for an image a list describes, which is why the list is there. Set the user name, the hostname, the password and the Wi-Fi as for Raspberry Pi OS. Any names work, and SSH is on, because the admin's Terminal logs in through it.
+Start Raspberry Pi Imager 2 with that list, as the README shows, and choose the board and Previously. The Imager offers its settings only for an image a list describes, which is why the list is there. The list has an entry for each board, both for the same image, so Previously appears with the drawing of the board chosen a step before, the one the admin shows for it. Set the user name, the hostname, the password and the Wi-Fi as for Raspberry Pi OS. Any names work, and SSH is on, because the admin's Terminal logs in through it.
 
 At the first start:
 
