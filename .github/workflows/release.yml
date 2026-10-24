@@ -39,8 +39,8 @@ jobs:
   package:
     runs-on: ubuntu-latest
     # A run that hangs is worse than one that fails: it says nothing and holds
-    # the tag. The suite takes half a minute on a laptop, so ten minutes is a
-    # ceiling rather than a budget.
+    # the tag. The suite takes about two minutes, so ten minutes is a ceiling
+    # rather than a budget.
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,7 +66,7 @@ jobs:
         working-directory: admin
         run: |
           python3 -m pip install --quiet --break-system-packages \
-            flake8 pytest pytest-timeout
+            -r requirements-check.txt
           # What the browser gets is committed and is built with this. Without
           # it here, the test that holds those files to their sources skips
           # rather than fails, and a stale bundle would be packaged and shipped.
@@ -76,18 +76,12 @@ jobs:
           # that is not imported bundles without a word and fails when
           # somebody presses the thing that needs it.
           npm install --silent
-          python3 -m flake8 --max-line-length=100 previously tests browser build_web.py
-          node_modules/.bin/oxlint --deny-warnings interface tests/kit tests/page
-          node_modules/.bin/tsc -p tsconfig.json
-          # The kit's elements and the page's own modules against a DOM, with
-          # what `npm install` brought.
-          node --test tests/kit/*.test.js tests/page/*.test.js
-          # Named and timed, because a test that waits here and not on a laptop
-          # is waiting for something this machine does not have, and a suite
-          # that stops without saying which test it stopped in says nothing at
-          # all. A minute is far past anything here: the whole suite is thirty
-          # seconds.
-          python3 -m pytest tests -v --timeout=60 --durations=5
+          # The gate a commit needs, with every test named and timed, because a
+          # test that waits here and not on a laptop is waiting for something
+          # this machine does not have, and a suite that stops without saying
+          # which test it stopped in says nothing at all. A minute is far past
+          # any test here: none takes more than a few seconds.
+          make check PYTEST_FLAGS="-v --timeout=60 --durations=5"
 
       - name: Build the package
         working-directory: admin

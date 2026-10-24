@@ -2,10 +2,12 @@
 #
 # The service itself uses the standard library and nothing else, so it starts
 # on a machine with no network and inside the package build. Checking it needs
-# flake8 and pytest, which are not on the Pi: README.md says where to get them
-# and how to point PYTHON at them.
+# what requirements-check.txt names, which is not on the Pi: README.md says how
+# to install it and point PYTHON at it.
 
 PYTHON ?= python3
+# The release workflow runs `make check` too, and names and times every test.
+PYTEST_FLAGS ?= -q
 OXLINT ?= node_modules/.bin/oxlint
 TSC ?= node_modules/.bin/tsc
 
@@ -36,7 +38,7 @@ run:
 	$(PYTHON) -m previously
 
 test: test-dom
-	$(PYTHON) -m pytest tests -q
+	$(PYTHON) -m pytest tests $(PYTEST_FLAGS)
 
 # The kit's elements and the page's own modules, run in Node against happy-dom
 # with the kit's own stylesheet on the page. What a part does to the markup it
@@ -55,7 +57,7 @@ browser:
 lint: lint-service lint-interface types
 
 lint-service:
-	$(PYTHON) -m flake8 --max-line-length=100 previously tests browser measuring build_web.py
+	$(PYTHON) -m flake8 previously tests browser measuring build_web.py
 
 # The other half of this repository, which flake8 cannot see, by the rules in
 # .oxlintrc.json. `no-undef` is what matters most, because the interface is
