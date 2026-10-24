@@ -583,9 +583,12 @@ export type StatusAnswer = {
   held: boolean;
   /** Whether the console unit is active. */
   console_active: boolean;
-  /** How long the console unit has been active, in seconds, and null while
-   *  the emulator is not running or where systemd will not say. */
+  /** How long the emulator has been running, in seconds, and null while it
+   *  is not running. */
   uptime_seconds: number | null;
+  /** What the kernel calls the boot the board is running, a new one at every
+   *  start, and null where it will not say. */
+  boot: string | null;
   file: ConfigurationFile;
   ready: Readiness;
 } & (

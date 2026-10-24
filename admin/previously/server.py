@@ -473,6 +473,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "held": kiosk.is_held(self.settings.runtime_directory),
             "console_active": kiosk.console_is_active(),
             "uptime_seconds": age if running else None,
+            # Which start of the board this is, so a page waiting for a
+            # restart knows when it is over.
+            "boot": pi.boot(),
         }
         try:
             answer["configuration"] = config.read(self.settings.previous_config)

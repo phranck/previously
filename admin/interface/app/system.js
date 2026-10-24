@@ -33,9 +33,15 @@ let reachable = false;
 /** Whether the emulator was running at the last status. */
 let running = false;
 
-/** What this page has set going and is waiting for, or null.
- *  @type {{words: string, untilBack: boolean, gone: boolean} | null} */
+/** What this page has set going and is waiting for, or null. An operation
+ *  that lasts until the board is back carries the boot it was started on.
+ *  @type {{words: string, untilBack: boolean, boot: string | null} | null} */
 let operation = null;
+
+/** Which boot of the board the last status came from, or null before one has
+ *  said.
+ *  @type {string | null} */
+let boot = null;
 
 /** Which jobs of the privileged helper are under way, by the window that
  *  watches them. The helper takes one job at a time whoever asked for it.
@@ -109,19 +115,23 @@ const refused = new Map();
 
 /**
  * Takes in what the service last said about the machine.
- * @param {{running: boolean} | null} status - What /api/status answered, or
- *   null where nothing did.
+ * @param {{running: boolean, boot?: string | null} | null} status - What
+ *   /api/status answered, or null where nothing did.
  *
- * An operation that takes the board away is over when the board answers again
- * after having gone, and not before: its own request comes back long before
- * the board does.
+ * An operation that takes the board away is over when the board answers from
+ * another boot, and not before: its own request comes back long before the
+ * board does. A status that failed in between is no sign of it, because the
+ * page asks without a time limit and a request that falls into the restart
+ * waits for the board and comes back like any other.
  */
 function heard(status) {
   reachable = status !== null;
   running = Boolean(status?.running);
-  if (operation?.untilBack) {
-    if (!reachable) operation.gone = true;
-    else if (operation.gone) operation = null;
+  if (status?.boot) {
+    if (operation?.untilBack && operation.boot && status.boot !== operation.boot) {
+      operation = null;
+    }
+    boot = status.boot;
   }
   drawTheSystem();
 }
@@ -130,11 +140,13 @@ function heard(status) {
  * Starts an operation: every control that changes something goes off, and
  * every window with a busy line says what is happening.
  * @param {string} words - What is happening.
- * @param {boolean} [untilBack] - Whether it lasts until the board has gone and
- *   answered again, which is what a restart of the board does.
+ * @param {boolean} [untilBack] - Whether it lasts until the board answers from
+ *   another boot, which is what a restart of the board does. A board that is
+ *   switched off never does, and the operation then stands for as long as the
+ *   page is open.
  */
 function begin(words, untilBack = false) {
-  operation = { words, untilBack, gone: false };
+  operation = { words, untilBack, boot };
   drawTheSystem();
 }
 

@@ -30,7 +30,7 @@ function warnAboutTheBoard(what, question) {
  * @param {typeof Board[keyof typeof Board]} route - One of Board.
  * @param {string} working - What to say while it happens.
  *
- * The operation lasts until the board has gone and answered again, rather than
+ * The operation lasts until the board answers from another boot, rather than
  * until its request comes back: the service answers before the board goes
  * down, and for the minute after that nothing on the page can be done. A board
  * switched off never answers again, and the page says so for as long as it is
