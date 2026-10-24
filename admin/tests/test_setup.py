@@ -619,6 +619,96 @@ def test_an_emulator_that_ends_well_ends_the_session_at_once(tmp_path, monkeypat
     assert crashes == ""
 
 
+@pytest.fixture
+def units(monkeypatch, tmp_path):
+    """The board's units by the state `systemctl is-enabled` names, each of
+    the left-out ones switched on unless a test says otherwise, and the file
+    that keeps cloud-init away somewhere the test can see it.
+
+    @returns dict of unit to state, which a test changes in place.
+    """
+    states = {unit: "enabled" for unit in setup.LEFT_OUT}
+    monkeypatch.setattr(setup, "unit_state", lambda unit: states.get(unit, ""))
+    (tmp_path / "cloud").mkdir()
+    monkeypatch.setattr(setup, "CLOUD_INIT_OFF", tmp_path / "cloud" / "cloud-init.disabled")
+    return states
+
+
+def systemctl(commands, verb):
+    """@returns list of str, the units one `systemctl <verb>` was given."""
+    return next(command[2:] for command in commands if command[:2] == ["systemctl", verb])
+
+
+def test_what_nothing_here_needs_is_switched_off(tmp_path, commands, units):
+    """Only what is on, so a unit somebody switched off before is not in the
+    record of what this run did."""
+    units["udisks2.service"] = "disabled"
+    work = work_in(tmp_path)
+    work.at("lean", 9)
+
+    setup.STEPS["lean"](work)
+
+    assert set(systemctl(commands, "disable")) == set(setup.LEFT_OUT) - {"udisks2.service"}
+    assert setup.CLOUD_INIT_OFF.exists()
+
+
+def test_a_failed_run_switches_back_on_only_what_it_switched_off(
+        tmp_path, commands, units, monkeypatch):
+    units["udisks2.service"] = "disabled"
+
+    def fails(work):
+        raise setup.Refused("setup.command-failed", command="systemctl", code=1)
+
+    monkeypatch.setattr(setup, "STEPS", dict(setup.STEPS, autostart=fails))
+    work = work_in(tmp_path, steps=("lean", "autostart"))
+
+    assert setup.carry_out(work) is False
+    assert "udisks2.service" not in systemctl(commands, "enable")
+    assert not setup.CLOUD_INIT_OFF.exists()
+
+
+def test_removing_brings_back_what_was_left_out(tmp_path, commands, units):
+    """Every left-out unit this system has, and none it does not."""
+    for unit in units:
+        units[unit] = "disabled"
+    units["sshswitch.service"] = ""
+    setup.CLOUD_INIT_OFF.touch()
+    work = work_in(tmp_path, job="remove")
+    work.at("full", 2)
+
+    setup.STEPS["full"](work)
+
+    assert set(systemctl(commands, "enable")) == set(setup.LEFT_OUT) - {"sshswitch.service"}
+    assert not setup.CLOUD_INIT_OFF.exists()
+
+
+def test_installing_leaves_out_and_removing_brings_back():
+    assert "lean" in setup.JOBS["install"]
+    assert "full" in setup.JOBS["remove"]
+
+
+def test_the_package_leaves_out_the_same_on_a_machine_that_is_set_up(
+        tmp_path, commands, units):
+    """On every install and upgrade, so a machine set up before this version
+    starts as lean as a new one."""
+    owner = Nobody(tmp_path / "home")
+    owner.home.mkdir()
+    (owner.home / setup.PROFILE).write_text(setup._autostart_block(owner), encoding="utf-8")
+
+    assert setup.refresh_services(owner) is True
+    assert set(systemctl(commands, "disable")) == set(setup.LEFT_OUT)
+    assert setup.CLOUD_INIT_OFF.exists()
+
+
+def test_the_package_leaves_the_services_of_a_machine_without_a_console(
+        tmp_path, commands, units):
+    owner = Nobody(tmp_path / "home")
+    owner.home.mkdir()
+
+    assert setup.refresh_services(owner) is False
+    assert commands == []
+
+
 def test_an_autostart_that_is_already_there_is_not_written_twice(tmp_path, commands):
     work = work_in(tmp_path)
     work.owner.home.mkdir(parents=True)

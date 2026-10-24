@@ -374,6 +374,20 @@ def test_the_package_brings_the_console_up_to_date(build, tmp_path):
     assert postinst.index("User=$owner") < found.start()
 
 
+def test_the_package_leaves_out_what_this_version_leaves_out(build):
+    """On every install and upgrade, in a program of its own, so a machine set
+    up before starts as lean as a new one and a unit that cannot be switched
+    off holds nothing else back."""
+    postinst = build.scripts()["postinst"]
+
+    programs = re.findall(r"python3 -c '(.*?)' \"\$owner\"", postinst, re.S)
+    services = [program for program in programs
+                if "setup.refresh_services(setup.Owner(sys.argv[1]))" in program]
+
+    assert len(services) == 1, "postinst does not leave out what this version leaves out"
+    assert "refresh_console" not in services[0]
+
+
 def test_the_package_brings_the_emulator_configuration_up_to_date(build):
     """On every install and upgrade, so a machine set up before Previous was
     told where to write its grabs stops leaving them in the home. A program of

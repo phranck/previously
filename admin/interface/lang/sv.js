@@ -474,6 +474,8 @@ export const sv = {
   "setup.step.no-autologin": "Konsolen frågar igen vem som är där",
   "setup.step.quiet": "Starten tystas",
   "setup.step.loud": "Starten som förut",
+  "setup.step.lean": "Det NeXTSTEP inte behöver lämnas bort",
+  "setup.step.full": "Tjänsterna som förut",
   "setup.step.autostart": "Starten på första konsolen",
   "setup.step.no-autostart": "Konsolen lämnas tillbaka",
   "setup.step.sound": "Ljudet till en högtalare",

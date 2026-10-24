@@ -177,6 +177,26 @@ QUIET_ARGUMENTS = ("quiet", "loglevel=0", "logo.nologo",
                    "vt.global_cursor_default=0", "systemd.show_status=false")
 NO_SPLASH = "disable_splash=1"
 
+#: Units Raspberry Pi OS starts that neither Previous nor the admin needs,
+#: switched off by the setup and on again by the remove job.
+LEFT_OUT = (
+    # Holds network-online.target back until the network is up, and nothing
+    # here waits for that target. 6.0 s at every boot on a Pi 4 and a Pi 5.
+    "NetworkManager-wait-online.service",
+    # Check ext4 file systems that sit on LVM, and the card has no LVM.
+    "e2scrub_reap.service", "e2scrub_all.timer",
+    # Mounts drives for a desktop, and nothing here mounts one.
+    "udisks2.service",
+    # Switches SSH on from a file on the boot partition, and SSH is on.
+    "sshswitch.service",
+)
+
+#: The file that keeps cloud-init from starting, as its documentation names it.
+#: cloud-init applies Raspberry Pi Imager's settings at the first boot, which
+#: comes before the setup, and runs at every boot after that with nothing left
+#: to do, 3.8 s on a Pi 4 before anything else may start.
+CLOUD_INIT_OFF = pathlib.Path("/etc/cloud/cloud-init.disabled")
+
 #: Where the console's autostart is written, and what fences it so that taking
 #: it out again leaves whatever else the file holds.
 PROFILE = ".profile"
@@ -300,15 +320,15 @@ class Refused(Exception):
 #: already done, so asking for it twice changes nothing the second time.
 JOBS = {
     "install": ("host", "tools", "archive", "emulator", "system",
-                "configuration", "autologin", "quiet", "autostart", "sound",
-                "start"),
+                "configuration", "autologin", "quiet", "lean", "autostart",
+                "sound", "start"),
     "update": ("archive", "newest-emulator"),
     # This tool replacing itself. Two steps because the second one is where the
     # service running the browser somebody is watching is stopped and started
     # underneath them, and a bar that covered both would sit still through the
     # only part they cannot see for themselves.
     UPDATE_TOOL: ("tool-package", "newest-tool"),
-    "remove": ("no-autostart", "loud", "no-autologin", "no-emulator"),
+    "remove": ("no-autostart", "loud", "full", "no-autologin", "no-emulator"),
     "fetch": ("host", "tools", "system"),
     "forget": ("no-system",),
     # A copy of a disk, and the same copy the other way. Both are one step,
@@ -423,6 +443,22 @@ def installed(package):
     except OSError:
         return False
     return "ok installed" in answer.stdout
+
+
+def unit_state(unit):
+    """@returns str - What `systemctl is-enabled` says of a unit, such as
+    `enabled` or `disabled`, or "" where this system has no such unit or
+    systemctl cannot be asked.
+
+    Asked directly rather than through `run`, because systemctl answers a
+    unit that is switched off with an exit status that is not a failure here.
+    """
+    try:
+        answer = subprocess.run(["systemctl", "is-enabled", unit],
+                                capture_output=True, text=True, check=False)
+    except OSError:
+        return ""
+    return answer.stdout.strip()
 
 
 def _packages_here():
@@ -1626,6 +1662,73 @@ def _loud(work):
     (work.owner.home / HUSHLOGIN).unlink(missing_ok=True)
 
 
+def _lean(work):
+    """Switches off what Raspberry Pi OS starts and nothing here needs.
+
+    Only what is switched on is switched off, and only that is switched on
+    again where the run fails, so a unit somebody switched off before stays
+    off either way.
+    """
+    off = _left_out()
+    if off:
+        work.undoes(lambda: _brought_back(off))
+
+
+def _left_out():
+    """Switches off whichever of `LEFT_OUT` are on, and keeps cloud-init away.
+
+    @returns list of str, the units switched off, with cloud-init's file as one
+      more entry where this wrote it.
+    """
+    on = [unit for unit in LEFT_OUT if unit_state(unit) == "enabled"]
+    if on:
+        run(["systemctl", "disable", *on])
+    if CLOUD_INIT_OFF.parent.is_dir() and not CLOUD_INIT_OFF.exists():
+        CLOUD_INIT_OFF.touch()
+        on.append(str(CLOUD_INIT_OFF))
+    return on
+
+
+def _brought_back(off):
+    """Switches on again what `_left_out` switched off.
+
+    @param off - What it answered.
+    """
+    units = [unit for unit in off if unit != str(CLOUD_INIT_OFF)]
+    if units:
+        run(["systemctl", "enable", *units])
+    if str(CLOUD_INIT_OFF) in off:
+        CLOUD_INIT_OFF.unlink(missing_ok=True)
+
+
+def _full(work):
+    """Switches on again every unit of `LEFT_OUT` this system has, and lets
+    cloud-init start."""
+    _brought_back([unit for unit in LEFT_OUT if unit_state(unit) == "disabled"]
+                  + [str(CLOUD_INIT_OFF)])
+
+
+def refresh_services(owner):
+    """Switches off on a machine that is set up what this version leaves out.
+
+    @param owner - Whose console it is.
+    @returns bool, whether anything was switched off.
+
+    A machine without the console's block is one somebody has not set up or
+    has taken it off again, and its services stay as they are. The package
+    calls this from postinst on every install and upgrade, as it does
+    `refresh_console`, so a machine set up before this version starts as lean
+    as a new one.
+    """
+    try:
+        text = (owner.home / PROFILE).read_text(encoding="utf-8")
+    except OSError:
+        return False
+    if AUTOSTART_OPENS not in text:
+        return False
+    return bool(_left_out())
+
+
 def _autostart(work):
     """Hands the first console to the emulator, and leaves SSH alone.
 
@@ -1890,6 +1993,8 @@ STEPS = {
     "no-autologin": _no_autologin,
     "quiet": _quiet,
     "loud": _loud,
+    "lean": _lean,
+    "full": _full,
     "autostart": _autostart,
     "no-autostart": _no_autostart,
     "sound": _sound,

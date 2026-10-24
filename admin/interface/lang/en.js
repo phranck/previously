@@ -491,6 +491,8 @@ export const en = {
   "setup.step.no-autologin": "Asking who is there again",
   "setup.step.quiet": "Silencing the startup",
   "setup.step.loud": "The startup as it was",
+  "setup.step.lean": "Leaving out what NeXTSTEP does not need",
+  "setup.step.full": "The services as they were",
   "setup.step.autostart": "Starting on the first console",
   "setup.step.no-autostart": "Giving the console back",
   "setup.step.sound": "Sound to a speaker",
