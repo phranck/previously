@@ -172,6 +172,10 @@ CONSOLE = "previously-console.service"
 CONSOLE_SCRIPT = pathlib.Path("/usr/local/libexec/previously-console")
 CONSOLE_PAM = pathlib.Path("/etc/pam.d/previously-console")
 
+#: The unit the package ships that draws the shutdown picture when it stops.
+#: The console wants it, so it runs wherever the console does.
+SHUTDOWN_PICTURE = "previously-splash-shutdown.service"
+
 #: What lets the owner's user manager start before logins are permitted, in the
 #: drop-in directory of that user's `user@.service`. It carries the name of
 #: systemd's own drop-in in /usr/lib/systemd/system/user@.service.d, so it takes
@@ -1764,7 +1768,7 @@ def refresh_console(owner):
     """Brings a console that is there up to what this version writes.
 
     @param owner - Whose console it is.
-    @returns bool, whether anything was written.
+    @returns bool, whether anything was written or started.
 
     A machine without a console is given none, because writing one is setting
     the machine up, which is the install job's to do. The package calls this
@@ -1775,6 +1779,10 @@ def refresh_console(owner):
     A machine whose console is still the one in `~/.profile` is moved over as
     `_autostart` moves it. Where no emulator is running, the unit is started
     as well, because nothing else would start it before the next boot.
+
+    A console that runs and was started before it wanted SHUTDOWN_PICTURE has
+    that unit started beside it, because the console's own start is what pulls
+    it in, and the next shutdown would otherwise go without the picture.
     """
     if not _has_a_console(owner):
         return False
@@ -1782,7 +1790,10 @@ def refresh_console(owner):
     moved = _moved_over(owner) is not None
     if moved and not unit_active(CONSOLE):
         run(["systemctl", "start", CONSOLE])
-    return written or moved
+    started = unit_active(CONSOLE) and not unit_active(SHUTDOWN_PICTURE)
+    if started:
+        run(["systemctl", "start", SHUTDOWN_PICTURE])
+    return written or moved or started
 
 
 def refresh_configuration(owner, previous_config=None, state_directory=None):
@@ -2016,14 +2027,15 @@ def _console_unit(owner):
         "# reach the screen. What cage and Previous print goes to the journal.\n"
         "# Nothing resets or clears the terminal either, because the boot picture\n"
         "# stands on it until cage takes the screen, and clearing it takes the\n"
-        "# picture with it.\n"
+        "# picture with it. %(shutdown)s comes with it and\n"
+        "# draws the shutdown picture on the way down, after this has stopped.\n"
         "#\n"
         "# It starts again the moment it ends, however often, because only root\n"
         "# could start it again once systemd had given up on it.\n"
         "[Unit]\n"
         "Description=Previous on the first screen\n"
         "Documentation=https://github.com/phranck/previously\n"
-        "Wants=dbus.socket systemd-logind.service\n"
+        "Wants=dbus.socket systemd-logind.service %(shutdown)s\n"
         "After=dbus.socket systemd-logind.service %(getty)s\n"
         "Conflicts=%(getty)s\n"
         "ConditionPathExists=/dev/tty0\n"
@@ -2045,6 +2057,7 @@ def _console_unit(owner):
         "[Install]\n"
         "WantedBy=multi-user.target\n" % {
             "user": owner.name, "pam": CONSOLE_PAM.name, "getty": GETTY,
+            "shutdown": SHUTDOWN_PICTURE,
             "barrier": _login_barrier(owner), "script": CONSOLE_SCRIPT,
             "tty": TTY})
 

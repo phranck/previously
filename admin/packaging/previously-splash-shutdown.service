@@ -1,0 +1,28 @@
+# Draws Previously's shutdown picture, the boot picture with "Shutting down..."
+# under it, when the Pi shuts down or restarts.
+#
+# It does its work when it stops. The console's unit wants it, and it is
+# ordered before the console, so systemd stops it after the console on the way
+# down: cage has given the screen back by then and the text console has
+# redrawn it, and nothing draws after this. The picture stands until the Pi
+# goes dark, whichever way the shutdown was asked for.
+
+[Unit]
+Description=Previously's shutdown picture
+Documentation=https://github.com/phranck/previously
+Before=previously-console.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/true
+# A board without a screen has no framebuffer to draw on, and that is no
+# reason to hold the shutdown up, so a failure here is left alone.
+ExecStop=-/usr/bin/python3 -m previously.splash fb0 shutdown
+Environment=PYTHONPATH=/usr/lib/previously
+# Nothing of its own beside the modules, as the service says of itself.
+Environment=PYTHONDONTWRITEBYTECODE=1
+# A user of its own for the moment it runs, in the group the framebuffer
+# belongs to, which is all this writes.
+DynamicUser=yes
+SupplementaryGroups=video
