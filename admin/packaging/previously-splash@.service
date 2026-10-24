@@ -1,0 +1,26 @@
+# Draws Previously's boot picture onto a framebuffer the moment it appears,
+# which on a Raspberry Pi is when vc4 takes the screen over from the firmware.
+# The package's udev rule starts it for each framebuffer by name, and the
+# picture stands until cage sets the screen's mode.
+#
+# Only where the console that takes the screen over is switched on, because a
+# machine whose console was taken away again shows its login prompt instead.
+
+[Unit]
+Description=Previously's boot picture on %I
+Documentation=https://github.com/phranck/previously
+# Early, because the picture belongs to the boot. Nothing it needs waits for
+# anything but the root file system, which holds Python and the picture.
+DefaultDependencies=no
+ConditionPathExists=/etc/systemd/system/multi-user.target.wants/previously-console.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -m previously.splash %I
+Environment=PYTHONPATH=/usr/lib/previously
+# Nothing of its own beside the modules, as the service says of itself.
+Environment=PYTHONDONTWRITEBYTECODE=1
+# A user of its own for the moment it runs, in the group the framebuffer
+# belongs to, which is all this writes.
+DynamicUser=yes
+SupplementaryGroups=video
