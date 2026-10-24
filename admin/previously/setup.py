@@ -1432,6 +1432,14 @@ def _system(work):
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
 
+    # Most of a disk is zeros, and once they are holes they take no room on
+    # the card, nor in an image built from it. NeXTSTEP writing into a hole
+    # later is an ordinary write. A file system without holes keeps the disk
+    # whole, which runs all the same.
+    try:
+        run(["fallocate", "--dig-holes", str(unpacked)])
+    except Refused:
+        pass
     work.owner.owns(unpacked)
     unpacked.chmod(0o644)
     work.undoes(lambda: unpacked.unlink(missing_ok=True))

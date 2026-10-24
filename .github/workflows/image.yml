@@ -1,0 +1,93 @@
+# Builds Previously's image for Raspberry Pi Imager: Raspberry Pi OS Lite as
+# pi-gen's Stage 0 to 2 make it, with the package and the setup's install job
+# on top, from image/ in this repository.
+#
+# On an arm64 runner, because the image is arm64 and pi-gen then builds it
+# without emulation. pi-gen is pinned to a commit of its branch arm64, which
+# is where its 64-bit images come from, so only a change in this file changes
+# what it builds with. Raising it means reading the commit off pi-gen's own
+# repository.
+#
+# Every action is pinned to the commit of a release, for the reason
+# release.yml gives.
+
+name: Image
+
+on:
+  workflow_dispatch:
+  # A change to how the image is built is built before it is merged.
+  pull_request:
+    paths: ["image/**", ".github/workflows/image.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    env:
+      PI_GEN_COMMIT: d346cd53562b3c6b4f94c9155175f814258c456d
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The whole history and every tag, because the package is numbered
+          # from what `git describe` says.
+          fetch-depth: 0
+
+      - name: Build the package
+        run: python3 admin/packaging/build.py --into "$RUNNER_TEMP/package"
+
+      - name: Fetch pi-gen
+        run: |
+          git init -q "$RUNNER_TEMP/pi-gen"
+          git -C "$RUNNER_TEMP/pi-gen" fetch -q --depth 1 \
+            https://github.com/RPi-Distro/pi-gen.git "$PI_GEN_COMMIT"
+          git -C "$RUNNER_TEMP/pi-gen" checkout -q FETCH_HEAD
+
+      # What pi-gen's README lists. qemu-user-binfmt brings nothing the build
+      # uses on an arm64 machine, and pi-gen's dependency check asks for it.
+      - name: Install what pi-gen needs
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq coreutils quilt parted qemu-user-binfmt \
+            debootstrap zerofree zip dosfstools e2fsprogs libcap2-bin grep rsync \
+            xz-utils file git curl bc gpg pigz xxd arch-test bmap-tools kmod
+
+      - name: Lay the build out
+        run: |
+          pigen="$RUNNER_TEMP/pi-gen"
+          stage="$GITHUB_WORKSPACE/image/stage-previously"
+          mkdir -p "$stage/00-previously/files"
+          cp "$RUNNER_TEMP"/package/previously_*_all.deb \
+            "$stage/00-previously/files/previously_all.deb"
+          cp -r image/export-image/. "$pigen/export-image/"
+          # Stage 2 is Raspberry Pi OS Lite, and only the stage after it is
+          # an image.
+          touch "$pigen/stage2/SKIP_IMAGES"
+          # The root partition by what its files take rather than by how long
+          # they say they are, because NeXTSTEP's disk is two gigabytes long
+          # and holds a fraction of that. mke2fs -d keeps its holes. The check
+          # stops a pi-gen whose line reads otherwise from building the image
+          # two gigabytes larger without a word.
+          sed -i 's/du -x --apparent-size -s/du -x -s/' "$pigen/export-image/prerun.sh"
+          grep -q 'du -x -s "${EXPORT_ROOTFS_DIR}"' "$pigen/export-image/prerun.sh"
+          { cat image/config; printf 'STAGE_LIST="stage0 stage1 stage2 %s"\n' "$stage"; } \
+            > "$pigen/config"
+          df -h "$RUNNER_TEMP"
+
+      - name: Build the image
+        working-directory: ${{ runner.temp }}/pi-gen
+        run: |
+          sudo ./build.sh
+          ls -l deploy
+          df -h .
+
+      - name: Keep it on the run
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: previously-image
+          path: ${{ runner.temp }}/pi-gen/deploy/*.img.xz
+          if-no-files-found: error
+          # It is xz already.
+          compression-level: 0

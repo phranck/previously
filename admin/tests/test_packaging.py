@@ -923,6 +923,21 @@ def test_the_asset_a_release_carries_is_the_one_the_update_fetches(build):
     assert release.ASSET in script
 
 
+def test_the_image_names_the_copy_of_cmdline_the_setup_keeps():
+    """pi-gen fills the root partition into cmdline.txt alone, and the image's
+    own step fills it into the copy the setup keeps for the remove job. A copy
+    of another name would keep ROOTDEV and not boot once it is put back."""
+    from previously import setup
+
+    repository = PACKAGING.parent.parent
+    step = (repository / "image" / "export-image" / "04-set-partuuid-previously"
+            / "00-run.sh").read_text(encoding="utf-8")
+    copy = setup.CMDLINE.with_suffix(setup.CMDLINE.suffix + setup.BACKUP)
+
+    assert 'backup="${ROOTFS_DIR}%s"' % copy in step
+    assert '"${ROOTFS_DIR}%s"' % setup.CMDLINE in step
+
+
 def test_the_release_is_read_off_the_service(build):
     """One place holds it, and the package is numbered from there rather than
     from a second copy that would drift."""

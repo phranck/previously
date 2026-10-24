@@ -1507,6 +1507,43 @@ def test_no_system_named_means_the_emulator_on_its_own(tmp_path, commands, monke
     setup.STEPS["system"](work_in(tmp_path, system=None))
 
 
+@pytest.fixture
+def a_system_arrives(monkeypatch):
+    """A fetch that brings nothing, an unpack that leaves a disk of the
+    smallest size a disk has, and a card with room for it."""
+    def unpacked(archive, into, work):
+        disk = into / "NS33_2GB.dd"
+        disk.write_bytes(b"")
+        os.truncate(disk, systems.SMALLEST_DISK_BYTES)
+
+    monkeypatch.setattr(setup, "_fetched", lambda *a, **k: None)
+    monkeypatch.setattr(setup, "_unpacked", unpacked)
+    monkeypatch.setattr(systems, "room_beside", lambda where: None)
+
+
+def test_a_disk_is_kept_as_only_what_it_holds(tmp_path, commands, a_system_arrives):
+    """Most of a disk of two gigabytes is zeros, and once they are holes they
+    take no room on the card, nor in an image built from one."""
+    work = work_in(tmp_path)
+    work.at("system", 5)
+
+    setup.STEPS["system"](work)
+
+    disk = work.settings.disks / systems.disk_name(work.system)
+    assert disk.is_file()
+    assert ["fallocate", "--dig-holes", str(disk)] in commands
+
+
+def test_a_disk_that_cannot_lose_its_zeros_is_kept_whole(
+        tmp_path, commands, a_system_arrives):
+    commands.refuse = ("fallocate",)
+    work = work_in(tmp_path)
+
+    setup.STEPS["system"](work)
+
+    assert (work.settings.disks / systems.disk_name(work.system)).is_file()
+
+
 def test_a_card_with_no_room_is_said_so_before_anything_is_fetched(
         tmp_path, commands, monkeypatch):
     """A card that fills up during an unpack leaves a half written image and a
