@@ -5,9 +5,9 @@
 
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
-package copies Python, static files, eight unit files, two udev rules, one
-tmpfiles entry, one rpi-swap drop-in, one cursor theme and one boot picture
-into place. Nothing is compiled, nothing is patched and nothing is generated at
+package copies Python, static files, nine unit files, two udev rules, one
+tmpfiles entry, one rpi-swap drop-in, one cursor theme and two pictures into
+place. Nothing is compiled, nothing is patched and nothing is generated at
 install time, so the debhelper machinery would be a build system around a copy.
 
 The release is `previously.server.RELEASE` and is read from there rather than
@@ -123,13 +123,15 @@ CURSOR_NAMES = ("left_ptr", "default")
 XCURSOR_IMAGE = 0xFFFD0002
 CURSOR_SIZE = 24
 
-#: The boot picture, as design/mark.py fetches it from previous.li, and where
-#: the package keeps it as the TGA previously/splash.py draws from.
-#: `splash.PICTURE` is the same path. Beside this script rather than among the
-#: interface's pictures, because the admin does not show it and serves nothing
-#: it does not show.
-SPLASH_PICTURE = HERE / "splash.png"
+#: The pictures the Pi shows while it starts and while it shuts down, by where
+#: the package keeps each as the TGA previously/splash.py draws from, and the
+#: PNG design/mark.py fetches from previous.li for it. `splash.PICTURES` names
+#: the same paths. Beside this script rather than among the interface's
+#: pictures, because the admin does not show them and serves nothing it does
+#: not show.
 SPLASH = "usr/share/" + NAME + "/splash.tga"
+SHUTDOWN_SPLASH = "usr/share/" + NAME + "/splash-shutdown.tga"
+SPLASHES = {SPLASH: HERE / "splash.png", SHUTDOWN_SPLASH: HERE / "splash-shutdown.png"}
 
 #: The TGA image type for uncompressed true colour, and the bit of its
 #: descriptor that says the rows run from the top. `splash.picture` reads that
@@ -153,14 +155,16 @@ VERSION_FILE = "version.txt"
 #: are how the machine is changed without this service holding any privilege:
 #: it leaves a file in its runtime directory and a path unit running as root
 #: acts on it. Two of those do one exact command each, and the third installs.
-#: The last draws the boot picture, started by SPLASH_RULE.
+#: The last two draw the pictures: the boot picture, started by SPLASH_RULE,
+#: and the shutdown picture, which the console's unit wants.
 SERVICE = NAME + ".service"
 SPLASH_UNIT = NAME + "-splash@.service"
+SHUTDOWN_SPLASH_UNIT = NAME + "-splash-shutdown.service"
 UNIT_FILES = (SERVICE,
               NAME + "-poweroff.path", NAME + "-poweroff.service",
               NAME + "-reboot.path", NAME + "-reboot.service",
               NAME + "-setup.path", NAME + "-setup.service",
-              SPLASH_UNIT)
+              SPLASH_UNIT, SHUTDOWN_SPLASH_UNIT)
 
 #: Who the tool runs as, written by postinst as a drop-in beside the unit. The
 #: user is whoever the card was made with, so it is decided on the machine
@@ -510,8 +514,9 @@ def lay_out(into):
     for name in CURSOR_NAMES:
         (theme / name).write_bytes(transparent_cursor())
 
-    (into / SPLASH).parent.mkdir(parents=True, exist_ok=True)
-    (into / SPLASH).write_bytes(splash_tga())
+    for tga, picture in SPLASHES.items():
+        (into / tga).parent.mkdir(parents=True, exist_ok=True)
+        (into / tga).write_bytes(splash_tga(picture))
 
 
 def transparent_cursor():
@@ -529,15 +534,17 @@ def transparent_cursor():
     return header + table + image + struct.pack("<I", 0)
 
 
-def splash_tga():
-    """@returns bytes, the boot picture as previously/splash.py reads it.
+def splash_tga(picture):
+    """@returns bytes, one of the SPLASHES as previously/splash.py reads it.
+
+    @param picture - pathlib.Path of the PNG, in RGB at eight bits a sample.
 
     An 18 byte header and then every pixel as blue, green and red, without a
     colour map and without compression: the type at byte 2, the width and the
     height at bytes 12 to 15, the depth at byte 16 and the descriptor at byte
     17. The rows go in from the top, as the PNG holds them.
     """
-    width, height, lines = png.rgb(SPLASH_PICTURE.read_bytes())
+    width, height, lines = png.rgb(picture.read_bytes())
     header = struct.pack("<BBBHHBHHHHBB", 0, 0, TGA_TRUE_COLOUR, 0, 0, 0, 0, 0,
                          width, height, 24, TGA_FROM_THE_TOP)
     pixels = bytearray()

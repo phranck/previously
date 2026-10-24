@@ -362,15 +362,17 @@ def test_the_package_brings_the_x_server_previous_draws_through(build):
 # -- the boot picture ----------------------------------------------------
 
 
-def test_the_package_carries_the_boot_picture_pixel_for_pixel(build, tmp_path):
-    """The TGA is written from the PNG design/mark.py fetches, and the drawer
+@pytest.mark.parametrize("which", ["boot", "shutdown"])
+def test_the_package_carries_the_pictures_pixel_for_pixel(build, tmp_path, which):
+    """Each TGA is written from the PNG design/mark.py fetches, and the drawer
     reads it back. Every pixel has to arrive as the PNG holds it, turned from
     red, green and blue into the blue, green and red a TGA stores."""
     from previously import png, splash
 
+    tga = {"boot": build.SPLASH, "shutdown": build.SHUTDOWN_SPLASH}[which]
     build.lay_out(tmp_path / "tree")
-    width, height, pixels = splash.picture((tmp_path / "tree" / build.SPLASH).read_bytes())
-    wide, high, lines = png.rgb(build.SPLASH_PICTURE.read_bytes())
+    width, height, pixels = splash.picture((tmp_path / "tree" / tga).read_bytes())
+    wide, high, lines = png.rgb(build.SPLASHES[tga].read_bytes())
 
     assert (width, height) == (wide, high)
     turned = b"".join(bytes(line[at + 2 - channel] for at in range(0, len(line), 3)
@@ -378,10 +380,31 @@ def test_the_package_carries_the_boot_picture_pixel_for_pixel(build, tmp_path):
     assert pixels == turned
 
 
-def test_the_drawer_reads_the_picture_where_the_package_puts_it(build):
+def test_the_drawer_reads_the_pictures_where_the_package_puts_them(build):
     from previously import splash
 
-    assert "/" + build.SPLASH == str(splash.PICTURE)
+    assert "/" + build.SPLASH == str(splash.PICTURES["boot"])
+    assert "/" + build.SHUTDOWN_SPLASH == str(splash.PICTURES["shutdown"])
+    assert set(build.SPLASHES) == {build.SPLASH, build.SHUTDOWN_SPLASH}
+
+
+def test_the_shutdown_picture_is_drawn_after_the_console_has_stopped(build):
+    """systemd stops units in the reverse of the order it started them, so a
+    unit ordered before the console stops after it, once cage has given the
+    screen back. The console wants it, which is what starts it at all."""
+    from previously import setup
+
+    unit = (PACKAGING / build.SHUTDOWN_SPLASH_UNIT).read_text(encoding="utf-8").splitlines()
+    owner = types.SimpleNamespace(name="next", uid=1000, home=pathlib.Path("/home/next"))
+    console = setup._console_unit(owner)
+    wants = re.search(r"^Wants=(.*)$", console, re.M).group(1).split()
+
+    assert build.SHUTDOWN_SPLASH_UNIT == setup.SHUTDOWN_PICTURE
+    assert setup.SHUTDOWN_PICTURE in wants
+    assert "Before=%s" % setup.CONSOLE in unit
+    assert "RemainAfterExit=yes" in unit
+    assert "ExecStop=-/usr/bin/python3 -m previously.splash fb0 shutdown" in unit
+    assert build.SHUTDOWN_SPLASH_UNIT in build.UNIT_FILES
 
 
 def test_every_framebuffer_that_appears_gets_the_picture(build, tmp_path):

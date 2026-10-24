@@ -21,7 +21,7 @@ Ten tools do that work:
 | `makepng.py` | Draws the icon a PNG file wears on NeXT's own TIFF sheet, because NeXTSTEP has none for a format that came later. |
 | `boards.py` | Draws the four Raspberry Pi boards the Info window and Activity Monitor show. |
 | `edges.py` | Draws the sunken, the raised and the grooved edge in the grays `kit/base.css` declares. |
-| `mark.py` | Fetches the Previously mark, the icon of its tab and the boot picture from the website and writes the admin's copies into `../admin/web/parts/`. |
+| `mark.py` | Fetches the Previously mark, the icon of its tab and the pictures shown while the Pi starts and shuts down from the website, and writes the admin's copies into `../admin/web/parts/` and `../admin/packaging/`. |
 | `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their license, into `../admin/web/fonts/`. |
 | `build.py` | Puts the kit together, writes the two files the admin serves, and bakes the pictures and those faces into the mockup as data URIs so it stays one file. |
 
@@ -87,7 +87,7 @@ python3 build.py
 
 ## The mark
 
-The mark the About Previously panel shows is the website's, drawn by `site/logo.py` in phranck/previous.li: NeXT's cube with the circuit board in place of the N. `mark.py` fetches its `site/logo.png` from `main` and writes it 192 pixels tall into `../admin/web/parts/Previously.png`, four times the 48 an icon is drawn at. It also copies the website's `site/favicon.ico` into `../admin/web/parts/favicon.ico`, which the admin's page names as the icon of its tab, and its `site/splash.png` into `../admin/packaging/splash.png`, the boot picture the package shows from the moment Linux has a screen until the emulator takes it over. That one sits beside the package build rather than among the parts, because the admin does not show it. `site/splash.py` draws that one at the size and in the colours it is shown in, so it is copied byte for byte. Run it again whenever the website's mark or its boot picture changes:
+The mark the About Previously panel shows is the website's, drawn by `site/logo.py` in phranck/previous.li: NeXT's cube with the circuit board in place of the N. `mark.py` fetches its `site/logo.png` from `main` and writes it 192 pixels tall into `../admin/web/parts/Previously.png`, four times the 48 an icon is drawn at. It also copies the website's `site/favicon.ico` into `../admin/web/parts/favicon.ico`, which the admin's page names as the icon of its tab, and its `site/splash.png` and `site/splash-shutdown.png` into `../admin/packaging/`, the pictures the package shows while the Pi starts and while it shuts down. Those two sit beside the package build rather than among the parts, because the admin does not show them. `site/splash.py` draws them at the size and in the colours they are shown in, so they are copied byte for byte. Run it again whenever the website's mark or those pictures change:
 
 ```bash
 python3 mark.py

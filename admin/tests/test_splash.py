@@ -169,13 +169,30 @@ def test_a_framebuffer_that_is_not_there_ends_quietly(tmp_path, monkeypatch, cap
     """The boot goes on without its picture, and the journal says why."""
     picture = tmp_path / "splash.tga"
     picture.write_bytes(tga(1, 1, (0, 0, 0)))
-    monkeypatch.setattr(splash, "PICTURE", picture)
+    monkeypatch.setitem(splash.PICTURES, "boot", picture)
     monkeypatch.setattr(splash, "DEVICES", tmp_path)
 
     assert splash.main(["fb7"]) == 1
     said = capsys.readouterr().err
     assert "no boot picture on fb7" in said
     assert "fb7" in said and "No such file" in said
+
+
+def test_the_shutdown_picture_is_the_one_asked_for(tmp_path, framebuffer, monkeypatch):
+    """Drawn by the same code as the boot picture, out of its own file."""
+    framebuffer(1, 1, 32, XRGB8888)
+    for kind, colour in (("boot", (0, 0, 0xFF)), ("shutdown", (0xFF, 0, 0))):
+        path = tmp_path / ("%s.tga" % kind)
+        path.write_bytes(tga(1, 1, colour))
+        monkeypatch.setitem(splash.PICTURES, kind, path)
+    monkeypatch.setattr(splash, "DEVICES", tmp_path)
+
+    assert splash.main(["fb0", "shutdown"]) == 0
+    assert (tmp_path / "fb0").read_bytes() == bytes([0, 0, 0xFF, 0])
+
+
+def test_a_picture_nobody_has_is_refused(capsys):
+    assert splash.main(["fb0", "farewell"]) == 2
 
 
 def test_the_structs_are_as_long_as_the_kernels():

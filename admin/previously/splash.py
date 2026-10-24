@@ -1,10 +1,15 @@
-"""Draws the boot picture onto a framebuffer.
+"""Draws the boot picture or the shutdown picture onto a framebuffer.
 
     python3 -m previously.splash fb0
+    python3 -m previously.splash fb0 shutdown
 
-previously-splash@.service runs this when udev sees a framebuffer appear,
+previously-splash@.service runs the first when udev sees a framebuffer appear,
 which on a Raspberry Pi is the moment vc4 takes the screen over from the
 firmware. From there the picture stands until cage sets the screen's mode.
+
+previously-splash-shutdown.service runs the second when it stops, which on the
+way down is after the console, so cage has given the screen back and the text
+console has redrawn it. From there the picture stands until the Pi goes dark.
 
 The kernel's own fullscreen logo cannot do this. It draws only on a framebuffer
 that exists before `late_initcall_sync`, because `fb_find_logo` in
@@ -28,9 +33,13 @@ import pathlib
 import struct
 import sys
 
-#: Where the package keeps the picture. `packaging/build.py` writes it there,
-#: and `tests/test_packaging.py` holds the two to one path.
-PICTURE = pathlib.Path("/usr/share/previously/splash.tga")
+#: The pictures, by the name a caller asks for: the one shown while the Pi
+#: starts and the one shown while it shuts down. `packaging/build.py` writes
+#: them there, and `tests/test_packaging.py` holds the two to the same paths.
+PICTURES = {
+    "boot": pathlib.Path("/usr/share/previously/splash.tga"),
+    "shutdown": pathlib.Path("/usr/share/previously/splash-shutdown.tga"),
+}
 
 #: Where the framebuffers are, by the name udev hands over.
 DEVICES = pathlib.Path("/dev")
@@ -131,11 +140,12 @@ def draw(name, picture_path=None, devices=None):
     """Draws the picture onto one framebuffer.
 
     @param name - The framebuffer's name, such as `fb0`.
-    @param picture_path - pathlib.Path of the TGA, PICTURE where left out.
+    @param picture_path - pathlib.Path of the TGA, the boot picture where left
+      out.
     @param devices - Where the device files are, DEVICES where left out.
     @raises Unsupported, and OSError where the device cannot be opened.
     """
-    width, height, pixels = picture((picture_path or PICTURE).read_bytes())
+    width, height, pixels = picture((picture_path or PICTURES["boot"]).read_bytes())
     with open((devices or DEVICES) / name, "r+b", buffering=0) as device:
         var = bytearray(VAR_SCREENINFO.size)
         fix = bytearray(FIX_SCREENINFO.size)
@@ -163,15 +173,24 @@ def draw(name, picture_path=None, devices=None):
 
 
 def main(argv=None):
-    """@returns int, the exit status. @param argv - The framebuffer's name."""
+    """@returns int, the exit status.
+
+    @param argv - The framebuffer's name, and optionally which of PICTURES to
+      draw, the boot picture where left out.
+    """
     arguments = sys.argv[1:] if argv is None else argv
-    if len(arguments) != 1 or "/" in arguments[0]:
-        print("usage: python3 -m previously.splash fb0", file=sys.stderr)
+    if not 1 <= len(arguments) <= 2 or "/" in arguments[0]:
+        print("usage: python3 -m previously.splash fb0 [%s]" % "|".join(PICTURES),
+              file=sys.stderr)
+        return 2
+    kind = arguments[1] if len(arguments) == 2 else "boot"
+    if kind not in PICTURES:
+        print("no picture called %s" % kind, file=sys.stderr)
         return 2
     try:
-        draw(arguments[0])
+        draw(arguments[0], PICTURES[kind])
     except (Unsupported, OSError) as failure:
-        print("no boot picture on %s: %s" % (arguments[0], failure), file=sys.stderr)
+        print("no %s picture on %s: %s" % (kind, arguments[0], failure), file=sys.stderr)
         return 1
     return 0
 

@@ -541,11 +541,13 @@ def console(monkeypatch, commands):
       in place. All three start out false, which is a machine whose console has
       never been switched on.
     """
-    state = types.SimpleNamespace(enabled=False, active=False, guest=False)
+    state = types.SimpleNamespace(enabled=False, active=False, guest=False,
+                                  shutdown_picture=True)
     monkeypatch.setattr(setup, "unit_state", lambda unit: (
         ("enabled" if state.enabled else "disabled") if unit == setup.CONSOLE else ""))
-    monkeypatch.setattr(setup, "unit_active",
-                        lambda unit: unit == setup.CONSOLE and state.active)
+    monkeypatch.setattr(setup, "unit_active", lambda unit: (
+        (unit == setup.CONSOLE and state.active)
+        or (unit == setup.SHUTDOWN_PICTURE and state.shutdown_picture)))
     monkeypatch.setattr(setup, "_the_guest_is_running", lambda: state.guest)
     return state
 
@@ -1032,6 +1034,20 @@ def test_the_package_leaves_a_current_console_alone(tmp_path, commands, console)
 
     assert not setup.refresh_console(work.owner)
     assert commands == []
+
+
+def test_the_package_starts_the_shutdown_picture_beside_a_running_console(
+        tmp_path, commands, console):
+    """The console pulls it in when it starts, and one that started before it
+    wanted it would go down without the picture the next time."""
+    work = work_in(tmp_path)
+    setup.STEPS["autostart"](work)
+    console.enabled = console.active = True
+    console.shutdown_picture = False
+    del commands[:]
+
+    assert setup.refresh_console(work.owner)
+    assert commands == [["systemctl", "start", setup.SHUTDOWN_PICTURE]]
 
 
 def older_configuration(home, printer):
