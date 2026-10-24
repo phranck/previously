@@ -1,0 +1,9 @@
+# What `make check` needs beyond Python itself. The README's virtual
+# environment and the release workflow both install from this file, so the
+# checks there are the checks a commit was made with.
+flake8
+pytest
+pytest-timeout
+# For measuring/, which reads the pictures of a measured boot. The service
+# never imports it.
+pillow
