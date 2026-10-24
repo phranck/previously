@@ -513,8 +513,10 @@ def test_the_folder_a_picture_goes_in_is_made(tmp_path, commands):
 
 
 def test_the_console_is_moved_off_the_screen_rather_than_added_to():
-    """Two console= arguments would leave the kernel writing to tty1 as well,
-    which is the one on screen."""
+    """Of two `console=tty` arguments the kernel uses the first, and
+    /dev/console goes with it (Documentation/admin-guide/serial-console.rst),
+    which would leave what is written to /dev/console on tty1, the one on
+    screen."""
     assert setup._quietened("console=tty1 root=/dev/mmcblk0p2 rw\n").startswith(
         "console=tty3 root=/dev/mmcblk0p2 rw")
 
@@ -530,6 +532,87 @@ def test_everything_that_draws_on_the_screen_is_silenced():
         assert argument in quietened
     assert quietened.endswith("\n")
     assert len(quietened.splitlines()) == 1, "the kernel reads one line"
+
+
+@pytest.fixture
+def boot_files(tmp_path, monkeypatch):
+    """The two boot files, as a fresh card has them, and the file that holds
+    the kernel's console level, in the test's own directory."""
+    boot = tmp_path / "boot" / "firmware"
+    boot.mkdir(parents=True)
+    monkeypatch.setattr(setup, "CMDLINE", boot / "cmdline.txt")
+    monkeypatch.setattr(setup, "CONFIG_TXT", boot / "config.txt")
+    monkeypatch.setattr(setup, "PRINTK", tmp_path / "etc" / "sysctl.d" / setup.PRINTK.name)
+    setup.CMDLINE.write_text("console=tty1 root=/dev/mmcblk0p2 rw\n", encoding="utf-8")
+    setup.CONFIG_TXT.write_text("[all]\n", encoding="utf-8")
+
+
+def held_level():
+    """@returns list of str, the settings the file holding the kernel's
+    console level makes, without its comments."""
+    return [line for line in setup.PRINTK.read_text(encoding="utf-8").splitlines()
+            if line and not line.startswith("#")]
+
+
+def test_the_kernel_stays_as_quiet_as_its_command_line_says(tmp_path, boot_files):
+    """Raspberry Pi OS sets `kernel.printk = 3 4 1 3` in 98-rpi.conf once
+    systemd runs, and the kernel's `Undervoltage detected!` stood over the boot
+    picture on next5 on 24.10.2026. This file sorts after that one, and the
+    kernel takes 0 there (`sysctl -w` on next5)."""
+    work = work_in(tmp_path)
+    work.at("quiet", 7)
+
+    setup.STEPS["quiet"](work)
+
+    assert "loglevel=%d" % setup.QUIET_LOGLEVEL in setup.CMDLINE.read_text().split()
+    assert held_level() == ["kernel.printk = %d 4 1 3" % setup.QUIET_LOGLEVEL]
+    assert setup.PRINTK.parent.name == "sysctl.d"
+    assert setup.PRINTK.name > "98-rpi.conf"
+
+
+def test_quieting_the_boot_is_undone_with_the_level(tmp_path, boot_files):
+    """A later step that fails walks this one back, and the board then boots
+    as it did before."""
+    work = work_in(tmp_path)
+    work.at("quiet", 7)
+    was = setup.CMDLINE.read_text()
+
+    setup.STEPS["quiet"](work)
+    work.reverse()
+
+    assert setup.CMDLINE.read_text() == was
+    assert not setup.PRINTK.exists()
+
+
+def test_a_loud_boot_lets_the_kernel_speak_again(tmp_path, boot_files):
+    setup.STEPS["quiet"](work_in(tmp_path))
+
+    setup.STEPS["loud"](work_in(tmp_path, job="remove"))
+
+    assert "loglevel=%d" % setup.QUIET_LOGLEVEL not in setup.CMDLINE.read_text().split()
+    assert not setup.PRINTK.exists()
+
+
+def test_the_package_keeps_a_board_quiet_that_was_made_quiet_before(boot_files):
+    """A board set up before this version has `loglevel=0` on its command line
+    and nothing holding the level after it, so the package brings it up to
+    date on every install and upgrade."""
+    setup.CMDLINE.write_text(setup._quietened(setup.CMDLINE.read_text()), encoding="utf-8")
+
+    assert setup.refresh_quiet() is True
+    assert held_level() == ["kernel.printk = %d 4 1 3" % setup.QUIET_LOGLEVEL]
+    assert setup.refresh_quiet() is False, "wrote a current file a second time"
+
+
+@pytest.mark.parametrize("card", ["loud", "without a command line"])
+def test_the_package_leaves_a_loud_board_loud(boot_files, card):
+    """Making the boot quiet is setting the board up, which is the install
+    job's, and a board somebody made loud again stays that way."""
+    if card == "without a command line":
+        setup.CMDLINE.unlink()
+
+    assert setup.refresh_quiet() is False
+    assert not setup.PRINTK.exists()
 
 
 @pytest.fixture

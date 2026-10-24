@@ -203,11 +203,31 @@ CMDLINE = pathlib.Path("/boot/firmware/cmdline.txt")
 CONFIG_TXT = pathlib.Path("/boot/firmware/config.txt")
 BACKUP = ".previously.backup"
 
+#: The level the kernel's console is held at, where no message the kernel logs
+#: reaches the screen.
+QUIET_LOGLEVEL = 0
+
 #: What is added to the kernel's command line to silence the boot, and the line
 #: that stops the firmware drawing its own picture first.
-QUIET_ARGUMENTS = ("quiet", "loglevel=0", "logo.nologo",
+QUIET_ARGUMENTS = ("quiet", "loglevel=%d" % QUIET_LOGLEVEL, "logo.nologo",
                    "vt.global_cursor_default=0", "systemd.show_status=false")
 NO_SPLASH = "disable_splash=1"
+
+#: What holds that level once systemd runs. Raspberry Pi OS sets
+#: `kernel.printk = 3 4 1 3` in /etc/sysctl.d/98-rpi.conf, and from then on a
+#: message the kernel logs at crit or above stood on the screen: the kernel's
+#: `Undervoltage detected!` stood over the boot picture on next5 on
+#: 24.10.2026. Of two files setting the same key, the one whose name sorts
+#: last wins (sysctl.d(5)), and this one sorts after that one. The other three
+#: fields are Raspberry Pi OS's.
+PRINTK = pathlib.Path("/etc/sysctl.d/99-previously.conf")
+PRINTK_TEXT = (
+    "# Written by Previously's setup, which takes it away again when the boot is\n"
+    "# made loud. Holds the kernel's console at the level that loglevel=%d sets on\n"
+    "# the kernel's command line, which 98-rpi.conf would raise, so nothing the\n"
+    "# kernel logs is printed over the boot picture. dmesg and journalctl -k\n"
+    "# still have all of it.\n"
+    "kernel.printk = %d 4 1 3\n" % (QUIET_LOGLEVEL, QUIET_LOGLEVEL))
 
 #: Units Raspberry Pi OS starts that neither Previous nor the admin needs,
 #: switched off by the setup and on again by the remove job.
@@ -1630,12 +1650,47 @@ def _quiet(work):
     """Silences the four things that draw on the screen before NeXTSTEP does.
 
     The firmware splash, the kernel logo and its messages, systemd's status
-    list, and the blinking cursor of the text console.
+    list, and the blinking cursor of the text console. The kernel's messages
+    are held quiet after systemd starts as well, where Raspberry Pi OS would
+    let them onto the screen again.
     """
     _kept_quiet(CONFIG_TXT, NO_SPLASH, work)
     # The kernel's own logo, because a stock command line already carries
     # `quiet` and would read as done before anything had been changed.
     _kept_quiet(CMDLINE, "logo.nologo", work)
+    undo = _level_held()
+    if undo:
+        work.undoes(undo)
+
+
+def _level_held():
+    """Holds the kernel's console at QUIET_LOGLEVEL once systemd runs, where the
+    kernel's command line sets that level.
+
+    @returns what `_made_to_hold` answers, and None as well where the command
+      line sets no such level, which includes a board without one.
+    """
+    try:
+        line = CMDLINE.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    if "loglevel=%d" % QUIET_LOGLEVEL not in line.split():
+        return None
+    return _made_to_hold(PRINTK, PRINTK_TEXT.encode("utf-8"))
+
+
+def refresh_quiet():
+    """Brings a quiet boot up to what this version keeps quiet.
+
+    @returns bool, whether anything was written.
+
+    A board whose boot was made quiet before this version has `loglevel=0` on
+    its command line and nothing that holds the level once systemd runs. The
+    package calls this from postinst on every install and upgrade, as it does
+    `refresh_console`. A board whose boot is loud is left loud, because making
+    it quiet is setting the board up, which is the install job's to do.
+    """
+    return _level_held() is not None
 
 
 def _kept_quiet(path, already, work):
@@ -1672,8 +1727,14 @@ def _quietened(text):
     @param text - What the file holds.
     @returns str
 
-    The console is moved rather than added, because two `console=` arguments
-    would leave the kernel writing to tty1 as well, which is the one on screen.
+    `console=` decides which terminal /dev/console is, where systemd and the
+    initramfs write what they say. The console is moved rather than added,
+    because of two `console=tty` arguments the kernel uses the first, and
+    /dev/console goes with it (Documentation/admin-guide/serial-console.rst),
+    which would leave it on tty1, the one on screen. The kernel's own messages
+    go to the terminal in front whatever `console=` says, in
+    `vt_console_print` in drivers/tty/vt/vt.c, so it is their level that keeps
+    them off the screen: `loglevel=`, and PRINTK once systemd runs.
     """
     line = text.splitlines()[0] if text.strip() else ""
     if "console=tty1" in line:
@@ -1684,11 +1745,13 @@ def _quietened(text):
 
 
 def _loud(work):
-    """Puts both boot files back, where a copy of them is still here."""
+    """Puts both boot files back, where a copy of them is still here, and lets
+    the kernel's messages onto the screen again."""
     for path in (CMDLINE, CONFIG_TXT):
         backup = path.with_suffix(path.suffix + BACKUP)
         if backup.exists():
             shutil.move(str(backup), str(path))
+    PRINTK.unlink(missing_ok=True)
 
 
 def _lean(work):

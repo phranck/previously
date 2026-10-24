@@ -496,6 +496,14 @@ from previously import setup
 setup.refresh_archive()
 ' || true
 
+    # The kernel's console held at the level a quiet boot's command line sets,
+    # where the boot is quiet, for the same reason. Not fatal: without it a
+    # message the kernel logs can stand over the boot picture.
+    PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/%(lib)s python3 -c '
+from previously import setup
+setup.refresh_quiet()
+' || true
+
     # The initramfs of the kernel this board runs, built again so it brings vc4
     # up and carries the boot picture as this version lays it out. Named by its
     # kernel, because initramfs-tools' own trigger builds the newest kernel's
