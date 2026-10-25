@@ -317,6 +317,12 @@ CRASH_PAUSE_SECONDS = 2
 #: guest draws itself. `packaging/build.py` writes the theme to the same path.
 CURSORS = "/usr/share/previously/cursors"
 
+#: The library that shows Previous's picture sharp on a monitor larger than
+#: the 1120 by 832 of the real hardware, built from `display/pixel-exact.c`.
+#: The console starts Previous alone with it in front of SDL, and
+#: `packaging/build.py` installs it at this path.
+SHARP_DISPLAY = "/usr/lib/previously/pixel-exact.so"
+
 #: What a speaker is set to the first time it is seen. WirePlumber ships 0.064,
 #: which is inaudible once NeXTSTEP's own sounds are played through it. This is
 #: 85 per cent linear, cubed, because that is the scale the setting takes.
@@ -2350,10 +2356,15 @@ def _console_script(owner):
         "#\n"
         "# cage takes its own pointer from a theme that shows nothing. It sets that\n"
         "# pointer whenever a mouse is plugged in, and NeXTSTEP draws its own.\n"
+        "#\n"
+        "# Previous alone starts with %s in front of SDL. On a monitor\n"
+        "# larger than the 1120 by 832 of the real hardware it enlarges the picture to\n"
+        "# the next whole multiple pixel for pixel before SDL scales it to fit, so\n"
+        "# the picture fills the screen with sharp edges rather than blurred.\n"
         "while [ -f %s ]; do sleep 2; done\n"
         "mkdir -p %s\n"
         "cd %s\n"
-        "SDL_VIDEO_DRIVER=x11,wayland XCURSOR_PATH=%s cage -- /usr/bin/previous\n"
+        "SDL_VIDEO_DRIVER=x11,wayland XCURSOR_PATH=%s cage -- env LD_PRELOAD=%s /usr/bin/previous\n"
         "status=$?\n"
         'if [ "$status" -ne 0 ]; then\n'
         "  if [ -d %s ]; then\n"
@@ -2362,8 +2373,8 @@ def _console_script(owner):
         "  sleep %d\n"
         "fi\n"
         'exit "$status"\n'
-        % (CONSOLE, HOLD, HOLD, work, work, CURSORS, RUNTIME, CRASHES,
-           CRASH_PAUSE_SECONDS))
+        % (CONSOLE, HOLD, SHARP_DISPLAY, HOLD, work, work, CURSORS, SHARP_DISPLAY,
+           RUNTIME, CRASHES, CRASH_PAUSE_SECONDS))
 
 
 def _no_autostart(work):

@@ -7,14 +7,17 @@
 # `gh release edit vX.Y.Z --draft=false --latest`. A run that fails therefore
 # leaves a tag and no release, and nobody installs from a tag.
 #
-# The package is Architecture: all, so nothing here has to run on a Pi: it is
-# Python, static files and seven unit files copied into place. Ubuntu's runner
-# has dpkg-deb, which is all the build needs.
+# The package is Architecture: arm64 for the one library in it that is built
+# for the Pi, the one that shows Previous sharp. image.yml builds that library
+# on its arm64 runner and hands it over, so the rest is Python, static files
+# and unit files copied into place, and Ubuntu's runner has dpkg-deb, which is
+# all that needs.
 #
-# The name it is attached under carries no version, so
-# releases/latest/download/previously_all.deb is always the newest one. That is
-# where install.sh fetches from when it runs with no checkout beside it, which
-# is how the line on previous.li installs this.
+# The name it is attached under carries no version and keeps the `all` of the
+# first packages, so releases/latest/download/previously_all.deb is always the
+# newest one. That is where install.sh fetches from when it runs with no
+# checkout beside it, which is how the line on previous.li installs this, and
+# where every installed version fetches its update.
 #
 # Nothing here puts anything from an event into a command. The only expressions
 # are github.ref in two conditions, which decide whether a step runs and are
@@ -70,11 +73,16 @@ jobs:
           # commit and no tags at all.
           fetch-depth: 0
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sharp-display
+          path: admin/display
+
       - name: Build the package
         working-directory: admin
         run: |
           python3 packaging/build.py
-          cp packaging/build/previously_*_all.deb packaging/build/previously_all.deb
+          cp packaging/build/previously_*_arm64.deb packaging/build/previously_all.deb
           dpkg-deb --info packaging/build/previously_all.deb
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

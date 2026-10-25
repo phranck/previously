@@ -6,10 +6,11 @@
 It lays the files out the way they will sit on the machine, writes the control
 file, and calls dpkg-deb. That is the whole of it, and it is deliberate: this
 package copies Python, static files, thirteen unit files, two udev rules, one
-tmpfiles entry, one rpi-swap drop-in, one cursor theme, two pictures and two
-scripts for the initramfs into place. Nothing is compiled, nothing is patched
-and nothing is generated at install time, so the debhelper machinery would be
-a build system around a copy.
+tmpfiles entry, one rpi-swap drop-in, one cursor theme, two pictures, two
+scripts for the initramfs and one library into place. The library is the one
+compiled thing, and `display/build.sh` builds it beforehand. Nothing is
+patched and nothing is generated at install time, so the debhelper machinery
+would be a build system around a copy.
 
 The release is `previously.server.RELEASE` and is read from there rather than
 written down again here. A package built between two releases carries that
@@ -42,10 +43,25 @@ from previously import png, setup, splash  # noqa: E402
 #: /usr/lib and its state under /var/lib are already called.
 NAME = "previously"
 
-#: Nothing here is compiled: Python on the standard library, static files, and
-#: xterm in web/vendor. A package that names an architecture it does not need
-#: is one that cannot be installed on anything else for no reason.
-ARCHITECTURE = "all"
+#: The Pi's, because the package carries a library compiled for it, and every
+#: machine the setup installs onto is one (`setup.ARCHITECTURE`). The release
+#: still names the package `release.ASSET`, which every installed version
+#: fetches its update by.
+ARCHITECTURE = setup.ARCHITECTURE
+
+#: The library that shows Previous's picture sharp, where `display/build.sh`
+#: leaves it beside its source, and where the package installs it, which is
+#: where the console loads it from.
+SHARP_DISPLAY_BUILT = ADMIN / "display" / "pixel-exact.so"
+SHARP_DISPLAY = setup.SHARP_DISPLAY.lstrip("/")
+
+#: How an ELF file says what it was built for: its magic, its class at byte 4
+#: and its byte order at byte 5, and its machine at bytes 18 and 19, which
+#: elf.h numbers EM_AARCH64 for the Pi's processor.
+ELF_MAGIC = b"\x7fELF"
+ELF_64_BIT = 2
+ELF_LITTLE_ENDIAN = 1
+ELF_MACHINE_AARCH64 = 183
 
 #: What the service shells out to, and where each is used. A dependency that
 #: is missing shows up as a feature that quietly does nothing, so they are
@@ -681,6 +697,31 @@ def lay_out(into):
     for tga, picture in SPLASHES.items():
         (into / tga).parent.mkdir(parents=True, exist_ok=True)
         (into / tga).write_bytes(splash_tga(picture))
+
+    (into / SHARP_DISPLAY).write_bytes(sharp_display_library())
+
+
+def sharp_display_library():
+    """@returns bytes, the library that shows Previous sharp, as built for the Pi.
+
+    Refuses one that is missing or built for another processor. The loader
+    passes over a library it cannot load with no more than a line in the
+    journal, so the picture would come out soft again without anybody seeing
+    why, and `display/build.sh` on a PC builds exactly such a library.
+    """
+    try:
+        library = SHARP_DISPLAY_BUILT.read_bytes()
+    except OSError:
+        raise SystemExit("%s is not there: build it with display/build.sh first"
+                         % SHARP_DISPLAY_BUILT) from None
+    built_for_the_pi = (
+        len(library) >= 20 and library[:4] == ELF_MAGIC
+        and library[4] == ELF_64_BIT and library[5] == ELF_LITTLE_ENDIAN
+        and struct.unpack_from("<H", library, 18)[0] == ELF_MACHINE_AARCH64)
+    if not built_for_the_pi:
+        raise SystemExit("%s is not built for the Pi's arm64: build it with "
+                         "display/build.sh on an arm64 machine" % SHARP_DISPLAY_BUILT)
+    return library
 
 
 def transparent_cursor():

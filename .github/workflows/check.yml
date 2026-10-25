@@ -61,3 +61,16 @@ jobs:
           # nothing at all. A minute is far past any test here: none takes
           # more than a few seconds.
           make check PYTEST_FLAGS="-v --timeout=60 --durations=5"
+
+  # The library that shows Previous sharp, built in the Debian trixie the Pi
+  # runs. On this runner's processor rather than the Pi's, which shows that it
+  # compiles against that SDL without warnings. image.yml builds the one the
+  # package takes, on an arm64 runner.
+  display:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build the library
+        run: admin/display/build.sh
