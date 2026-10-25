@@ -22,6 +22,8 @@ from test_strings import catalogue
 
 SCRIPT_PATH = pathlib.Path(__file__).resolve().parent.parent.parent / "install.sh"
 SCRIPT = SCRIPT_PATH.read_text(encoding="utf-8")
+LIBRARY_BUILD = (SCRIPT_PATH.parent / "admin" / "display" / "build.sh").read_text(
+    encoding="utf-8")
 
 
 def constant(name):
@@ -144,6 +146,8 @@ STAND_INS = {
     "curl": 'while [ $# -gt 0 ]; do\n'
             '  if [ "$1" = -o ]; then shift; echo package > "$1"; fi\n'
             '  shift\ndone\n',
+    # Records what it was asked to build, and fails on a Pi with no compiler.
+    "make": 'echo "make $*" >> "$STATE/built"\n[ ! -f "$STATE/no-compiler" ]\n',
     # One answer per call, out of $STATE/states, and inactive once they run out.
     "systemctl": 'if [ -s "$STATE/states" ]; then\n'
                  '  head -n 1 "$STATE/states"\n'
@@ -152,13 +156,15 @@ STAND_INS = {
 }
 
 
-def with_the_script(tmp_path, snippet, here=None, newest="1.9.0", states=()):
+def with_the_script(tmp_path, snippet, here=None, newest="1.9.0", states=(),
+                    status=0):
     """Runs shell with install.sh's functions defined and the machine stood in for.
 
     @param snippet - What to run once the functions are there.
     @param here - The version of the admin tool installed, or None for none.
     @param newest - The version the fetched package carries.
     @param states - What `systemctl is-active` answers, one call after another.
+    @param status - The status the run has to end with.
     @returns (subprocess.CompletedProcess, list of str): what the run said, with
       a line `undo: <what>` for each entry on the undo record after it, and
       every call apt-get received.
@@ -190,7 +196,7 @@ def with_the_script(tmp_path, snippet, here=None, newest="1.9.0", states=()):
         capture_output=True, text=True, timeout=30, check=False,
         env=dict(os.environ, PATH="%s:%s" % (tools, os.environ["PATH"]),
                  TMPDIR=str(tmp_path), STATE=str(state), NO_COLOR="1"))
-    assert ran.returncode == 0, ran.stdout + ran.stderr
+    assert ran.returncode == status, ran.stdout + ran.stderr
     called = state / "apt-get"
     return ran, (called.read_text(encoding="utf-8").splitlines()
                  if called.exists() else [])
@@ -215,6 +221,57 @@ def test_a_second_run_leaves_a_current_admin_tool_alone(tmp_path):
 
     assert "  ✓ The admin tool 1.9.0  already in place" in ran.stdout.splitlines()
     assert apt == []
+
+
+def checkout(tmp_path):
+    """Lays a checkout out beside the script, as on a Pi that runs it from one.
+
+    @param tmp_path - Where the script is, and so where it looks for the checkout.
+    @returns pathlib.Path, the directory the library is built in.
+    """
+    packaging = tmp_path / "admin" / "packaging"
+    packaging.mkdir(parents=True)
+    (packaging / "build.py").write_text(
+        'import os\n'
+        'with open(os.path.join(os.environ["STATE"], "built"), "a") as built:\n'
+        '    built.write("package\\n")\n'
+        'print("Built", "previously.deb")\n', encoding="utf-8")
+    return tmp_path.resolve() / "admin" / "display"
+
+
+def test_a_checkout_builds_the_library_before_the_package(tmp_path):
+    """The package takes the library that shows Previous sharp from beside its
+    source and refuses to be built without it, and the Pi is the machine it is
+    compiled for."""
+    display = checkout(tmp_path)
+
+    ran, _ = with_the_script(tmp_path, 'fetch_admin_package; echo "$ADMIN_PACKAGE"')
+
+    assert ran.stdout.splitlines() == ["previously.deb"]
+    assert (tmp_path / "state" / "built").read_text(encoding="utf-8").splitlines() \
+        == ["make -C %s pixel-exact.so" % display, "package"]
+
+
+def test_a_checkout_on_a_pi_without_a_compiler_names_what_it_needs(tmp_path):
+    display = checkout(tmp_path)
+
+    ran, _ = with_the_script(
+        tmp_path, 'touch "$STATE/no-compiler"; fetch_admin_package', status=1)
+
+    assert ran.stdout.splitlines() == [
+        "  ✗ Could not build the library that shows Previous sharp. "
+        "Building it takes these packages: %s." % constant("LIBRARY_PACKAGES")]
+    assert (tmp_path / "state" / "built").read_text(encoding="utf-8").splitlines() \
+        == ["make -C %s pixel-exact.so" % display]
+
+
+def test_the_packages_named_for_the_library_are_the_ones_it_is_built_with():
+    """display/build.sh installs them in the container that builds the library
+    for a release, and a Pi building it from a checkout needs the same."""
+    installed = re.search(r"--no-install-recommends \\\n\s+([^>]+?) >", LIBRARY_BUILD)
+    assert installed, "display/build.sh installs no packages"
+
+    assert constant("LIBRARY_PACKAGES").split() == installed.group(1).split()
 
 
 def test_a_run_already_under_way_is_waited_for(tmp_path):

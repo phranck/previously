@@ -70,6 +70,11 @@ apt_get() {
 readonly PACKAGE_FILE="previously_all.deb"
 readonly PACKAGE_URL="https://github.com/phranck/previously/releases/latest/download/${PACKAGE_FILE}"
 
+# What the Pi needs to compile the library that shows Previous sharp, which a
+# package built from a checkout carries. Named where that build fails rather
+# than installed, because nothing else here needs a compiler.
+readonly LIBRARY_PACKAGES="gcc make pkg-config libc6-dev libsdl3-dev"
+
 # The system a fresh machine gets, by the identifier the helper looks it up
 # under in admin/previously/systems.py.
 readonly SYSTEM="nextstep-3.3"
@@ -313,9 +318,14 @@ admin_is_installed() {
 }
 
 fetch_admin_package() {
-  local packaging="${SCRIPT_DIR}/admin/packaging"
-  if [[ -f "${packaging}/build.py" ]]; then
-    ADMIN_PACKAGE="$(python3 "${packaging}/build.py" 2>>"$LOG" | awk '{print $2}')" \
+  local admin="${SCRIPT_DIR}/admin"
+  if [[ -f "${admin}/packaging/build.py" ]]; then
+    # The package takes a library compiled for the Pi, and this runs on one.
+    # make leaves a library that is newer than its source as it is.
+    quietly "Building the library that shows Previous sharp" \
+      make -C "${admin}/display" pixel-exact.so \
+      || abort "Could not build the library that shows Previous sharp. Building it takes these packages: ${LIBRARY_PACKAGES}."
+    ADMIN_PACKAGE="$(python3 "${admin}/packaging/build.py" 2>>"$LOG" | awk '{print $2}')" \
       || abort "Could not build the admin package."
   else
     ADMIN_PACKAGE="$(mktemp -d)/${PACKAGE_FILE}"
