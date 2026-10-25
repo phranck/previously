@@ -142,7 +142,7 @@ APPLICATIONS = (
     Application("Installer.app", INSTALLER_ICON, "installer", "app.installer", "1.1.0"),
     Application("Preferences.app", PREFERENCES_ICON, "preferences", "app.preferences", "1.0.1"),
     Application("Preview.app", PREVIEW_ICON, "preview", "app.preview", "1.0.1"),
-    Application("Terminal.app", TERMINAL_ICON, "terminal", "app.terminal", "1.0.0"),
+    Application("Terminal.app", TERMINAL_ICON, "terminal", "app.terminal", "1.0.1"),
 )
 
 
