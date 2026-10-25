@@ -2,68 +2,178 @@ Index: src/cpu/memory.c
 ===================================================================
 --- src/cpu/memory.c	(revision 1859)
 +++ src/cpu/memory.c	(working copy)
-@@ -518,6 +518,37 @@
+@@ -29,6 +29,7 @@
+ #include "m68000.h"
+ #include "configuration.h"
+ #include "NextBus.hpp"
++#include "screen.h"
+ 
+ #include "newcpu.h"
+ 
+@@ -518,9 +519,102 @@
  
  /* **** VRAM for monochrome systems **** */
  
-+/* Playground: with PREVIOUS_TMC_TRACE set, writes to the frame buffer by ROM
-+ * code after the kernel has taken the screen are counted, and the first few
-+ * are printed with their program counter, to learn what still draws with the
-+ * firmware's row length once the kernel draws with the configured one. */
-+#define VRAM_TRACE_FIRST_WRITES 8
-+#define VRAM_TRACE_EVERY_WRITES 20000
-+#define VRAM_TRACE_ROM_WINDOWS_END 0x02000000
++/* Playground: the firmware draws for the hardware's own screen, 1120 by 832
++ * with rows of 280 bytes, whatever size the guest is told through the TMC
++ * display counts, because the ROM fills its console record with constants and
++ * places its panels at fixed coordinates. The kernel hands the screen back to
++ * that drawing during boot, between its own panels. When the configured screen
++ * differs, every access that firmware code makes to the firmware's visible
++ * picture is moved into the middle of the configured screen, so the ROM's
++ * panels keep their shape and sit centered. The parts of that picture the
++ * configured screen does not show live in a shadow, so firmware code reads
++ * back what it wrote there. With those writes dropped, the ROM stops right
++ * after power-on. Offsets past the picture, where the firmware keeps its
++ * backing store and its message buffer at 0x3fe00, stay where they are.
++ *
++ * Firmware code is code in supervisor mode below the end of the ROM windows:
++ * the kernel runs from 0x04000000 up, and programs at lower addresses run in
++ * user mode. Only a turbo machine in gray takes another screen size (see
++ * Screen_GeometryFromEnvironment), and its rows hold exactly the width. */
++#define NEXT_ROM_WINDOWS_END     0x02000000
++#define FIRMWARE_ROW_BYTES       (NeXT_FIRMWARE_SCRN_W / 4)
++#define FIRMWARE_PICTURE_BYTES   (FIRMWARE_ROW_BYTES * NeXT_FIRMWARE_SCRN_H)
 +
-+static void vram_trace_rom_write(uaecptr addr, uae_u32 val)
++static uae_u8 firmware_shadow[FIRMWARE_PICTURE_BYTES];
++
++static bool vram_access_by_firmware(void)
 +{
-+	static int enabled = -1;
-+	static unsigned count = 0;
-+	uae_u32 pc;
++	return (NeXT_SCRN_W != NeXT_FIRMWARE_SCRN_W || NeXT_SCRN_H != NeXT_FIRMWARE_SCRN_H)
++		&& regs.s && m68k_getpc() < NEXT_ROM_WINDOWS_END;
++}
 +
-+	if (enabled < 0) {
-+		const char* text = getenv("PREVIOUS_TMC_TRACE");
-+		enabled = (text && *text) ? 1 : 0;
++/* Where a byte of the firmware's view of the VRAM lives: in the configured
++ * screen, in the shadow where that screen does not reach, or unmoved past the
++ * firmware's picture. The horizontal shift is a multiple of four bytes, so an
++ * aligned long stays aligned and lands wholly in one of these places. */
++static uae_u8* vram_firmware_byte(uae_u32 offset)
++{
++	int screen_row_bytes = NeXT_SCRN_W / 4;
++	int row, byte;
++
++	offset &= NEXT_VRAM_MASK;
++	if (offset >= FIRMWARE_PICTURE_BYTES) {
++		return NEXTVideo + offset;
 +	}
-+	if (!enabled || !tmc_display_counts_read_by_os) {
-+		return;
++	row  = (int)(offset / FIRMWARE_ROW_BYTES) + (NeXT_SCRN_H - NeXT_FIRMWARE_SCRN_H) / 2;
++	byte = (int)(offset % FIRMWARE_ROW_BYTES) + (((screen_row_bytes - FIRMWARE_ROW_BYTES) / 2) & ~3);
++	if (row < 0 || row >= NeXT_SCRN_H || byte < 0 || byte >= screen_row_bytes) {
++		return firmware_shadow + offset;
 +	}
-+	pc = m68k_getpc();
-+	if (pc >= VRAM_TRACE_ROM_WINDOWS_END) {
-+		return;
++	return NEXTVideo + (long)row * screen_row_bytes + byte;
++}
++
++/* Reads size bytes for firmware code: in one piece where they lie side by
++ * side, byte by byte where they do not. */
++static uae_u32 vram_firmware_get(uae_u32 offset, int size)
++{
++	uae_u8* first = vram_firmware_byte(offset);
++	uae_u32 value = 0;
++	int i;
++
++	if (vram_firmware_byte(offset + size - 1) == first + size - 1) {
++		switch (size) {
++			case 4:  return do_get_mem_long(first);
++			case 2:  return do_get_mem_word(first);
++			default: return *first;
++		}
 +	}
-+	count++;
-+	if (count <= VRAM_TRACE_FIRST_WRITES || (count % VRAM_TRACE_EVERY_WRITES) == 0) {
-+		fprintf(stderr, "[VRAM trace] ROM-code write #%u addr=%08x val=%08x pc=%08x\n", count, addr, val, pc);
++	for (i = 0; i < size; i++) {
++		value = (value << 8) | *vram_firmware_byte(offset + i);
++	}
++	return value;
++}
++
++/* Writes size bytes for firmware code: in one piece where they lie side by
++ * side, byte by byte where they do not. */
++static void vram_firmware_put(uae_u32 offset, uae_u32 value, int size)
++{
++	uae_u8* first = vram_firmware_byte(offset);
++	int i;
++
++	if (vram_firmware_byte(offset + size - 1) == first + size - 1) {
++		switch (size) {
++			case 4:  do_put_mem_long(first, value); return;
++			case 2:  do_put_mem_word(first, value); return;
++			default: *first = value; return;
++		}
++	}
++	for (i = 0; i < size; i++) {
++		*vram_firmware_byte(offset + i) = (uae_u8)(value >> (8 * (size - 1 - i)));
 +	}
 +}
 +
  static uae_u32 mem_video_lget(uaecptr addr)
  {
  	addr &= NEXT_VRAM_MASK;
-@@ -538,6 +569,7 @@
++	if (vram_access_by_firmware()) {
++		return vram_firmware_get(addr, 4);
++	}
+ 	return do_get_mem_long(NEXTVideo + addr);
+ }
  
+@@ -527,6 +621,9 @@
+ static uae_u32 mem_video_wget(uaecptr addr)
+ {
+ 	addr &= NEXT_VRAM_MASK;
++	if (vram_access_by_firmware()) {
++		return vram_firmware_get(addr, 2);
++	}
+ 	return do_get_mem_word(NEXTVideo + addr);
+ }
+ 
+@@ -533,6 +630,9 @@
+ static uae_u32 mem_video_bget(uaecptr addr)
+ {
+ 	addr &= NEXT_VRAM_MASK;
++	if (vram_access_by_firmware()) {
++		return vram_firmware_get(addr, 1);
++	}
+ 	return NEXTVideo[addr];
+ }
+ 
+@@ -539,6 +639,10 @@
  static void mem_video_lput(uaecptr addr, uae_u32 l)
  {
-+	vram_trace_rom_write(addr, l);
  	addr &= NEXT_VRAM_MASK;
++	if (vram_access_by_firmware()) {
++		vram_firmware_put(addr, l, 4);
++		return;
++	}
  	do_put_mem_long(NEXTVideo + addr, l);
  }
-@@ -544,6 +576,7 @@
  
+@@ -545,6 +649,10 @@
  static void mem_video_wput(uaecptr addr, uae_u32 w)
  {
-+	vram_trace_rom_write(addr, w);
  	addr &= NEXT_VRAM_MASK;
++	if (vram_access_by_firmware()) {
++		vram_firmware_put(addr, w, 2);
++		return;
++	}
  	do_put_mem_word(NEXTVideo + addr, w);
  }
-@@ -550,6 +583,7 @@
  
+@@ -551,6 +659,10 @@
  static void mem_video_bput(uaecptr addr, uae_u32 b)
  {
-+	vram_trace_rom_write(addr, b);
  	addr &= NEXT_VRAM_MASK;
++	if (vram_access_by_firmware()) {
++		vram_firmware_put(addr, b, 1);
++		return;
++	}
  	NEXTVideo[addr] = b;
  }
+ 
+@@ -1051,6 +1163,7 @@
+ 	/* Initialise memory */
+ 	memset(NEXTRom, 0, NEXT_EPROM_ALLOC);
+ 	memset(NEXTVideo, 0, vram_size);
++	memset(firmware_shadow, 0, sizeof(firmware_shadow));
+ 	memset(NEXTRam, 0, ram_size);
+ 	memset(NEXTIo, 0, NEXT_IO_ALLOC);
+ 	
 Index: src/dimension/nd_sdl.cpp
 ===================================================================
 --- src/dimension/nd_sdl.cpp	(revision 1859)
@@ -130,45 +240,16 @@ Index: src/grab.c
  					dst[0] = src[2]; /* r */
  					dst[1] = src[1]; /* g */
  					dst[2] = src[0]; /* b */
-@@ -552,15 +555,32 @@
- 				}
- 			}
- 		} else {
-+			FirmwareView view;
-+
+@@ -555,7 +558,7 @@
  			format->rgb   = 0;
  			format->alpha = 0;
  			format->depth = 2;
 -			
--			for (y = 0; y < NeXT_SCRN_H; y++) {
--				for (x = 0; x < NeXT_SCRN_W; x += 4) {
--					*dst++ = ~*src++; /* 2-bit gray */
 +
-+			if (Screen_FirmwareView(&view)) {
-+				/* Playground: the grab shows what the screen shows, the
-+				 * firmware's picture 1:1 and centered, dark gray around it. */
-+				int src_stride = NeXT_FIRMWARE_SCRN_W / 4 + (ConfigureParams.System.bTurbo ? 0 : (32 / 4));
-+				int dst_stride = NeXT_SCRN_W / 4;
-+				memset(dst, (uint8_t)~0xAA, dst_stride * NeXT_SCRN_H);
-+				for (y = 0; y < view.copy_h; y++) {
-+					uint8_t* row_src = src + (view.src_y + y) * src_stride + view.src_x / 4;
-+					uint8_t* row_dst = dst + (view.dst_y + y) * dst_stride + view.dst_x / 4;
-+					for (x = 0; x < view.copy_w; x += 4) {
-+						*row_dst++ = ~*row_src++; /* 2-bit gray */
-+					}
- 				}
--				src += ConfigureParams.System.bTurbo ? 0 : (32 / 4);
-+			} else {
-+				for (y = 0; y < NeXT_SCRN_H; y++) {
-+					for (x = 0; x < NeXT_SCRN_W; x += 4) {
-+						*dst++ = ~*src++; /* 2-bit gray */
-+					}
-+					src += ConfigureParams.System.bTurbo ? 0 : (32 / 4);
-+				}
- 			}
- 		}
- 	}
-@@ -571,7 +591,13 @@
+ 			for (y = 0; y < NeXT_SCRN_H; y++) {
+ 				for (x = 0; x < NeXT_SCRN_W; x += 4) {
+ 					*dst++ = ~*src++; /* 2-bit gray */
+@@ -571,7 +574,13 @@
   * Grab screen from board at certain slot.
   */
  static void Grab_ScreenFromSlot(int slot) {
@@ -187,11 +268,8 @@ Index: src/gui-sdl/sdlscreen.c
 ===================================================================
 --- src/gui-sdl/sdlscreen.c	(revision 1859)
 +++ src/gui-sdl/sdlscreen.c	(working copy)
-@@ -20,12 +20,17 @@
- #include "video.h"
- #include "keymap.h"
+@@ -22,10 +22,14 @@
  #include "m68000.h"
-+#include "tmc.h"
  
  
 -/* NeXT screen resolution */
@@ -208,7 +286,7 @@ Index: src/gui-sdl/sdlscreen.c
  SDL_Window*   sdlWindow;
  SDL_Surface*  sdlscrn = NULL;        /* The SDL screen surface */
  
-@@ -34,12 +39,62 @@
+@@ -34,12 +38,34 @@
  volatile bool bInFullScreen = false; /* true if in full screen */
  
  /* extern for tablet */
@@ -244,96 +322,10 @@ Index: src/gui-sdl/sdlscreen.c
 +	screen_h = height = NeXT_SCRN_H;
 +}
 +
-+bool Screen_FirmwareView(FirmwareView* view) {
-+	if (tmc_display_counts_read_by_os) {
-+		return false;
-+	}
-+	if (NeXT_SCRN_W == NeXT_FIRMWARE_SCRN_W && NeXT_SCRN_H == NeXT_FIRMWARE_SCRN_H) {
-+		return false;
-+	}
-+	if (NeXT_SCRN_W <= NeXT_FIRMWARE_SCRN_W) {
-+		view->src_x  = ((NeXT_FIRMWARE_SCRN_W - NeXT_SCRN_W) / 2) & ~3;
-+		view->dst_x  = 0;
-+		view->copy_w = NeXT_SCRN_W;
-+	} else {
-+		view->src_x  = 0;
-+		view->dst_x  = ((NeXT_SCRN_W - NeXT_FIRMWARE_SCRN_W) / 2) & ~3;
-+		view->copy_w = NeXT_FIRMWARE_SCRN_W;
-+	}
-+	if (NeXT_SCRN_H <= NeXT_FIRMWARE_SCRN_H) {
-+		view->src_y  = (NeXT_FIRMWARE_SCRN_H - NeXT_SCRN_H) / 2;
-+		view->dst_y  = 0;
-+		view->copy_h = NeXT_SCRN_H;
-+	} else {
-+		view->src_y  = 0;
-+		view->dst_y  = (NeXT_SCRN_H - NeXT_FIRMWARE_SCRN_H) / 2;
-+		view->copy_h = NeXT_FIRMWARE_SCRN_H;
-+	}
-+	return true;
-+}
-+
  static SDL_Renderer* sdlRenderer;
  static SDL_Texture*  uiTexture;
  static SDL_Texture*  fbTexture;
-@@ -79,6 +134,43 @@
- }
- 
- /*
-+ Playground: the firmware's 1120 by 832 picture, 1:1 and centered in the
-+ configured screen. Its rows have the firmware's length, which on a turbo
-+ machine is the width and elsewhere the width plus 32 pixels. Where the
-+ picture does not reach, the screen is NeXT's dark gray, which is what the
-+ ROM clears to, so the cut is not visible as an edge.
-+ */
-+#define NEXT_GRAY_ROW_BYTE 0xAA /* four pixels of dark gray at 2 bits each */
-+
-+static void blitBWFirmware(SDL_Texture* tex, const FirmwareView* view) {
-+	void* pixels;
-+	uint8_t* src;
-+	uint8_t* dst;
-+	int pitch, src_stride, x, y;
-+
-+	src_stride = NeXT_FIRMWARE_SCRN_W / 4 + (ConfigureParams.System.bTurbo ? 0 : (32 / 4));
-+	SDL_LockTexture(tex, NULL, &pixels, &pitch);
-+	if (view->copy_w < NeXT_SCRN_W || view->copy_h < NeXT_SCRN_H) {
-+		for (y = 0; y < NeXT_SCRN_H; y++) {
-+			dst = (uint8_t*)pixels + y * pitch;
-+			for (x = 0; x < NeXT_SCRN_W / 4; x++) {
-+				memcpy(dst, BW2RGB[NEXT_GRAY_ROW_BYTE], 16);
-+				dst += 16;
-+			}
-+		}
-+	}
-+	for (y = 0; y < view->copy_h; y++) {
-+		src = NEXTVideo + (view->src_y + y) * src_stride + view->src_x / 4;
-+		dst = (uint8_t*)pixels + (view->dst_y + y) * pitch + view->dst_x * 4;
-+		for (x = 0; x < view->copy_w / 4; x++) {
-+			memcpy(dst, BW2RGB[*src++], 16);
-+			dst += 16;
-+		}
-+	}
-+	SDL_UnlockTexture(tex);
-+}
-+
-+/*
-  BW format is 2 bit per pixel
-  */
- static void blitBW(SDL_Texture* tex) {
-@@ -86,7 +178,13 @@
- 	uint8_t* src;
- 	uint8_t* dst;
- 	int pitch, src_padding, dst_padding, x, y;
-+	FirmwareView view;
- 
-+	if (Screen_FirmwareView(&view)) {
-+		blitBWFirmware(tex, &view);
-+		return;
-+	}
-+
- 	SDL_LockTexture(tex, NULL, &pixels, &pitch);
- 	src = NEXTVideo;
- 	dst = (uint8_t*)pixels;
-@@ -141,23 +239,27 @@
+@@ -141,23 +167,27 @@
  #else
  	src = &vram[4];
  #endif
@@ -365,7 +357,7 @@ Index: src/gui-sdl/sdlscreen.c
  	SDL_UnlockTexture(tex);
  }
  
-@@ -599,6 +701,7 @@
+@@ -599,6 +629,7 @@
  	int i;
  
  	SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
@@ -377,7 +369,7 @@ Index: src/includes/screen.h
 ===================================================================
 --- src/includes/screen.h	(revision 1859)
 +++ src/includes/screen.h	(working copy)
-@@ -15,9 +15,36 @@
+@@ -15,9 +15,22 @@
  extern volatile bool bGrabMouse;
  extern volatile bool bInFullScreen;
  
@@ -399,52 +391,14 @@ Index: src/includes/screen.h
 +#define ND_SCRN_W 1120
 +#define ND_SCRN_H 832
 +
-+/* Playground: how the firmware's picture is shown in a screen of another
-+ * size, 1:1 and centered. Offsets are pixels; the horizontal ones are
-+ * multiples of four, so a row of gray pixels starts on a byte. */
-+typedef struct {
-+	int src_x, src_y;   /* where the shown part begins in the firmware picture */
-+	int dst_x, dst_y;   /* where it lands in the screen */
-+	int copy_w, copy_h; /* how much of it is shown */
-+} FirmwareView;
-+
-+/* Fills the view and returns true while the firmware's picture is the one to
-+ * show: before the kernel has read the display counts, on a turbo machine in
-+ * gray, when the configured screen is not the firmware's. */
-+extern bool Screen_FirmwareView(FirmwareView* view);
-+
  extern int screen_w;
  extern int screen_h;
  
-Index: src/includes/tmc.h
-===================================================================
---- src/includes/tmc.h	(revision 1859)
-+++ src/includes/tmc.h	(working copy)
-@@ -19,6 +19,11 @@
- extern bool tmc_video_enabled(void);
- extern void tmc_video_interrupt(void);
- 
-+/* Playground: true once code outside the ROM has read the display counts,
-+ * which is the kernel building its screen record. From then on the guest
-+ * draws for the configured screen rather than the firmware's 1120 by 832. */
-+extern volatile bool tmc_display_counts_read_by_os;
-+
- extern void TMC_Reset(void);
- 
- #endif /* PREV_TMC_H */
 Index: src/tmc.c
 ===================================================================
 --- src/tmc.c	(revision 1859)
 +++ src/tmc.c	(working copy)
-@@ -14,6 +14,7 @@
- #include "sysReg.h"
- #include "adb.h"
- #include "tmc.h"
-+#include "screen.h"
- 
- #define LOG_TMC_LEVEL LOG_DEBUG
- 
-@@ -217,10 +218,104 @@
+@@ -217,10 +217,59 @@
  	return (tmc.video_intr&TMC_VI_ENABLE);
  }
  
@@ -471,51 +425,6 @@ Index: src/tmc.c
 +static void tmc_hold_display_counts(void) {
 +	tmc.horizontal = (tmc.horizontal & ~TMC_DISPLAY_COUNT_MASK) | tmc_display_width_count;
 +	tmc.vertical   = (tmc.vertical   & ~TMC_DISPLAY_COUNT_MASK) | tmc_display_height_count;
-+}
-+
-+/* Playground: the handover from firmware to operating system. The ROM sits
-+ * below 0x02000000 in the address map, in its two windows, and RAM begins at
-+ * 0x04000000, so a read of the display counts from a program counter above
-+ * the ROM windows is the kernel's. */
-+volatile bool tmc_display_counts_read_by_os = false;
-+
-+#define TMC_VID_REG_HCR      8
-+#define TMC_VID_REG_VCR_END  16
-+#define NEXT_ROM_WINDOWS_END 0x02000000
-+
-+/* The firmware painted the frame buffer for its own geometry, and with the
-+ * kernel's row length that picture reads as stripes until something paints
-+ * over it, which the kernel's boot panel does only in the middle. So when the
-+ * kernel takes the screen, what the firmware left is wiped to NeXT's dark
-+ * gray, the color both the ROM and the kernel's panel stand on. The wipe
-+ * covers the firmware's picture and the configured screen, within the VRAM. */
-+#define NEXT_VRAM_GRAY_BYTES 0x40000
-+#define NEXT_GRAY_FILL_BYTE  0xAA
-+
-+static void tmc_wipe_firmware_picture(void) {
-+	size_t firmware_bytes   = (size_t)(NeXT_FIRMWARE_SCRN_W / 4) * NeXT_FIRMWARE_SCRN_H;
-+	size_t configured_bytes = (size_t)(NeXT_SCRN_W / 4) * NeXT_SCRN_H;
-+	size_t bytes = firmware_bytes > configured_bytes ? firmware_bytes : configured_bytes;
-+
-+	if (NeXT_SCRN_W == NeXT_FIRMWARE_SCRN_W && NeXT_SCRN_H == NeXT_FIRMWARE_SCRN_H) {
-+		return;
-+	}
-+	if (bytes > NEXT_VRAM_GRAY_BYTES) {
-+		bytes = NEXT_VRAM_GRAY_BYTES;
-+	}
-+	if (NEXTVideo) {
-+		memset(NEXTVideo, NEXT_GRAY_FILL_BYTE, bytes);
-+	}
-+}
-+
-+static void tmc_note_display_count_read(uint32_t addr) {
-+	uint32_t reg = addr & 0xF;
-+	if (reg >= TMC_VID_REG_HCR && reg < TMC_VID_REG_VCR_END && m68k_getpc() >= NEXT_ROM_WINDOWS_END) {
-+		if (!tmc_display_counts_read_by_os) {
-+			tmc_display_counts_read_by_os = true;
-+			tmc_wipe_firmware_picture();
-+		}
-+	}
 +}
 +
 +/* Playground: with PREVIOUS_TMC_TRACE set, every access to the video
@@ -551,7 +460,7 @@ Index: src/tmc.c
  }
  
  void tmc_video_interrupt(void) {
-@@ -266,10 +361,12 @@
+@@ -266,10 +315,12 @@
  static void tmc_hcr_write2(uint8_t val) {
  	tmc.horizontal &= 0xFFFF00FF;
  	tmc.horizontal |= (val&0xFF)<<8;
@@ -564,7 +473,7 @@ Index: src/tmc.c
  }
  
  static uint8_t tmc_vcr_read0(void) {
-@@ -296,10 +393,12 @@
+@@ -296,10 +347,12 @@
  static void tmc_vcr_write2(uint8_t val) {
  	tmc.vertical &= 0xFFFF00FF;
  	tmc.vertical |= (val&0xFF)<<8;
@@ -577,35 +486,24 @@ Index: src/tmc.c
  }
  
  
-@@ -370,6 +469,8 @@
+@@ -370,6 +423,7 @@
  		val |= tmc_read_vid_reg[(addr+1)&0xF]()<<16;
  		val |= tmc_read_vid_reg[(addr+2)&0xF]()<<8;
  		val |= tmc_read_vid_reg[(addr+3)&0xF]();
 +		tmc_trace_video_access("read", addr, val);
-+		tmc_note_display_count_read(addr);
  	}
  
  	return val;
-@@ -397,8 +498,9 @@
- 	} else if (addr>=128 && addr<144) {
+@@ -398,7 +452,7 @@
  		val = tmc_read_vid_reg[addr&0xF]()<<8;
  		val |= tmc_read_vid_reg[(addr+1)&0xF]();
-+		tmc_note_display_count_read(addr);
  	}
 -	
 +
  	return val;
  }
  
-@@ -414,6 +516,7 @@
- 	if (addr<36) {
- 		return tmc_read_reg[addr]();
- 	} else if (addr>=128 && addr<144) {
-+		tmc_note_display_count_read(addr);
- 		return tmc_read_vid_reg[addr&0xF]();
- 	}
- 
-@@ -441,6 +544,7 @@
+@@ -441,6 +495,7 @@
  		tmc_write_reg[addr+2](l>>8);
  		tmc_write_reg[addr+3](l);
  	} else if (addr>=128 && addr<144) {
@@ -613,14 +511,6 @@ Index: src/tmc.c
  		tmc_write_vid_reg[addr&0xF](l>>24);
  		tmc_write_vid_reg[(addr+1)&0xF](l>>16);
  		tmc_write_vid_reg[(addr+2)&0xF](l>>8);
-@@ -492,6 +596,7 @@
- 
- /* TMC Reset */
- void TMC_Reset(void) {
-+	tmc_display_counts_read_by_os = false;
- 	tmc_scr1_reset();
- 	tmc_video_reg_reset();
- 	
 Index: src/video.c
 ===================================================================
 --- src/video.c	(revision 1859)

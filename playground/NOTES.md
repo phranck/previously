@@ -22,7 +22,7 @@ Two functions right after `_vidInterruptDisable` fill a record of at least 0x58 
 | +0x44 | frame buffer address again | the same |
 | +0x48 | height times row bytes | 0x1d4000 on 0x139, 0x1c7000 on turbo |
 | +0x4c, +0x50 | address plus size | |
-| +0x54 | (910 on turbo, 936 otherwise, minus height) times row bytes | |
+| +0x54 | (936 on turbo, 910 on 0x139, minus height) times row bytes | |
 
 On 0x139 the gray record uses the constants 1120, 1152 and 832. On a turbo machine it reads the TMC registers at slot base plus `0x02200088` and `0x0220008c`: width and total width are the low twelve bits of the first times four, height is the low twelve bits of the second. Previous emulates both registers in `src/tmc.c`, reset to 0x118 and 0x340, and the ROM writes them twice at boot, from `0x010003a4` and `0x0100c6b0`. The kernel never writes them and reads them only from `0x04097618` and `0x0409762a`, which is the record being built.
 
@@ -40,9 +40,19 @@ The 0x139 variants at 0x04097dc2 (0x900), 0x04097de2 (0x480) and 0x04097e54 (0x1
 
 ## Other places the numbers appear
 
-- `_km_clear_screen+0x38` holds a 1120 of its own, the kernel console's clear width.
-- `_rtc_power_down+0x14` holds a 1120.
+- The kernel's text console takes row length, height and frame buffer from its own `_km_coni` at `0x040b75fc`: `_km_clear_screen`, `_km_flip_cursor` and the left margin `_kminit` computes from the width. The 1120 at `_km_clear_screen+0x38` and at `_rtc_power_down+0x14` is the displacement of a `bsr.l`, not a screen size.
+- `_km_drawrect` and `_km_eraserect` work in coordinates for 1120 by 832 and add half the difference to the record's width and height, so the kernel's boot panels sit centered in a screen of any size.
 - The WindowServer has no screen constant: its only 1120 and 832 sit in `_MouseInit` as a fallback rectangle for a device without a window, and `_GrayInit+0x2bc` is an offset into `_graphicsNames`.
+
+## The boot ROM
+
+Rev 3.3 v74 keeps its console record in `mon_global` from offset 0x324, laid out like the kernel's record, and `restore_mg` at `0x01000686` finds `mon_global` at VBR plus 4. The gray console is filled by `0x0100bf9e` and the color console by `0x0100b9e6`, both from constants, so the ROM always draws for 1120 by 832, with rows of 280 bytes on turbo. Its blit at `0x01004440` places an image at `y * dspy_max_w + x`, but its layout is fixed: `0x010077a4` clears the panel's text area at x 550 to 640 and rows 340 to 440, and the animation tick at `0x0100680c` turns y around against a constant 832.
+
+The kernel does not stop the ROM from drawing. `_vidStopAnimation` clears `MGF_ANIM_RUN` in `mon_global`, and between its own panels the kernel lets the ROM clear the screen and draw its "Loading from disk" panel again. In the 1120 by 832 reference that panel is back at 140 s, rows 308 to 483 and columns 340 to 779.
+
+The playground build therefore moves every VRAM access by firmware code into the middle of the configured screen (`src/cpu/memory.c`). Firmware code is supervisor code below `0x02000000`. The parts of the firmware's picture that the configured screen does not show live in a shadow, so the ROM reads back what it wrote there. With those writes dropped, the ROM stopped right after power-on with a light gray screen. The ROM's message buffer at VRAM offset `0x3fe00`, set in `0x01000ec6`, lies past the picture and is not moved.
+
+Booted at 1024 by 600 on the Mac, every grab matches the 1120 by 832 reference moved by 48 columns and 116 rows: the ROM's panel at rows 192 to 367 and columns 292 to 731, at 10 s and again at 140 s, and the kernel's panels at rows 212 to 387 and columns 356 to 667. Nothing is drawn outside the panels, and the desktop follows at 200 s.
 
 ## The NeXTdimension
 
