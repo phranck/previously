@@ -1,0 +1,119 @@
+Index: src/tmc.c
+===================================================================
+--- src/tmc.c	(revision 1859)
++++ src/tmc.c	(working copy)
+@@ -217,10 +217,37 @@
+ 	return (tmc.video_intr&TMC_VI_ENABLE);
+ }
+ 
++/* Playground: the kernel of a turbo machine sizes its monochrome screen from
++ * the display counts in these two registers, width as pixels per four and
++ * height as lines, both in the low twelve bits. The counts follow
++ * PREVIOUS_SCREEN_W and PREVIOUS_SCREEN_H when they are set, and a write by
++ * the ROM or the kernel cannot move them, so the guest sees a display of that
++ * size however its firmware programs the timing. */
++#define TMC_DISPLAY_COUNT_MASK 0xFFF
++
++static uint32_t tmc_display_width_count  = HDISCNT;
++static uint32_t tmc_display_height_count = VDISCNT;
++
++static uint32_t tmc_count_from_env(const char* name, uint32_t fallback, uint32_t pixels_per_count) {
++	const char* text = getenv(name);
++	long value = (text && *text) ? strtol(text, NULL, 10) : 0;
++	if (value > 0) {
++		return ((uint32_t)value / pixels_per_count) & TMC_DISPLAY_COUNT_MASK;
++	}
++	return fallback;
++}
++
++static void tmc_hold_display_counts(void) {
++	tmc.horizontal = (tmc.horizontal & ~TMC_DISPLAY_COUNT_MASK) | tmc_display_width_count;
++	tmc.vertical   = (tmc.vertical   & ~TMC_DISPLAY_COUNT_MASK) | tmc_display_height_count;
++}
++
+ static void tmc_video_reg_reset(void) {
++	tmc_display_width_count  = tmc_count_from_env("PREVIOUS_SCREEN_W", HDISCNT, 4);
++	tmc_display_height_count = tmc_count_from_env("PREVIOUS_SCREEN_H", VDISCNT, 1);
+ 	tmc.video_intr = 0;
+-	tmc.horizontal = HFPORCH|HSYNC|HBPORCH|HDISCNT;
+-	tmc.vertical   = VFPORCH|VSYNC|VBPORCH|VDISCNT;
++	tmc.horizontal = HFPORCH|HSYNC|HBPORCH|tmc_display_width_count;
++	tmc.vertical   = VFPORCH|VSYNC|VBPORCH|tmc_display_height_count;
+ }
+ 
+ void tmc_video_interrupt(void) {
+@@ -266,10 +293,12 @@
+ static void tmc_hcr_write2(uint8_t val) {
+ 	tmc.horizontal &= 0xFFFF00FF;
+ 	tmc.horizontal |= (val&0xFF)<<8;
++	tmc_hold_display_counts();
+ }
+ static void tmc_hcr_write3(uint8_t val) {
+ 	tmc.horizontal &= 0xFFFFFF00;
+ 	tmc.horizontal |= val&0xFF;
++	tmc_hold_display_counts();
+ }
+ 
+ static uint8_t tmc_vcr_read0(void) {
+@@ -296,10 +325,12 @@
+ static void tmc_vcr_write2(uint8_t val) {
+ 	tmc.vertical &= 0xFFFF00FF;
+ 	tmc.vertical |= (val&0xFF)<<8;
++	tmc_hold_display_counts();
+ }
+ static void tmc_vcr_write3(uint8_t val) {
+ 	tmc.vertical &= 0xFFFFFF00;
+ 	tmc.vertical |= val&0xFF;
++	tmc_hold_display_counts();
+ }
+ 
+ 
+Index: src/video.c
+===================================================================
+--- src/video.c	(revision 1859)
++++ src/video.c	(working copy)
+@@ -20,10 +20,28 @@
+ #include "dma.h"
+ #include "sysReg.h"
+ #include "tmc.h"
++#include "grab.h"
+ 
+ 
+ #define NEXT_VBL_FREQ 68
+ 
++/* Playground: a grab of the frame buffer every PREVIOUS_GRAB_EVERY seconds,
++ * so a boot can be read off files without anybody at the window. It runs on
++ * the CPU thread once per vertical blank, which is the thread that writes the
++ * frame buffer the grab reads. */
++static void Video_PeriodicGrab(void) {
++	static int grab_every_vbl = -1;
++	static int vbl_count = 0;
++	if (grab_every_vbl < 0) {
++		const char* text = getenv("PREVIOUS_GRAB_EVERY");
++		grab_every_vbl = (text && atoi(text) > 0) ? atoi(text) * NEXT_VBL_FREQ : 0;
++	}
++	if (grab_every_vbl > 0 && ++vbl_count >= grab_every_vbl) {
++		vbl_count = 0;
++		Grab_Screen();
++	}
++}
++
+ /*-----------------------------------------------------------------------*/
+ /**
+  * Start VBL interrupt.
+@@ -71,6 +89,7 @@
+ 	Timing_BlankCount(MAIN_DISPLAY, true);
+ 	Screen_StatusbarUpdate();
+ 	Video_Interrupt();
++	Video_PeriodicGrab();
+ 	CycInt_UpdateTimeEvent((1000*1000)/NEXT_VBL_FREQ, 0, EVENT_VIDEO_VBL);
+ #else
+ 	static bool bBlankToggle = false;
+@@ -77,6 +96,7 @@
+ 	Timing_BlankCount(MAIN_DISPLAY, bBlankToggle);
+ 	if (bBlankToggle) {
+ 		Video_Interrupt();
++		Video_PeriodicGrab();
+ 	} else if (!Configuration_SingleColorScreen()) {
+ 		GuiEvent_SendSpecialEvent(SPECIAL_EVENT_REPAINT);
+ 	}
