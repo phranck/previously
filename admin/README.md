@@ -166,7 +166,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 
 Every POST is checked for a session before anything is done with what was sent, and the three routes above about the secret itself are what a browser goes through to have one. A POST that says it comes from another page is refused whatever it carries, because a cookie rides along with every request to this host and a session alone would let another site act here.
 
-The one route with no check of ours at all is the terminal, and the section below says why: what answers there is this machine's own SSH server, so whoever is connecting proves who they are to that.
+The one route that asks for no session is the terminal, and the section below says why: what answers there is this machine's own SSH server, so whoever is connecting proves who they are to that. Its handshake still has to come from this service's own page.
 
 **Every answer from the API is `no-store`**, because each one is about right now and a kept copy is a wrong one. Files are the opposite and say so: each carries an `ETag` and a `Last-Modified`, and a browser that already has one is told `304` rather than sent it again. The pictures, the faces and the one vendor library also carry a day's `max-age`, since they change when a package is installed and at no other time. The page, the script and the stylesheet carry `no-cache`, which means the browser asks every time and is told `304` when nothing changed, so a new build is picked up at once.
 
@@ -178,7 +178,9 @@ The one route with no check of ours at all is the terminal, and the section belo
 
 `GET /api/terminal` upgrades to a WebSocket, and what runs on the pseudo terminal behind it is `ssh` to this machine's own SSH server on the loopback. So what somebody sees is the login prompt sshd puts up, and what they get afterwards is an ordinary login shell: their own home, `sudo` if they have it, everything they would have sitting at the machine.
 
-**This is why there is no check of ours on that route.** The door is the same one sshd already holds open on this network, and the service is only the corridor. It never learns a login's password, never changes user, and needs no privilege of its own to hand out a shell that can do everything the person logging in can do.
+**This is why there is no password of ours on that route.** The door is the same one sshd already holds open on this network, and the service is only the corridor. It never learns a login's password, never changes user, and needs no privilege of its own to hand out a shell that can do everything the person logging in can do.
+
+**The handshake has to come from this page.** A browser names the page it is on in every WebSocket handshake, and one that names another page, or none at all, is answered with 403. Otherwise a page on another site, open in a browser on the home network, could open the socket and put this machine's login prompt in front of whoever is reading that page. The check is the same one a POST goes through.
 
 The other two ways are worse in both directions. Forking a shell here would hand one out without asking anybody who they are, and that shell would inherit this service's sandbox: no `sudo`, a read-only home, and a person left wondering why. `/bin/login` would ask, but it changes user, which `NoNewPrivileges=yes` refuses for this whole process tree, and on current Debian it no longer works when another program calls it. WeTTY solves it the same way when it is not running as root.
 
