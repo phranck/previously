@@ -24,8 +24,8 @@
  * set, because Previous sets the mode before its window has reached the size
  * of the screen it goes full screen on.
  *
- * PREVIOUSLY_PIXEL_EXACT_LOG names a file each change of presentation is
- * appended to.
+ * PREVIOUSLY_PIXEL_EXACT_LOG names a file that every presentation Previous
+ * asks for, and every change this library makes, is appended to.
  */
 
 #define _GNU_SOURCE
@@ -136,6 +136,7 @@ bool SDL_SetRenderLogicalPresentation(SDL_Renderer *renderer, int width, int hei
     if (setter == NULL) {
         return false;
     }
+    note("Previous asks for presentation %d at %d by %d", (int)mode, width, height);
     if (mode == SDL_LOGICAL_PRESENTATION_LETTERBOX) {
         letterboxed_renderer = renderer;
         picture_width = width;
