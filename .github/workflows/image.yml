@@ -25,6 +25,7 @@ on:
       - "image/**"
       - ".github/workflows/image.yml"
       - "admin/packaging/**"
+      - "admin/display/**"
       - "admin/previously/setup.py"
 
 permissions:
@@ -42,6 +43,18 @@ jobs:
           # The whole history and every tag, because the package is numbered
           # from what `git describe` says.
           fetch-depth: 0
+
+      # On this arm64 runner, because the package takes only a library built
+      # for the Pi. release.yml's package job takes it from here as well.
+      - name: Build the library that shows Previous sharp
+        run: admin/display/build.sh
+
+      - name: Hand the library to the package job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sharp-display
+          path: admin/display/pixel-exact.so
+          if-no-files-found: error
 
       - name: Build the package
         run: python3 admin/packaging/build.py --into "$RUNNER_TEMP/package"
@@ -67,7 +80,7 @@ jobs:
           pigen="$RUNNER_TEMP/pi-gen"
           stage="$GITHUB_WORKSPACE/image/stage-previously"
           mkdir -p "$stage/00-previously/files"
-          cp "$RUNNER_TEMP"/package/previously_*_all.deb \
+          cp "$RUNNER_TEMP"/package/previously_*_arm64.deb \
             "$stage/00-previously/files/previously_all.deb"
           cp -r image/export-image/. "$pigen/export-image/"
           # Stage 2 is Raspberry Pi OS Lite, and only the stage after it is

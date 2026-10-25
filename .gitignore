@@ -11,6 +11,10 @@ __pycache__/
 # so keeping it would be keeping a copy of the repository in the repository.
 admin/packaging/build/
 
+# The library display/Makefile builds, which belongs to the SDL it was built
+# against rather than to the source.
+admin/display/pixel-exact.so
+
 # An index one editing assistant keeps of this tree. It is rebuilt from the
 # source on demand and says nothing about the project.
 .serena/

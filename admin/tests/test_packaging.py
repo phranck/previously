@@ -25,17 +25,37 @@ from previously.settings import DEFAULTS
 PACKAGING = pathlib.Path(__file__).resolve().parent.parent / "packaging"
 
 
+#: The machine numbers an ELF header gives at byte 18, from elf.h: the Pi's
+#: processor and a PC's.
+EM_AARCH64 = 183
+EM_X86_64 = 62
+
+
+def elf_library(machine):
+    """@returns bytes, the 64-byte header of a 64-bit little-endian shared
+    library for that machine, which is all the build reads of one."""
+    identity = b"\x7fELF" + bytes([2, 1, 1, 0]) + bytes(8)
+    return identity + struct.pack("<HH", 3, machine) + bytes(44)
+
+
 @pytest.fixture(scope="module")
-def build():
+def build(tmp_path_factory):
     """`packaging/build.py`, imported by path.
 
     It is a script beside the package rather than a module of it, so there is
     nothing to import by name. What is wanted from it is the maintainer scripts
     it writes, which are constants in it.
+
+    The library that shows Previous sharp is built in a container beside the
+    source and not kept in the repository, so the build takes a stand-in for
+    one built for the Pi.
     """
     spec = importlib.util.spec_from_file_location("build", PACKAGING / "build.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    library = tmp_path_factory.mktemp("display") / "pixel-exact.so"
+    library.write_bytes(elf_library(EM_AARCH64))
+    module.SHARP_DISPLAY_BUILT = library
     return module
 
 
@@ -468,6 +488,42 @@ def test_the_console_and_the_package_name_the_same_pointer_theme(build):
     from previously import setup
 
     assert "/" + build.CURSORS == setup.CURSORS
+
+
+def test_the_package_puts_the_sharp_display_library_where_the_console_loads_it(build, tmp_path):
+    from previously import setup
+
+    build.lay_out(tmp_path)
+
+    assert ((tmp_path / setup.SHARP_DISPLAY.lstrip("/")).read_bytes()
+            == build.SHARP_DISPLAY_BUILT.read_bytes())
+
+
+def test_the_package_takes_no_library_built_for_another_processor(build, tmp_path, monkeypatch):
+    """A library the Pi cannot load is passed over by the loader with a line in
+    the journal, so the picture would be soft again without anybody seeing why.
+    A build on a PC makes exactly such a library."""
+    elsewhere = tmp_path / "pixel-exact.so"
+    elsewhere.write_bytes(elf_library(EM_X86_64))
+    monkeypatch.setattr(build, "SHARP_DISPLAY_BUILT", elsewhere)
+
+    with pytest.raises(SystemExit, match="arm64"):
+        build.lay_out(tmp_path / "package")
+
+
+def test_the_package_takes_no_missing_library(build, tmp_path, monkeypatch):
+    monkeypatch.setattr(build, "SHARP_DISPLAY_BUILT", tmp_path / "absent.so")
+
+    with pytest.raises(SystemExit, match="display/build.sh"):
+        build.lay_out(tmp_path / "package")
+
+
+def test_the_package_is_for_the_machines_the_setup_installs_onto(build):
+    """It carries a library compiled for the Pi, and the setup refuses any
+    other machine already."""
+    from previously import setup
+
+    assert build.ARCHITECTURE == setup.ARCHITECTURE
 
 
 def test_the_package_brings_the_x_server_previous_draws_through(build):
@@ -969,20 +1025,23 @@ def test_the_package_is_called_what_the_update_looks_for(build):
 
 
 def test_the_asset_a_release_carries_is_the_one_the_update_fetches(build):
-    """The workflow renames the versioned package the build writes to one fixed
-    name, so that a single address is always the newest one. Three places name
-    it, and a fourth would be one too many: the workflow that attaches it, the
-    script that installs onto a fresh machine, and the module the tool's own
-    update fetches it with."""
+    """The workflows rename the versioned package the build writes to one fixed
+    name, so that a single address is always the newest one. Four places name
+    it, and a fifth would be one too many: the workflow that attaches it, the
+    one that puts it into the image, the script that installs onto a fresh
+    machine, and the module the tool's own update fetches it with. The name
+    does not follow the package's architecture, because every installed
+    version fetches exactly this name."""
     from previously import release
 
-    repository = PACKAGING.parent.parent
-    workflow = (repository / ".github" / "workflows"
-                / "release.yml").read_text(encoding="utf-8")
-    script = (repository / "install.sh").read_text(encoding="utf-8")
+    workflows = PACKAGING.parent.parent / ".github" / "workflows"
+    script = (PACKAGING.parent.parent / "install.sh").read_text(encoding="utf-8")
+    built = "%s_*_%s.deb" % (build.NAME, build.ARCHITECTURE)
 
-    assert release.ASSET == "%s_%s.deb" % (build.NAME, build.ARCHITECTURE)
-    assert release.ASSET in workflow
+    for name in ("release.yml", "image.yml"):
+        workflow = (workflows / name).read_text(encoding="utf-8")
+        assert built in workflow, name
+        assert release.ASSET in workflow, name
     assert release.ASSET in script
 
 

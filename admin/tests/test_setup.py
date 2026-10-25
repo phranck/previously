@@ -936,6 +936,16 @@ def test_cage_takes_its_pointer_from_the_packages_theme(tmp_path):
     assert "XCURSOR_PATH=" + setup.CURSORS in words[:words.index("cage")]
 
 
+def test_previous_alone_starts_with_the_library_that_shows_it_sharp(tmp_path):
+    """The library stands in front of SDL, so it means something only in the
+    program that draws through SDL. cage and Xwayland start without it."""
+    words = start_line(Nobody(tmp_path))
+
+    assert words[words.index("--") + 1:] == [
+        "env", "LD_PRELOAD=" + setup.SHARP_DISPLAY, "/usr/bin/previous"]
+    assert not any(word.startswith("LD_PRELOAD=") for word in words[:words.index("cage")])
+
+
 def run_the_console(tmp_path, monkeypatch, cage_exits):
     """Runs the console's script the way its unit does, with a cage that ends
     at once and a sleep that only writes down how long it was asked to wait.
