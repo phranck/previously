@@ -2061,6 +2061,52 @@ def test_what_a_copy_cut_short_left_goes_with_the_next_copy(card, monkeypatch):
     assert copy.read_bytes() == (card.settings.disks / "nextstep-3.3.dd").read_bytes()
 
 
+def leftovers_of_other_runs(card):
+    """What interrupted runs leave on a card: a copy of another system cut
+    short in `backups/`, and a put back cut short beside the disk.
+
+    @returns list of pathlib.Path, each written.
+    """
+    disks = card.settings.disks
+    backups = systems.backups_in(disks)
+    backups.mkdir(parents=True, exist_ok=True)
+    other = systems.find("openstep-4.2")
+    left = [
+        systems.unfinished(backups / systems.a_copy_of(
+            other, datetime.datetime(2026, 1, 1, 10, 0, 0))),
+        systems.coming_back(disks / "nextstep-3.3.dd"),
+    ]
+    for path in left:
+        path.write_bytes(b"half of it")
+    return left
+
+
+def test_a_copy_takes_away_what_any_interrupted_run_left(card):
+    """Of any system, because one whose disk is never copied again would
+    otherwise keep two gigabytes of the card for good, and a put back cut
+    short leaves as much beside its disk."""
+    left = leftovers_of_other_runs(card)
+
+    setup.STEPS["copy"](card)
+
+    assert [path for path in left if path.exists()] == []
+    assert len(systems.copies_in(card.settings.disks)) == 1
+
+
+def test_a_put_back_takes_away_what_any_interrupted_run_left(card):
+    setup.STEPS["copy"](card)
+    (copy, _), = systems.copies_in(card.settings.disks)
+    left = leftovers_of_other_runs(card)
+    disk = card.settings.disks / "nextstep-3.3.dd"
+    disk.write_bytes(b"an evening of work")
+    card.backup = copy.name
+
+    setup.STEPS["put-back"](card)
+
+    assert [path for path in left if path.exists()] == []
+    assert disk.read_bytes() == copy.read_bytes()
+
+
 def test_how_far_a_copy_has_got_is_readable_while_it_runs(card):
     """Two gigabytes on a card is minutes, so this is a window somebody leaves
     open and comes back to."""

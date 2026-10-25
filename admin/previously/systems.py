@@ -67,6 +67,11 @@ BACKUPS = "backups"
 #: stopped helper is never shown or offered to be put back.
 UNFINISHED_SUFFIX = ".copying"
 
+#: What a copy being put back is called while it is written beside its disk:
+#: the disk's name with this after it, moved over the disk once it is whole, so
+#: a put back cut short leaves the disk that was there.
+COMING_BACK_SUFFIX = ".coming-back"
+
 #: One prepared system.
 #:
 #: `item` and `file` are what archive.org calls it, which together make the
@@ -230,21 +235,29 @@ def unfinished(copy):
     return copy.with_name(copy.name + UNFINISHED_SUFFIX)
 
 
-def unfinished_copies_of(disks, system):
-    """What copies of this system that were cut short have left behind.
+def coming_back(disk):
+    """@returns pathlib.Path - Where a copy being put back over this disk is
+    written until it is whole."""
+    return disk.with_name(disk.name + COMING_BACK_SUFFIX)
+
+
+def leftovers_in(disks):
+    """What copies and put backs that were cut short have left behind.
 
     @param disks - pathlib.Path of the folder the disks live in.
-    @param system - The System they were copies of.
-    @returns list of pathlib.Path, empty where there is nothing or the folder
-      cannot be read.
+    @returns list of pathlib.Path, of every system, empty where there is
+      nothing or the folder cannot be read.
 
-    Each one is as large as the copy got before it stopped, which can be most
-    of two gigabytes, and nothing lists them, so the next copy of the same
-    system takes them away.
+    Each one is as large as its run got before it stopped, which can be most
+    of two gigabytes, and nothing lists them. A put back writes beside its
+    disk, which for a disk unpacked straight from its archive is inside the
+    folder named after that archive, so those are looked for below the disks
+    folder as well.
     """
-    pattern = "%s *%s%s" % (system.identifier, DISK_SUFFIX, UNFINISHED_SUFFIX)
     try:
-        return sorted(backups_in(disks).glob(pattern))
+        return sorted(
+            list(backups_in(disks).glob("*" + DISK_SUFFIX + UNFINISHED_SUFFIX))
+            + list(disks.rglob("*" + COMING_BACK_SUFFIX)))
     except OSError:
         return []
 
