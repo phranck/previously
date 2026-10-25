@@ -317,6 +317,27 @@ admin_is_installed() {
   dpkg-query -W -f='${Status}' previously 2>/dev/null | grep -q "ok installed"
 }
 
+# Names whoever runs this as the user the tool runs as, where no owner file
+# names one yet. The package's postinst reads the user from that file first and
+# takes the first user of the card only where there is none, so without this a
+# second user running the one-liner would install the tool for the first. The
+# postinst then writes the file out in full. A file that is there already stays,
+# as it does on an upgrade.
+name_the_owner() {
+  [[ -e "$OWNER_FILE" ]] && return 0
+  local directory
+  directory="$(dirname "$OWNER_FILE")"
+  if [[ ! -d "$directory" ]]; then
+    sudo mkdir -p "$directory" || abort "Could not write down who the admin tool runs as."
+    # Where it is still there, because removing the package takes it as well.
+    undo "remove the folder for who the admin tool runs as" \
+      "[[ ! -d $(printf '%q' "$directory") ]] || sudo rmdir $(printf '%q' "$directory")"
+  fi
+  printf '[Service]\nUser=%s\n' "$(id -un)" | sudo tee "$OWNER_FILE" > /dev/null \
+    || abort "Could not write down who the admin tool runs as."
+  undo "remove who the admin tool runs as" "sudo rm -f $(printf '%q' "$OWNER_FILE")"
+}
+
 fetch_admin_package() {
   local admin="${SCRIPT_DIR}/admin"
   if [[ -f "${admin}/packaging/build.py" ]]; then
@@ -351,6 +372,8 @@ install_admin() {
     fi
     return
   fi
+
+  name_the_owner
 
   # apt rather than dpkg, so the dependencies it declares are resolved. The
   # package enables and starts the service and the units that act for it.
