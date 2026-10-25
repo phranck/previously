@@ -99,10 +99,20 @@ class MachO:
     @param data - The whole file as bytes.
     """
 
-    def __init__(self, data):
-        if data[:4] != MACH_O_MAGIC_BIG_ENDIAN:
-            raise SystemExit("not a 32-bit big-endian Mach-O file: magic %s" % data[:4].hex())
+    def __init__(self, data, raw_base=None):
         self.data = data
+        if data[:4] != MACH_O_MAGIC_BIG_ENDIAN:
+            if raw_base is None:
+                raise SystemExit("not a 32-bit big-endian Mach-O file: magic %s; pass --base for a raw image such as a ROM" % data[:4].hex())
+            # A raw image, such as the boot ROM: one segment at the base
+            # address, no symbols. Everything else works the same.
+            self.cpu_type, self.cpu_subtype, self.file_type, self.flags = 6, 0, 0, 0
+            self.segments = [Segment("__RAW", raw_base, len(data), 0, len(data),
+                                     [Section("__RAW,__raw", raw_base, len(data), 0)])]
+            self.symbol_table_command = None
+            self.symbols = []
+            self._symbol_addresses = []
+            return
         (_magic, self.cpu_type, self.cpu_subtype, self.file_type,
          command_count, _commands_size, self.flags) = struct.unpack(">7I", data[:MACH_HEADER_SIZE])
         self.segments = []
@@ -208,10 +218,10 @@ class MachO:
         return "file 0x%06x addr 0x%08x %-22s %s" % (file_offset, address, section_name, symbol_text)
 
 
-def load(path):
-    """@returns MachO - The parsed file at the path."""
+def load(path, raw_base=None):
+    """@returns MachO - The parsed file at the path, or a raw image at raw_base."""
     with open(path, "rb") as handle:
-        return MachO(handle.read())
+        return MachO(handle.read(), raw_base)
 
 
 def encodings_of(value):
@@ -366,6 +376,8 @@ def command_disasm(macho, arguments):
 def main():
     """Parses the command line and runs the chosen command."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--base", type=lambda text: int(text, 0), default=None,
+                        help="load address of a raw image without Mach-O header, such as 0x01000000 for the boot ROM")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     at_parser = subparsers.add_parser("at")
@@ -408,7 +420,7 @@ def main():
     dump_parser.set_defaults(run=command_dump)
 
     arguments = parser.parse_args()
-    arguments.run(load(arguments.file), arguments)
+    arguments.run(load(arguments.file, arguments.base), arguments)
 
 
 if __name__ == "__main__":

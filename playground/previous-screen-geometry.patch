@@ -1,8 +1,450 @@
+Index: src/cpu/memory.c
+===================================================================
+--- src/cpu/memory.c	(revision 1859)
++++ src/cpu/memory.c	(working copy)
+@@ -518,6 +518,37 @@
+ 
+ /* **** VRAM for monochrome systems **** */
+ 
++/* Playground: with PREVIOUS_TMC_TRACE set, writes to the frame buffer by ROM
++ * code after the kernel has taken the screen are counted, and the first few
++ * are printed with their program counter, to learn what still draws with the
++ * firmware's row length once the kernel draws with the configured one. */
++#define VRAM_TRACE_FIRST_WRITES 8
++#define VRAM_TRACE_EVERY_WRITES 20000
++#define VRAM_TRACE_ROM_WINDOWS_END 0x02000000
++
++static void vram_trace_rom_write(uaecptr addr, uae_u32 val)
++{
++	static int enabled = -1;
++	static unsigned count = 0;
++	uae_u32 pc;
++
++	if (enabled < 0) {
++		const char* text = getenv("PREVIOUS_TMC_TRACE");
++		enabled = (text && *text) ? 1 : 0;
++	}
++	if (!enabled || !tmc_display_counts_read_by_os) {
++		return;
++	}
++	pc = m68k_getpc();
++	if (pc >= VRAM_TRACE_ROM_WINDOWS_END) {
++		return;
++	}
++	count++;
++	if (count <= VRAM_TRACE_FIRST_WRITES || (count % VRAM_TRACE_EVERY_WRITES) == 0) {
++		fprintf(stderr, "[VRAM trace] ROM-code write #%u addr=%08x val=%08x pc=%08x\n", count, addr, val, pc);
++	}
++}
++
+ static uae_u32 mem_video_lget(uaecptr addr)
+ {
+ 	addr &= NEXT_VRAM_MASK;
+@@ -538,6 +569,7 @@
+ 
+ static void mem_video_lput(uaecptr addr, uae_u32 l)
+ {
++	vram_trace_rom_write(addr, l);
+ 	addr &= NEXT_VRAM_MASK;
+ 	do_put_mem_long(NEXTVideo + addr, l);
+ }
+@@ -544,6 +576,7 @@
+ 
+ static void mem_video_wput(uaecptr addr, uae_u32 w)
+ {
++	vram_trace_rom_write(addr, w);
+ 	addr &= NEXT_VRAM_MASK;
+ 	do_put_mem_word(NEXTVideo + addr, w);
+ }
+@@ -550,6 +583,7 @@
+ 
+ static void mem_video_bput(uaecptr addr, uae_u32 b)
+ {
++	vram_trace_rom_write(addr, b);
+ 	addr &= NEXT_VRAM_MASK;
+ 	NEXTVideo[addr] = b;
+ }
+Index: src/dimension/nd_sdl.cpp
+===================================================================
+--- src/dimension/nd_sdl.cpp	(revision 1859)
++++ src/dimension/nd_sdl.cpp	(working copy)
+@@ -55,7 +55,7 @@
+     if (ConfigureParams.Screen.nMode == SCREEN_ALL) {
+         SDL_GetWindowPosition(sdlWindow, &x, &y);
+         SDL_GetWindowSize(sdlWindow, &w, &h);
+-        h = (w * NeXT_SCRN_H) / NeXT_SCRN_W;
++        h = (w * ND_SCRN_H) / ND_SCRN_W;
+ 
+         if (!ndWindow) {
+             snprintf(name, sizeof(name), "NeXTdimension (Slot %i)", slot);
+@@ -65,8 +65,8 @@
+                 return;
+             }
+             SDL_SetWindowPosition(ndWindow, x+14*slot, y+14*slot);
+-            SDL_SetRenderLogicalPresentation(ndRenderer, NeXT_SCRN_W, NeXT_SCRN_H, SDL_LOGICAL_PRESENTATION_STRETCH);
+-            ndTexture = SDL_CreateTexture(ndRenderer, SDL_PIXELFORMAT_BGRA32, SDL_TEXTUREACCESS_STREAMING, NeXT_SCRN_W, NeXT_SCRN_H);
++            SDL_SetRenderLogicalPresentation(ndRenderer, ND_SCRN_W, ND_SCRN_H, SDL_LOGICAL_PRESENTATION_STRETCH);
++            ndTexture = SDL_CreateTexture(ndRenderer, SDL_PIXELFORMAT_BGRA32, SDL_TEXTUREACCESS_STREAMING, ND_SCRN_W, ND_SCRN_H);
+             SDL_SetTextureBlendMode(ndTexture, SDL_BLENDMODE_NONE);
+ #ifdef ENABLE_RENDERING_THREAD
+             SDL_SetRenderVSync(ndRenderer, 1);
+@@ -108,7 +108,7 @@
+ 
+ void NDSDL::resize(float scale) {
+     if (ndWindow) {
+-        SDL_SetWindowSize(ndWindow, (int)SDL_lroundf(scale*NeXT_SCRN_W), (int)SDL_lroundf(scale*NeXT_SCRN_H));
++        SDL_SetWindowSize(ndWindow, (int)SDL_lroundf(scale*ND_SCRN_W), (int)SDL_lroundf(scale*ND_SCRN_H));
+     }
+ }
+ 
+Index: src/grab.c
+===================================================================
+--- src/grab.c	(revision 1859)
++++ src/grab.c	(working copy)
+@@ -503,19 +503,22 @@
+ 	} else {
+ 		src = (slot > 0) ? (uint8_t*)(nd_vram_for_slot(slot)) : NEXTVideo;
+ 		dst = buf;
+-		if (!src || NeXT_SCRN_W > screen_w || NeXT_SCRN_H > screen_h) {
++		if (!src) {
+ 			return false;
+ 		}
+-		
++
+ 		if (slot > 0) {
++			/* The board's own size, whatever the main screen is set to. */
++			format->w     = ND_SCRN_W;
++			format->h     = ND_SCRN_H;
+ 			format->rgb   = 1;
+ 			format->alpha = 0;
+ 			format->depth = 8;
+-			
++
+ 			src += ND_OFFSET;
+-			
+-			for (y = 0; y < NeXT_SCRN_H; y++) {
+-				for (x = 0; x < NeXT_SCRN_W; x++, src += 4, dst += 3) {
++
++			for (y = 0; y < ND_SCRN_H; y++) {
++				for (x = 0; x < ND_SCRN_W; x++, src += 4, dst += 3) {
+ 					dst[0] = src[2]; /* r */
+ 					dst[1] = src[1]; /* g */
+ 					dst[2] = src[0]; /* b */
+@@ -552,15 +555,32 @@
+ 				}
+ 			}
+ 		} else {
++			FirmwareView view;
++
+ 			format->rgb   = 0;
+ 			format->alpha = 0;
+ 			format->depth = 2;
+-			
+-			for (y = 0; y < NeXT_SCRN_H; y++) {
+-				for (x = 0; x < NeXT_SCRN_W; x += 4) {
+-					*dst++ = ~*src++; /* 2-bit gray */
++
++			if (Screen_FirmwareView(&view)) {
++				/* Playground: the grab shows what the screen shows, the
++				 * firmware's picture 1:1 and centered, dark gray around it. */
++				int src_stride = NeXT_FIRMWARE_SCRN_W / 4 + (ConfigureParams.System.bTurbo ? 0 : (32 / 4));
++				int dst_stride = NeXT_SCRN_W / 4;
++				memset(dst, (uint8_t)~0xAA, dst_stride * NeXT_SCRN_H);
++				for (y = 0; y < view.copy_h; y++) {
++					uint8_t* row_src = src + (view.src_y + y) * src_stride + view.src_x / 4;
++					uint8_t* row_dst = dst + (view.dst_y + y) * dst_stride + view.dst_x / 4;
++					for (x = 0; x < view.copy_w; x += 4) {
++						*row_dst++ = ~*row_src++; /* 2-bit gray */
++					}
+ 				}
+-				src += ConfigureParams.System.bTurbo ? 0 : (32 / 4);
++			} else {
++				for (y = 0; y < NeXT_SCRN_H; y++) {
++					for (x = 0; x < NeXT_SCRN_W; x += 4) {
++						*dst++ = ~*src++; /* 2-bit gray */
++					}
++					src += ConfigureParams.System.bTurbo ? 0 : (32 / 4);
++				}
+ 			}
+ 		}
+ 	}
+@@ -571,7 +591,13 @@
+  * Grab screen from board at certain slot.
+  */
+ static void Grab_ScreenFromSlot(int slot) {
+-	uint8_t* buffer = (uint8_t*)calloc(1, screen_w * screen_h * 4);
++	/* Room for the larger of the main screen and a NeXTdimension's screen,
++	 * because the two no longer have to be the same size. */
++	int pixels = screen_w * screen_h;
++	if (ND_SCRN_W * ND_SCRN_H > pixels) {
++		pixels = ND_SCRN_W * ND_SCRN_H;
++	}
++	uint8_t* buffer = (uint8_t*)calloc(1, pixels * 4);
+ 	if (buffer) {
+ 		struct grab_format format;
+ 		if (Grab_ScreenFormat(slot, buffer, &format)) {
+Index: src/gui-sdl/sdlscreen.c
+===================================================================
+--- src/gui-sdl/sdlscreen.c	(revision 1859)
++++ src/gui-sdl/sdlscreen.c	(working copy)
+@@ -20,12 +20,17 @@
+ #include "video.h"
+ #include "keymap.h"
+ #include "m68000.h"
++#include "tmc.h"
+ 
+ 
+-/* NeXT screen resolution */
+-const int NeXT_SCRN_W = 1120;
+-const int NeXT_SCRN_H = 832;
++/* NeXT screen resolution. The hardware's own is 1120 by 832. The playground
++ * lets the environment set another one, which tmc.c hands to the guest in the
++ * display counts at the same time, so both sides agree on the geometry. */
++#define NEXT_SCRN_LEAST 64
+ 
++int NeXT_SCRN_W = NeXT_FIRMWARE_SCRN_W;
++int NeXT_SCRN_H = NeXT_FIRMWARE_SCRN_H;
++
+ SDL_Window*   sdlWindow;
+ SDL_Surface*  sdlscrn = NULL;        /* The SDL screen surface */
+ 
+@@ -34,12 +39,62 @@
+ volatile bool bInFullScreen = false; /* true if in full screen */
+ 
+ /* extern for tablet */
+-int screen_w = NeXT_SCRN_W;
+-int screen_h = NeXT_SCRN_H;
++int screen_w = NeXT_FIRMWARE_SCRN_W;
++int screen_h = NeXT_FIRMWARE_SCRN_H;
+ 
+-static int width  = NeXT_SCRN_W;
+-static int height = NeXT_SCRN_H;
++static int width  = NeXT_FIRMWARE_SCRN_W;
++static int height = NeXT_FIRMWARE_SCRN_H;
+ 
++/*
++ Playground: take the main screen's size from PREVIOUS_SCREEN_W and
++ PREVIOUS_SCREEN_H. The width is kept to a multiple of four, because the gray
++ frame buffer packs four pixels into a byte and the TMC counts width in fours.
++ Only a turbo machine in gray takes another size, because only its kernel
++ reads the screen size from the TMC counts; the other machines keep constants.
++ */
++static void Screen_GeometryFromEnvironment(void) {
++	const char* text_w = getenv("PREVIOUS_SCREEN_W");
++	const char* text_h = getenv("PREVIOUS_SCREEN_H");
++	int env_w = text_w ? atoi(text_w) : 0;
++	int env_h = text_h ? atoi(text_h) : 0;
++	bool machine_reads_counts = ConfigureParams.System.bTurbo && !ConfigureParams.System.bColor;
++
++	if (machine_reads_counts && env_w >= NEXT_SCRN_LEAST && env_h >= NEXT_SCRN_LEAST) {
++		NeXT_SCRN_W = env_w & ~3;
++		NeXT_SCRN_H = env_h;
++	}
++	screen_w = width  = NeXT_SCRN_W;
++	screen_h = height = NeXT_SCRN_H;
++}
++
++bool Screen_FirmwareView(FirmwareView* view) {
++	if (tmc_display_counts_read_by_os) {
++		return false;
++	}
++	if (NeXT_SCRN_W == NeXT_FIRMWARE_SCRN_W && NeXT_SCRN_H == NeXT_FIRMWARE_SCRN_H) {
++		return false;
++	}
++	if (NeXT_SCRN_W <= NeXT_FIRMWARE_SCRN_W) {
++		view->src_x  = ((NeXT_FIRMWARE_SCRN_W - NeXT_SCRN_W) / 2) & ~3;
++		view->dst_x  = 0;
++		view->copy_w = NeXT_SCRN_W;
++	} else {
++		view->src_x  = 0;
++		view->dst_x  = ((NeXT_SCRN_W - NeXT_FIRMWARE_SCRN_W) / 2) & ~3;
++		view->copy_w = NeXT_FIRMWARE_SCRN_W;
++	}
++	if (NeXT_SCRN_H <= NeXT_FIRMWARE_SCRN_H) {
++		view->src_y  = (NeXT_FIRMWARE_SCRN_H - NeXT_SCRN_H) / 2;
++		view->dst_y  = 0;
++		view->copy_h = NeXT_SCRN_H;
++	} else {
++		view->src_y  = 0;
++		view->dst_y  = (NeXT_SCRN_H - NeXT_FIRMWARE_SCRN_H) / 2;
++		view->copy_h = NeXT_FIRMWARE_SCRN_H;
++	}
++	return true;
++}
++
+ static SDL_Renderer* sdlRenderer;
+ static SDL_Texture*  uiTexture;
+ static SDL_Texture*  fbTexture;
+@@ -79,6 +134,43 @@
+ }
+ 
+ /*
++ Playground: the firmware's 1120 by 832 picture, 1:1 and centered in the
++ configured screen. Its rows have the firmware's length, which on a turbo
++ machine is the width and elsewhere the width plus 32 pixels. Where the
++ picture does not reach, the screen is NeXT's dark gray, which is what the
++ ROM clears to, so the cut is not visible as an edge.
++ */
++#define NEXT_GRAY_ROW_BYTE 0xAA /* four pixels of dark gray at 2 bits each */
++
++static void blitBWFirmware(SDL_Texture* tex, const FirmwareView* view) {
++	void* pixels;
++	uint8_t* src;
++	uint8_t* dst;
++	int pitch, src_stride, x, y;
++
++	src_stride = NeXT_FIRMWARE_SCRN_W / 4 + (ConfigureParams.System.bTurbo ? 0 : (32 / 4));
++	SDL_LockTexture(tex, NULL, &pixels, &pitch);
++	if (view->copy_w < NeXT_SCRN_W || view->copy_h < NeXT_SCRN_H) {
++		for (y = 0; y < NeXT_SCRN_H; y++) {
++			dst = (uint8_t*)pixels + y * pitch;
++			for (x = 0; x < NeXT_SCRN_W / 4; x++) {
++				memcpy(dst, BW2RGB[NEXT_GRAY_ROW_BYTE], 16);
++				dst += 16;
++			}
++		}
++	}
++	for (y = 0; y < view->copy_h; y++) {
++		src = NEXTVideo + (view->src_y + y) * src_stride + view->src_x / 4;
++		dst = (uint8_t*)pixels + (view->dst_y + y) * pitch + view->dst_x * 4;
++		for (x = 0; x < view->copy_w / 4; x++) {
++			memcpy(dst, BW2RGB[*src++], 16);
++			dst += 16;
++		}
++	}
++	SDL_UnlockTexture(tex);
++}
++
++/*
+  BW format is 2 bit per pixel
+  */
+ static void blitBW(SDL_Texture* tex) {
+@@ -86,7 +178,13 @@
+ 	uint8_t* src;
+ 	uint8_t* dst;
+ 	int pitch, src_padding, dst_padding, x, y;
++	FirmwareView view;
+ 
++	if (Screen_FirmwareView(&view)) {
++		blitBWFirmware(tex, &view);
++		return;
++	}
++
+ 	SDL_LockTexture(tex, NULL, &pixels, &pitch);
+ 	src = NEXTVideo;
+ 	dst = (uint8_t*)pixels;
+@@ -141,23 +239,27 @@
+ #else
+ 	src = &vram[4];
+ #endif
+-	src_pitch  = (NeXT_SCRN_W + 32) * 4;
++	src_pitch  = (ND_SCRN_W + 32) * 4;
+ 	src_format = SDL_PIXELFORMAT_BGRA32;
+ 	dst_format = tex->format;
+ 
+ 	SDL_LockTexture(tex, NULL, &dst, &dst_pitch);
+-	SDL_ConvertPixels(NeXT_SCRN_W, NeXT_SCRN_H, src_format, src, src_pitch, dst_format, dst, dst_pitch);
++	SDL_ConvertPixels(ND_SCRN_W, ND_SCRN_H, src_format, src, src_pitch, dst_format, dst, dst_pitch);
+ 	SDL_UnlockTexture(tex);
+ }
+ 
+ /*
+- Blank screen
++ Blank screen. The texture's own height decides how much is cleared, because
++ a NeXTdimension texture keeps the board's 832 rows whatever the main screen
++ is configured to.
+  */
+ void Screen_Blank(SDL_Texture* tex) {
+ 	void* pixels;
+ 	int   pitch;
++	float tex_w, tex_h;
++	SDL_GetTextureSize(tex, &tex_w, &tex_h);
+ 	SDL_LockTexture(tex, NULL, &pixels, &pitch);
+-	SDL_memset4(pixels, COL2RGB[0], pitch * NeXT_SCRN_H / 4);
++	SDL_memset4(pixels, COL2RGB[0], pitch * (int)tex_h / 4);
+ 	SDL_UnlockTexture(tex);
+ }
+ 
+@@ -599,6 +701,7 @@
+ 	int i;
+ 
+ 	SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
++	Screen_GeometryFromEnvironment();
+ 	if (SDL_CreateWindowAndRenderer(PROG_NAME, width, height, flags, &sdlWindow, &sdlRenderer) == false) {
+ 		Main_ErrorExit("Failed to create window and renderer:", SDL_GetError(), -1);
+ 	}
+Index: src/includes/screen.h
+===================================================================
+--- src/includes/screen.h	(revision 1859)
++++ src/includes/screen.h	(working copy)
+@@ -15,9 +15,36 @@
+ extern volatile bool bGrabMouse;
+ extern volatile bool bInFullScreen;
+ 
+-extern const int NeXT_SCRN_W;
+-extern const int NeXT_SCRN_H;
++/* Playground: the main screen's size is a variable, set once at startup from
++ * PREVIOUS_SCREEN_W and PREVIOUS_SCREEN_H, so a guest told a different size
++ * through the TMC display counts is shown at that size. */
++extern int NeXT_SCRN_W;
++extern int NeXT_SCRN_H;
+ 
++/* The size the firmware draws for, which is the hardware's own. */
++#define NeXT_FIRMWARE_SCRN_W 1120
++#define NeXT_FIRMWARE_SCRN_H 832
++
++/* The NeXTdimension's screen is the board's own and does not follow the
++ * configured size: its geometry sits in the board's i860 program, in the
++ * kernel's driver for it and in the WindowServer's module for it. */
++#define ND_SCRN_W 1120
++#define ND_SCRN_H 832
++
++/* Playground: how the firmware's picture is shown in a screen of another
++ * size, 1:1 and centered. Offsets are pixels; the horizontal ones are
++ * multiples of four, so a row of gray pixels starts on a byte. */
++typedef struct {
++	int src_x, src_y;   /* where the shown part begins in the firmware picture */
++	int dst_x, dst_y;   /* where it lands in the screen */
++	int copy_w, copy_h; /* how much of it is shown */
++} FirmwareView;
++
++/* Fills the view and returns true while the firmware's picture is the one to
++ * show: before the kernel has read the display counts, on a turbo machine in
++ * gray, when the configured screen is not the firmware's. */
++extern bool Screen_FirmwareView(FirmwareView* view);
++
+ extern int screen_w;
+ extern int screen_h;
+ 
+Index: src/includes/tmc.h
+===================================================================
+--- src/includes/tmc.h	(revision 1859)
++++ src/includes/tmc.h	(working copy)
+@@ -19,6 +19,11 @@
+ extern bool tmc_video_enabled(void);
+ extern void tmc_video_interrupt(void);
+ 
++/* Playground: true once code outside the ROM has read the display counts,
++ * which is the kernel building its screen record. From then on the guest
++ * draws for the configured screen rather than the firmware's 1120 by 832. */
++extern volatile bool tmc_display_counts_read_by_os;
++
+ extern void TMC_Reset(void);
+ 
+ #endif /* PREV_TMC_H */
 Index: src/tmc.c
 ===================================================================
 --- src/tmc.c	(revision 1859)
 +++ src/tmc.c	(working copy)
-@@ -217,10 +217,37 @@
+@@ -14,6 +14,7 @@
+ #include "sysReg.h"
+ #include "adb.h"
+ #include "tmc.h"
++#include "screen.h"
+ 
+ #define LOG_TMC_LEVEL LOG_DEBUG
+ 
+@@ -217,10 +218,104 @@
  	return (tmc.video_intr&TMC_VI_ENABLE);
  }
  
@@ -31,6 +473,73 @@ Index: src/tmc.c
 +	tmc.vertical   = (tmc.vertical   & ~TMC_DISPLAY_COUNT_MASK) | tmc_display_height_count;
 +}
 +
++/* Playground: the handover from firmware to operating system. The ROM sits
++ * below 0x02000000 in the address map, in its two windows, and RAM begins at
++ * 0x04000000, so a read of the display counts from a program counter above
++ * the ROM windows is the kernel's. */
++volatile bool tmc_display_counts_read_by_os = false;
++
++#define TMC_VID_REG_HCR      8
++#define TMC_VID_REG_VCR_END  16
++#define NEXT_ROM_WINDOWS_END 0x02000000
++
++/* The firmware painted the frame buffer for its own geometry, and with the
++ * kernel's row length that picture reads as stripes until something paints
++ * over it, which the kernel's boot panel does only in the middle. So when the
++ * kernel takes the screen, what the firmware left is wiped to NeXT's dark
++ * gray, the color both the ROM and the kernel's panel stand on. The wipe
++ * covers the firmware's picture and the configured screen, within the VRAM. */
++#define NEXT_VRAM_GRAY_BYTES 0x40000
++#define NEXT_GRAY_FILL_BYTE  0xAA
++
++static void tmc_wipe_firmware_picture(void) {
++	size_t firmware_bytes   = (size_t)(NeXT_FIRMWARE_SCRN_W / 4) * NeXT_FIRMWARE_SCRN_H;
++	size_t configured_bytes = (size_t)(NeXT_SCRN_W / 4) * NeXT_SCRN_H;
++	size_t bytes = firmware_bytes > configured_bytes ? firmware_bytes : configured_bytes;
++
++	if (NeXT_SCRN_W == NeXT_FIRMWARE_SCRN_W && NeXT_SCRN_H == NeXT_FIRMWARE_SCRN_H) {
++		return;
++	}
++	if (bytes > NEXT_VRAM_GRAY_BYTES) {
++		bytes = NEXT_VRAM_GRAY_BYTES;
++	}
++	if (NEXTVideo) {
++		memset(NEXTVideo, NEXT_GRAY_FILL_BYTE, bytes);
++	}
++}
++
++static void tmc_note_display_count_read(uint32_t addr) {
++	uint32_t reg = addr & 0xF;
++	if (reg >= TMC_VID_REG_HCR && reg < TMC_VID_REG_VCR_END && m68k_getpc() >= NEXT_ROM_WINDOWS_END) {
++		if (!tmc_display_counts_read_by_os) {
++			tmc_display_counts_read_by_os = true;
++			tmc_wipe_firmware_picture();
++		}
++	}
++}
++
++/* Playground: with PREVIOUS_TMC_TRACE set, every access to the video
++ * configuration registers is printed with the program counter, so a boot
++ * shows which code reads the display counts and which writes them. Reads are
++ * capped, because a driver may poll them. */
++#define TMC_TRACE_READS_AT_MOST 64
++
++static void tmc_trace_video_access(const char* what, uint32_t addr, uint32_t val) {
++	static int enabled = -1;
++	static int reads = 0;
++	if (enabled < 0) {
++		const char* text = getenv("PREVIOUS_TMC_TRACE");
++		enabled = (text && *text) ? 1 : 0;
++	}
++	if (!enabled) {
++		return;
++	}
++	if (what[0] == 'r' && reads++ >= TMC_TRACE_READS_AT_MOST) {
++		return;
++	}
++	fprintf(stderr, "[TMC trace] %s video reg +%02x val=%08x pc=%08x\n", what, addr & 0xFF, val, m68k_getpc());
++}
++
  static void tmc_video_reg_reset(void) {
 +	tmc_display_width_count  = tmc_count_from_env("PREVIOUS_SCREEN_W", HDISCNT, 4);
 +	tmc_display_height_count = tmc_count_from_env("PREVIOUS_SCREEN_H", VDISCNT, 1);
@@ -42,7 +551,7 @@ Index: src/tmc.c
  }
  
  void tmc_video_interrupt(void) {
-@@ -266,10 +293,12 @@
+@@ -266,10 +361,12 @@
  static void tmc_hcr_write2(uint8_t val) {
  	tmc.horizontal &= 0xFFFF00FF;
  	tmc.horizontal |= (val&0xFF)<<8;
@@ -55,7 +564,7 @@ Index: src/tmc.c
  }
  
  static uint8_t tmc_vcr_read0(void) {
-@@ -296,10 +325,12 @@
+@@ -296,10 +393,12 @@
  static void tmc_vcr_write2(uint8_t val) {
  	tmc.vertical &= 0xFFFF00FF;
  	tmc.vertical |= (val&0xFF)<<8;
@@ -68,6 +577,50 @@ Index: src/tmc.c
  }
  
  
+@@ -370,6 +469,8 @@
+ 		val |= tmc_read_vid_reg[(addr+1)&0xF]()<<16;
+ 		val |= tmc_read_vid_reg[(addr+2)&0xF]()<<8;
+ 		val |= tmc_read_vid_reg[(addr+3)&0xF]();
++		tmc_trace_video_access("read", addr, val);
++		tmc_note_display_count_read(addr);
+ 	}
+ 
+ 	return val;
+@@ -397,8 +498,9 @@
+ 	} else if (addr>=128 && addr<144) {
+ 		val = tmc_read_vid_reg[addr&0xF]()<<8;
+ 		val |= tmc_read_vid_reg[(addr+1)&0xF]();
++		tmc_note_display_count_read(addr);
+ 	}
+-	
++
+ 	return val;
+ }
+ 
+@@ -414,6 +516,7 @@
+ 	if (addr<36) {
+ 		return tmc_read_reg[addr]();
+ 	} else if (addr>=128 && addr<144) {
++		tmc_note_display_count_read(addr);
+ 		return tmc_read_vid_reg[addr&0xF]();
+ 	}
+ 
+@@ -441,6 +544,7 @@
+ 		tmc_write_reg[addr+2](l>>8);
+ 		tmc_write_reg[addr+3](l);
+ 	} else if (addr>=128 && addr<144) {
++		tmc_trace_video_access("write", addr, l);
+ 		tmc_write_vid_reg[addr&0xF](l>>24);
+ 		tmc_write_vid_reg[(addr+1)&0xF](l>>16);
+ 		tmc_write_vid_reg[(addr+2)&0xF](l>>8);
+@@ -492,6 +596,7 @@
+ 
+ /* TMC Reset */
+ void TMC_Reset(void) {
++	tmc_display_counts_read_by_os = false;
+ 	tmc_scr1_reset();
+ 	tmc_video_reg_reset();
+ 	
 Index: src/video.c
 ===================================================================
 --- src/video.c	(revision 1859)

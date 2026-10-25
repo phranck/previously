@@ -24,6 +24,8 @@ env HOME="$run_dir/home" "$@" "$playground/build/src/Previous.app/Contents/MacOS
 previous_pid=$!
 echo "run $run: Previous pid $previous_pid for $seconds s"
 sleep "$seconds"
-kill "$previous_pid" 2>/dev/null || true
+# SIGTERM becomes an SDL quit event, which Previous answers with a dialog
+# that waits for a click, so the emulator is ended without asking.
+kill -KILL "$previous_pid" 2>/dev/null || true
 wait "$previous_pid" 2>/dev/null || true
 ls "$run_dir/grabs" | tail -3
