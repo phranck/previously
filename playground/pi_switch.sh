@@ -2,7 +2,13 @@
 # Switches next5 between its own console and the playground console, which
 # runs the playground build of Previous at 1024 by 600 from /tmp/playground.
 #
-#     pi_switch.sh on | off | status
+#     pi_switch.sh prepare | on | off | status
+#
+# prepare puts the binary from pi_build.sh and what runs it into
+# /tmp/playground on next5, which is a tmpfs, so a reboot takes it away: the
+# console script, a home whose previous.cfg names the playground's disk copy
+# and grab folder, and a link to the package's ROMs where the binary looks for
+# its data. It changes nothing on the screen.
 #
 # Both directions go through the admin's own kiosk module, so the guest is
 # shut down properly before the console changes hands: stop() presses the
@@ -35,6 +41,26 @@ kiosk_start() {
 }
 
 case "${1:-status}" in
+    prepare)
+        ssh "$host" "mkdir -p /tmp/playground/bin /tmp/playground/share /tmp/playground/home/.config/previous /tmp/playground/grabs && ln -sfn /usr/share/previous /tmp/playground/share/previous"
+        scp "$HOME/.cache/previously-playground/pi-build/Previous" "$host:/tmp/playground/bin/previous"
+        ssh "$host" "sed -e 's|^szImageName0 = .*|szImageName0 = /home/next/nextstep/nextstep-3.3-playground.dd|' -e 's|^szPrintToFileName = .*|szPrintToFileName = /tmp/playground/grabs|' $own_config > $test_config"
+        ssh "$host" "cat > /tmp/playground/console-test" <<'CONSOLE'
+#!/bin/sh
+# The console of previously-console, with the playground build, its own home
+# and the panel's size. It waits on the same hold, so the admin's kiosk module
+# stops and starts it like the real one.
+while [ -f /run/previously/hold ]; do sleep 2; done
+cd /tmp/playground/grabs
+HOME=/tmp/playground/home PREVIOUS_SCREEN_W=1024 PREVIOUS_SCREEN_H=600 \
+SDL_VIDEO_DRIVER=x11,wayland XCURSOR_PATH=/usr/share/previously/cursors \
+cage -- /tmp/playground/bin/previous
+status=$?
+[ "$status" -eq 0 ] || sleep 2
+exit "$status"
+CONSOLE
+        ssh "$host" "chmod +x /tmp/playground/console-test /tmp/playground/bin/previous && grep -E '^(szImageName0|szPrintToFileName)' $test_config && ls -la /tmp/playground/bin /tmp/playground/share/previous/"
+        ;;
     on)
         kiosk_stop "$own_config"
         # The guest is down and its disk is clean at this moment, so the test
