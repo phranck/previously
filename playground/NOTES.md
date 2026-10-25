@@ -41,6 +41,7 @@ The 0x139 variants at 0x04097dc2 (0x900), 0x04097de2 (0x480) and 0x04097e54 (0x1
 ## Other places the numbers appear
 
 - The kernel's text console takes row length, height and frame buffer from its own `_km_coni` at `0x040b75fc`: `_km_clear_screen`, `_km_flip_cursor` and the left margin `_kminit` computes from the width. The 1120 at `_km_clear_screen+0x38` and at `_rtc_power_down+0x14` is the displacement of a `bsr.l`, not a screen size.
+- The cursor is drawn by the kernel. `_evdispatch` calls the screen functions the gray driver registers in `FUN_04098b2a`, and they call the driver table `_st_sdsw`, whose first entry is the gray screen. Its routines that draw the cursor (`0x0409784a`) and take it away (`0x04097a2a`) step through rows of a fixed 70 longs, `moveq #$46,d5` at `0x040978aa` and `0x04097a44`, which is 1120 pixels. These two are the only fixed row lengths in the gray driver. At 1024 pixels the cursor came out sheared into dashes and a copy stayed at its first position, so the playground build sets both immediates to the configured width in longs once the kernel reads the display counts, after checking the words around them.
 - `_km_drawrect` and `_km_eraserect` work in coordinates for 1120 by 832 and add half the difference to the record's width and height, so the kernel's boot panels sit centered in a screen of any size.
 - The WindowServer has no screen constant: its only 1120 and 832 sit in `_MouseInit` as a fallback rectangle for a device without a window, and `_GrayInit+0x2bc` is an offset into `_graphicsNames`.
 
