@@ -83,7 +83,9 @@ sudo systemctl restart previously-console
 
 ## The picture
 
-Previous draws NeXTSTEP at the 1120 by 832 of the real hardware and fits that into the monitor. On a larger monitor the console enlarges it by whole pixels before it is scaled to fit, so it fills the screen and its edges stay sharp. Where the Pi's graphics cannot keep up with that, as a Pi 4 on a 2048 by 1536 display cannot, the picture is scaled to fit directly. On a smaller monitor, such as a 1024 by 600 panel, it is scaled down to fit. Either way it keeps its proportions, so a monitor of another shape shows black bars along two of its edges.
+Previous draws NeXTSTEP at the 1120 by 832 of the real hardware and fits that into the monitor. On a larger monitor the console enlarges it by whole pixels before it is scaled to fit, so it fills the screen and its edges stay sharp. On a smaller monitor, such as a 1024 by 600 panel, it is scaled down to fit. Either way it keeps its proportions, so a monitor of another shape shows black bars along two of its edges.
+
+The monitor can be unplugged while NeXTSTEP runs and plugged in again later. Mouse and keyboard work as soon as it is back.
 
 ## Using your own disk image
 
