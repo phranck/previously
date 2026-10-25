@@ -47,7 +47,7 @@ def service(tmp_path, readable_config):
 OWN_PAGE = object()
 
 
-def ask(address, protocols=None, upgrade=True, key=KEY, origin=OWN_PAGE):
+def ask(address, protocols=None, upgrade=True, key=KEY, origin=OWN_PAGE, host=None):
     """Asks for a terminal, the way a browser does.
 
     @param address - Where the service is.
@@ -56,10 +56,13 @@ def ask(address, protocols=None, upgrade=True, key=KEY, origin=OWN_PAGE):
     @param key - What to put in Sec-WebSocket-Key.
     @param origin - What to put in Origin, None to send none, and by default
       the service's own page.
+    @param host - What to put in Host, by default the address it is sent to.
+      A browser sends the name it was given, whatever address that name led
+      to, which is what lets a test stand in for a name pointed at the Pi.
     @returns tuple of (the status line, the open socket).
     """
     connection = socket.create_connection(address, timeout=5)
-    lines = ["GET /api/terminal HTTP/1.1", "Host: %s:%d" % address]
+    lines = ["GET /api/terminal HTTP/1.1", "Host: %s" % (host or "%s:%d" % address)]
     if origin is OWN_PAGE:
         origin = "http://%s:%d" % address
     if origin is not None:
@@ -157,6 +160,33 @@ def test_a_handshake_from_anywhere_but_this_page_is_refused(service, origin):
     assert ended_by_the_service(connection)
 
 
+def test_a_page_under_a_name_pointed_at_the_pi_is_refused(service):
+    """DNS rebinding: a page on another site points its own name at the Pi's
+    address, and the browser then names that page in Origin and that name in
+    Host. The two match, so it is the name in Host that gives it away."""
+    address, _ = service
+    rebound = "evil.example:%d" % address[1]
+
+    status, connection = ask(address, [websocket.PROTOCOL],
+                             origin="http://" + rebound, host=rebound)
+    headers = rest_of_the_headers(connection)
+
+    assert "403" in status
+    assert "Connection: close" in headers
+    assert ended_by_the_service(connection)
+
+
+def test_a_page_on_another_port_is_refused(service):
+    """Another port is another page, whatever else it shares with this one."""
+    address, _ = service
+
+    status, connection = ask(address, [websocket.PROTOCOL],
+                             origin="http://%s:%d" % (address[0], address[1] + 1))
+    connection.close()
+
+    assert "403" in status
+
+
 def test_a_second_session_refused_ends_its_connection(service):
     address, _ = service
 
@@ -197,8 +227,8 @@ def test_the_handshake_needs_no_password(service):
     headers = rest_of_the_headers(connection)
     connection.close()
 
-    # HTTP/1.1 rather than the 1.0 this handler answers everything else in,
-    # because a browser refuses a handshake that is not.
+    # Written out by hand rather than through send_response, and HTTP/1.1,
+    # because a browser refuses a handshake answered in anything older.
     assert status == "HTTP/1.1 101 Switching Protocols"
     assert websocket.accepts(KEY) in headers
     assert "Sec-WebSocket-Protocol: " + websocket.PROTOCOL in headers

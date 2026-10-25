@@ -720,6 +720,61 @@ def test_a_post_from_this_page_is_not(service):
     assert raised.value.code == 404
 
 
+def test_a_page_is_the_same_page_in_any_case(service):
+    """A host name means the same in capitals as in small letters, so a page
+    that names this one in other letters is still this page. It reaches a
+    route that does not exist, which is the check having let it through."""
+    parsed = urllib.parse.urlparse(service)
+    connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=5)
+    try:
+        connection.request("POST", "/api/anything", body=b"{}", headers={
+            "Host": "LOCALHOST:%d" % parsed.port,
+            "Origin": "http://localhost:%d" % parsed.port,
+            "Cookie": "%s=%s" % (COOKIE, server.Handler.sessions.open())})
+        answer = connection.getresponse()
+        answer.read()
+    finally:
+        connection.close()
+
+    assert answer.status == 404
+
+
+@pytest.mark.parametrize("host,names_it", [
+    ("127.0.0.1:8810", True),
+    ("192.168.1.20", True),
+    ("[::1]:8810", True),
+    ("[fe80::2]", True),
+    ("localhost:8810", True),
+    ("LocalHost", True),
+    ("next5", True),
+    ("next5.local:8810", True),
+    ("NEXT5.LOCAL", True),
+    ("evil.example:8810", False),
+    ("next5.evil.example", False),
+    ("next5.local.evil.example", False),
+    ("", False),
+    (None, False),
+])
+def test_what_names_this_machine(monkeypatch, host, names_it):
+    """An address, localhost, the hostname and the hostname under `.local`,
+    in any case. A page that points its own domain at this machine's address
+    keeps sending that domain, which is none of these."""
+    monkeypatch.setattr(server.socket, "gethostname", lambda: "next5")
+
+    assert server.names_this_machine(host) is names_it
+
+
+def test_a_hostname_with_its_domain_names_this_machine_with_or_without_it(monkeypatch):
+    """Some systems answer gethostname with the domain the network gave them,
+    and the machine is still reached by its short name and under `.local`."""
+    monkeypatch.setattr(server.socket, "gethostname", lambda: "next5.fritz.box")
+
+    assert server.names_this_machine("next5.fritz.box:8810") is True
+    assert server.names_this_machine("next5.local") is True
+    assert server.names_this_machine("next5") is True
+    assert server.names_this_machine("other.fritz.box") is False
+
+
 # -- taking the guest down -------------------------------------------------
 
 

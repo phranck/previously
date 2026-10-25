@@ -12,9 +12,11 @@ import email.utils
 import hashlib
 import http.cookies
 import http.server
+import ipaddress
 import json
 import mimetypes
 import pathlib
+import socket
 import threading
 import time
 import urllib.parse
@@ -823,7 +825,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         another site, open in a browser on the home network, could otherwise
         open this socket and put the login prompt in front of whoever is
         reading that page. A browser names the page on every handshake, so one
-        that names another page or none at all is refused.
+        that names another page or none at all is refused. So is one under a
+        name that is not this machine's own: a page that points its own domain
+        at this machine's address names that domain in Origin and in Host
+        alike, and only the name tells it apart.
 
         Whatever this answers ends the connection. A handshake that succeeds
         turns it into a WebSocket, and a browser whose handshake is refused
@@ -1141,23 +1146,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """Whether a request came from this service's own page.
 
         @param required - Whether a request that names no origin is refused as
-          well. The WebSocket handshake of the terminal sets it, because a
-          browser names the page on every handshake it sends.
+          well, and one whose Host is not one of this machine's own names. The
+          WebSocket handshake of the terminal sets it, because a browser names
+          the page on every handshake it sends, and because no session stands
+          behind the terminal.
         @returns bool
 
         A cookie rides along with every request a browser makes to this host,
         including one a page somewhere else caused, so the session on its own
         would let another site act here. A browser states the origin it is
         posting from whenever that origin is not this one, and a request that
-        states a different one is refused.
+        states a different one is refused. The two are compared without
+        regard to case, because a host name means the same either way.
 
         A POST carrying no origin at all is something other than a browser
         form, such as curl, and is left to the session check after this one.
+        A page that points its own domain at this machine's address matches
+        Origin to Host, but its POSTs carry no session, because the browser
+        keeps this machine's cookie for this machine's name.
         """
         origin = self.headers.get("Origin")
+        host = self.headers.get("Host") or ""
         if not origin:
             return not required
-        return urllib.parse.urlparse(origin).netloc == self.headers.get("Host")
+        if required and not names_this_machine(host):
+            return False
+        return urllib.parse.urlparse(origin).netloc.lower() == host.lower()
 
     # -- how anything is sent --------------------------------------------
 
@@ -1272,6 +1286,36 @@ def safe_path(root, route):
     except ValueError:
         return None
     return candidate
+
+
+def names_this_machine(host):
+    """Whether a Host header names this machine rather than some other name.
+
+    @param host - The Host header, with or without a port, or None.
+    @returns bool, True for an IP address, `localhost`, this machine's hostname
+      and that hostname under `.local`, in any case.
+
+    DNS rebinding points a page's own domain at this machine's address, and the
+    browser goes on sending that domain in Host. It is none of these names, so
+    this is what refuses it. An address is safe to take: a browser sends one
+    only where it was given one to connect to, and a page can be loaded from an
+    address only from whatever answers there.
+
+    The hostname is asked for each time, because it is the owner's to change.
+    Some systems answer with the domain the network gave them, so the name
+    before its first dot counts as well.
+    """
+    name = urllib.parse.urlsplit("//" + (host or "")).hostname
+    if not name:
+        return False
+    try:
+        ipaddress.ip_address(name)
+        return True
+    except ValueError:
+        pass
+    own = socket.gethostname().lower()
+    short = own.split(".", 1)[0]
+    return name in {"localhost", own, short, short + ".local"}
 
 
 def serve(settings, password=None):
