@@ -1494,6 +1494,12 @@ def _copy(work):
     Only with the guest shut down. A copy taken while NeXTSTEP is writing is a
     torn file system: it looks like a disk and fails on the first boot in a way
     nobody can debug.
+
+    Written under an unfinished name and renamed once it is whole, as a copy
+    put back is, because a run that stops half way, from a power cut or a
+    stopped helper, runs no undo. Half a disk under a copy's name would be
+    listed and offered to be put back. What such a run left behind goes before
+    the room is counted, because it is taking some of that room.
     """
     if work.system is None:
         raise Refused("setup.no-system-named")
@@ -1503,6 +1509,9 @@ def _copy(work):
     disk = systems.disk_in(work.settings.disks, work.system)
     if disk is None:
         raise Refused("setup.system-is-not-here", name=work.system.name)
+
+    for left in systems.unfinished_copies_of(work.settings.disks, work.system):
+        left.unlink(missing_ok=True)
 
     size = disk.stat().st_size
     free = systems.room_beside(work.settings.disks)
@@ -1515,10 +1524,13 @@ def _copy(work):
         work.undoes(lambda place=made: place.rmdir())
 
     copy = where / systems.a_copy_of(work.system, datetime.datetime.now())
+    writing = systems.unfinished(copy)
+    work.undoes(lambda: writing.unlink(missing_ok=True))
+    _copied_across(disk, writing, work)
+    work.owner.owns(writing)
+    writing.chmod(0o644)
+    writing.replace(copy)
     work.undoes(lambda: copy.unlink(missing_ok=True))
-    _copied_across(disk, copy, work)
-    work.owner.owns(copy)
-    copy.chmod(0o644)
 
 
 def _put_back(work):

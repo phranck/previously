@@ -322,6 +322,8 @@ A system is a disk and the machine boots it. Developer Tools, applications and w
 
 Both directions need the machine switched off. A copy taken while NeXTSTEP is writing is a torn file system: it looks like a disk and fails on its first boot in a way nobody can debug. What a copy costs and what would be left on the card is in the question, and putting one back says plainly that what is on that disk now is written over. The copy is written beside the disk and moved into place, so a card that fills up half way through leaves the disk that was there rather than half of each.
 
+**A copy only shows up once it is whole.** It is written under its name with `.copying` after it and renamed when the last byte is in, so a copy cut short by a power cut or a stopped helper is never listed in `Backups` and never offered to be put back. What it left behind goes when the next copy of that disk starts.
+
 **Which system needs which machine is not written down anywhere this tool can read**, so it is not guessed at. What answers it is the machine itself: a disk that will not boot on the configuration in force does not come up, and the rollback puts the old one back. That is the same answer the tool already gives for a machine it cannot run, and it needs no table that would be wrong somewhere.
 
 ## Switching the machine on and off

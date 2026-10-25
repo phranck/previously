@@ -12,6 +12,7 @@ list for everything root would have done.
 """
 
 import configparser
+import datetime
 import errno
 import json
 import os
@@ -2014,6 +2015,50 @@ def test_a_copy_that_stops_half_way_leaves_the_disk_alone(card, monkeypatch):
         setup.STEPS["put-back"](card)
 
     assert disk.read_bytes() == before
+
+
+def a_copy_cut_short(card, monkeypatch):
+    """Starts a copy and kills it half way, as a power cut or a stopped helper
+    does: half the file is written and nothing after that runs, not even the
+    undo of the run."""
+    def killed(source, into, work):
+        into.write_bytes(b"half of it")
+        raise SystemExit("killed")
+
+    whole = setup._copied_across
+    monkeypatch.setattr(setup, "_copied_across", killed)
+    with pytest.raises(SystemExit):
+        setup.STEPS["copy"](card)
+    monkeypatch.setattr(setup, "_copied_across", whole)
+
+
+def test_a_copy_cut_short_is_never_offered_to_be_put_back(card, monkeypatch):
+    """The File Viewer and Put Back both list what `copies_in` finds, and half a
+    disk written back over a whole one is the disk lost."""
+    a_copy_cut_short(card, monkeypatch)
+
+    assert systems.copies_in(card.settings.disks) == []
+
+
+def test_what_a_copy_cut_short_left_goes_with_the_next_copy(card, monkeypatch):
+    """Otherwise it would hold two gigabytes of the card for good, out of sight
+    of everything that shows what takes the room.
+
+    The two copies are a second apart, as they are on a machine, because two
+    taken in the same second share a name and the second simply replaces the
+    first."""
+    seconds = iter(range(2))
+    named = systems.a_copy_of
+    monkeypatch.setattr(systems, "a_copy_of", lambda system, when: named(
+        system, when + datetime.timedelta(seconds=next(seconds))))
+    a_copy_cut_short(card, monkeypatch)
+
+    setup.STEPS["copy"](card)
+
+    backups = systems.backups_in(card.settings.disks)
+    (copy, _), = systems.copies_in(card.settings.disks)
+    assert sorted(path.name for path in backups.iterdir()) == [copy.name]
+    assert copy.read_bytes() == (card.settings.disks / "nextstep-3.3.dd").read_bytes()
 
 
 def test_how_far_a_copy_has_got_is_readable_while_it_runs(card):

@@ -61,6 +61,12 @@ DISK_SUFFIX = ".dd"
 #: one where the two look alike.
 BACKUPS = "backups"
 
+#: What a copy is called while it is still being written: its own name with
+#: this after it, renamed to that name once the copy is whole. `copies_in` lists
+#: only names that end in DISK_SUFFIX, so a copy cut short by a power cut or a
+#: stopped helper is never shown or offered to be put back.
+UNFINISHED_SUFFIX = ".copying"
+
 #: One prepared system.
 #:
 #: `item` and `file` are what archive.org calls it, which together make the
@@ -217,6 +223,30 @@ def copies_in(disks):
         return []
     found.sort(key=lambda path: path.stat().st_mtime, reverse=True)
     return [(path, find(path.stem.split(" ", 1)[0])) for path in found]
+
+
+def unfinished(copy):
+    """@returns pathlib.Path - Where a copy is written until it is whole."""
+    return copy.with_name(copy.name + UNFINISHED_SUFFIX)
+
+
+def unfinished_copies_of(disks, system):
+    """What copies of this system that were cut short have left behind.
+
+    @param disks - pathlib.Path of the folder the disks live in.
+    @param system - The System they were copies of.
+    @returns list of pathlib.Path, empty where there is nothing or the folder
+      cannot be read.
+
+    Each one is as large as the copy got before it stopped, which can be most
+    of two gigabytes, and nothing lists them, so the next copy of the same
+    system takes them away.
+    """
+    pattern = "%s *%s%s" % (system.identifier, DISK_SUFFIX, UNFINISHED_SUFFIX)
+    try:
+        return sorted(backups_in(disks).glob(pattern))
+    except OSError:
+        return []
 
 
 def a_copy_of(system, when):
