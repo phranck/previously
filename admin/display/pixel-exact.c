@@ -25,8 +25,17 @@
  *   emulated screen, through the enlarged copy. Previous's own interface is
  *   drawn blended over it and is passed on unchanged.
  *
+ * Previous on Linux draws in the thread that reads SDL's event queue, and it
+ * asks for every repaint through an event of its own in that queue, at each
+ * of the emulated machine's 68 vertical blanks a second. A GPU too slow for
+ * the enlarged copy lets those repaints pile up in front of the mouse and the
+ * keyboard, and Previous stops answering either: a Pi 4 on a 2048 by 1536
+ * display does. So where half a second of them is waiting, the picture is
+ * drawn as Previous draws it for as long as this Previous runs.
+ *
  * PREVIOUSLY_PIXEL_EXACT_LOG names a file that every presentation Previous
- * asks for, and every change of the enlarging factor, is appended to.
+ * asks for, every change of the enlarging factor, and the moment Previous
+ * falls behind are appended to.
  */
 
 #define _GNU_SOURCE
@@ -42,6 +51,10 @@
 /* Keeps a factor that is a whole number but comes out a hair below it in
  * floating point from being rounded up to the next one. */
 #define WHOLE_NUMBER_TOLERANCE 0.0001f
+
+/* How many of Previous's own events may wait in the queue before it counts as
+ * falling behind: half a second of its repaints, at 68 a second. */
+#define EVENTS_BEHIND_LIMIT 34
 
 typedef bool (*PresentationSetter)(SDL_Renderer *renderer, int width, int height,
                                    SDL_RendererLogicalPresentation mode);
@@ -59,6 +72,10 @@ static int picture_height = 0;
  * it was made for. */
 static SDL_Texture *enlarged = NULL;
 static int enlarged_factor = 0;
+
+/* Set once Previous has fallen behind, and never cleared: drawing the copy
+ * again would make it fall behind again. */
+static bool fell_behind = false;
 
 /* Appends one line to the file PREVIOUSLY_PIXEL_EXACT_LOG names, if it names one. */
 static void note(const char *format, ...)
@@ -167,6 +184,31 @@ static SDL_Texture *enlarged_copy(SDL_Renderer *renderer, SDL_Texture *texture, 
     return enlarged;
 }
 
+/* Whether Previous has fallen behind with its repaints, now or before. The
+ * events it registers for itself are the only ones from SDL_EVENT_USER up,
+ * and counting them leaves them in the queue. */
+static bool falls_behind(void)
+{
+    int waiting;
+
+    if (fell_behind) {
+        return true;
+    }
+    waiting = SDL_PeepEvents(NULL, 0, SDL_PEEKEVENT, SDL_EVENT_USER, SDL_EVENT_LAST);
+    if (waiting <= EVENTS_BEHIND_LIMIT) {
+        return false;
+    }
+    fell_behind = true;
+    note("%d of Previous's events waiting, so the picture is drawn as Previous draws it from now on",
+         waiting);
+    if (enlarged != NULL) {
+        SDL_DestroyTexture(enlarged);
+        enlarged = NULL;
+        enlarged_factor = 0;
+    }
+    return true;
+}
+
 /* Whether the texture is drawn without blending, which in Previous's
  * letterboxed window is the emulated screen. */
 static bool is_opaque(SDL_Texture *texture)
@@ -206,7 +248,7 @@ bool SDL_RenderTexture(SDL_Renderer *renderer, SDL_Texture *texture,
     if (drawer == NULL) {
         return false;
     }
-    if (renderer != letterboxed_renderer || !is_opaque(texture)) {
+    if (renderer != letterboxed_renderer || !is_opaque(texture) || falls_behind()) {
         return drawer(renderer, texture, source, destination);
     }
     factor = enlarging_factor(renderer, texture);
