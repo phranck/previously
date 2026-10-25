@@ -10,7 +10,7 @@ Index: src/cpu/memory.c
  
  #include "newcpu.h"
  
-@@ -518,9 +519,102 @@
+@@ -518,9 +519,147 @@
  
  /* **** VRAM for monochrome systems **** */
  
@@ -104,6 +104,51 @@ Index: src/cpu/memory.c
 +	}
 +}
 +
++/* Playground: NeXTSTEP 3.3's gray screen driver draws the cursor and takes it
++ * away again with a row length of its own, 70 longs for the 1120 pixels of a
++ * turbo screen, in a `moveq #$46,d5` in each of the two routines. Everything
++ * else in the kernel takes the row length from its screen record. So once the
++ * kernel is loaded, both immediates are set to the configured width in longs.
++ * The words around each are checked first, and any kernel whose words differ
++ * is left as it is. A moveq holds at most 127, which is 2032 pixels. */
++#define CURSOR_STRIDE_CHECKED_WORDS 5
++#define CURSOR_STRIDE_MOVEQ_WORD    2
++#define CURSOR_STRIDE_MOVEQ_D5      0x7a00
++#define CURSOR_STRIDE_MOVEQ_MAX     127
++#define PIXELS_PER_LONG             16
++
++static const struct {
++	uaecptr start;                              /* where the checked words begin in /sdmach */
++	uae_u16 words[CURSOR_STRIDE_CHECKED_WORDS]; /* the words there, the moveq among them */
++} kernel_cursor_strides[] = {
++	{ 0x040978a6, { 0x3c3c, 0x0139, 0x7a46, 0x2d45, 0xfff8 } }, /* draws the cursor */
++	{ 0x04097a40, { 0x327c, 0x0139, 0x7a46, 0x2d45, 0xfffc } }  /* takes it away */
++};
++#define KERNEL_CURSOR_STRIDES (sizeof(kernel_cursor_strides) / sizeof(kernel_cursor_strides[0]))
++
++void memory_fit_kernel_cursor(void)
++{
++	uae_u16 fitted = CURSOR_STRIDE_MOVEQ_D5 | (NeXT_SCRN_W / PIXELS_PER_LONG);
++	size_t site;
++	int i;
++
++	if (NeXT_SCRN_W == NeXT_FIRMWARE_SCRN_W || NeXT_SCRN_W / PIXELS_PER_LONG > CURSOR_STRIDE_MOVEQ_MAX) {
++		return;
++	}
++	for (site = 0; site < KERNEL_CURSOR_STRIDES; site++) {
++		for (i = 0; i < CURSOR_STRIDE_CHECKED_WORDS; i++) {
++			uae_u16 found = get_word(kernel_cursor_strides[site].start + 2 * i);
++			uae_u16 expected = kernel_cursor_strides[site].words[i];
++			if (found != expected && !(i == CURSOR_STRIDE_MOVEQ_WORD && found == fitted)) {
++				return;
++			}
++		}
++	}
++	for (site = 0; site < KERNEL_CURSOR_STRIDES; site++) {
++		put_word(kernel_cursor_strides[site].start + 2 * CURSOR_STRIDE_MOVEQ_WORD, fitted);
++	}
++}
++
  static uae_u32 mem_video_lget(uaecptr addr)
  {
  	addr &= NEXT_VRAM_MASK;
@@ -113,7 +158,7 @@ Index: src/cpu/memory.c
  	return do_get_mem_long(NEXTVideo + addr);
  }
  
-@@ -527,6 +621,9 @@
+@@ -527,6 +666,9 @@
  static uae_u32 mem_video_wget(uaecptr addr)
  {
  	addr &= NEXT_VRAM_MASK;
@@ -123,7 +168,7 @@ Index: src/cpu/memory.c
  	return do_get_mem_word(NEXTVideo + addr);
  }
  
-@@ -533,6 +630,9 @@
+@@ -533,6 +675,9 @@
  static uae_u32 mem_video_bget(uaecptr addr)
  {
  	addr &= NEXT_VRAM_MASK;
@@ -133,7 +178,7 @@ Index: src/cpu/memory.c
  	return NEXTVideo[addr];
  }
  
-@@ -539,6 +639,10 @@
+@@ -539,6 +684,10 @@
  static void mem_video_lput(uaecptr addr, uae_u32 l)
  {
  	addr &= NEXT_VRAM_MASK;
@@ -144,7 +189,7 @@ Index: src/cpu/memory.c
  	do_put_mem_long(NEXTVideo + addr, l);
  }
  
-@@ -545,6 +649,10 @@
+@@ -545,6 +694,10 @@
  static void mem_video_wput(uaecptr addr, uae_u32 w)
  {
  	addr &= NEXT_VRAM_MASK;
@@ -155,7 +200,7 @@ Index: src/cpu/memory.c
  	do_put_mem_word(NEXTVideo + addr, w);
  }
  
-@@ -551,6 +659,10 @@
+@@ -551,6 +704,10 @@
  static void mem_video_bput(uaecptr addr, uae_u32 b)
  {
  	addr &= NEXT_VRAM_MASK;
@@ -166,7 +211,7 @@ Index: src/cpu/memory.c
  	NEXTVideo[addr] = b;
  }
  
-@@ -1051,6 +1163,7 @@
+@@ -1051,6 +1208,7 @@
  	/* Initialise memory */
  	memset(NEXTRom, 0, NEXT_EPROM_ALLOC);
  	memset(NEXTVideo, 0, vram_size);
@@ -174,6 +219,21 @@ Index: src/cpu/memory.c
  	memset(NEXTRam, 0, ram_size);
  	memset(NEXTIo, 0, NEXT_IO_ALLOC);
  	
+Index: src/cpu/memory.h
+===================================================================
+--- src/cpu/memory.h	(revision 1859)
++++ src/cpu/memory.h	(working copy)
+@@ -52,6 +52,10 @@
+ void memory_uninit(void);
+ void map_banks(addrbank *bank, uae_u32 start, uae_u32 size);
+ 
++/* Playground: sets the row length NeXTSTEP 3.3's gray cursor code was built
++ * with to the configured screen's, in the loaded kernel. See memory.c. */
++void memory_fit_kernel_cursor(void);
++
+ #define get_long(addr)   (call_mem_get_func(get_mem_bank(bank_lget, addr), addr))
+ #define get_word(addr)   (call_mem_get_func(get_mem_bank(bank_wget, addr), addr))
+ #define get_byte(addr)   (call_mem_get_func(get_mem_bank(bank_bget, addr), addr))
 Index: src/dimension/nd_sdl.cpp
 ===================================================================
 --- src/dimension/nd_sdl.cpp	(revision 1859)
@@ -286,7 +346,7 @@ Index: src/gui-sdl/sdlscreen.c
  SDL_Window*   sdlWindow;
  SDL_Surface*  sdlscrn = NULL;        /* The SDL screen surface */
  
-@@ -34,12 +38,34 @@
+@@ -34,12 +38,42 @@
  volatile bool bInFullScreen = false; /* true if in full screen */
  
  /* extern for tablet */
@@ -301,23 +361,31 @@ Index: src/gui-sdl/sdlscreen.c
 +static int height = NeXT_FIRMWARE_SCRN_H;
  
 +/*
-+ Playground: take the main screen's size from PREVIOUS_SCREEN_W and
-+ PREVIOUS_SCREEN_H. The width is kept to a multiple of four, because the gray
-+ frame buffer packs four pixels into a byte and the TMC counts width in fours.
++ Playground: the main screen's size from PREVIOUS_SCREEN_W and
++ PREVIOUS_SCREEN_H. The width is kept to a multiple of sixteen, because the
++ kernel's cursor code steps through rows in longs of sixteen gray pixels.
 + Only a turbo machine in gray takes another size, because only its kernel
 + reads the screen size from the TMC counts; the other machines keep constants.
 + */
-+static void Screen_GeometryFromEnvironment(void) {
++#define NEXT_SCRN_WIDTH_STEP 16
++
++void Screen_ConfiguredSize(int* width, int* height) {
 +	const char* text_w = getenv("PREVIOUS_SCREEN_W");
 +	const char* text_h = getenv("PREVIOUS_SCREEN_H");
 +	int env_w = text_w ? atoi(text_w) : 0;
 +	int env_h = text_h ? atoi(text_h) : 0;
 +	bool machine_reads_counts = ConfigureParams.System.bTurbo && !ConfigureParams.System.bColor;
 +
++	*width  = NeXT_FIRMWARE_SCRN_W;
++	*height = NeXT_FIRMWARE_SCRN_H;
 +	if (machine_reads_counts && env_w >= NEXT_SCRN_LEAST && env_h >= NEXT_SCRN_LEAST) {
-+		NeXT_SCRN_W = env_w & ~3;
-+		NeXT_SCRN_H = env_h;
++		*width  = env_w - env_w % NEXT_SCRN_WIDTH_STEP;
++		*height = env_h;
 +	}
++}
++
++static void Screen_GeometryFromEnvironment(void) {
++	Screen_ConfiguredSize(&NeXT_SCRN_W, &NeXT_SCRN_H);
 +	screen_w = width  = NeXT_SCRN_W;
 +	screen_h = height = NeXT_SCRN_H;
 +}
@@ -325,7 +393,7 @@ Index: src/gui-sdl/sdlscreen.c
  static SDL_Renderer* sdlRenderer;
  static SDL_Texture*  uiTexture;
  static SDL_Texture*  fbTexture;
-@@ -141,23 +167,27 @@
+@@ -141,23 +175,27 @@
  #else
  	src = &vram[4];
  #endif
@@ -357,7 +425,7 @@ Index: src/gui-sdl/sdlscreen.c
  	SDL_UnlockTexture(tex);
  }
  
-@@ -599,6 +629,7 @@
+@@ -599,6 +637,7 @@
  	int i;
  
  	SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
@@ -369,7 +437,7 @@ Index: src/includes/screen.h
 ===================================================================
 --- src/includes/screen.h	(revision 1859)
 +++ src/includes/screen.h	(working copy)
-@@ -15,9 +15,22 @@
+@@ -15,9 +15,28 @@
  extern volatile bool bGrabMouse;
  extern volatile bool bInFullScreen;
  
@@ -381,6 +449,12 @@ Index: src/includes/screen.h
 +extern int NeXT_SCRN_W;
 +extern int NeXT_SCRN_H;
  
++/* The size PREVIOUS_SCREEN_W and PREVIOUS_SCREEN_H ask for on this machine, or
++ * the firmware's where they ask for none or the machine cannot take another.
++ * It reads only the environment and the configuration, so the screen and the
++ * TMC get the same answer whichever of them asks first. */
++extern void Screen_ConfiguredSize(int* width, int* height);
++
 +/* The size the firmware draws for, which is the hardware's own. */
 +#define NeXT_FIRMWARE_SCRN_W 1120
 +#define NeXT_FIRMWARE_SCRN_H 832
@@ -398,29 +472,29 @@ Index: src/tmc.c
 ===================================================================
 --- src/tmc.c	(revision 1859)
 +++ src/tmc.c	(working copy)
-@@ -217,10 +217,59 @@
+@@ -14,6 +14,7 @@
+ #include "sysReg.h"
+ #include "adb.h"
+ #include "tmc.h"
++#include "screen.h"
+ 
+ #define LOG_TMC_LEVEL LOG_DEBUG
+ 
+@@ -217,10 +218,66 @@
  	return (tmc.video_intr&TMC_VI_ENABLE);
  }
  
 +/* Playground: the kernel of a turbo machine sizes its monochrome screen from
 + * the display counts in these two registers, width as pixels per four and
-+ * height as lines, both in the low twelve bits. The counts follow
-+ * PREVIOUS_SCREEN_W and PREVIOUS_SCREEN_H when they are set, and a write by
-+ * the ROM or the kernel cannot move them, so the guest sees a display of that
-+ * size however its firmware programs the timing. */
-+#define TMC_DISPLAY_COUNT_MASK 0xFFF
++ * height as lines, both in the low twelve bits. The counts follow the
++ * configured screen (Screen_ConfiguredSize), and a write by the ROM or the
++ * kernel cannot move them, so the guest sees a display of that size however
++ * its firmware programs the timing. */
++#define TMC_DISPLAY_COUNT_MASK      0xFFF
++#define TMC_PIXELS_PER_WIDTH_COUNT  4
 +
 +static uint32_t tmc_display_width_count  = HDISCNT;
 +static uint32_t tmc_display_height_count = VDISCNT;
-+
-+static uint32_t tmc_count_from_env(const char* name, uint32_t fallback, uint32_t pixels_per_count) {
-+	const char* text = getenv(name);
-+	long value = (text && *text) ? strtol(text, NULL, 10) : 0;
-+	if (value > 0) {
-+		return ((uint32_t)value / pixels_per_count) & TMC_DISPLAY_COUNT_MASK;
-+	}
-+	return fallback;
-+}
 +
 +static void tmc_hold_display_counts(void) {
 +	tmc.horizontal = (tmc.horizontal & ~TMC_DISPLAY_COUNT_MASK) | tmc_display_width_count;
@@ -449,9 +523,24 @@ Index: src/tmc.c
 +	fprintf(stderr, "[TMC trace] %s video reg +%02x val=%08x pc=%08x\n", what, addr & 0xFF, val, m68k_getpc());
 +}
 +
++/* Playground: the kernel reads the display counts when it builds its screen
++ * record. By then it is loaded, and nothing has drawn the cursor yet, so that
++ * is when its cursor code gets the configured row length. */
++#define TMC_VID_REG_HCR    8
++#define KERNEL_TEXT_START  0x04000000
++
++static void tmc_note_count_read(uint32_t addr) {
++	if ((addr & 0xF) == TMC_VID_REG_HCR && m68k_getpc() >= KERNEL_TEXT_START) {
++		memory_fit_kernel_cursor();
++	}
++}
++
  static void tmc_video_reg_reset(void) {
-+	tmc_display_width_count  = tmc_count_from_env("PREVIOUS_SCREEN_W", HDISCNT, 4);
-+	tmc_display_height_count = tmc_count_from_env("PREVIOUS_SCREEN_H", VDISCNT, 1);
++	int width, height;
++
++	Screen_ConfiguredSize(&width, &height);
++	tmc_display_width_count  = (width / TMC_PIXELS_PER_WIDTH_COUNT) & TMC_DISPLAY_COUNT_MASK;
++	tmc_display_height_count = height & TMC_DISPLAY_COUNT_MASK;
  	tmc.video_intr = 0;
 -	tmc.horizontal = HFPORCH|HSYNC|HBPORCH|HDISCNT;
 -	tmc.vertical   = VFPORCH|VSYNC|VBPORCH|VDISCNT;
@@ -460,7 +549,7 @@ Index: src/tmc.c
  }
  
  void tmc_video_interrupt(void) {
-@@ -266,10 +315,12 @@
+@@ -266,10 +323,12 @@
  static void tmc_hcr_write2(uint8_t val) {
  	tmc.horizontal &= 0xFFFF00FF;
  	tmc.horizontal |= (val&0xFF)<<8;
@@ -473,7 +562,7 @@ Index: src/tmc.c
  }
  
  static uint8_t tmc_vcr_read0(void) {
-@@ -296,10 +347,12 @@
+@@ -296,10 +355,12 @@
  static void tmc_vcr_write2(uint8_t val) {
  	tmc.vertical &= 0xFFFF00FF;
  	tmc.vertical |= (val&0xFF)<<8;
@@ -486,15 +575,16 @@ Index: src/tmc.c
  }
  
  
-@@ -370,6 +423,7 @@
+@@ -370,6 +431,8 @@
  		val |= tmc_read_vid_reg[(addr+1)&0xF]()<<16;
  		val |= tmc_read_vid_reg[(addr+2)&0xF]()<<8;
  		val |= tmc_read_vid_reg[(addr+3)&0xF]();
 +		tmc_trace_video_access("read", addr, val);
++		tmc_note_count_read(addr);
  	}
  
  	return val;
-@@ -398,7 +452,7 @@
+@@ -398,7 +461,7 @@
  		val = tmc_read_vid_reg[addr&0xF]()<<8;
  		val |= tmc_read_vid_reg[(addr+1)&0xF]();
  	}
@@ -503,7 +593,7 @@ Index: src/tmc.c
  	return val;
  }
  
-@@ -441,6 +495,7 @@
+@@ -441,6 +504,7 @@
  		tmc_write_reg[addr+2](l>>8);
  		tmc_write_reg[addr+3](l);
  	} else if (addr>=128 && addr<144) {

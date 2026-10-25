@@ -2,7 +2,7 @@
 # Switches next5 between its own console and the playground console, which
 # runs the playground build of Previous at 1024 by 600 from /tmp/playground.
 #
-#     pi_switch.sh prepare | on | off | status
+#     pi_switch.sh check | prepare | on | off | status
 #
 # prepare puts the binary from pi_build.sh and what runs it into
 # /tmp/playground on next5, which is a tmpfs, so a reboot takes it away: the
@@ -41,6 +41,11 @@ kiosk_start() {
 }
 
 case "${1:-status}" in
+    check)
+        # The one root step must work before on stops the guest, or the
+        # emulator stays held down with nothing to replace it.
+        as_root "true" && echo "sudo works on $host"
+        ;;
     prepare)
         ssh "$host" "mkdir -p /tmp/playground/bin /tmp/playground/share /tmp/playground/home/.config/previous /tmp/playground/grabs && ln -sfn /usr/share/previous /tmp/playground/share/previous"
         scp "$HOME/.cache/previously-playground/pi-build/Previous" "$host:/tmp/playground/bin/previous"

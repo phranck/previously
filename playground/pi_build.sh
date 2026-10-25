@@ -23,7 +23,7 @@ docker run --rm --platform linux/arm64 \
         dpkg-query -W libsdl3-dev libpng-dev > /out/built-against.txt
         cmake -S /src -B /tmp/b -G Ninja -DCMAKE_BUILD_TYPE=Release > /out/cmake.log 2>&1
         ninja -C /tmp/b > /out/ninja.log 2>&1
-        cp /tmp/b/src/Previous /out/Previous
+        cp /tmp/b/src/previous /out/Previous
     '
 ls -la "$out/Previous"
 cat "$out/built-against.txt"
