@@ -81,6 +81,10 @@ Names like `NextLibrary` and `NextApps` in the listing mean the image and its pa
 sudo systemctl restart previously-console
 ```
 
+## The picture
+
+Previous draws NeXTSTEP at the 1120 by 832 of the real hardware and fits that into the monitor. On a larger monitor the console enlarges it by whole pixels before it is scaled to fit, so it fills the screen and its edges stay sharp. On a smaller one, such as a 1024 by 600 panel, it is scaled down to fit. Either way it keeps its proportions, so a monitor of another shape shows black bars along two of its edges.
+
 ## Using your own disk image
 
 Put it into `~/nextstep` as `nextstep-3.3.dd` before running the script. It finds it, skips the download, and writes the configuration against your image. Every system is looked for under its own name the same way, such as `openstep-4.2.dd`, and an image under any other name is not one the script knows to use.
@@ -127,6 +131,8 @@ From a checkout on the Pi, the same script builds the package out of what is bes
 ```bash
 ./install.sh --update-admin
 ```
+
+A package built from a checkout also takes the library that shows Previous sharp, and the Pi compiles it first. That needs a compiler and SDL's headers on the Pi. Where they are missing, the script names the packages that bring them.
 
 However the tool is replaced, from the window or from a shell, the console that starts the emulator and the source Previous comes from are brought up to the new version as well, where the machine has them.
 

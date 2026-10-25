@@ -88,10 +88,20 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `web/vendor/` | The one library this interface takes, with its license |
 | `web/fonts/` | The face the Terminal and the code in a document are set in, with its license |
 | `packaging/` | The unit and the default configuration |
+| `display/` | The library that shows Previous sharp on a large monitor |
 
 `kiosk.py` is one module because it is the whole surface: reviewing what this tool may do to the machine means reading that one file.
 
 **What a version is.** `RELEASE` in `server.py` is the release, and it is written down in that one place. `packaging/build.py` reads it and asks git what the tree is, so a package built on the tag of that release is the plain number and every other build carries how far it stands from the last tag and which commit it is: `1.0.0+7.g2f250d5` after the release, `1.0.0~7.g2f250d5` on the way to one, and `.modified` on the end where something was uncommitted. The count is there because dpkg orders versions and a hash does not. The version it settles on is written into the package as `previously/version.txt`, which is what the service reports about itself, so what the API answers and what `dpkg` says are the same string.
+
+**A package takes one library that is compiled for the Pi.** That is `display/pixel-exact.so`, which shows Previous sharp, and `packaging/build.py` refuses to build without it or with one compiled for another processor. `display/build.sh` compiles it in Debian trixie, in a container of the host's own processor. On a Mac with Apple silicon and `docker`, that is the Pi's:
+
+```bash
+display/build.sh
+python3 packaging/build.py
+```
+
+On the Pi itself, `install.sh` run from a checkout compiles it with `make` before it builds the package. The package is `Architecture: arm64` because of this library. A release still attaches it as `previously_all.deb`, which is the name every installed version fetches its update from.
 
 **The interface shows the release and drops the build.** `words.released` is the one place that decides it, so `1.0.0+35.g553551d` reads as `1.0.0` in the Raspberry Pi window and in the About panel. What is dropped is not lost: it is what apt orders packages by, it is still in every answer the API gives, and `dpkg-query -W previously` on the Pi says it in full. On a screen it costs the whole line and buys nothing. The emulator's own version is left whole, because `4.3-0wmlive1` is what that package is called and `4.3` would name a version that does not exist.
 
@@ -348,7 +358,7 @@ The script, `/usr/local/libexec/previously-console`, therefore waits on `/run/pr
 
 ```sh
 while [ -f /run/previously/hold ]; do sleep 2; done
-SDL_VIDEO_DRIVER=x11,wayland XCURSOR_PATH=/usr/share/previously/cursors cage -- /usr/bin/previous
+SDL_VIDEO_DRIVER=x11,wayland XCURSOR_PATH=/usr/share/previously/cursors cage -- env LD_PRELOAD=/usr/lib/previously/pixel-exact.so /usr/bin/previous
 status=$?
 if [ "$status" -ne 0 ]; then
   if [ -d /run/previously ]; then
@@ -364,6 +374,8 @@ That path is a tmpfs and is empty at every boot, which is what makes restarting 
 **An emulator that cannot start is tried again every few seconds, for as long as it takes.** The script waits two seconds after a bad end, so the console does not restart as fast as systemd can start a process. The unit lifts systemd's start limit with `StartLimitIntervalSec=0`. Without it, systemd stops the console for good after five starts within ten seconds, and only root can start it again.
 
 **Previous draws through cage's Xwayland.** cage sets every monitor to its native mode, and Previous fits its fixed 1120 by 832 into it with bars rather than stretching it. Previous grabs the mouse when it is clicked, and under Wayland alone SDL needs pointer constraints for that, which cage does not offer: the mouse stops reaching NeXTSTEP shortly after the first click. Xwayland holds the grab itself.
+
+**On a monitor larger than 1120 by 832 the picture stays sharp.** Previous letterboxes its screen with SDL's linear sampling, which smears every pixel into its neighbors at a factor that is not a whole number, such as 1.83 on a 2048 by 1536 display. So the console starts Previous with `/usr/lib/previously/pixel-exact.so` in `LD_PRELOAD`, set inside cage's command so that cage and Xwayland never load it. The library stands in front of two SDL calls and draws the emulated screen in two steps, which emulators call sharp bilinear: nearest sampling up to the next whole multiple of its size, then linear sampling down to what the letterbox gives it. Where the monitor is no larger than the picture, it leaves the picture alone. `PREVIOUSLY_PIXEL_EXACT_LOG` names a file it appends every presentation Previous asks for and every enlarging factor to.
 
 **Only NeXTSTEP's pointer is ever on the screen.** NeXTSTEP draws its pointer itself. cage sets a pointer of its own whenever a mouse is plugged in, which then stands beside NeXTSTEP's, so the package brings a cursor theme in `/usr/share/previously/cursors` whose pointer is a transparent pixel, and the console hands it to cage as `XCURSOR_PATH`.
 

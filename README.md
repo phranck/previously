@@ -13,7 +13,7 @@
 
 # Previously
 
-A Raspberry Pi 4 or 5 that starts straight into NeXTSTEP. No desktop behind it, no login to get past, nothing on the screen but the gray NeXT panel. The emulator underneath is [Previous](https://previous.nextcommunity.net/), and the machine it pretends to be is a NeXTcube Turbo, one of eleven it can be.
+A Raspberry Pi 4 or 5 that starts straight into NeXTSTEP. No desktop behind it, no login to get past, nothing on the screen but the gray NeXT panel. The emulator underneath is [Previous](https://previous.nextcommunity.net/), and the machine it pretends to be is a NeXTcube Turbo, one of eleven it can be. On a monitor larger than the NeXT's own 1120 by 832, NeXTSTEP fills the screen and stays sharp.
 
 A ready image or one line sets all of it up, and afterwards a web admin takes over that looks like the machine it configures.
 
