@@ -27,15 +27,17 @@
  *
  * Previous on Linux draws in the thread that reads SDL's event queue, and it
  * asks for every repaint through an event of its own in that queue, at each
- * of the emulated machine's 68 vertical blanks a second. A GPU too slow for
- * the enlarged copy lets those repaints pile up in front of the mouse and the
- * keyboard, and Previous stops answering either: a Pi 4 on a 2048 by 1536
- * display does. So where half a second of them is waiting, the picture is
- * drawn as Previous draws it for as long as this Previous runs.
+ * of the emulated machine's 68 vertical blanks a second. It draws with vsync,
+ * so a 60 Hz monitor shows at most 60 of them, a Pi without a monitor none,
+ * and a GPU too slow for the enlarged copy fewer still. The rest pile up in
+ * front of the mouse and the keyboard until SDL's queue is full and drops
+ * both. A repaint draws whatever the emulated screen holds when it is drawn,
+ * so the library sets an event filter that drops a repaint while another one
+ * is still waiting.
  *
  * PREVIOUSLY_PIXEL_EXACT_LOG names a file that every presentation Previous
- * asks for, every change of the enlarging factor, and the moment Previous
- * falls behind are appended to.
+ * asks for, every change of the enlarging factor, and the first and every
+ * thousandth repaint dropped are appended to.
  */
 
 #define _GNU_SOURCE
@@ -52,9 +54,18 @@
  * floating point from being rounded up to the next one. */
 #define WHOLE_NUMBER_TOLERANCE 0.0001f
 
-/* How many of Previous's own events may wait in the queue before it counts as
- * falling behind: half a second of its repaints, at 68 a second. */
-#define EVENTS_BEHIND_LIMIT 34
+/* The code Previous gives a repaint in the one event type it registers,
+ * SPECIAL_EVENT_REPAINT, the first in src/includes/event.h. Its other codes,
+ * such as the ones that pause or halt the machine, are never dropped. */
+#define PREVIOUS_REPAINT 0
+
+/* How many of Previous's waiting events the filter looks through for a
+ * repaint. With the filter in place one repaint waits at most, beside the odd
+ * other event of Previous's. */
+#define EVENTS_LOOKED_THROUGH 16
+
+/* How many dropped repaints go by between two lines in the log. */
+#define DROPS_BETWEEN_NOTES 1000
 
 typedef bool (*PresentationSetter)(SDL_Renderer *renderer, int width, int height,
                                    SDL_RendererLogicalPresentation mode);
@@ -73,9 +84,10 @@ static int picture_height = 0;
 static SDL_Texture *enlarged = NULL;
 static int enlarged_factor = 0;
 
-/* Set once Previous has fallen behind, and never cleared: drawing the copy
- * again would make it fall behind again. */
-static bool fell_behind = false;
+/* Whether the event filter is in place, and how many repaints it has dropped.
+ * Atomic, because the filter runs in whichever thread pushes an event. */
+static SDL_AtomicInt filtering;
+static SDL_AtomicInt repaints_dropped;
 
 /* Appends one line to the file PREVIOUSLY_PIXEL_EXACT_LOG names, if it names one. */
 static void note(const char *format, ...)
@@ -184,29 +196,45 @@ static SDL_Texture *enlarged_copy(SDL_Renderer *renderer, SDL_Texture *texture, 
     return enlarged;
 }
 
-/* Whether Previous has fallen behind with its repaints, now or before. The
- * events it registers for itself are the only ones from SDL_EVENT_USER up,
- * and counting them leaves them in the queue. */
-static bool falls_behind(void)
+/* Drops a repaint of Previous's while another one is still waiting, and lets
+ * every other event through. SDL runs it in whichever thread pushes an event,
+ * with the lock on its filter held, and Previous pushes repaints from the
+ * emulation and from the NeXTdimension. */
+static bool keeps_one_repaint(void *userdata, SDL_Event *event)
 {
-    int waiting;
+    SDL_Event waiting[EVENTS_LOOKED_THROUGH];
+    int count;
+    int index;
+    int dropped;
 
-    if (fell_behind) {
+    (void)userdata;
+    if (!SDL_GetAtomicInt(&filtering) || event->type < SDL_EVENT_USER ||
+        event->user.code != PREVIOUS_REPAINT) {
         return true;
     }
-    waiting = SDL_PeepEvents(NULL, 0, SDL_PEEKEVENT, SDL_EVENT_USER, SDL_EVENT_LAST);
-    if (waiting <= EVENTS_BEHIND_LIMIT) {
-        return false;
-    }
-    fell_behind = true;
-    note("%d of Previous's events waiting, so the picture is drawn as Previous draws it from now on",
-         waiting);
-    if (enlarged != NULL) {
-        SDL_DestroyTexture(enlarged);
-        enlarged = NULL;
-        enlarged_factor = 0;
+    count = SDL_PeepEvents(waiting, EVENTS_LOOKED_THROUGH, SDL_PEEKEVENT, event->type, event->type);
+    for (index = 0; index < count; index++) {
+        if (waiting[index].user.code == PREVIOUS_REPAINT) {
+            dropped = SDL_AddAtomicInt(&repaints_dropped, 1) + 1;
+            if (dropped == 1 || dropped % DROPS_BETWEEN_NOTES == 0) {
+                note("%d repaints dropped while another was waiting", dropped);
+            }
+            return false;
+        }
     }
     return true;
+}
+
+/* Sets the filter, once. SDL runs a new filter over every event already
+ * waiting, where each repaint would find itself, so the filter lets all of
+ * them through until it is in place. */
+static void filter_repaints(void)
+{
+    if (SDL_GetAtomicInt(&filtering)) {
+        return;
+    }
+    SDL_SetEventFilter(keeps_one_repaint, NULL);
+    SDL_SetAtomicInt(&filtering, 1);
 }
 
 /* Whether the texture is drawn without blending, which in Previous's
@@ -230,6 +258,7 @@ bool SDL_SetRenderLogicalPresentation(SDL_Renderer *renderer, int width, int hei
         letterboxed_renderer = renderer;
         picture_width = width;
         picture_height = height;
+        filter_repaints();
     } else if (renderer == letterboxed_renderer) {
         letterboxed_renderer = NULL;
     }
@@ -248,7 +277,7 @@ bool SDL_RenderTexture(SDL_Renderer *renderer, SDL_Texture *texture,
     if (drawer == NULL) {
         return false;
     }
-    if (renderer != letterboxed_renderer || !is_opaque(texture) || falls_behind()) {
+    if (renderer != letterboxed_renderer || !is_opaque(texture)) {
         return drawer(renderer, texture, source, destination);
     }
     factor = enlarging_factor(renderer, texture);
