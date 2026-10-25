@@ -11,6 +11,7 @@ These tests are what keeps those in step with the side that decides them.
 import json
 import os
 import pathlib
+import pwd
 import re
 import subprocess
 
@@ -132,9 +133,14 @@ def test_every_part_of_a_step_is_said_as_the_installer_window_says_it(doing):
 #: the state the test sets up in $STATE.
 STAND_INS = {
     "sudo": 'case "$1" in -n|-v) exit 0 ;; esac\nexec env "$@"\n',
-    # Installing the package makes its version the one that is here.
+    # Installing the package makes its version the one that is here, and keeps
+    # what the owner file said at that moment, which is what postinst reads.
     "apt-get": 'echo "$*" >> "$STATE/apt-get"\n'
-               'case " $* " in *" install "*) cp "$STATE/newest" "$STATE/here" ;; esac\n',
+               'case " $* " in *" install "*)\n'
+               '  if [ -f "$STATE/apt-fails" ]; then exit 100; fi\n'
+               '  cp "$STATE/newest" "$STATE/here"\n'
+               '  if [ -f "$OWNER_SEEN" ]; then cp "$OWNER_SEEN" "$STATE/owner-at-install"; fi ;;\n'
+               'esac\n',
     "dpkg-query": '[ -f "$STATE/here" ] || exit 1\n'
                   'case "$*" in *Status*) echo "install ok installed" ;; '
                   '*) cat "$STATE/here" ;; esac\n',
@@ -157,7 +163,7 @@ STAND_INS = {
 
 
 def with_the_script(tmp_path, snippet, here=None, newest="1.9.0", states=(),
-                    status=0):
+                    status=0, owner_file=None):
     """Runs shell with install.sh's functions defined and the machine stood in for.
 
     @param snippet - What to run once the functions are there.
@@ -165,6 +171,8 @@ def with_the_script(tmp_path, snippet, here=None, newest="1.9.0", states=(),
     @param newest - The version the fetched package carries.
     @param states - What `systemctl is-active` answers, one call after another.
     @param status - The status the run has to end with.
+    @param owner_file - pathlib.Path the owner file is read and written at
+      instead of the system's, or None to leave the script's own.
     @returns (subprocess.CompletedProcess, list of str): what the run said, with
       a line `undo: <what>` for each entry on the undo record after it, and
       every call apt-get received.
@@ -186,8 +194,12 @@ def with_the_script(tmp_path, snippet, here=None, newest="1.9.0", states=(),
     # The script without the call to main, so sourcing it defines everything
     # and runs nothing. Beside nothing, so it fetches the package as a run off
     # the network does.
+    text = SCRIPT[:SCRIPT.rindex('main "$@"')]
+    if owner_file is not None:
+        declared = 'readonly OWNER_FILE="%s"' % constant("OWNER_FILE")
+        text = text.replace(declared, 'readonly OWNER_FILE="%s"' % owner_file)
     functions = tmp_path / "functions.sh"
-    functions.write_text(SCRIPT[:SCRIPT.rindex('main "$@"')], encoding="utf-8")
+    functions.write_text(text, encoding="utf-8")
 
     ran = subprocess.run(
         ["bash", "-c", 'source "$1"; LOG="$(mktemp)"; %s; COMPLETED=true; '
@@ -195,7 +207,8 @@ def with_the_script(tmp_path, snippet, here=None, newest="1.9.0", states=(),
          % snippet, "_", str(functions)],
         capture_output=True, text=True, timeout=30, check=False,
         env=dict(os.environ, PATH="%s:%s" % (tools, os.environ["PATH"]),
-                 TMPDIR=str(tmp_path), STATE=str(state), NO_COLOR="1"))
+                 TMPDIR=str(tmp_path), STATE=str(state), NO_COLOR="1",
+                 OWNER_SEEN=str(owner_file or "")))
     assert ran.returncode == status, ran.stdout + ran.stderr
     called = state / "apt-get"
     return ran, (called.read_text(encoding="utf-8").splitlines()
@@ -213,6 +226,44 @@ def test_a_second_run_replaces_an_older_admin_tool(tmp_path):
     assert [call for call in apt if " install " in call]
     assert "undo: remove the admin tool" not in ran.stdout, \
         "a rollback would take away the tool that was working"
+
+
+def test_a_fresh_install_runs_as_whoever_runs_the_script(tmp_path):
+    """postinst takes the user an owner file names and the first user of the
+    card only where there is none, so without this a second user running the
+    one-liner would be told to log in as the first."""
+    owner_file = tmp_path / "system" / "previously.service.d" / "owner.conf"
+
+    ran, _ = with_the_script(tmp_path, "install_admin", owner_file=owner_file)
+
+    me = pwd.getpwuid(os.getuid()).pw_name
+    assert (tmp_path / "state" / "owner-at-install").read_text(encoding="utf-8") \
+        == "[Service]\nUser=%s\n" % me
+    assert "undo: remove who the admin tool runs as" in ran.stdout.splitlines()
+
+
+def test_an_install_that_fails_takes_the_owner_away_again(tmp_path):
+    """A step that fails puts back what the run changed, and the owner file and
+    its folder were this run's."""
+    owner_file = tmp_path / "system" / "previously.service.d" / "owner.conf"
+
+    with_the_script(tmp_path, 'touch "$STATE/apt-fails"; install_admin',
+                    owner_file=owner_file, status=1)
+
+    assert not owner_file.exists()
+    assert not owner_file.parent.exists()
+
+
+def test_an_owner_already_named_stays(tmp_path):
+    """A machine that has an owner keeps it, as an upgrade does."""
+    owner_file = tmp_path / "system" / "previously.service.d" / "owner.conf"
+    owner_file.parent.mkdir(parents=True)
+    owner_file.write_text("[Service]\nUser=somebody\n", encoding="utf-8")
+
+    ran, _ = with_the_script(tmp_path, "install_admin", owner_file=owner_file)
+
+    assert owner_file.read_text(encoding="utf-8") == "[Service]\nUser=somebody\n"
+    assert "undo: remove who the admin tool runs as" not in ran.stdout.splitlines()
 
 
 def test_a_second_run_leaves_a_current_admin_tool_alone(tmp_path):
