@@ -1498,8 +1498,7 @@ def _copy(work):
     Written under an unfinished name and renamed once it is whole, as a copy
     put back is, because a run that stops half way, from a power cut or a
     stopped helper, runs no undo. Half a disk under a copy's name would be
-    listed and offered to be put back. What such a run left behind goes before
-    the room is counted, because it is taking some of that room.
+    listed and offered to be put back.
     """
     if work.system is None:
         raise Refused("setup.no-system-named")
@@ -1510,8 +1509,7 @@ def _copy(work):
     if disk is None:
         raise Refused("setup.system-is-not-here", name=work.system.name)
 
-    for left in systems.unfinished_copies_of(work.settings.disks, work.system):
-        left.unlink(missing_ok=True)
+    _without_leftovers(work)
 
     size = disk.stat().st_size
     free = systems.room_beside(work.settings.disks)
@@ -1550,14 +1548,31 @@ def _put_back(work):
     if disk is None:
         raise Refused("setup.system-is-not-here", name=work.system.name)
 
+    _without_leftovers(work)
+
     # Beside the disk and moved into place, so a copy that stops half way
     # through leaves the disk that was there rather than half of each.
-    coming = disk.with_name(disk.name + ".coming-back")
+    coming = systems.coming_back(disk)
     work.undoes(lambda: coming.unlink(missing_ok=True))
     _copied_across(copy, coming, work)
     work.owner.owns(coming)
     coming.chmod(0o644)
     coming.replace(disk)
+
+
+def _without_leftovers(work):
+    """Removes what copies and put backs that were cut short left behind.
+
+    @param work - The run, whose disks folder is cleared of them.
+
+    The helper takes one job at a time, so an unfinished file at the start of
+    a copy or a put back is what an interrupted run left: a power cut or a
+    stopped helper runs no undo. Every one of them goes, of any system, before
+    anything is written, because each can hold most of two gigabytes that
+    nothing lists and a copy's room check counts.
+    """
+    for left in systems.leftovers_in(work.settings.disks):
+        left.unlink(missing_ok=True)
 
 
 def _the_copy_named(work):
