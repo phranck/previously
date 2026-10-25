@@ -2,7 +2,7 @@
 # Switches next5 between its own console and the playground console, which
 # runs the playground build of Previous at 1024 by 600 from /tmp/playground.
 #
-#     pi_switch.sh check | prepare | on | off | status
+#     pi_switch.sh check | prepare | on | off | restore | status
 #
 # prepare puts the binary from pi_build.sh and what runs it into
 # /tmp/playground on next5, which is a tmpfs, so a reboot takes it away: the
@@ -19,8 +19,13 @@
 set -eu
 
 host="next@next5.local"
-drop_in_dir="/etc/systemd/system/previously-console.service.d"
+# The drop-in lives in /run, a tmpfs like /tmp/playground, so a reboot takes
+# both away together and next5 comes back on its own console. One in /etc
+# would outlive the playground and leave the console starting a script that is
+# gone, which restore clears as well.
+drop_in_dir="/run/systemd/system/previously-console.service.d"
 drop_in="$drop_in_dir/playground.conf"
+lasting_drop_in="/etc/systemd/system/previously-console.service.d/playground.conf"
 own_config="/home/next/.config/previous/previous.cfg"
 test_config="/tmp/playground/home/.config/previous/previous.cfg"
 
@@ -45,6 +50,12 @@ case "${1:-status}" in
         # The one root step must work before on stops the guest, or the
         # emulator stays held down with nothing to replace it.
         as_root "true" && echo "sudo works on $host"
+        ;;
+    restore)
+        # next5's own console back without touching the guest, for when the
+        # playground is gone and the console cannot start.
+        as_root "rm -f $drop_in $lasting_drop_in && rmdir $drop_in_dir $(dirname $lasting_drop_in) 2>/dev/null; systemctl daemon-reload && systemctl restart previously-console"
+        ssh "$host" "systemctl is-active previously-console; if [ -e $drop_in ] || [ -e $lasting_drop_in ]; then echo 'a playground drop-in is still there'; else echo 'no playground drop-in'; fi"
         ;;
     prepare)
         ssh "$host" "mkdir -p /tmp/playground/bin /tmp/playground/share /tmp/playground/home/.config/previous /tmp/playground/grabs && ln -sfn /usr/share/previous /tmp/playground/share/previous"
