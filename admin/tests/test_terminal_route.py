@@ -42,17 +42,28 @@ def service(tmp_path, readable_config):
     httpd.server_close()
 
 
-def ask(address, protocols=None, upgrade=True, key=KEY):
+#: Where `ask` says a request comes from when it is not told: the service's own
+#: page, which is what a browser names on every handshake it sends from it.
+OWN_PAGE = object()
+
+
+def ask(address, protocols=None, upgrade=True, key=KEY, origin=OWN_PAGE):
     """Asks for a terminal, the way a browser does.
 
     @param address - Where the service is.
     @param protocols - What to offer to speak, or None to offer nothing.
     @param upgrade - Whether to ask for an upgrade at all.
     @param key - What to put in Sec-WebSocket-Key.
+    @param origin - What to put in Origin, None to send none, and by default
+      the service's own page.
     @returns tuple of (the status line, the open socket).
     """
     connection = socket.create_connection(address, timeout=5)
     lines = ["GET /api/terminal HTTP/1.1", "Host: %s:%d" % address]
+    if origin is OWN_PAGE:
+        origin = "http://%s:%d" % address
+    if origin is not None:
+        lines.append("Origin: " + origin)
     if upgrade:
         lines += ["Upgrade: websocket", "Connection: Upgrade",
                   "Sec-WebSocket-Version: 13"]
@@ -127,6 +138,21 @@ def test_a_refused_handshake_ends_the_connection(service, protocols, upgrade, ke
     headers = rest_of_the_headers(connection)
 
     assert "400" in status
+    assert "Connection: close" in headers
+    assert ended_by_the_service(connection)
+
+
+@pytest.mark.parametrize("origin", ["http://somewhere.else", None])
+def test_a_handshake_from_anywhere_but_this_page_is_refused(service, origin):
+    """A page on another site, open in a browser on the home network, would
+    otherwise reach the Pi's login prompt. A browser names the page on every
+    handshake, so one that names another page or none at all is not ours."""
+    address, _ = service
+
+    status, connection = ask(address, [websocket.PROTOCOL], origin=origin)
+    headers = rest_of_the_headers(connection)
+
+    assert "403" in status
     assert "Connection: close" in headers
     assert ended_by_the_service(connection)
 

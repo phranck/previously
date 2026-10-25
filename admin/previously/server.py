@@ -819,6 +819,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         door into this machine. Our own password guards what this service does
         itself.
 
+        What is checked here is where the handshake comes from. A page on
+        another site, open in a browser on the home network, could otherwise
+        open this socket and put the login prompt in front of whoever is
+        reading that page. A browser names the page on every handshake, so one
+        that names another page or none at all is refused.
+
         Whatever this answers ends the connection. A handshake that succeeds
         turns it into a WebSocket, and a browser whose handshake is refused
         fails the WebSocket and asks for nothing more on it, as RFC 6455
@@ -830,6 +836,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.closing = True
         if not websocket.wants_a_socket(self.headers):
             return self._json({"error": "not a websocket request"}, status=400)
+
+        if not self._from_this_page(required=True):
+            return self._json({"error": "another origin"}, status=403)
 
         speaks = websocket.offered(self.headers.get("Sec-WebSocket-Protocol"))
         if not speaks or speaks[0] != websocket.PROTOCOL:
@@ -1128,8 +1137,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         found = jar.get(COOKIE)
         return found.value if found else None
 
-    def _from_this_page(self):
-        """Whether a POST came from this service's own page.
+    def _from_this_page(self, required=False):
+        """Whether a request came from this service's own page.
+
+        @param required - Whether a request that names no origin is refused as
+          well. The WebSocket handshake of the terminal sets it, because a
+          browser names the page on every handshake it sends.
+        @returns bool
 
         A cookie rides along with every request a browser makes to this host,
         including one a page somewhere else caused, so the session on its own
@@ -1137,12 +1151,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         posting from whenever that origin is not this one, and a request that
         states a different one is refused.
 
-        A request carrying no origin at all is something other than a browser
-        form, such as curl, and is left to the session check below.
+        A POST carrying no origin at all is something other than a browser
+        form, such as curl, and is left to the session check after this one.
         """
         origin = self.headers.get("Origin")
         if not origin:
-            return True
+            return not required
         return urllib.parse.urlparse(origin).netloc == self.headers.get("Host")
 
     # -- how anything is sent --------------------------------------------
