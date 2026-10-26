@@ -544,9 +544,13 @@ Adding a string means adding it to all six catalogs. `tests/test_strings.py` fai
 
 ## Preferences
 
-NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath, and this is that with one module in it. The row stays at one module because it is the shape of the window rather than a count: the next one arrives into it instead of introducing it.
+NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath, and this is that with three modules in it: Localization offers the six languages, Monitor offers the size the interface is drawn at, and Notifications offers how notifications reach this browser.
 
-The module is the one NeXTSTEP called Localization, and it offers the six languages. Everything it shows comes out of the disk image rather than from us: `Localization.tiff` is the picture Preferences.app carried for it, the window's title is what each language's `preferences.strings` called the application, and the module's name is the `Long Name` in the `Info` file of its own bundle. Three of the six left the application's name untranslated, so the window says `Preferences` in French, Italian and Swedish and `Präferenzen` in German, exactly as it did.
+Localization and Monitor are two of NeXTSTEP's own fourteen modules. Localization offers the six languages. Everything it shows comes out of the disk image rather than from us: `Localization.tiff` is the picture Preferences.app carried for it, the window's title is what each language's `preferences.strings` called the application, and the module's name is the `Long Name` in the `Info` file of its own bundle. Three of the six left the application's name untranslated, so the window says `Preferences` in French, Italian and Swedish and `Präferenzen` in German, exactly as it did. Monitor's picture is the one `design/extract.py` takes from `/NextApps/Preferences.app/Monitor.preferences/Monitor`.
+
+**Notifications** is this tool's own module and wears the information sign the Info notification wears. Its first group, In This Browser, holds two switches: whether notifications show at all, and whether one that appears plays a sound. The sound is Glass out of `/NextLibrary/Sounds`, one of the sounds NeXTSTEP's Sound module offered as the system beep, which `design/extract.py` writes as `web/sounds/Glass.wav`. Its second group, Position, puts four radio buttons at the corners of Preferences' own monitor picture, and the stack moves to the corner chosen, clear of the dock on the right and of the floor at the foot. All three settings belong to this browser and are kept in `localStorage`, as the language and the size are, and a change shows on the stack at once.
+
+The switches and radio buttons are the browser's own inputs with NeXTSTEP's look, which `../design/kit/switches.css` draws after the Controls chapter's figure of two-state buttons, because the Application Kit compiled its own `NXswitch` and `NXradio` into its library rather than shipping them as files.
 
 ## Activity Monitor
 

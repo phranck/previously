@@ -3,7 +3,8 @@
    The service decides which readings become a notification and says so as
    names, levels and values. This page asks for that list, puts each entry into
    words in the language the interface speaks, and remembers in this browser
-   which ones somebody has closed. */
+   which ones somebody has closed, whether notifications show here, where
+   they stand and whether they sound. */
 
 import { t } from "../strings.js";
 import { ask } from "./service.js";
@@ -23,6 +24,31 @@ const POLL_MS = 30000;
 /** Where this browser keeps the notifications somebody closed, as each one's
  *  name and the reading it carried then. */
 const CLOSED_KEY = "notifications.closed";
+
+/** Where this browser keeps how notifications reach it, which Preferences
+ *  sets in its Notifications module. */
+const SETTINGS_KEY = "notifications.settings";
+
+/** The four corners a stack can stand in, by the names the stack's `corner`
+ *  attribute and the radio buttons in Preferences carry. */
+const CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"];
+
+/**
+ * How notifications reach this browser.
+ * @typedef {object} NotificationSettings
+ * @property {boolean} show - Whether they show at all.
+ * @property {boolean} sound - Whether one that appears plays the chime.
+ * @property {string} corner - One of CORNERS.
+ */
+
+/** What a browser that never chose starts with: shown, silent, top right
+ *  beside the dock. @type {NotificationSettings} */
+const FIRST_SETTINGS = { show: true, sound: false, corner: "top-right" };
+
+/** The chime a notification plays as it appears: Glass, one of the sounds
+ *  NeXTSTEP's Sound module offered as the system beep, which design/extract.py
+ *  takes out of the disk image. */
+const CHIME = "sounds/Glass.wav";
 
 /** Which picture each level wears.
  *  @type {Record<string, string>} */
@@ -79,6 +105,69 @@ function keepClosed(kept) {
   } catch {
     /* A browser that refuses to store it shows it again at the next visit. */
   }
+}
+
+/**
+ * What this browser keeps about how notifications reach it, as it was written.
+ * @returns {Record<string, unknown>} Empty where nothing readable is kept.
+ */
+function keptSettings() {
+  try {
+    const kept = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}");
+    return kept && typeof kept === "object" ? kept : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * How notifications reach this browser, as kept, with anything missing or not
+ * understood taken from FIRST_SETTINGS.
+ * @returns {NotificationSettings}
+ */
+function notificationSettings() {
+  const { show, sound, corner } = keptSettings();
+  return {
+    show: typeof show === "boolean" ? show : FIRST_SETTINGS.show,
+    sound: typeof sound === "boolean" ? sound : FIRST_SETTINGS.sound,
+    corner: typeof corner === "string" && CORNERS.includes(corner)
+      ? corner : FIRST_SETTINGS.corner,
+  };
+}
+
+/**
+ * Changes how notifications reach this browser, keeps it, and applies it.
+ * @param {Partial<NotificationSettings>} changes
+ */
+function changeNotificationSettings(changes) {
+  const settings = { ...notificationSettings(), ...changes };
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    /* A browser that refuses to store it keeps the change for this visit. */
+  }
+  applyTheNotificationSettings(settings);
+}
+
+/**
+ * Shows or hides the stack and puts it in its corner.
+ * @param {NotificationSettings} [settings] - What to apply, the kept ones
+ *   where this is left out.
+ *
+ * Hidden rather than emptied, so the notifications standing stay known and
+ * come back as they are when they are shown again.
+ */
+function applyTheNotificationSettings(settings = notificationSettings()) {
+  const stack = theStack();
+  if (!stack) return;
+  stack.hidden = !settings.show;
+  stack.setAttribute("corner", settings.corner);
+}
+
+/** Plays the chime once. A browser that has not been clicked on yet refuses
+ *  sound, and that refusal is the browser's to make, so it is not reported. */
+function chime() {
+  new Audio(CHIME).play().catch(() => {});
 }
 
 /**
@@ -139,13 +228,21 @@ function drawTheNotifications(notifications) {
   for (const name of stack.names) {
     if (!now.has(name)) stack.withdraw(name);
   }
+  const standing = new Set(stack.names);
+  let appeared = false;
   for (const said of notifications) {
     if (kept[said.name] === said.reading) {
       stack.withdraw(said.name);
       continue;
     }
+    appeared ||= !standing.has(said.name);
     stack.post(said.name, { art: ART[said.level] ?? ART.info, ...wordsFor(said) });
   }
+
+  /* Once for however many appeared together, and never for one that only
+     stays or is drawn again in another language. */
+  const settings = notificationSettings();
+  if (appeared && settings.show && settings.sound) chime();
 }
 
 /** Draws the last list again, for a change of language. */
@@ -185,12 +282,16 @@ function wireTheNotifications() {
     dealtWith(/** @type {CustomEvent<{name: string}>} */ (event).detail.name);
   });
 
+  applyTheNotificationSettings();
   refreshTheNotifications();
   setInterval(refreshTheNotifications, POLL_MS);
 }
 
 export {
+  CORNERS,
+  changeNotificationSettings,
   drawTheNotifications,
+  notificationSettings,
   redrawTheNotifications,
   refreshTheNotifications,
   wireTheNotifications,

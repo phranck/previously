@@ -17,8 +17,11 @@ They go into ../admin/web/parts/, which is where the admin serves them from.
 Afterwards run build.py, which puts them into the mockup from there.
 """
 
+import array
 import pathlib
+import struct
 import sys
+import wave
 
 from PIL import Image
 
@@ -117,6 +120,22 @@ ICONS = {
     "hilite": ("hilite", "the white a selected icon sits on"),
 }
 
+#: Where the sounds go: beside the pictures in the folder the admin serves.
+SOUND_PARTS = HERE.parent / "admin" / "web" / "sounds"
+
+# Which sounds to take, and what each is called here. Preferences' Sound module
+# offered the sounds in /NextLibrary/Sounds as the system beep; its own default,
+# Preferences.app/SystemBeep.snd, is stored in NeXT's compressed encoding 19,
+# which nothing current decodes. Glass is the bright one of those that are left,
+# and it is what a notification plays.
+SOUNDS = {
+    "/NextLibrary/Sounds/Glass.snd": "Glass",
+}
+
+#: What every .snd opens with, and the one encoding taken here: 16-bit linear.
+SND_MAGIC = 0x2E736E64
+SND_LINEAR_16 = 3
+
 # Where the interface parts sit in a 1120 by 832 screenshot of NeXTSTEP 3.3.
 # These are pixel bounds, so a screenshot at another size will not do.
 PARTS_IN_SCREENSHOT = {
@@ -161,6 +180,37 @@ def extract_parts(screenshot_path):
             clear(piece, lambda colour: colour not in ((0, 0, 0), (255, 255, 255)))
         piece.save(PARTS / (name + ".png"))
     return len(PARTS_IN_SCREENSHOT)
+
+
+def extract_sounds(image_path):
+    """Reads the sounds out of the disk image and writes them as WAV.
+
+    NeXT's .snd is Sun's .au: a header naming where the samples start, their
+    encoding, rate and channels, then the samples big-endian. Every sound
+    taken here is 16-bit linear, which a WAV file holds as it is once the bytes
+    of each sample are swapped, so nothing is resampled or converted.
+    """
+    filesystem = UFS(str(image_path), PARTITION_OFFSET)
+    SOUND_PARTS.mkdir(exist_ok=True)
+    written = 0
+    for source, name in SOUNDS.items():
+        inode = filesystem.resolve(source)
+        if inode is None:
+            print("  missing in image: " + source)
+            continue
+        data = filesystem.read(inode)
+        magic, start, size, encoding, rate, channels = struct.unpack(">6I", data[:24])
+        if magic != SND_MAGIC or encoding != SND_LINEAR_16:
+            raise SystemExit("%s is not 16-bit linear .snd" % source)
+        samples = array.array("h", data[start:start + size])
+        samples.byteswap()
+        with wave.open(str(SOUND_PARTS / (name + ".wav")), "wb") as out:
+            out.setnchannels(channels)
+            out.setsampwidth(2)
+            out.setframerate(rate)
+            out.writeframes(samples.tobytes())
+        written += 1
+    return written
 
 
 def clear(piece, matches):
@@ -208,10 +258,13 @@ def main():
     if len(sys.argv) != 3:
         raise SystemExit(__doc__)
     PARTS.mkdir(exist_ok=True)
-    icons = extract_icons(pathlib.Path(sys.argv[1]))
+    image = pathlib.Path(sys.argv[1])
+    icons = extract_icons(image)
+    sounds = extract_sounds(image)
     controls = extract_parts(pathlib.Path(sys.argv[2]))
     colour_tube()
-    print("wrote %d icons, %d controls and the color tube into %s" % (icons, controls, PARTS))
+    print("wrote %d icons, %d sounds, %d controls and the color tube into %s"
+          % (icons, sounds, controls, PARTS.parent))
 
 
 if __name__ == "__main__":

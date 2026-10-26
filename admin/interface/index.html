@@ -492,11 +492,11 @@
 </nx-menu>
 
 <!-- Preferences, as NeXTSTEP built one: a row of module pictures across the
-     top and the chosen module's panel underneath. The one module here is the
-     one NeXTSTEP called Localization, and its picture and its name in each
-     language are Preferences.app's own. -->
+     top and the chosen module's panel underneath. Localization and Monitor
+     are NeXTSTEP's own modules, with Preferences.app's pictures and names, and
+     Notifications is this tool's. -->
 <nx-window name="preferences" data-t-title="app.preferences" fixed
-           x="560" y="120" w="440" h="330" min-h="240" closed>
+           x="560" y="120" w="440" h="350" min-h="240" closed>
   <!-- A row of cells with a scroller under it, which is what NeXTSTEP drew:
        fourteen modules do not fit across a panel this wide, so the row scrolls
        and the chosen module's cell is white where the others are gray. Read off
@@ -506,6 +506,7 @@
     <div class="module-row">
       <div class="module" value="localization" chosen><i class="art"></i></div>
       <div class="module" value="monitor"><i class="art"></i></div>
+      <div class="module" value="notifications"><i class="art"></i></div>
     </div>
   </nx-scroller>
   <p class="module-name" id="module-name"></p>
@@ -523,6 +524,27 @@
       <fieldset class="group">
         <legend data-t="size.title"></legend>
         <div class="choices" id="size-choices"></div>
+      </fieldset>
+    </div>
+    <!-- How the notifications reach this browser. Two switches, then the
+         corner they stand in as four radio buttons at the corners of a monitor,
+         each on the row of the screen's top or bottom edge, with the label
+         outside the button on either side. -->
+    <div class="module-page groups" id="notifications-page" hidden>
+      <fieldset class="group">
+        <legend data-t="preferences.notifications.browser"></legend>
+        <label class="two-state"><input type="checkbox" class="switch" id="notifications-show"><span data-t="preferences.notifications.show"></span></label>
+        <label class="two-state"><input type="checkbox" class="switch" id="notifications-sound"><span data-t="preferences.notifications.sound"></span></label>
+      </fieldset>
+      <fieldset class="group">
+        <legend data-t="preferences.notifications.position"></legend>
+        <div class="corners" id="notifications-corner">
+          <label class="two-state top left"><span data-t="corner.top-left"></span><input type="radio" class="radio" name="notifications-corner" value="top-left"></label>
+          <i class="art screen"></i>
+          <label class="two-state top right"><input type="radio" class="radio" name="notifications-corner" value="top-right"><span data-t="corner.top-right"></span></label>
+          <label class="two-state bottom left"><span data-t="corner.bottom-left"></span><input type="radio" class="radio" name="notifications-corner" value="bottom-left"></label>
+          <label class="two-state bottom right"><input type="radio" class="radio" name="notifications-corner" value="bottom-right"><span data-t="corner.bottom-right"></span></label>
+        </div>
       </fieldset>
     </div>
    </div>

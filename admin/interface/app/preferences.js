@@ -1,11 +1,12 @@
-/* Preferences, which is the size, the language and nothing else. */
+/* Preferences: the language, the size, and how notifications reach this
+   browser. */
 
 import { LANGUAGE_NAMES, currentLanguage, setLanguage, t, writeWords } from "../strings.js";
 import { redrawActivity } from "./activity.js";
 import { redrawTheEditor } from "./editor.js";
 import { drawTheInstaller, drawTheTabs, setupState } from "./installer.js";
 import { drawTheMenu } from "./menu.js";
-import { redrawTheNotifications } from "./notifications.js";
+import { changeNotificationSettings, notificationSettings, redrawTheNotifications } from "./notifications.js";
 import { byId } from "./page.js";
 import { showTheNotesAgain } from "./preview.js";
 import { drawSizes } from "./size.js";
@@ -36,6 +37,7 @@ function drawLanguages() {
 const MODULES = {
   localization: { name: "preferences.localization", panel: "languages" },
   monitor: { name: "preferences.monitor", panel: "sizes" },
+  notifications: { name: "preferences.notifications", panel: "notifications-page" },
 };
 
 /**
@@ -60,6 +62,34 @@ function showModule(which) {
 }
 
 /** Wires the row of modules, and draws the one that starts up chosen. */
+/**
+ * Sets the Notifications module's switches and radio buttons from what this
+ * browser keeps, and wires them to keep what is changed.
+ *
+ * A change takes effect at once, on the stack beside the dock, which is the
+ * direct effect the Controls chapter asks a control to have.
+ */
+function wireNotificationSettings() {
+  const show = byId("notifications-show", HTMLInputElement);
+  const sound = byId("notifications-sound", HTMLInputElement);
+  const corners = byId("notifications-corner");
+  const settings = notificationSettings();
+
+  show.checked = settings.show;
+  sound.checked = settings.sound;
+  for (const radio of corners.querySelectorAll("input")) {
+    if (radio instanceof HTMLInputElement) radio.checked = radio.value === settings.corner;
+  }
+
+  show.addEventListener("change", () => changeNotificationSettings({ show: show.checked }));
+  sound.addEventListener("change", () => changeNotificationSettings({ sound: sound.checked }));
+  corners.addEventListener("change", (event) => {
+    if (event.target instanceof HTMLInputElement) {
+      changeNotificationSettings({ corner: event.target.value });
+    }
+  });
+}
+
 function wirePreferences() {
   const row = document.querySelector("nx-window[name='preferences'] .modules");
   if (!row) return;
@@ -70,6 +100,7 @@ function wirePreferences() {
   });
   showModule("localization");
   drawSizes();
+  wireNotificationSettings();
 }
 
 /**
