@@ -295,8 +295,9 @@ HELD = re.compile(r'\bhold\(\s*"#([^"]+)"')
 
 #: The buttons that read something and change nothing, which the system's state
 #: leaves alone: what a release says about itself can be read in Preview whatever
-#: the machine is doing.
-READING_BUTTONS = {"pi-notes"}
+#: the machine is doing, and asking GitHub and the archive whether there is
+#: anything newer changes nothing on the machine either.
+READING_BUTTONS = {"pi-notes", "updates-look"}
 
 
 def test_every_button_that_changes_something_follows_the_system(page, markup):

@@ -22,7 +22,8 @@ import time
 import urllib.parse
 
 from . import (activity, change, config, files, grab, kiosk, machines,
-               notifications, pi, release, saved, setup, systems, terminal, websocket)
+               notifications, pi, release, saved, setup, systems, terminal, updates,
+               websocket)
 from .password import (COOKIE, LARGEST, SESSION_SECONDS, SMALLEST, Attempts, Sessions,
                        acceptable)
 
@@ -243,6 +244,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # spend them.
             asked = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self._json(self._update(check=asked.get("check") == ["1"]))
+        if route == "/api/updates":
+            return self._json(self._updates())
         if route == "/api/notifications":
             # A reading, open the way /api/status is: it says nothing the
             # windows it points at do not already show to anybody.
@@ -314,6 +317,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._ask_to_set_up()
         if route == "/api/update":
             return self._ask_to_update()
+        if route == "/api/updates":
+            return self._choose_how_updates_are_found()
+        if route == "/api/updates/look":
+            updates.look_now()
+            return self._json({"ok": True, **self._updates()})
 
         board = BOARD_OPERATIONS.get(route)
         if board is not None:
@@ -816,6 +824,31 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.settings.disks, setup.UPDATE_TOOL)
         return self._json({"ok": taken, **told, **self._update()},
                           status=200 if taken else 409)
+
+    def _updates(self):
+        """Whether the Pi looks for updates on its own.
+
+        A reading, open the way /api/status is: every browser shows the same
+        choice in Preferences, signed in or not, and only changing it needs the
+        password.
+        """
+        return {"automatic": updates.automatic(self.settings.state_directory)}
+
+    def _choose_how_updates_are_found(self):
+        """Keeps whether the Pi looks for updates on its own.
+
+        Takes `{"automatic": true}` or `false`, and anything else is refused,
+        because a choice nobody made is not one to write down. The watch reads
+        the choice at every tick, so it takes effect without a restart.
+        """
+        body = self._sent()
+        if body is None or not isinstance(body.get("automatic"), bool):
+            return self._json({"error": "unreadable request"}, status=400)
+        try:
+            updates.choose(self.settings.state_directory, body["automatic"])
+        except OSError:
+            return self._json({"ok": False, **self._updates()}, status=409)
+        return self._json({"ok": True, **self._updates()})
 
     def _terminal(self):
         """Carries a login on a WebSocket, to one browser at a time.
@@ -1338,7 +1371,7 @@ def serve(settings, password=None):
     Handler.sessions = Sessions()
     Handler.attempts = Attempts()
     address = (settings.address, settings.port)
-    notifications.watch()
+    updates.watch(settings.state_directory)
     with http.server.ThreadingHTTPServer(address, Handler) as httpd:
         print("previously %s on http://%s:%d"
               % (VERSION, settings.address, settings.port), flush=True)

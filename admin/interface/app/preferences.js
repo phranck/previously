@@ -1,12 +1,14 @@
-/* Preferences: the language, the size, and how notifications reach this
-   browser. */
+/* Preferences: the language, the size, how notifications reach this browser,
+   and whether the Pi looks for updates on its own. */
 
 import { LANGUAGE_NAMES, currentLanguage, setLanguage, t, writeWords } from "../strings.js";
 import { redrawActivity } from "./activity.js";
 import { redrawTheEditor } from "./editor.js";
 import { drawTheInstaller, drawTheTabs, setupState } from "./installer.js";
 import { drawTheMenu } from "./menu.js";
-import { changeNotificationSettings, notificationSettings, redrawTheNotifications } from "./notifications.js";
+import { changeNotificationSettings, notificationSettings, redrawTheNotifications,
+         refreshTheNotifications } from "./notifications.js";
+import { ask, tell } from "./service.js";
 import { byId } from "./page.js";
 import { showTheNotesAgain } from "./preview.js";
 import { drawSizes } from "./size.js";
@@ -38,6 +40,7 @@ const MODULES = {
   localization: { name: "preferences.localization", panel: "languages" },
   monitor: { name: "preferences.monitor", panel: "sizes" },
   notifications: { name: "preferences.notifications", panel: "notifications-page" },
+  updates: { name: "preferences.updates", panel: "updates-page" },
 };
 
 /**
@@ -61,7 +64,6 @@ function showModule(which) {
   writeWords(byId("module-name"), t(module.name));
 }
 
-/** Wires the row of modules, and draws the one that starts up chosen. */
 /**
  * Sets the Notifications module's switches and radio buttons from what this
  * browser keeps, and wires them to keep what is changed.
@@ -90,6 +92,57 @@ function wireNotificationSettings() {
   });
 }
 
+/** How long after Check Now the notifications are asked again. The Pi asks
+ *  GitHub and the archive in a thread and answers at once, and either answer
+ *  is back well within this on a working network. */
+const LOOKED_MS = 5000;
+
+/**
+ * Shows whether the Pi looks for updates on its own: the radio button that is
+ * in force, and Check Now usable only while it looks manually.
+ * @param {boolean | null} automatic - What the Pi said, or null where it did
+ *   not answer, which leaves the page as it stands.
+ */
+function drawUpdateSettings(automatic) {
+  if (automatic === null) return;
+  for (const radio of document.querySelectorAll('input[name="updates-mode"]')) {
+    if (radio instanceof HTMLInputElement) {
+      radio.checked = radio.value === (automatic ? "automatic" : "manual");
+    }
+  }
+  byId("updates-look", HTMLButtonElement).disabled = automatic;
+}
+
+/** Asks the Pi how it looks for updates, and shows it. */
+async function refreshUpdateSettings() {
+  const answer = await ask("/api/updates");
+  drawUpdateSettings(answer ? answer.automatic : null);
+}
+
+/**
+ * Wires the Updates module: choosing a radio button tells the Pi, and Update
+ * Now has it look once.
+ *
+ * A choice the Pi refused, for want of the password or otherwise, is drawn
+ * back to what the Pi holds, so the page never shows a choice that is not in
+ * force.
+ */
+function wireUpdateSettings() {
+  const modes = byId("updates-page");
+  modes.addEventListener("change", async (event) => {
+    if (!(event.target instanceof HTMLInputElement) || event.target.name !== "updates-mode") return;
+    const answer = await tell("/api/updates", { automatic: event.target.value === "automatic" });
+    if (answer && "automatic" in answer) drawUpdateSettings(answer.automatic);
+    else await refreshUpdateSettings();
+  });
+  byId("updates-look", HTMLButtonElement).addEventListener("click", async () => {
+    await tell("/api/updates/look");
+    setTimeout(refreshTheNotifications, LOOKED_MS);
+  });
+  refreshUpdateSettings();
+}
+
+/** Wires the row of modules, and draws the one that starts up chosen. */
 function wirePreferences() {
   const row = document.querySelector("nx-window[name='preferences'] .modules");
   if (!row) return;
@@ -101,6 +154,7 @@ function wirePreferences() {
   showModule("localization");
   drawSizes();
   wireNotificationSettings();
+  wireUpdateSettings();
 }
 
 /**

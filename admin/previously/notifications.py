@@ -10,13 +10,9 @@ It answers with names, levels and values rather than with sentences, as every
 answer of this service does, because a sentence written here could only ever
 be in one language.
 
-It also keeps what it decides on fresh. The windows ask GitHub and the archive
-only while somebody has them open, so a thread started with the service asks
-both whenever what it knows has grown old.
+What it decides on is kept fresh by `updates.py`, which looks for a newer
+release and a newer Previous.
 """
-
-import threading
-import time
 
 from . import archive, kiosk, pi, release, setup
 
@@ -25,16 +21,6 @@ from . import archive, kiosk, pi, release, setup
 #: way through.
 DISK_FULL_PERCENT = 90
 
-#: How old what is known about the newest release and the newest Previous may
-#: be before it is asked again. An hour costs one of the sixty requests an
-#: address may make to GitHub in that time.
-FRESH_SECONDS = 3600
-
-#: How often the watch wakes to see whether anything has grown old. Short, so a
-#: Pi that started before its network was up learns both within minutes of it
-#: coming up rather than an hour later.
-TICK_SECONDS = 300
-
 
 class Level:
     """How much a notification matters, which the page draws as its picture."""
@@ -42,42 +28,6 @@ class Level:
     INFO = "info"
     ALERT = "alert"
     ERROR = "error"
-
-
-#: Whether the watch is running, so a second start does not make a second one.
-_WATCHING = False
-_STARTING = threading.Lock()
-
-
-def watch():
-    """Starts the thread that keeps the newest release and Previous fresh.
-
-    Once per service. It lives as long as the service does, and a daemon thread
-    is what lets the service stop without waiting for it.
-    """
-    global _WATCHING
-    with _STARTING:
-        if _WATCHING:
-            return
-        _WATCHING = True
-    threading.Thread(target=_watching, name="notifications", daemon=True).start()
-
-
-def look_again(now=None):
-    """Asks GitHub and the archive again, each where what is known is missing
-    or older than FRESH_SECONDS.
-
-    @param now - The moment to measure against, for a test. None means the
-      clock.
-
-    Neither ask waits. Each starts a lookup in a thread of its own, under the
-    floor its module keeps, and what comes back is there for the next answer.
-    """
-    moment = now or time.time()
-    for asked in (release.published, archive.offered):
-        known = asked()
-        if known is None or moment - known["asked_at"] >= FRESH_SECONDS:
-            asked(check=True)
 
 
 def current(settings):
@@ -154,10 +104,3 @@ def worth_saying(tool, emulator, board, running):
             count=crashes["count"], last=crashes["last"])
 
     return said
-
-
-def _watching():
-    """Looks again for as long as the service runs."""
-    while True:
-        look_again()
-        time.sleep(TICK_SECONDS)

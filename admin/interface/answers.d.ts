@@ -771,6 +771,17 @@ export interface NotificationsAnswer {
   notifications: NotificationEntry[];
 }
 
+
+/** GET /api/updates: whether the Pi looks for updates on its own. */
+export interface UpdatesAnswer {
+  automatic: boolean;
+}
+
+/** POST /api/updates and /api/updates/look: the choice as it now stands. */
+export interface UpdatesChosenAnswer extends UpdatesAnswer {
+  ok: boolean;
+}
+
 /** One entry of the release list: a release, or neighbors whose notes open
  *  with the same paragraph, from release.runs. */
 export interface ReleaseRun {
@@ -948,6 +959,7 @@ export interface GetAnswers {
   "/api/update": UpdateAnswer;
   "/api/update/notes": ReleaseNotesAnswer;
   "/api/notifications": NotificationsAnswer;
+  "/api/updates": UpdatesAnswer;
 }
 
 /** Every route `tell` sends to, by its path, with what it answers. */
@@ -969,4 +981,6 @@ export interface PostAnswers {
   "/api/setup": SetupRequestAnswer;
   "/api/update": UpdateRequestAnswer;
   "/api/picture/delete": PictureDeleteAnswer;
+  "/api/updates": UpdatesChosenAnswer;
+  "/api/updates/look": UpdatesChosenAnswer;
 }

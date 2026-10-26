@@ -68,7 +68,8 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/systems.py` | The six systems that can be put on this machine, and where each comes from |
 | `previously/release.py` | Which release of this tool is published, where its package is, and what it says about itself |
 | `previously/archive.py` | Which Previous the archive offers, read off the archive's own index |
-| `previously/notifications.py` | Which readings are worth a notification, and the watch that keeps the newest release and Previous fresh |
+| `previously/notifications.py` | Which readings are worth a notification |
+| `previously/updates.py` | Whether the Pi looks for a newer release and a newer Previous on its own, and the watch that does |
 | `previously/fetching.py` | Where a download may go, and where it may be sent on to |
 | `previously/discs.py` | The media that go beside the system, and what NeXTSTEP cannot read |
 | `previously/setup.py` | What root does on this tool's behalf, and the only thing root does |
@@ -162,6 +163,9 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `GET /api/update/notes` | What the published release says about itself, as the Markdown it was written in |
 | `POST /api/update` | Asks the privileged helper to replace this tool with the newest release |
 | `GET /api/notifications` | What the Pi decided is worth a notification now, as names, levels and values |
+| `GET /api/updates` | Whether the Pi looks for updates on its own |
+| `POST /api/updates` | Chooses whether the Pi looks for updates on its own |
+| `POST /api/updates/look` | Has the Pi look for a newer release and a newer Previous once, at once |
 | `GET /api/screen` | A picture of what the emulated machine shows, kept in Documents/Pictures as well, and only with the password |
 | `GET /api/picture?name=` | One picture out of Documents/Pictures, by its name alone, and only with the password |
 | `POST /api/picture/delete` | Takes one picture out of Documents/Pictures |
@@ -544,11 +548,13 @@ Adding a string means adding it to all six catalogs. `tests/test_strings.py` fai
 
 ## Preferences
 
-NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath, and this is that with three modules in it: Localization offers the six languages, Monitor offers the size the interface is drawn at, and Notifications offers how notifications reach this browser.
+NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath, and this is that with four modules in it: Localization offers the six languages, Monitor offers the size the interface is drawn at, Notifications offers how notifications reach this browser, and Updates offers whether the Pi looks for updates on its own.
 
 Localization and Monitor are two of NeXTSTEP's own fourteen modules. Localization offers the six languages. Everything it shows comes out of the disk image rather than from us: `Localization.tiff` is the picture Preferences.app carried for it, the window's title is what each language's `preferences.strings` called the application, and the module's name is the `Long Name` in the `Info` file of its own bundle. Three of the six left the application's name untranslated, so the window says `Preferences` in French, Italian and Swedish and `Präferenzen` in German, exactly as it did. Monitor's picture is the one `design/extract.py` takes from `/NextApps/Preferences.app/Monitor.preferences/Monitor`.
 
 **Notifications** is this tool's own module and wears the information sign the Info notification wears. Its first group, In This Browser, holds two switches: whether notifications show at all, and whether one that appears plays a sound. The sound is Glass out of `/NextLibrary/Sounds`, one of the sounds NeXTSTEP's Sound module offered as the system beep, which `design/extract.py` writes as `web/sounds/Glass.wav`. Its second group, Position, puts four radio buttons at the corners of Preferences' own monitor picture, and the stack moves to the corner chosen, clear of the dock on the right and of the floor at the foot. All three settings belong to this browser and are kept in `localStorage`, as the language and the size are, and a change shows on the stack at once.
+
+**Updates** is this tool's own as well, and wears the open package with the globe that NeXT drew for `NetInstallHelper.app`, which `design/extract.py` takes out of the disk image. Two radio buttons say whether the Pi looks for updates automatically or manually, and beside the manual one stands a button that has the Pi look once, at once. The button is off while the Pi looks on its own. This setting belongs to the Pi rather than to a browser, because the Pi is what looks: `GET /api/updates` answers it, `POST /api/updates` changes it and needs the password, and `POST /api/updates/look` is the button. A choice the Pi refuses is drawn back to what it holds.
 
 The switches and radio buttons are the browser's own inputs wearing NeXTSTEP's own bitmaps, which `../design/kit/switches.css` lays on them. The Application Kit compiled `NXswitch` and `NXradio` into its library rather than shipping them as files, so `../design/controls.py` cuts all four out of two grabs of Preferences on the running system.
 
@@ -589,7 +595,7 @@ What somebody should know without looking at the right window is said by a notif
 
 **The Pi decides, and every browser shows what it decided.** `notifications.py` is the one place that turns readings into notifications, and `GET /api/notifications` answers with names, levels and values, which the page puts into words. Neither update is offered while the helper is in the middle of a job. The page asks every 30 seconds.
 
-**The Pi looks for updates on its own.** A thread started with the service asks GitHub for the newest release and the archive for the newest Previous whenever what it knows is missing or an hour old, and tries every five minutes until it knows. The archive is read from its own index, `dists/wmlive-trixie/main/binary-arm64/Packages.gz`, on the archive and on its copy on previous.li, so a Pi whose package lists are stale still sees a newer Previous. Installing still goes through apt, which refreshes its lists and checks the archive's signature first.
+**The Pi looks for updates on its own, unless Preferences says it looks manually.** `updates.py` keeps that choice in the service's state directory, and a thread started with the service reads it at every tick. While the Pi looks automatically, the thread asks GitHub for the newest release and the archive for the newest Previous whenever what it knows is missing or an hour old, and tries every five minutes until it knows. The archive is read from its own index, `dists/wmlive-trixie/main/binary-arm64/Packages.gz`, on the archive and on its copy on previous.li, so a Pi whose package lists are stale still sees a newer Previous. Installing still goes through apt, which refreshes its lists and checks the archive's signature first.
 
 **Clicking one opens the window it is about, and its close button takes it away.** Either way it stays away in this browser until its reading changes: a newer release than the one it named, or another crash. One whose condition has gone goes by itself, and comes back the next time the condition does.
 

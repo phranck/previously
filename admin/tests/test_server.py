@@ -147,6 +147,47 @@ def test_what_is_worth_saying_is_open(service):
     assert isinstance(json.loads(body)["notifications"], list)
 
 
+def test_whether_the_pi_looks_for_updates_is_open(service):
+    status, _, body = fetch(service + "/api/updates")
+
+    assert status == 200
+    assert json.loads(body) == {"automatic": True}
+
+
+def test_choosing_how_updates_are_found_needs_a_session(service):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/updates", {"automatic": False}, signed_in=False)
+
+    assert refused.value.code == 403
+    _, _, body = fetch(service + "/api/updates")
+    assert json.loads(body) == {"automatic": True}, "refused and kept it anyway"
+
+
+def test_the_choice_of_how_updates_are_found_is_kept(service):
+    with tell(service, "/api/updates", {"automatic": False}) as answer:
+        assert json.loads(answer.read()) == {"ok": True, "automatic": False}
+
+    _, _, body = fetch(service + "/api/updates")
+    assert json.loads(body) == {"automatic": False}
+
+
+def test_a_choice_that_is_not_one_is_refused(service):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/updates", {"automatic": "sometimes"})
+
+    assert refused.value.code == 400
+
+
+def test_update_now_asks_github_and_the_archive_at_once(service, monkeypatch):
+    asked = []
+    monkeypatch.setattr(server.updates, "look_now", lambda: asked.append(True))
+
+    with tell(service, "/api/updates/look", {}) as answer:
+        assert answer.status == 200
+
+    assert asked == [True]
+
+
 #: What one reading of Activity Monitor holds, whether it is asked for or
 #: streamed.
 ACTIVITY_READING = {"model", "board", "cores", "load", "memory", "emulator"}
