@@ -28,7 +28,7 @@ from .password import (COOKIE, LARGEST, SESSION_SECONDS, SMALLEST, Attempts, Ses
 
 #: The release this tool belongs to. The one place it is written down, and
 #: what packaging/build.py reads to number a package.
-RELEASE = "1.12.3"
+RELEASE = "1.12.4"
 
 
 def _packaged_as():
