@@ -5,6 +5,7 @@ import { redrawActivity } from "./activity.js";
 import { redrawTheEditor } from "./editor.js";
 import { drawTheInstaller, drawTheTabs, setupState } from "./installer.js";
 import { drawTheMenu } from "./menu.js";
+import { redrawTheNotifications } from "./notifications.js";
 import { byId } from "./page.js";
 import { showTheNotesAgain } from "./preview.js";
 import { drawSizes } from "./size.js";
@@ -105,6 +106,9 @@ function speak(code) {
     redrawActivity();
     /* Release notes come from the service in one language at a time. */
     showTheNotesAgain();
+    /* The notifications are put into words here from the last list the Pi
+       sent, so they are drawn again rather than waiting for the next. */
+    redrawTheNotifications();
   });
 }
 

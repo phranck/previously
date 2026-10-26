@@ -2,7 +2,7 @@
 
 import pytest
 
-from previously import notices, pi, setup
+from previously import notifications, pi, setup
 
 #: A board with nothing to say about itself.
 QUIET = {
@@ -33,7 +33,7 @@ def without_dpkg(monkeypatch):
 def said(tool=CURRENT, emulator=EMULATOR, board=QUIET, running=False):
     """@returns dict from each notification's name to what it carries."""
     return {notice["name"]: notice
-            for notice in notices.worth_saying(tool, emulator, board, running)}
+            for notice in notifications.worth_saying(tool, emulator, board, running)}
 
 
 def test_a_current_tool_on_a_quiet_board_says_nothing():
@@ -43,7 +43,7 @@ def test_a_current_tool_on_a_quiet_board_says_nothing():
 def test_a_newer_release_is_offered_by_its_version():
     update = said(tool={"installed": "1.12.4", "published": "1.13.0"})["update"]
 
-    assert update["level"] == notices.Level.INFO
+    assert update["level"] == notifications.Level.INFO
     assert update["reading"] == "1.13.0"
     assert update["values"] == {"version": "1.13.0", "installed": "1.12.4"}
 
@@ -56,7 +56,7 @@ def test_a_newer_previous_is_offered_by_its_version():
     emulator = said(emulator={"version": "4.4-0wmlive1",
                               "newest": "4.5-0wmlive1"})["emulator"]
 
-    assert emulator["level"] == notices.Level.INFO
+    assert emulator["level"] == notifications.Level.INFO
     assert emulator["reading"] == "4.5-0wmlive1"
 
 
@@ -75,7 +75,7 @@ def test_under_voltage_now_is_said():
     board = dict(QUIET, throttling={"raw": 1, "now": ["under-voltage"],
                                     "since_boot": ["under-voltage"]})
 
-    assert said(board=board)["power"]["level"] == notices.Level.ALERT
+    assert said(board=board)["power"]["level"] == notifications.Level.ALERT
 
 
 def test_under_voltage_that_was_and_is_not_now_is_not_said():
@@ -98,13 +98,13 @@ def test_the_temperature_is_said_from_the_limit_the_board_window_marks():
 
 def test_a_card_that_is_nearly_full_is_said():
     below = dict(QUIET, disk={"free_mb": 4000, "total_mb": 30000,
-                              "used_percent": notices.DISK_FULL_PERCENT - 1})
+                              "used_percent": notifications.DISK_FULL_PERCENT - 1})
     full = dict(QUIET, disk={"free_mb": 3000, "total_mb": 30000,
-                             "used_percent": notices.DISK_FULL_PERCENT})
+                             "used_percent": notifications.DISK_FULL_PERCENT})
 
     assert said(board=below) == {}
     assert said(board=full)["disk"]["values"] == {
-        "percent": notices.DISK_FULL_PERCENT, "free_mb": 3000}
+        "percent": notifications.DISK_FULL_PERCENT, "free_mb": 3000}
 
 
 def test_a_crash_is_an_error_that_comes_back_with_the_next_one():
@@ -112,7 +112,7 @@ def test_a_crash_is_an_error_that_comes_back_with_the_next_one():
     one = said(board=dict(QUIET, crashes={"count": 1, "last": 1790654464}))
     two = said(board=dict(QUIET, crashes={"count": 2, "last": 1790657571}))
 
-    assert one["crash"]["level"] == notices.Level.ERROR
+    assert one["crash"]["level"] == notifications.Level.ERROR
     assert one["crash"]["reading"] != two["crash"]["reading"]
 
 
@@ -133,11 +133,11 @@ def test_what_is_known_is_asked_again_once_it_is_an_hour_old(monkeypatch):
             return {"version": "1", "asked_at": asked_at}
         return answer
 
-    monkeypatch.setattr(notices.release, "published", keeper("release", 0.0))
-    monkeypatch.setattr(notices.archive, "offered",
-                        keeper("archive", notices.FRESH_SECONDS))
+    monkeypatch.setattr(notifications.release, "published", keeper("release", 0.0))
+    monkeypatch.setattr(notifications.archive, "offered",
+                        keeper("archive", notifications.FRESH_SECONDS))
 
-    notices.look_again(now=notices.FRESH_SECONDS)
+    notifications.look_again(now=notifications.FRESH_SECONDS)
 
     assert asked == ["release"]
 
@@ -149,9 +149,9 @@ def test_what_was_never_learned_is_asked_for(monkeypatch):
         if check:
             asked.append(True)
 
-    monkeypatch.setattr(notices.release, "published", unknown)
-    monkeypatch.setattr(notices.archive, "offered", unknown)
+    monkeypatch.setattr(notifications.release, "published", unknown)
+    monkeypatch.setattr(notifications.archive, "offered", unknown)
 
-    notices.look_again(now=1.0)
+    notifications.look_again(now=1.0)
 
     assert asked == [True, True]

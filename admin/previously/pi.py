@@ -44,7 +44,7 @@ THROTTLING_SINCE_BOOT = {
 
 #: Where the chip's temperature stops being a number and becomes a warning:
 #: from here a Pi 5 begins to slow itself down. Sent with the readings, so the
-#: Raspberry Pi window marks the same temperature that `notices.py` raises a
+#: Raspberry Pi window marks the same temperature that `notifications.py` raises a
 #: notification for.
 TEMPERATURE_LIMIT_C = 80
 

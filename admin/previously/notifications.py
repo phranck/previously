@@ -60,7 +60,7 @@ def watch():
         if _WATCHING:
             return
         _WATCHING = True
-    threading.Thread(target=_watching, name="notices", daemon=True).start()
+    threading.Thread(target=_watching, name="notifications", daemon=True).start()
 
 
 def look_again(now=None):

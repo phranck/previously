@@ -21,6 +21,7 @@ Ten tools do that work:
 | `makepng.py` | Draws the icon a PNG file wears on NeXT's own TIFF sheet, because NeXTSTEP has none for a format that came later. |
 | `boards.py` | Draws the four Raspberry Pi boards the Info window and Activity Monitor show. |
 | `edges.py` | Draws the sunken, the raised and the grooved edge in the grays `kit/base.css` declares. |
+| `signs.py` | Draws the information sign and the warning triangle a notification wears beside the Workspace's stop sign. |
 | `mark.py` | Fetches the Previously mark, the icon of its tab and the pictures shown while the Pi starts and shuts down from the website, and writes the admin's copies into `../admin/web/parts/` and `../admin/packaging/`. |
 | `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their license, into `../admin/web/fonts/`. |
 | `build.py` | Puts the kit together, writes the two files the admin serves, and bakes the pictures and those faces into the mockup as data URIs so it stays one file. |
@@ -71,6 +72,15 @@ The files are served as they are, so the browser draws them at the display's own
 
 ```bash
 python3 boards.py
+python3 build.py
+```
+
+## The signs
+
+A notification wears a picture for its level. NeXTSTEP 3.3 holds exactly one picture of a state, the Workspace's stop sign in `WM.app/English.lproj/stop.tiff`, and `extract.py` takes it out as `stop.png` for an error. Nothing in the image is named after information or a warning, so `signs.py` draws those two as the road signs that go with the stop sign: the blue information sign and the warning triangle with rounded corners. They take the stop sign's canvas of 61 by 48, its place in it, its red, its light gray inner line and its black and white edge, and go into `../admin/web/parts/` as `sign-info.svg` and `sign-alert.svg`. `../admin/tests/test_signs.py` fails when a file no longer matches what `signs.py` draws.
+
+```bash
+python3 signs.py
 python3 build.py
 ```
 

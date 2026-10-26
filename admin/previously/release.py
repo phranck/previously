@@ -401,5 +401,3 @@ def _look_back_behind_this():
         _HISTORY_ASKED_AT = time.time()
 
     fetching.in_the_background(_LOOKING_BACK, stamp, look_back, Unreachable)
-
-

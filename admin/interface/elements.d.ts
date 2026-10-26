@@ -7,6 +7,8 @@ import type {
   NxLeds,
   NxMenu,
   NxMenuItem,
+  NxNotification,
+  NxNotifications,
   NxPopup,
   NxScroller,
   NxShelf,
@@ -30,6 +32,8 @@ declare global {
     "nx-shelf": NxShelf;
     "nx-thing": NxThing;
     "nx-ask": NxAsk;
+    "nx-notifications": NxNotifications;
+    "nx-notification": NxNotification;
     "nx-viewer": NxViewer;
     "nx-slider": NxSlider;
     "nx-leds": NxLeds;

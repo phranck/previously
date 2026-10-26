@@ -141,10 +141,10 @@ def test_the_board_readings_say_which_version_is_answering(service):
 def test_what_is_worth_saying_is_open(service):
     """Every browser draws what the Pi decided, signed in or not, as every
     reading is."""
-    status, _, body = fetch(service + "/api/notices")
+    status, _, body = fetch(service + "/api/notifications")
 
     assert status == 200
-    assert isinstance(json.loads(body)["notices"], list)
+    assert isinstance(json.loads(body)["notifications"], list)
 
 
 #: What one reading of Activity Monitor holds, whether it is asked for or

@@ -108,6 +108,12 @@ ICONS = {
     "defaultIcon": ("defaultIcon", "a file the Workspace has nothing better for"),
     "Workspace": ("Workspace", "the NeXT wordmark on its cube"),
     "trash.1.alpha": ("trash", "the recycler, in the first of its four frames"),
+    # The Workspace's own picture for something that cannot go on, and the one
+    # picture of a state anywhere in the image: nothing in it is named after an
+    # alert, a warning, a caution or information. The admin's notifications
+    # wear it for an error, and design/signs.py draws the other two after it.
+    "/usr/lib/NextStep/Workspace.app/WM.app/English.lproj/stop":
+        ("stop", "an error, as the Workspace drew one"),
     "hilite": ("hilite", "the white a selected icon sits on"),
 }
 
