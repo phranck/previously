@@ -15,6 +15,21 @@ nx-notifications {
   flex-direction: column;
   width: 300px;
 }
+nx-notifications[hidden] { display: none; }
+
+/* The other three corners somebody can choose. On the left the column keeps
+   the gap from the screen's edge alone, and at the foot it stands clear of the
+   floor, whose icons are as tall as a tile of the dock. The stack still grows
+   downwards in the order the notifications came, so at the foot it grows from
+   the bottom up. */
+nx-notifications[corner$="left"] {
+  right: auto;
+  left: var(--pane-pad);
+}
+nx-notifications[corner^="bottom"] {
+  top: auto;
+  bottom: calc(var(--dock-width) + var(--pane-pad));
+}
 
 /* Each one is a panel: the frame, the face and the shadow nx-ask carries. The
    gap is a margin rather than the column's gap, because a margin can close

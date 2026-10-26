@@ -100,3 +100,79 @@ test("the Raspberry Pi window leaves saying a newer release to the notification"
   assert.equal(document.getElementById("pi-update-note").textContent, "");
   assert.equal(document.getElementById("pi-newest").hasAttribute("newer"), true);
 });
+
+/**
+ * Counts the chimes played while a test runs.
+ * @returns {{count: number}}
+ */
+function listening() {
+  const heard = { count: 0 };
+  globalThis.Audio = class { play() { heard.count += 1; return Promise.resolve(); } };
+  return heard;
+}
+
+test("a browser that never chose shows them silently at the top right", () => {
+  layThePage();
+  notifications.wireTheNotifications();
+
+  assert.deepEqual(notifications.notificationSettings(),
+                   { show: true, sound: false, corner: "top-right" });
+  assert.equal(stack().hidden, false);
+  assert.equal(stack().getAttribute("corner"), "top-right");
+});
+
+test("switching them off hides the stack, and the corner moves it", () => {
+  layThePage();
+  notifications.wireTheNotifications();
+
+  notifications.changeNotificationSettings({ show: false, corner: "bottom-left" });
+
+  assert.equal(stack().hidden, true);
+  assert.equal(stack().getAttribute("corner"), "bottom-left");
+  assert.deepEqual(JSON.parse(localStorage.getItem("notifications.settings")),
+                   { show: false, sound: false, corner: "bottom-left" });
+});
+
+test("a corner nobody offers is read as the top right", () => {
+  layThePage();
+  localStorage.setItem("notifications.settings", JSON.stringify({ corner: "middle" }));
+
+  assert.equal(notifications.notificationSettings().corner, "top-right");
+});
+
+test("one that appears chimes once, and one that only stays does not", () => {
+  layThePage();
+  notifications.wireTheNotifications();
+  notifications.changeNotificationSettings({ sound: true });
+  const heard = listening();
+
+  notifications.drawTheNotifications([NEWER, CRASHED]);
+  notifications.drawTheNotifications([NEWER, CRASHED]);
+
+  assert.equal(heard.count, 1);
+});
+
+test("no chime without the sound switched on", () => {
+  layThePage();
+  notifications.wireTheNotifications();
+  const heard = listening();
+
+  notifications.drawTheNotifications([NEWER]);
+
+  assert.equal(heard.count, 0);
+});
+
+test("the switches in Preferences change the stack at once", async () => {
+  layThePage();
+  notifications.wireTheNotifications();
+  const preferences = await import("../../interface/app/preferences.js");
+  preferences.wirePreferences();
+
+  const show = document.getElementById("notifications-show");
+  assert.equal(show.checked, true);
+  show.click();
+  assert.equal(stack().hidden, true);
+
+  document.querySelector('input[name="notifications-corner"][value="bottom-right"]').click();
+  assert.equal(stack().getAttribute("corner"), "bottom-right");
+});

@@ -1204,6 +1204,21 @@ nx-notifications {
   flex-direction: column;
   width: 300px;
 }
+nx-notifications[hidden] { display: none; }
+
+/* The other three corners somebody can choose. On the left the column keeps
+   the gap from the screen's edge alone, and at the foot it stands clear of the
+   floor, whose icons are as tall as a tile of the dock. The stack still grows
+   downwards in the order the notifications came, so at the foot it grows from
+   the bottom up. */
+nx-notifications[corner$="left"] {
+  right: auto;
+  left: var(--pane-pad);
+}
+nx-notifications[corner^="bottom"] {
+  top: auto;
+  bottom: calc(var(--dock-width) + var(--pane-pad));
+}
 
 /* Each one is a panel: the frame, the face and the shadow nx-ask carries. The
    gap is a margin rather than the column's gap, because a margin can close
@@ -1498,6 +1513,68 @@ nx-window:not([fixed]) .buttons:last-child { padding-bottom: var(--pane-pad); }
 }
 @keyframes lamp-busy { 50% { background: var(--dark); } }
 @media (prefers-reduced-motion: reduce) { .busy::before { animation: none; } }
+
+/* --- switches and radio buttons ------------------------------------------ */
+
+/* The two two-state buttons of the Controls chapter: a switch for a setting on
+   its own, and a radio button for one of several. Both are the browser's own
+   checkbox and radio input with their look replaced, so the keyboard, the
+   label and what a screen reader says come from the browser rather than from
+   code here.
+
+   NeXTSTEP drew both from bitmaps compiled into its Application Kit, named
+   NXswitch, NXswitchH, NXradio and NXradioH in libNeXT_s, and those are not
+   files in the disk image. So they are drawn here after the chapter's own
+   figure of two-state buttons, F5.gif, in the kit's grays: a raised square
+   that shows a check when it is on, and a sunken circle that shows a white
+   center when it is chosen. The 12 pixels are read off that figure. */
+input.switch,
+input.radio {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  background: var(--light);
+  cursor: default;
+}
+
+input.switch {
+  border: 1px solid;
+  border-image: var(--raised);
+}
+input.switch:checked {
+  background: var(--light) center / 8px 8px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath d='M0 4h2v1h1v1h1V3h1V1h1V0h2v1H7v2H6v2H5v2H4v1H2V7H1V6H0z'/%3E%3C/svg%3E");
+}
+
+/* A circle, sunken by a dark edge on its upper left and a white one on its
+   lower right, which is how the figure draws the ring. */
+input.radio {
+  border-radius: 50%;
+  box-shadow: inset 1px 1px 0 var(--dark), inset -1px -1px 0 var(--white);
+}
+input.radio:checked {
+  background: radial-gradient(circle, var(--white) 0 3px, var(--light) 3.5px);
+}
+
+/* Where the keyboard is, as a button shows it. */
+input.switch:focus-visible,
+input.radio:focus-visible {
+  outline: 1px solid var(--black);
+  outline-offset: 1px;
+}
+
+/* A button with its words beside it, in either order, and the words greyed
+   with the button when it cannot be used: "Disabling greys the text and
+   nothing else." */
+label.two-state {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: default;
+}
+label.two-state:has(input:disabled) { color: var(--dark); }
 
 /* --- nx-slider ----------------------------------------------------------- */
 

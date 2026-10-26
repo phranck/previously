@@ -67,6 +67,7 @@ KIT_PARTS = (
     ("viewer", (("nx-viewer", "NxViewer"),),
      "the File Viewer, as four bands in one window"),
     ("panel", (), "nx-portrait, nx-row and nx-field, for an info panel"),
+    ("switches", (), "the switch and the radio button, on the browser's own inputs"),
     ("slider", (("nx-slider", "NxSlider"),),
      "a knob in a trough, moving between the steps it is given"),
     ("leds", (("nx-leds", "NxLeds"),),

@@ -17,6 +17,7 @@
  *   nx-notifications, nx-notification  the notifications, stacked beside the dock
  *   nx-viewer                          the File Viewer, as four bands in one window
  *   panel                              nx-portrait, nx-row and nx-field, for an info panel
+ *   switches                           the switch and the radio button, on the browser's own inputs
  *   nx-slider                          a knob in a trough, moving between the steps it is given
  *   nx-leds                            a row of lamps lighting from the left, for a share of something
  *   terminal                           a text view, black on white

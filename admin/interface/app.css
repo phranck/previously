@@ -21,7 +21,7 @@
 
 /* NeXTSTEP's Preferences is a row of module cells with the chosen module's
    panel underneath, and a scroller along the row because fourteen modules do
-   not fit across it. Two of them do fit here, and the scroller stays: it is
+   not fit across it. Three of them do fit here, and the scroller stays: it is
    the shape of the window rather than a count, and an empty trough is what
    the original shows wherever there is nothing to scroll. */
 nx-window[name="preferences"] .modules {
@@ -68,6 +68,9 @@ nx-window[name="preferences"] .module-row {
 }
 .module[value="localization"] .art { background-image: var(--Localization); }
 .module[value="monitor"] .art { background-image: var(--Monitor); }
+/* The sign the Info notification wears, so the row shows what the module
+   sets. NeXTSTEP had no module for this and no picture of a notification. */
+.module[value="notifications"] .art { background-image: var(--sign-info); }
 
 /* The chosen module's own name, as Preferences itself called it. */
 .module-name {
@@ -153,6 +156,38 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    for that one reaches inside `nx-ask` and moves its title bar off the frame.
    `tests/test_kit.py` holds this interface to naming nothing the kit builds. */
 .module-page { padding: 10px; }
+
+/* A page of several titled groups, one under the other with the air the
+   Keyboard module leaves between its own. */
+.module-page.groups {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+.module-page.groups .group > label.two-state { margin: 3px 0; }
+
+/* The four corners around a monitor. The picture is Preferences' own Monitor
+   at its own 66 by 57, and each row of buttons sits on the screen's top or
+   bottom edge, rows 11 and 35 of that picture, so every button points at the
+   corner it names. A row is 16 high, so its middle lands there 8 above. */
+.corners {
+  display: grid;
+  grid-template-columns: 1fr 66px 1fr;
+  grid-template-rows: 57px;
+  column-gap: 6px;
+}
+.corners .screen {
+  grid-column: 2;
+  grid-row: 1;
+  width: 66px;
+  height: 57px;
+  background-image: var(--Monitor);
+}
+.corners .two-state { grid-row: 1; align-self: start; height: 16px; }
+.corners .left { grid-column: 1; justify-self: end; }
+.corners .right { grid-column: 3; justify-self: start; }
+.corners .top { margin-top: 3px; }
+.corners .bottom { margin-top: 27px; }
 
 .group {
   position: relative;

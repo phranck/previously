@@ -16,7 +16,7 @@ Ten tools do that work:
 |---|---|
 | `ufs.py` | Reads a NeXT UFS filesystem: 4.3BSD FFS, big endian, behind a `dlV3` disk label. |
 | `nxtiff.py` | Decodes NeXT's TIFFs, which no current library reads: two bits per sample, alpha in its own plane, and a second copy of each picture at four bits per color channel. |
-| `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `../admin/web/parts/`. |
+| `extract.py` | Pulls the icons out of the image and the controls out of the screenshot, into `../admin/web/parts/`, and the chime a notification plays out of the image, into `../admin/web/sounds/`. |
 | `bootpicture.py` | Cuts the machine out of a boot screen and makes an icon of it. |
 | `makepng.py` | Draws the icon a PNG file wears on NeXT's own TIFF sheet, because NeXTSTEP has none for a format that came later. |
 | `boards.py` | Draws the four Raspberry Pi boards the Info window and Activity Monitor show. |
