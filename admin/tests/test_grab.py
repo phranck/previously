@@ -7,8 +7,10 @@ shortcut reaches Previous at all, was measured on the machine and is written
 down in the issue rather than pretended at here.
 """
 
+import os
 import pathlib
 import re
+import time
 
 import pytest
 
@@ -69,6 +71,46 @@ def test_a_grab_that_was_already_there_is_not_this_picture(where, monkeypatch):
 
     assert picture == PICTURE
     assert older.exists()
+
+
+def aged(path, seconds):
+    """Makes a file look as if the emulator wrote it that many seconds ago."""
+    then = time.time() - seconds
+    os.utime(path, (then, then))
+
+
+def test_a_grab_that_arrived_after_its_grab_gave_up_goes_with_the_next_one(
+        where, monkeypatch):
+    """The grab that asked for it answered with nothing once the timeout had
+    passed, and to every grab after it the file is already there, so nothing
+    else would ever remove it. Two stayed in ~/.cache/previously on a Pi 5 on
+    23.10.2026 that way."""
+    late = where / "next_screen_000.png"
+    late.write_bytes(grab.PNG_HEAD + b"a late one" + grab.PNG_TAIL)
+    aged(late, grab.GRAB_TIMEOUT_SECONDS + 1)
+    monkeypatch.setattr(grab.emulator, "press", writes(where, "next_screen_001.png"))
+
+    picture = grab.grabbed(where / CONFIGURATION)
+
+    assert picture == PICTURE
+    assert list(where.glob(grab.GRAB_GLOB)) == []
+
+
+def test_a_grab_that_gives_up_leaves_nothing_once_its_file_arrives(where, monkeypatch):
+    """The whole of it: the keys land, nothing arrives in time, the emulator
+    writes the file later all the same, and the grab after that takes it
+    away with its own."""
+    monkeypatch.setattr(grab, "GRAB_TIMEOUT_SECONDS", 0.2)
+    monkeypatch.setattr(grab.emulator, "press", lambda keys: True)
+    assert grab.grabbed(where / CONFIGURATION) is None
+
+    late = where / "next_screen_000.png"
+    late.write_bytes(PICTURE)
+    aged(late, 1)
+    monkeypatch.setattr(grab.emulator, "press", writes(where, "next_screen_001.png"))
+
+    assert grab.grabbed(where / CONFIGURATION) == PICTURE
+    assert list(where.glob(grab.GRAB_GLOB)) == []
 
 
 def test_nothing_comes_of_a_shortcut_that_was_not_sent(where, monkeypatch):
