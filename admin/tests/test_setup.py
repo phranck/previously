@@ -1752,6 +1752,41 @@ def test_the_sound_brings_pipewire_without_the_parts_nothing_uses(tmp_path, comm
     assert "pipewire-pulse" not in installing
 
 
+def test_removing_takes_the_speakers_volume_away_and_a_failed_run_puts_it_back(
+        tmp_path, monkeypatch):
+    """The sound step wrote the file, so Remove takes it back with everything
+    else it undoes. A Pi that had Previously removed kept it before."""
+    monkeypatch.setattr(setup, "SOUND_CONFIGURATION", tmp_path / "50-nextstep.conf")
+    setup.SOUND_CONFIGURATION.write_text("the volume")
+    work = work_in(tmp_path, job="remove")
+    work.at("no-sound", 3)
+
+    setup.STEPS["no-sound"](work)
+    assert not setup.SOUND_CONFIGURATION.exists()
+    assert work.changed == ["no-sound"]
+
+    work.reverse()
+    assert setup.SOUND_CONFIGURATION.read_text() == "the volume"
+
+
+def test_a_machine_without_the_volume_file_has_nothing_to_take_away(tmp_path, monkeypatch):
+    monkeypatch.setattr(setup, "SOUND_CONFIGURATION", tmp_path / "50-nextstep.conf")
+    work = work_in(tmp_path, job="remove")
+    work.at("no-sound", 3)
+
+    setup.STEPS["no-sound"](work)
+
+    assert work.changed == []
+
+
+def test_removing_takes_the_sound_back_after_the_startup():
+    """It joins the remove job behind the step that puts the startup back, so
+    the two things the install job set up last are taken back first."""
+    steps = setup.JOBS["remove"]
+
+    assert steps.index("no-sound") == steps.index("loud") + 1
+
+
 def test_a_cache_that_cannot_be_cleared_does_not_stop_the_step(tmp_path,
                                                                monkeypatch):
     """The packages are in either way, and the room the cache keeps is what the
