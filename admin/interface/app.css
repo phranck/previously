@@ -71,6 +71,9 @@ nx-window[name="preferences"] .module-row {
 /* The sign the Info notification wears, so the row shows what the module
    sets. NeXTSTEP had no module for this and no picture of a notification. */
 .module[value="notifications"] .art { background-image: var(--sign-info); }
+/* NetInstallHelper's open package with the globe, which NeXT drew for
+   software arriving over the network. */
+.module[value="updates"] .art { background-image: var(--Updates); }
 
 /* The chosen module's own name, as Preferences itself called it. */
 .module-name {
@@ -165,6 +168,16 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   align-content: start;
 }
 .module-page.groups .group > label.two-state { margin: 3px 0; }
+
+/* The manual choice with the button that acts on it standing to its right,
+   on the same line, so the button reads as belonging to that choice. */
+.updates-manual {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 3px 0;
+}
 
 /* The four corners around a monitor. The picture is Preferences' own Monitor
    at its own 66 by 57, and each row of buttons sits on the screen's top or

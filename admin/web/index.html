@@ -343,6 +343,7 @@
       <div class="module" value="localization" chosen><i class="art"></i></div>
       <div class="module" value="monitor"><i class="art"></i></div>
       <div class="module" value="notifications"><i class="art"></i></div>
+      <div class="module" value="updates"><i class="art"></i></div>
     </div>
   </nx-scroller>
   <p class="module-name" id="module-name"></p>
@@ -373,6 +374,18 @@
           <label class="two-state bottom left"><span data-t="corner.bottom-left"></span><input type="radio" class="radio" name="notifications-corner" value="bottom-left"></label>
           <label class="two-state bottom right"><input type="radio" class="radio" name="notifications-corner" value="bottom-right"><span data-t="corner.bottom-right"></span></label>
         </div>
+      </fieldset>
+    </div>
+
+    <div class="module-page groups" id="updates-page" hidden>
+      <fieldset class="group">
+        <legend data-t="preferences.updates.group"></legend>
+        <label class="two-state"><input type="radio" class="radio" name="updates-mode" value="automatic"><span data-t="updates.automatic"></span></label>
+        <div class="updates-manual">
+          <label class="two-state"><input type="radio" class="radio" name="updates-mode" value="manual"><span data-t="updates.manual"></span></label>
+          <button id="updates-look" data-t="button.look-now"></button>
+        </div>
+        <p class="note" data-t="updates.hint"></p>
       </fieldset>
     </div>
    </div>

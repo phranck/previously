@@ -117,6 +117,11 @@ ICONS = {
     # wear it for an error, and design/signs.py draws the other two after it.
     "/usr/lib/NextStep/Workspace.app/WM.app/English.lproj/stop":
         ("stop", "an error, as the Workspace drew one"),
+    # What Preferences' Updates module wears: the open package with the globe
+    # that NetInstallHelper carried, software arriving over the network. Not
+    # the Installer's own package, which the Installer here already wears.
+    "/NextAdmin/NetInstallHelper.app/appicon":
+        ("Updates", "software that arrives over the network, as NeXT drew it"),
     "hilite": ("hilite", "the white a selected icon sits on"),
 }
 

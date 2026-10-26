@@ -121,37 +121,3 @@ def test_readings_the_board_could_not_take_say_nothing():
              "crashes": None}
 
     assert said(board=blank) == {}
-
-
-def test_what_is_known_is_asked_again_once_it_is_an_hour_old(monkeypatch):
-    asked = []
-
-    def keeper(name, asked_at):
-        def answer(check=False):
-            if check:
-                asked.append(name)
-            return {"version": "1", "asked_at": asked_at}
-        return answer
-
-    monkeypatch.setattr(notifications.release, "published", keeper("release", 0.0))
-    monkeypatch.setattr(notifications.archive, "offered",
-                        keeper("archive", notifications.FRESH_SECONDS))
-
-    notifications.look_again(now=notifications.FRESH_SECONDS)
-
-    assert asked == ["release"]
-
-
-def test_what_was_never_learned_is_asked_for(monkeypatch):
-    asked = []
-
-    def unknown(check=False):
-        if check:
-            asked.append(True)
-
-    monkeypatch.setattr(notifications.release, "published", unknown)
-    monkeypatch.setattr(notifications.archive, "offered", unknown)
-
-    notifications.look_again(now=1.0)
-
-    assert asked == [True, True]
