@@ -331,7 +331,6 @@ body {
 
 .sunken,
 nx-portrait,
-nx-field,
 nx-scroller {
   border: 1px solid;
   border-image: var(--sunken);
@@ -1163,8 +1162,8 @@ nx-ask .lines a { color: inherit; }
 
 /* The line a panel takes an answer on, which is a name or a password. NeXT's
    text fields are white, sunken and one line tall. Its edge is the `sunken`
-   class in base.css, the one nx-field wears, so the field a panel asks in and
-   the field a reading stands in are drawn by one rule. */
+   class in base.css, the edge every sunken surface on the desk is drawn
+   with. */
 nx-ask .entry {
   width: 100%;
   margin-top: 10px;
@@ -1408,12 +1407,18 @@ nx-window[droppable] nx-portrait { background: var(--white); }
 }
 
 nx-row { display: grid; grid-template-columns: 88px 1fr; gap: 8px; align-items: center; }
-nx-row label { text-align: right; }
+/* Bold, so the name of a reading stands apart from the reading now that the
+   reading is plain text beside it. phranck's choice, 26 October 2026. */
+nx-row label { text-align: right; font-weight: bold; }
 
+/* A reading: text on the window's gray. A white sunken field is what the
+   Controls chapter makes a text field, a place to type, and nobody types
+   here, so a reading wears neither. Three pixels above and below keep a row
+   22 high, the height of a row of lamps, so a column of figures and lamps
+   still reads as one list. */
 nx-field {
   display: block;
-  background: var(--white);
-  padding: 2px 6px;
+  padding: 3px 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
