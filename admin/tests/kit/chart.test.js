@@ -10,7 +10,7 @@ import { kit, lay } from "./desk.js";
 /** @returns {number[]} How many lamps each column has lit, left to right. */
 function heights(chart) {
   return [...chart.querySelectorAll(".column")]
-    .map((column) => column.querySelectorAll(".lamp[lit]").length);
+    .map((column) => column.querySelectorAll(".led[lit]").length);
 }
 
 /** @returns {(string | null)[]} The color zone of each lamp of one column,
