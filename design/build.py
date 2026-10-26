@@ -70,6 +70,8 @@ KIT_PARTS = (
     ("switches", (), "the switch and the radio button, on the browser's own inputs"),
     ("slider", (("nx-slider", "NxSlider"),),
      "a knob in a trough, moving between the steps it is given"),
+    ("chart", (("nx-chart", "NxChart"),),
+     "a history of readings as columns of lamps, the newest on the right"),
     ("leds", (("nx-leds", "NxLeds"),),
      "a row of lamps lighting from the left, for a share of something"),
     ("terminal", (), "a text view, black on white"),

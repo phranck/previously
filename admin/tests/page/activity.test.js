@@ -44,7 +44,7 @@ class Stream {
 globalThis.EventSource = Stream;
 answering(() => never());
 
-const { wireActivity } = await import("../../interface/app/activity.js");
+const { chartActivity, wireActivity } = await import("../../interface/app/activity.js");
 
 /** A reading as the service sends one. */
 const READING = {
@@ -109,4 +109,37 @@ test("a stream that breaks says so in the window", () => {
 test("and keeps the drawing of the board it last heard from", () => {
   assert.equal(document.getElementById("activity-board").style.backgroundImage,
                "var(--board-cm4)");
+});
+
+/** @returns {number} How many columns of a chart hold a reading. */
+function filled(id) {
+  return document.getElementById(id).history.filter((value) => value !== null).length;
+}
+
+test("the emulator takes a column with every reading, the load one every five seconds", () => {
+  theWindow().close();
+  theWindow().open();
+
+  for (const second of [0, 0.5, 1, 1.5, 5, 5.5]) {
+    chartActivity(READING, 1_000_000 + second * 1000);
+  }
+
+  assert.equal(filled("activity-emulator-chart"), 6);
+  assert.equal(filled("activity-load-chart"), 2);
+});
+
+test("the load chart reaches at least the cores, and warns at seven tenths of them", () => {
+  const chart = document.getElementById("activity-load-chart");
+
+  assert.equal(chart.top(), 4);
+  assert.equal(chart.warm, 4 * 0.7);
+  assert.equal(chart.hot, 4);
+});
+
+test("opening the window again starts the charts from nothing", () => {
+  theWindow().close();
+  theWindow().open();
+
+  assert.equal(filled("activity-emulator-chart"), 0);
+  assert.equal(filled("activity-load-chart"), 0);
 });

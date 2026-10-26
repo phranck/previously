@@ -1,6 +1,7 @@
-/* Activity Monitor: what every core of the board is doing, twice a second. */
+/* Activity Monitor: what every core of the board is doing, twice a second,
+   and the load and the emulator's share as charts of what came before. */
 
-import { NxLeds } from "../nextstep.js";
+import { NxChart, NxLeds } from "../nextstep.js";
 import { t } from "../strings.js";
 import { byId, show, targetName, theWindow } from "./page.js";
 import { modelOf, showBoard } from "./pi.js";
@@ -21,6 +22,26 @@ const AGAIN_MS = 5000;
 
 /** Which window this is, as the markup and the Apps folder name it. */
 const ACTIVITY = "activity";
+
+/** How often the load chart takes a column: as often as the kernel works the
+ *  load averages out again, which is every five seconds. A column per reading
+ *  would draw ten of the same in a row. */
+const LOAD_EVERY_MS = 5000;
+
+/** Where the load turns orange, as a share of the cores. Above all of them it
+ *  is red, which is overload. */
+const LOAD_WARM_SHARE = 0.7;
+
+/** What the top of the emulator chart stands for, in per cent of one core: a
+ *  NeXTdimension's two threads reach two cores. Around 150 is ordinary with
+ *  one, so the chart warns only above that. */
+const EMULATOR_TOP = 200;
+const EMULATOR_WARM = 170;
+const EMULATOR_HOT = 190;
+
+/** When the load chart last took a column, by the page's clock, or 0 where it
+ *  has not yet. */
+let loadTakenAt = 0;
 
 /** The stream while the window is open, and null while it is closed, so a
  *  window nobody is looking at costs the Pi nothing.
@@ -43,6 +64,11 @@ function openTheStream() {
   const window_ = theWindow(ACTIVITY);
   if (!window_ || window_.hidden || stream) return;
 
+  /* The charts start again from the moment the window opens: what happened
+     while it was closed was not measured. */
+  for (const chart of charts()) chart.clear();
+  loadTakenAt = 0;
+
   const opened = new EventSource(STREAM);
   stream = opened;
   opened.addEventListener("message", (event) => {
@@ -50,6 +76,7 @@ function openTheStream() {
     const reading = JSON.parse(event.data);
     lastReading = reading;
     drawActivity(reading);
+    chartActivity(reading);
   });
   opened.addEventListener("error", () => {
     drawActivity(null);
@@ -137,6 +164,44 @@ function showShare(meter, share, words) {
   meter.says = share === null ? NOTHING : words(share);
 }
 
+
+/** @returns {NxChart[]} The load chart and the emulator chart, as the markup
+ *  holds them. */
+function charts() {
+  return [byId("activity-load-chart", NxChart), byId("activity-emulator-chart", NxChart)];
+}
+
+/**
+ * Adds one reading to the charts.
+ * @param {ActivityAnswer} activity - The reading.
+ * @param {number} [now] - The page's clock, for a test.
+ *
+ * The emulator takes a column with every reading, because its share is worked
+ * out afresh between each two. The load takes one every LOAD_EVERY_MS, and its
+ * chart reaches at least the number of cores, so a full column is every core
+ * busy, and grows with a load beyond that.
+ */
+function chartActivity(activity, now = Date.now()) {
+  const [load, emulator] = charts();
+
+  emulator.floor = EMULATOR_TOP;
+  emulator.warm = EMULATOR_WARM;
+  emulator.hot = EMULATOR_HOT;
+  emulator.push(activity.emulator?.cpu_percent ?? null);
+
+  const cores = activity.load?.cores;
+  if (cores) {
+    load.floor = cores;
+    load.grows = true;
+    load.warm = cores * LOAD_WARM_SHARE;
+    load.hot = cores;
+  }
+  if (now - loadTakenAt >= LOAD_EVERY_MS) {
+    loadTakenAt = now;
+    load.push(activity.load?.one ?? null);
+  }
+}
+
 /**
  * Makes sure there is one row for each core, and names them.
  * @param {number|null|undefined} count - How many cores the service reports.
@@ -180,6 +245,7 @@ function wireActivity() {
 }
 
 export {
+  chartActivity,
   redrawActivity,
   wireActivity,
 };
