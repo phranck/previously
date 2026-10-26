@@ -411,7 +411,8 @@ JOBS = {
     # underneath them, and a bar that covered both would sit still through the
     # only part they cannot see for themselves.
     UPDATE_TOOL: ("tool-package", "newest-tool"),
-    "remove": ("no-autostart", "loud", "full", "no-autologin", "no-emulator"),
+    "remove": ("no-autostart", "loud", "no-sound", "full", "no-autologin",
+               "no-emulator"),
     "fetch": ("host", "tools", "system"),
     "forget": ("no-system",),
     # A copy of a disk, and the same copy the other way. Both are one step,
@@ -1082,6 +1083,26 @@ def _sound(work):
     work.undoes(lambda: SOUND_CONFIGURATION.unlink(missing_ok=True))
 
 
+def _no_sound(work):
+    """Takes the speaker's volume away again, and leaves the sound packages.
+
+    The file is what the sound step wrote, and a failed run writes it back as
+    it was. The packages stay as the tools do: both were asked for by name, so
+    apt holds them as somebody's own choice, and the Remove panel says so.
+    """
+    try:
+        before = SOUND_CONFIGURATION.read_bytes()
+    except FileNotFoundError:
+        return
+    SOUND_CONFIGURATION.unlink()
+
+    def put_back():
+        SOUND_CONFIGURATION.parent.mkdir(parents=True, exist_ok=True)
+        SOUND_CONFIGURATION.write_bytes(before)
+
+    work.undoes(put_back)
+
+
 def _packages(work, wanted, left_out=()):
     """Installs whichever of these are not already here, and records the undo.
 
@@ -1397,9 +1418,10 @@ def _no_emulator(work):
 
     What it brought is whatever apt installed for its sake and nothing else:
     autoremove only takes packages that were pulled in as dependencies and that
-    nothing left on the machine still wants. The four tools were asked for by
-    name, so apt holds them as somebody's own choice and leaves them, which is
-    what should happen: something else here may use ImageMagick or 7zip by now.
+    nothing left on the machine still wants. The tools and the sound server
+    were asked for by name, so apt holds them as somebody's own choice and
+    leaves them, which is what should happen: something else here may use
+    cage, 7zip or PipeWire by now. The Remove panel says that they stay.
     """
     if installed(EMULATOR_PACKAGE):
         run(["apt-get", "purge", "-y", "-qq", EMULATOR_PACKAGE])
@@ -2487,6 +2509,7 @@ STEPS = {
     "autostart": _autostart,
     "no-autostart": _no_autostart,
     "sound": _sound,
+    "no-sound": _no_sound,
     "start": _start,
     "copy": _copy,
     "put-back": _put_back,
