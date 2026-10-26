@@ -21,6 +21,7 @@ Ten tools do that work:
 | `makepng.py` | Draws the icon a PNG file wears on NeXT's own TIFF sheet, because NeXTSTEP has none for a format that came later. |
 | `boards.py` | Draws the four Raspberry Pi boards the Info window and Activity Monitor show. |
 | `edges.py` | Draws the sunken, the raised and the grooved edge in the grays `kit/base.css` declares. |
+| `controls.py` | Cuts NeXTSTEP's switch and radio button, off and on, out of the two grabs of Preferences in `grabs/`, into `../admin/web/parts/`. |
 | `signs.py` | Draws the information sign and the warning triangle a notification wears beside the Workspace's stop sign. |
 | `mark.py` | Fetches the Previously mark, the icon of its tab and the pictures shown while the Pi starts and shuts down from the website, and writes the admin's copies into `../admin/web/parts/` and `../admin/packaging/`. |
 | `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their license, into `../admin/web/fonts/`. |

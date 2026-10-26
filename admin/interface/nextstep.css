@@ -191,6 +191,12 @@
   --stop: url("parts/stop.png");
   --sign-info: url("parts/sign-info.svg");
   --sign-alert: url("parts/sign-alert.svg");
+  /* The switch and the radio button, off and on, which ../../design/controls.py
+     cuts out of two grabs of Preferences on the running system. */
+  --switch: url("parts/switch.png");
+  --switch-on: url("parts/switch-on.png");
+  --radio: url("parts/radio.png");
+  --radio-on: url("parts/radio-on.png");
   /* The three edges below, which ../../design/edges.py draws in the grays
      at the top of this block. */
   --edge-sunken: url("parts/edge-sunken.svg");
@@ -1522,41 +1528,26 @@ nx-window:not([fixed]) .buttons:last-child { padding-bottom: var(--pane-pad); }
    label and what a screen reader says come from the browser rather than from
    code here.
 
-   NeXTSTEP drew both from bitmaps compiled into its Application Kit, named
-   NXswitch, NXswitchH, NXradio and NXradioH in libNeXT_s, and those are not
-   files in the disk image. So they are drawn here after the chapter's own
-   figure of two-state buttons, F5.gif, in the kit's grays: a raised square
-   that shows a check when it is on, and a sunken circle that shows a white
-   center when it is chosen. The 12 pixels are read off that figure. */
+   The look is NeXTSTEP's own four bitmaps, which ../../design/controls.py cuts
+   out of two grabs of Preferences on the running system, because the
+   Application Kit compiled them into its library rather than shipping them as
+   files. Each is 15 by 15, gray face and all, and is drawn at that size. */
 input.switch,
 input.radio {
   appearance: none;
   flex: 0 0 auto;
-  width: 12px;
-  height: 12px;
+  width: 15px;
+  height: 15px;
   margin: 0;
-  background: var(--light);
+  border: 0;
+  background: var(--light) no-repeat;
   cursor: default;
 }
 
-input.switch {
-  border: 1px solid;
-  border-image: var(--raised);
-}
-input.switch:checked {
-  background: var(--light) center / 8px 8px no-repeat
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath d='M0 4h2v1h1v1h1V3h1V1h1V0h2v1H7v2H6v2H5v2H4v1H2V7H1V6H0z'/%3E%3C/svg%3E");
-}
-
-/* A circle, sunken by a dark edge on its upper left and a white one on its
-   lower right, which is how the figure draws the ring. */
-input.radio {
-  border-radius: 50%;
-  box-shadow: inset 1px 1px 0 var(--dark), inset -1px -1px 0 var(--white);
-}
-input.radio:checked {
-  background: radial-gradient(circle, var(--white) 0 3px, var(--light) 3.5px);
-}
+input.switch { background-image: var(--switch); }
+input.switch:checked { background-image: var(--switch-on); }
+input.radio { background-image: var(--radio); }
+input.radio:checked { background-image: var(--radio-on); }
 
 /* Where the keyboard is, as a button shows it. */
 input.switch:focus-visible,

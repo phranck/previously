@@ -189,6 +189,12 @@
   --stop: url("parts/stop.png");
   --sign-info: url("parts/sign-info.svg");
   --sign-alert: url("parts/sign-alert.svg");
+  /* The switch and the radio button, off and on, which ../../design/controls.py
+     cuts out of two grabs of Preferences on the running system. */
+  --switch: url("parts/switch.png");
+  --switch-on: url("parts/switch-on.png");
+  --radio: url("parts/radio.png");
+  --radio-on: url("parts/radio-on.png");
   /* The three edges below, which ../../design/edges.py draws in the grays
      at the top of this block. */
   --edge-sunken: url("parts/edge-sunken.svg");
