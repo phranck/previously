@@ -567,6 +567,23 @@ nx-row .beside nx-field { flex: 1 1 auto; min-width: 0; }
    picture and the readings beside it, rather than by the step inside a list. */
 nx-window[name="activity"] .info-body + .readings { margin-top: var(--portrait-gap); }
 
+/* A chart with its figures under it. The label stands level with the middle
+   of the chart rather than with the figures, so it names the picture, and the
+   figures are plain text in the readings' own size, because nobody types
+   there. */
+nx-row.charted { align-items: start; }
+nx-row.charted label { align-self: center; }
+.charted-reading {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.charted-reading .figure {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
 /* --- a document in preview ------------------------------------------------ */
 

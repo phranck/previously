@@ -2,6 +2,7 @@
 
 import type {
   NxAsk,
+  NxChart,
   NxDock,
   NxFloor,
   NxLeds,
@@ -36,6 +37,7 @@ declare global {
     "nx-notification": NxNotification;
     "nx-viewer": NxViewer;
     "nx-slider": NxSlider;
+    "nx-chart": NxChart;
     "nx-leds": NxLeds;
   }
 }

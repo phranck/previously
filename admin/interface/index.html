@@ -241,8 +241,12 @@
   </div>
   <div class="readings">
     <nx-row><label data-t="pi.memory"></label><nx-leds id="activity-memory"></nx-leds></nx-row>
-    <nx-row><label data-t="activity.load"></label><nx-field id="activity-load">&mdash;</nx-field></nx-row>
-    <nx-row><label data-t="pi.emulator"></label><nx-field id="activity-emulator">&mdash;</nx-field></nx-row>
+    <!-- The load and what the emulator costs, each as a history of columns
+         of lamps with the figures under it. -->
+    <nx-row class="charted"><label data-t="activity.load"></label>
+      <div class="charted-reading"><nx-chart id="activity-load-chart"></nx-chart><span class="figure" id="activity-load">&mdash;</span></div></nx-row>
+    <nx-row class="charted"><label data-t="pi.emulator"></label>
+      <div class="charted-reading"><nx-chart id="activity-emulator-chart"></nx-chart><span class="figure" id="activity-emulator">&mdash;</span></div></nx-row>
   </div>
   <p class="note" id="activity-note"></p>
 </nx-window>
