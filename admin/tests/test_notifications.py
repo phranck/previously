@@ -32,8 +32,8 @@ def without_dpkg(monkeypatch):
 
 def said(tool=CURRENT, emulator=EMULATOR, board=QUIET, running=False):
     """@returns dict from each notification's name to what it carries."""
-    return {notice["name"]: notice
-            for notice in notifications.worth_saying(tool, emulator, board, running)}
+    return {notification["name"]: notification
+            for notification in notifications.worth_saying(tool, emulator, board, running)}
 
 
 def test_a_current_tool_on_a_quiet_board_says_nothing():
