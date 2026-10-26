@@ -123,8 +123,8 @@ nx-ask .lines a { color: inherit; }
 
 /* The line a panel takes an answer on, which is a name or a password. NeXT's
    text fields are white, sunken and one line tall. Its edge is the `sunken`
-   class in base.css, the one nx-field wears, so the field a panel asks in and
-   the field a reading stands in are drawn by one rule. */
+   class in base.css, the edge every sunken surface on the desk is drawn
+   with. */
 nx-ask .entry {
   width: 100%;
   margin-top: 10px;

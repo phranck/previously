@@ -329,7 +329,6 @@ body {
 
 .sunken,
 nx-portrait,
-nx-field,
 nx-scroller {
   border: 1px solid;
   border-image: var(--sunken);

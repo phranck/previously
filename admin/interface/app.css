@@ -535,7 +535,14 @@ nx-portrait .icon.board-picture {
 /* The published version, where it is newer than the one answering. Marked here
    as well as by the Update button appearing, because the button is at the foot
    of the window and this is the line somebody is reading. */
-#pi-newest[newer] { background: var(--notice); }
+#pi-newest[newer] {
+  /* A mark on the words rather than a band across the row, so it does not
+     read as a field. The Release Notes button stays at the row's end. */
+  flex: 0 1 auto;
+  margin-right: auto;
+  padding: 3px 6px;
+  background: var(--notice);
+}
 
 /* A row whose one cell holds a reading and something to do with it. The field
    takes the room and what stands beside it takes what it needs, which is how
