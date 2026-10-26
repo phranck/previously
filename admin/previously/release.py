@@ -391,7 +391,7 @@ def _look_behind_this():
         global _ASKED_AT
         _ASKED_AT = time.time()
 
-    _behind(_LOOKING, stamp, look)
+    fetching.in_the_background(_LOOKING, stamp, look, Unreachable)
 
 
 def _look_back_behind_this():
@@ -400,31 +400,4 @@ def _look_back_behind_this():
         global _HISTORY_ASKED_AT
         _HISTORY_ASKED_AT = time.time()
 
-    _behind(_LOOKING_BACK, stamp, look_back)
-
-
-def _behind(lock, stamp, work):
-    """Runs one lookup in a thread, where the lock says none is running.
-
-    @param lock - The one lookup of that kind at a time.
-    @param stamp - Writes down the moment, before the thread starts rather than
-      after it finishes, because the floor is about how often GitHub is asked
-      and a lookup that takes twenty seconds to time out is still a lookup that
-      happened.
-    @param work - The lookup.
-    """
-    if not lock.acquire(blocking=False):
-        return
-    stamp()
-
-    def asking():
-        try:
-            work()
-        except Unreachable:
-            # Nothing to do about it here. What is known stays known, or stays
-            # unknown, and the reading says so by being absent.
-            pass
-        finally:
-            lock.release()
-
-    threading.Thread(target=asking, daemon=True).start()
+    fetching.in_the_background(_LOOKING_BACK, stamp, look_back, Unreachable)

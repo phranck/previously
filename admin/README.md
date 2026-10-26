@@ -67,6 +67,8 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `previously/kiosk.py` | Everything this tool does to the machine, in one file |
 | `previously/systems.py` | The six systems that can be put on this machine, and where each comes from |
 | `previously/release.py` | Which release of this tool is published, where its package is, and what it says about itself |
+| `previously/archive.py` | Which Previous the archive offers, read off the archive's own index |
+| `previously/notifications.py` | Which readings are worth a notification, and the watch that keeps the newest release and Previous fresh |
 | `previously/fetching.py` | Where a download may go, and where it may be sent on to |
 | `previously/discs.py` | The media that go beside the system, and what NeXTSTEP cannot read |
 | `previously/setup.py` | What root does on this tool's behalf, and the only thing root does |
@@ -159,6 +161,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `GET /api/update` | Which version of this tool is installed, which is published, and how a replacement of it is getting on |
 | `GET /api/update/notes` | What the published release says about itself, as the Markdown it was written in |
 | `POST /api/update` | Asks the privileged helper to replace this tool with the newest release |
+| `GET /api/notifications` | What the Pi decided is worth a notification now, as names, levels and values |
 | `GET /api/screen` | A picture of what the emulated machine shows, kept in Documents/Pictures as well, and only with the password |
 | `GET /api/picture?name=` | One picture out of Documents/Pictures, by its name alone, and only with the password |
 | `POST /api/picture/delete` | Takes one picture out of Documents/Pictures |
@@ -463,7 +466,7 @@ A line under the group says what each button does. Update is not there at all un
 
 ### Replacing the tool itself
 
-The Raspberry Pi window says which version is here and which is published, and where they differ it offers a button. Pressing it is the whole of updating this tool: no terminal, no `sudo`, and nothing to copy. `install.sh --update-admin` still does the same thing from a shell and is what a machine with no tool on it needs.
+The Raspberry Pi window says which version is here and which is published, and where they differ it marks the newer one and offers a button. That a newer one is out is said by a notification, whichever window is in front. Pressing it is the whole of updating this tool: no terminal, no `sudo`, and nothing to copy. `install.sh --update-admin` still does the same thing from a shell and is what a machine with no tool on it needs.
 
 **It is the same helper and the same road.** `update-tool` is a job of `setup.py`, so the request mechanism, the progress record, the allow-listed fetch and the reversal of a run that failed are the ones already described above rather than a second set beside them. The service writes the name of one job into a file and holds no privilege, exactly as it does for an installation.
 
@@ -471,7 +474,7 @@ The Raspberry Pi window says which version is here and which is published, and w
 
 **Three things have to agree before `apt-get` is reached.** The size and the SHA-256 that the release states for that asset, then `dpkg-deb -f` saying the package is `previously`, and then `dpkg-deb -f` saying its version is the one the release is tagged as. The digest proves the bytes are the bytes GitHub served; the last two prove that what GitHub served is this tool at the version somebody was offered.
 
-**Which release is newest comes from `api.github.com`**, which carries the tag, the download address, the size and the digest in one answer. `release.py` keeps that answer for a quarter of an hour and looks it up again in a thread, so `GET /api/update` never waits for the network: a board with no internet answers as quickly as one with it and says that nothing is known yet. Four requests an hour against the sixty an address is allowed unauthenticated. The address that answer carries is checked against the same hosts the fetch is allowed, because it arrives inside somebody else's answer and is then handed to a download root makes.
+**Which release is newest comes from `api.github.com`**, which carries the tag, the download address, the size and the digest in one answer. `release.py` keeps that answer and looks it up again in a thread, so `GET /api/update` never waits for the network: a board with no internet answers as quickly as one with it and says that nothing is known yet. It is looked up again when somebody opens the Raspberry Pi window, at most three times a minute, and by the service's own watch once it is an hour old, against the sixty requests an hour an address is allowed unauthenticated. The address that answer carries is checked against the same hosts the fetch is allowed, because it arrives inside somebody else's answer and is then handed to a download root makes.
 
 **Two steps, because the second one is the part nobody can see.** Fetching and checking the package is measured in bytes. Installing it stops this service and starts the new one, which the package's own maintainer scripts do, so for a few seconds there is nothing for the page to talk to. The same scripts bring the console that starts the emulator up to the new version, where the machine has one, so the tool and the console never drift apart whichever way the tool was replaced.
 
@@ -566,6 +569,27 @@ NeXTSTEP had no Activity Monitor, and a Pi that boots straight into an emulator 
 **Its name in words is the one each language already knows.** The bundle is `Activity Monitor.app` in every language. In words it is what macOS calls its own Activity Monitor in each of the six, as that application's `InfoPlist.loctable` has it. It wears the screen Preferences drew for its Monitor module, because NeXTSTEP drew no picture for an application it never had.
 
 **Its letter in the Workspace menu stays out of NeXT's tables where it can.** Chapter 3 of the interface guidelines reserves some letters, requires others once a feature exists, and recommends a third set. Where the name holds a letter none of those tables claims, that letter is used. Elsewhere it is the m of Monitor, which the tables recommend only for Miniaturize Window, a command this desk does not have.
+
+## Notifications
+
+What somebody should know without looking at the right window is said by a notification beside the dock, over whatever window is in front.
+
+| Notification | Picture | Opens |
+|---|---|---|
+| A newer release of Previously is published | Info | Raspberry Pi window |
+| A newer Previous is in the archive, where Previous is installed | Info | Installer |
+| Under-voltage now, rather than once since the start | Alert | Raspberry Pi window |
+| The Pi is at 80 °C or above, where it slows itself down | Alert | Raspberry Pi window |
+| The card is 90 per cent full or more | Alert | Raspberry Pi window |
+| Previous has ended badly since the start | Error | Raspberry Pi window |
+
+**The Pi decides, and every browser shows what it decided.** `notifications.py` is the one place that turns readings into notifications, and `GET /api/notifications` answers with names, levels and values, which the page puts into words. Neither update is offered while the helper is in the middle of a job. The page asks every 30 seconds.
+
+**The Pi looks for updates on its own.** A thread started with the service asks GitHub for the newest release and the archive for the newest Previous whenever what it knows is missing or an hour old, and tries every five minutes until it knows. The archive is read from its own index, `dists/wmlive-trixie/main/binary-arm64/Packages.gz`, on the archive and on its copy on previous.li, so a Pi whose package lists are stale still sees a newer Previous. Installing still goes through apt, which refreshes its lists and checks the archive's signature first.
+
+**Clicking one opens the window it is about, and its close button takes it away.** Either way it stays away in this browser until its reading changes: a newer release than the one it named, or another crash. One whose condition has gone goes by itself, and comes back the next time the condition does.
+
+**Each one is the quiet end of the attention panel**, built by `nx-notifications` and `nx-notification` in the kit: the empty title bar with the close button at its right, the picture, the headline and the sentence under it. It appears and goes at once, and the ones below a notification that goes slide up into its place. Error wears the Workspace's own stop sign out of the disk image, and Info and Alert are the information sign and the warning triangle that `../design/signs.py` draws after it.
 
 ## What it shows
 

@@ -42,6 +42,12 @@ THROTTLING_SINCE_BOOT = {
     19: "temperature-limit",
 }
 
+#: Where the chip's temperature stops being a number and becomes a warning:
+#: from here a Pi 5 begins to slow itself down. Sent with the readings, so the
+#: Raspberry Pi window marks the same temperature that `notifications.py` raises a
+#: notification for.
+TEMPERATURE_LIMIT_C = 80
+
 #: Where the kernel reports what each sound card's playback stream is doing.
 #: An emulator that opened a device once and never asks again leaves this at
 #: "closed" while its own configuration still names the card, which is the one
@@ -79,6 +85,7 @@ def readings(runtime_directory=None):
         "board": hardware.board(),
         "uptime_seconds": _uptime_seconds(),
         "temperature_c": _temperature(),
+        "temperature_limit_c": TEMPERATURE_LIMIT_C,
         "throttling": _throttling(),
         "emulator": _emulator(),
         "crashes": crashes(runtime_directory),

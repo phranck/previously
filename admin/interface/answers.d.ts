@@ -623,6 +623,8 @@ export interface PiAnswer {
   uptime_seconds: number | null;
   /** From `vcgencmd measure_temp`, in degrees Celsius. */
   temperature_c: number | null;
+  /** Where the temperature becomes a warning, pi.TEMPERATURE_LIMIT_C. */
+  temperature_limit_c: number;
   /** From `vcgencmd get_throttled`. Each name is a key of `throttling.<name>`
    *  in the catalogs. */
   throttling: {
@@ -747,6 +749,26 @@ export interface UpdateAnswer {
   newer: boolean;
   /** The helper's record, only where its job is this tool's update. */
   progress: SetupProgress | null;
+}
+
+
+/** One thing the Pi decided is worth a notification, as notifications.py
+ *  `worth_saying` makes it. */
+export interface NotificationEntry {
+  /** Which one: `update`, `emulator`, `power`, `temperature`, `disk` or
+   *  `crash`. The catalogs carry its words as `notification.<name>.*`. */
+  name: string;
+  /** `info`, `alert` or `error`, which decides its picture. */
+  level: "info" | "alert" | "error";
+  /** What has to change for one that somebody closed to come back. */
+  reading: string;
+  /** What fills its words, by name. */
+  values: Record<string, string | number | null>;
+}
+
+/** GET /api/notifications. */
+export interface NotificationsAnswer {
+  notifications: NotificationEntry[];
 }
 
 /** One entry of the release list: a release, or neighbors whose notes open
@@ -925,6 +947,7 @@ export interface GetAnswers {
   "/api/setup": SetupAnswer;
   "/api/update": UpdateAnswer;
   "/api/update/notes": ReleaseNotesAnswer;
+  "/api/notifications": NotificationsAnswer;
 }
 
 /** Every route `tell` sends to, by its path, with what it answers. */

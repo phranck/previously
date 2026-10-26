@@ -48,10 +48,11 @@ function drawPi(pi) {
 
   show("pi-uptime", duration(pi.uptime_seconds));
 
-  /* Above 80 degrees a Pi 5 begins to slow itself down, so that is where the
-     reading stops being a number and becomes a warning. */
+  /* Where the board begins to slow itself down the reading stops being a
+     number and becomes a warning. The service sends that limit, so this
+     window marks the temperature a notification is raised for. */
   const temperature = pi.temperature_c;
-  showState("pi-temp", temperature !== null && temperature < 80,
+  showState("pi-temp", temperature !== null && temperature < pi.temperature_limit_c,
     temperature === null ? NOTHING : `${temperature.toFixed(1)} °C`);
 
   /* Two different things. Something happening now is a problem to act on, and

@@ -148,15 +148,13 @@ function drawWhatIsHappening(state) {
                 t("pi.update.done", { version: released(state.installed) }));
   }
 
-  /* Nothing has been asked for, so the sentence is what there is to do. Which
-     version would come is the whole of why somebody would press the button, so
-     it is named rather than left to the line above. */
+  /* Nothing has been asked for. A newer release is what a notification says,
+     and the line above names it and marks it, so the sentence speaks only
+     where the release on offer is this one or is not known yet. */
   if (state.published === null) {
     return show("pi-update-note", t("pi.update.unknown"));
   }
-  show("pi-update-note", state.newer
-    ? t("pi.update.available", { version: released(state.published) })
-    : t("pi.update.current"));
+  show("pi-update-note", state.newer ? "" : t("pi.update.current"));
 }
 
 /**

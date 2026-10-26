@@ -183,6 +183,12 @@
   --board-pi5: url("parts/board-pi5.svg");
   --board-cm4: url("parts/board-cm4.svg");
   --board-cm5: url("parts/board-cm5.svg");
+  /* What a notification wears for its level. The stop sign is the
+     Workspace's own, which ../../design/extract.py takes out of the image,
+     and ../../design/signs.py draws the other two after it. */
+  --stop: url("parts/stop.png");
+  --sign-info: url("parts/sign-info.svg");
+  --sign-alert: url("parts/sign-alert.svg");
   /* The three edges below, which ../../design/edges.py draws in the grays
      at the top of this block. */
   --edge-sunken: url("parts/edge-sunken.svg");

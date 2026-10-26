@@ -1,0 +1,72 @@
+/* --- nx-notifications and nx-notification ------------------------------- */
+
+/* A column down the right of the screen, beside the dock with the gap a
+   window keeps from its frame, and above the windows, the menu and the dock,
+   though under a panel that asks, which has to be answered first.
+
+   The 300 is a choice. The guide states no width for anything, and this is
+   what holds a headline of four words on one line and a sentence on two. */
+nx-notifications {
+  position: fixed;
+  top: var(--pane-pad);
+  right: calc(var(--dock-width) + var(--pane-pad));
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+}
+
+/* Each one is a panel: the frame, the face and the shadow nx-ask carries. The
+   gap is a margin rather than the column's gap, because a margin can close
+   with the panel when it goes and a gap cannot. */
+nx-notification {
+  margin-bottom: var(--pane-pad);
+  overflow: hidden;
+  border: 1px solid var(--black);
+  background: var(--light);
+  box-shadow: 4px 4px 0 rgba(0,0,0,.35);
+  cursor: default;
+}
+nx-notification[leaving] { visibility: hidden; }
+
+/* The empty title bar of an attention panel, with the window's own close
+   button at its right, because a notification is closed where a window is. */
+nx-notification .titlebar {
+  height: var(--title-height);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 2px 2px;
+  margin: 1px 1px 0;
+  background: linear-gradient(to bottom,
+    var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
+}
+nx-notification .close {
+  width: 15px;
+  height: 15px;
+  background-image: var(--wbtn-close);
+}
+
+/* The picture beside the words, as an attention panel puts its icon beside
+   its name. The picture is the stop sign's own 61 by 48. */
+nx-notification .body {
+  display: grid;
+  grid-template-columns: 61px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 10px 12px 12px 4px;
+}
+nx-notification .sign {
+  width: 61px;
+  height: 48px;
+  background-repeat: no-repeat;
+}
+
+/* The headline in the bold and the size nx-ask names itself in, and the
+   message in the panel's ordinary type. */
+nx-notification .headline {
+  margin: 2px 0 4px;
+  font-size: calc(var(--text-size) * 14 / 11);
+  font-weight: bold;
+}
+nx-notification .message { margin: 0; line-height: 1.35; }

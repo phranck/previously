@@ -361,7 +361,7 @@ def test_no_window_shows_a_version_of_ours_with_its_build_on_it():
 
     for reading in ['show("pi-version"', 'show("pi-newest"',
                     't("about.version"', 't("pi.update.done"',
-                    't("pi.update.available"']:
+                    'case "update":']:
         at = page.index(reading)
         # As far as the end of that call, which is where the value it shows is.
         assert "released(" in page[at:page.index("\n", at) + 120], reading

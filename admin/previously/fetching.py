@@ -1,10 +1,11 @@
 """A fetch that may only reach the hosts it was given.
 
-Two things are downloaded onto this machine and both are checked the same way:
-a prepared system from archive.org, and this tool's own package from GitHub. The
-check lives here once, because a copy of it per caller is two rules that can
-disagree and the disagreement would be invisible: a fetch that followed a
-redirect it should not have still answers with a file.
+Everything this machine fetches is checked the same way: a prepared system from
+archive.org, this tool's own release and package from GitHub, and the index of
+the archive Previous comes from. The check lives here once, because a copy of
+it per caller is two rules that can disagree and the disagreement would be
+invisible: a fetch that followed a redirect it should not have still answers
+with a file.
 
 A redirect is where the check has to be made again. Whoever answers the first
 request chooses where the second one goes, so the address of every hop is
@@ -13,6 +14,7 @@ answer is checked before it is asked at all.
 """
 
 import collections
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -74,13 +76,44 @@ def opened(url, hosts, timeout, headers=None):
     @raises urllib.error.URLError where the address is not one this may ask, and
       whatever urllib raises for everything else.
 
-    The first address is checked as well as the redirects. Both callers now pass
-    one they were handed rather than one they wrote: a download address comes out
-    of the release GitHub describes, and whoever controls that answer would
-    otherwise control where this goes.
+    The first address is checked as well as the redirects. A download address
+    comes out of the release GitHub describes, so it is one this was handed
+    rather than one it wrote, and whoever controls that answer would otherwise
+    control where this goes.
     """
     if not allowed(url, hosts):
         raise urllib.error.URLError("not an address this may ask")
     request = urllib.request.Request(url, headers=headers or {})
     return urllib.request.build_opener(OnlyThese(hosts)).open(request,
                                                               timeout=timeout)
+
+
+def in_the_background(lock, stamp, work, expected):
+    """Runs one lookup in a thread, where the lock says none is running.
+
+    @param lock - threading.Lock, the one lookup of that kind at a time.
+    @param stamp - Writes down the moment, before the thread starts rather than
+      after it finishes, because a floor under how often a host is asked is
+      about attempts: a lookup that takes twenty seconds to time out is still a
+      lookup that happened.
+    @param work - The lookup, which keeps what it learns itself.
+    @param expected - The exception class `work` raises where the host could not
+      be asked or said something it does not understand.
+
+    That failure is swallowed. What is known stays known, or stays unknown, and
+    the reading says so by being absent. Anything else is a fault in this code
+    and reaches the log the way any thread's exception does.
+    """
+    if not lock.acquire(blocking=False):
+        return
+    stamp()
+
+    def asking():
+        try:
+            work()
+        except expected:
+            pass
+        finally:
+            lock.release()
+
+    threading.Thread(target=asking, daemon=True).start()
