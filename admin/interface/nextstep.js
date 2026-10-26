@@ -2873,8 +2873,10 @@ class NxSlider extends HTMLElement {
 
 /* --- nx-chart ------------------------------------------------------------ */
 
-/** How many readings a chart shows where it does not say. */
-const CHART_COLUMNS = 54;
+/** How many readings a chart shows where it does not say: as many columns of
+ *  four pixels with two between as fill the width a reading has in an info
+ *  panel. */
+const CHART_COLUMNS = 36;
 
 /** How many lamps a column has where it does not say. Nine is what fits in a
  *  field as tall as two rows of readings. */
@@ -2931,7 +2933,10 @@ class NxChart extends HTMLElement {
       standing.className = "column";
       for (let lamp = 0; lamp < lamps; lamp += 1) {
         const led = document.createElement("i");
-        led.className = "lamp";
+        /* `led`, as in nx-leds, and not `lamp`: that is the lamp beside a
+           state in panel.css, nine pixels with a border, and a chart's lamp
+           wearing it would spill over its neighbors. */
+        led.className = "led";
         standing.append(led);
       }
       this.field.append(standing);
