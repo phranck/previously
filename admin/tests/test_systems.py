@@ -166,3 +166,17 @@ def test_a_fetch_needs_room_for_the_disk_and_the_archive(tmp_path):
     assert systems.ROOM_BYTES > systems.UNPACKED_BYTES
     assert systems.ROOM_BYTES > max(
         system.size for system in systems.CATALOGUE) + systems.UNPACKED_BYTES
+
+
+def test_what_a_fetch_cut_short_left_is_a_leftover_and_is_measured(tmp_path):
+    """A fetch unpacks in a folder of its own inside the disks folder, and a
+    run cut short leaves it there with up to two gigabytes in it. A whole
+    disk beside it is not a leftover."""
+    left = tmp_path / (systems.FETCHING_PREFIX + "abc123")
+    left.mkdir()
+    (left / "NS33_2GB.dd").write_bytes(b"x" * 1000)
+    (left / "the archive.7z").write_bytes(b"x" * 24)
+    (tmp_path / "nextstep-3.3.dd").write_bytes(b"a whole disk")
+
+    assert systems.leftovers_in(tmp_path) == [left]
+    assert systems.leftover_bytes(tmp_path) == 1024

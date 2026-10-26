@@ -970,16 +970,21 @@ def room_for(steps, system, disks):
     The room a restart gives back is not counted as free, because it is not
     there to unpack into until that restart. The setup never restarts the
     machine in the middle of a run, so it says that a restart is what it is
-    waiting for.
+    waiting for. What an interrupted run left in the disks folder is counted
+    as free, because every job removes it before it writes anything, and the
+    service, which asks first, could not remove what root left.
     """
     if "system" not in steps or system is None:
         return
     if systems.disk_in(disks, system) is not None:
         return
     free = systems.room_beside(disks)
+    if free is None:
+        return
+    free += systems.leftover_bytes(disks)
     needed = systems.ROOM_BYTES + _packages_in_front(
         steps[:steps.index("system")])
-    if free is None or free >= needed:
+    if free >= needed:
         return
 
     back = _given_back_at_restart(disks)
@@ -1444,13 +1449,20 @@ def _system(work):
     if systems.disk_in(disks, work.system) is not None:
         return
 
+    _without_leftovers(work)
     room_for(work.steps, work.system, disks)
 
     for made in work.owner.directory(disks):
         work.undoes(lambda place=made: place.rmdir())
 
     unpacked = disks / systems.disk_name(work.system)
-    scratch = pathlib.Path(tempfile.mkdtemp(dir=str(disks)))
+    # Named so that a run cut short leaves a folder the next one recognizes
+    # and removes, which `_without_leftovers` does.
+    scratch = pathlib.Path(tempfile.mkdtemp(prefix=systems.FETCHING_PREFIX,
+                                            dir=str(disks)))
+    # Readable by the service, which counts what a run cut short left here as
+    # room, since the next job removes it before it writes anything.
+    scratch.chmod(0o755)
     try:
         archive = scratch / work.system.file
         _fetched(systems.address(work.system), archive, work,
@@ -1583,18 +1595,24 @@ def _put_back(work):
 
 
 def _without_leftovers(work):
-    """Removes what copies and put backs that were cut short left behind.
+    """Removes what copies, put backs and fetches that were cut short left
+    behind.
 
     @param work - The run, whose disks folder is cleared of them.
 
-    The helper takes one job at a time, so an unfinished file at the start of
-    a copy or a put back is what an interrupted run left: a power cut or a
-    stopped helper runs no undo. Every one of them goes, of any system, before
-    anything is written, because each can hold most of two gigabytes that
-    nothing lists and a copy's room check counts.
+    The helper takes one job at a time, so an unfinished file or folder at the
+    start of a job is what an interrupted run left: a power cut or a stopped
+    helper runs no undo. Every one of them goes, of any system, before
+    anything is written or any room is counted, because each can hold most
+    of two gigabytes that nothing lists and every room check counts. Every
+    job starts with this, so a card that was interrupted is clean again with
+    the next thing the helper does.
     """
     for left in systems.leftovers_in(work.settings.disks):
-        left.unlink(missing_ok=True)
+        if left.is_dir():
+            shutil.rmtree(str(left), ignore_errors=True)
+        else:
+            left.unlink(missing_ok=True)
 
 
 def _the_copy_named(work):
@@ -2729,7 +2747,13 @@ def carry_out(work):
     beside the reason. Let through, it would end this program before the run
     wrote its end, nothing would be put back, and the service would refuse
     every later request as one too many until the next boot.
+
+    What an interrupted run left in the disks folder goes first, whatever the
+    job, so a card that was interrupted is clean again with the next thing the
+    helper does rather than with the next fetch alone.
     """
+    if work.settings is not None:
+        _without_leftovers(work)
     for done, name in enumerate(work.steps, start=1):
         work.at(name, done)
         try:
