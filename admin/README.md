@@ -550,7 +550,7 @@ Localization and Monitor are two of NeXTSTEP's own fourteen modules. Localizatio
 
 **Notifications** is this tool's own module and wears the information sign the Info notification wears. Its first group, In This Browser, holds two switches: whether notifications show at all, and whether one that appears plays a sound. The sound is Glass out of `/NextLibrary/Sounds`, one of the sounds NeXTSTEP's Sound module offered as the system beep, which `design/extract.py` writes as `web/sounds/Glass.wav`. Its second group, Position, puts four radio buttons at the corners of Preferences' own monitor picture, and the stack moves to the corner chosen, clear of the dock on the right and of the floor at the foot. All three settings belong to this browser and are kept in `localStorage`, as the language and the size are, and a change shows on the stack at once.
 
-The switches and radio buttons are the browser's own inputs with NeXTSTEP's look, which `../design/kit/switches.css` draws after the Controls chapter's figure of two-state buttons, because the Application Kit compiled its own `NXswitch` and `NXradio` into its library rather than shipping them as files.
+The switches and radio buttons are the browser's own inputs wearing NeXTSTEP's own bitmaps, which `../design/kit/switches.css` lays on them. The Application Kit compiled `NXswitch` and `NXradio` into its library rather than shipping them as files, so `../design/controls.py` cuts all four out of two grabs of Preferences on the running system.
 
 ## Activity Monitor
 
