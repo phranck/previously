@@ -60,7 +60,10 @@
   /* Measured off the screenshot: not a gray, the dark value with more blue. */
   --desktop: #555577;
 
-  --live: #2f7d32;
+  /* A lamp that is on: beside a state, in a busy window, and in a row of
+     nx-leds. The green design/boards.py lights the board's own lamp with, so a
+     lamp on the screen and a lamp on the drawn board are one green. */
+  --live: #2ec84a;
 
   /* What a field carries when it has to be noticed: a version newer than the
      one running, and what a window is busy with. NeXTSTEP had nothing of this
