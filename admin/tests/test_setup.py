@@ -1555,6 +1555,55 @@ def test_a_disk_that_cannot_lose_its_zeros_is_kept_whole(
     assert (work.settings.disks / systems.disk_name(work.system)).is_file()
 
 
+def leftover_of_a_fetch(disks):
+    """What a fetch cut short leaves: its folder, with half a disk in it,
+    which nothing lists and the room check counts as used.
+
+    @returns pathlib.Path of the folder.
+    """
+    left = disks / (systems.FETCHING_PREFIX + "x1y2z3")
+    left.mkdir(parents=True, exist_ok=True)
+    (left / "NS33_2GB.dd").write_bytes(b"half of it")
+    return left
+
+
+def test_what_a_fetch_cut_short_left_goes_with_the_next_fetch(
+        tmp_path, commands, a_system_arrives):
+    """A folder of up to two gigabytes, left by a power cut or a stopped
+    helper, that no listing shows and that the room check counted as used
+    from then on."""
+    work = work_in(tmp_path)
+    left = leftover_of_a_fetch(work.settings.disks)
+
+    setup.STEPS["system"](work)
+
+    assert not left.exists()
+    assert (work.settings.disks / systems.disk_name(work.system)).is_file()
+
+
+def test_what_an_interrupted_run_left_goes_with_any_job(tmp_path, monkeypatch):
+    """The helper only runs for a job, so the next job of any kind is the
+    moment a card that was interrupted is clean again."""
+    monkeypatch.setattr(setup, "STEPS", {"nothing": lambda work: None})
+    work = work_in(tmp_path, steps=("nothing",))
+    left = leftover_of_a_fetch(work.settings.disks)
+
+    assert setup.carry_out(work) is True
+    assert not left.exists()
+
+
+def test_what_an_interrupted_run_left_counts_as_room(tmp_path, monkeypatch):
+    """The service asks the same question before it leaves a request, and it
+    cannot remove what root left. A leftover as large as the room a system
+    needs would otherwise keep every fetch refused for good."""
+    monkeypatch.setattr(systems, "room_beside", lambda where: 1024)
+    work = work_in(tmp_path)
+    left = leftover_of_a_fetch(work.settings.disks)
+    os.truncate(left / "NS33_2GB.dd", systems.ROOM_BYTES)
+
+    setup.room_for(("system",), work.system, work.settings.disks)
+
+
 def test_a_card_with_no_room_is_said_so_before_anything_is_fetched(
         tmp_path, commands, monkeypatch):
     """A card that fills up during an unpack leaves a half written image and a

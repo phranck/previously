@@ -72,6 +72,13 @@ UNFINISHED_SUFFIX = ".copying"
 #: a put back cut short leaves the disk that was there.
 COMING_BACK_SUFFIX = ".coming-back"
 
+#: What the folder a system is fetched and unpacked in is called while that
+#: runs: this, and whatever `tempfile.mkdtemp` adds, inside the disks folder.
+#: The disk is moved out of it once it is whole, so a fetch cut short leaves
+#: the folder, with up to two gigabytes in it, and nothing that lists the
+#: disks shows it.
+FETCHING_PREFIX = "fetching."
+
 #: One prepared system.
 #:
 #: `item` and `file` are what archive.org calls it, which together make the
@@ -242,11 +249,12 @@ def coming_back(disk):
 
 
 def leftovers_in(disks):
-    """What copies and put backs that were cut short have left behind.
+    """What copies, put backs and fetches that were cut short have left behind.
 
     @param disks - pathlib.Path of the folder the disks live in.
     @returns list of pathlib.Path, of every system, empty where there is
-      nothing or the folder cannot be read.
+      nothing or the folder cannot be read. A fetch leaves a folder, the other
+      two leave a file.
 
     Each one is as large as its run got before it stopped, which can be most
     of two gigabytes, and nothing lists them. A put back writes beside its
@@ -257,9 +265,33 @@ def leftovers_in(disks):
     try:
         return sorted(
             list(backups_in(disks).glob("*" + DISK_SUFFIX + UNFINISHED_SUFFIX))
-            + list(disks.rglob("*" + COMING_BACK_SUFFIX)))
+            + list(disks.rglob("*" + COMING_BACK_SUFFIX))
+            + [path for path in disks.glob(FETCHING_PREFIX + "*") if path.is_dir()])
     except OSError:
         return []
+
+
+def leftover_bytes(disks):
+    """How much of the card what interrupted runs left is taking.
+
+    @param disks - pathlib.Path of the folder the disks live in.
+    @returns int, bytes, as far as they can be read. A file that cannot be
+      read counts nothing.
+
+    Asked by the room check, which the service runs before it leaves a
+    request as well as the helper. The service cannot remove what root left,
+    and refusing for room the helper gives back before it writes anything
+    would leave a card stuck with the leftover for good.
+    """
+    total = 0
+    for left in leftovers_in(disks):
+        for path in ([left] if left.is_file() else left.rglob("*")):
+            try:
+                if path.is_file():
+                    total += path.stat().st_size
+            except OSError:
+                continue
+    return total
 
 
 def a_copy_of(system, when):
