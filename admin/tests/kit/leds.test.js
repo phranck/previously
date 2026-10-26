@@ -125,6 +125,17 @@ test("a reading that is not there lights nothing and states no value", () => {
   assert.equal(row.hasAttribute("aria-valuenow"), false);
 });
 
+test("the lamps near the end of a row are orange and then red, by their place", () => {
+  const row = lay(`<nx-leds lamps="20"></nx-leds>`);
+  const zones = [...row.querySelectorAll(".led")].map((lamp) => lamp.getAttribute("zone"));
+
+  /* Fourteen green, four orange, two red, as a level meter warns near its
+     end. The place decides, so a lamp is the same color whenever it is lit. */
+  assert.deepEqual(zones, [
+    ...Array(14).fill(null), ...Array(4).fill("warm"), ...Array(2).fill("hot"),
+  ]);
+});
+
 test("a row filled in before it is on the page is drawn when it arrives", () => {
   lay("");
   const row = document.createElement("nx-leds");

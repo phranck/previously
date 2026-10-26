@@ -66,6 +66,12 @@
      nx-leds. The green design/boards.py lights the board's own lamp with, so a
      lamp on the screen and a lamp on the drawn board are one green. */
   --live: #2ec84a;
+  /* The lamps near the end of a row of nx-leds, which warn the way a level
+     meter does. Red is the board drawings' own red lamp out of
+     design/boards.py, and orange is chosen to stand between it and the green
+     at the same brightness. */
+  --warm: #f0a020;
+  --hot: #e0302a;
 
   /* What a field carries when it has to be noticed: a version newer than the
      one running, and what a window is busy with. NeXTSTEP had nothing of this
@@ -1757,6 +1763,8 @@ nx-leds .led {
 }
 
 nx-leds .led[lit] { background: var(--live); }
+nx-leds .led[lit][zone="warm"] { background: var(--warm); }
+nx-leds .led[lit][zone="hot"] { background: var(--hot); }
 
 /* The figure, which changes while somebody reads it, so its digits are held
    to one width and the words after them do not shift about. Where the row is
