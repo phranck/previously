@@ -46,6 +46,8 @@ nx-leds .led {
 }
 
 nx-leds .led[lit] { background: var(--live); }
+nx-leds .led[lit][zone="warm"] { background: var(--warm); }
+nx-leds .led[lit][zone="hot"] { background: var(--hot); }
 
 /* The figure, which changes while somebody reads it, so its digits are held
    to one width and the words after them do not shift about. Where the row is

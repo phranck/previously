@@ -5,6 +5,13 @@
  *  glance and still fits beside a label in a panel. */
 const LEDS_IN_A_ROW = 20;
 
+/** Where along a row the lamps stop being green, as shares of the row: from
+ *  here they light orange, and from LEDS_HOT_FROM red, the way a level meter
+ *  warns as it nears its end. A row of twenty lights fourteen green, four
+ *  orange and two red. */
+const LEDS_WARM_FROM = 0.7;
+const LEDS_HOT_FROM = 0.9;
+
 /** How quickly the lamps follow a new share: the time they take to cover all
  *  but a third of the way, after which they slow as they arrive. A row fed a
  *  share twice a second has gone almost all of the way before the next one
@@ -59,6 +66,12 @@ class NxLeds extends HTMLElement {
     for (let lamp = 0; lamp < count; lamp += 1) {
       const led = document.createElement("i");
       led.className = "led";
+      /* Each lamp keeps the color of its place in the row, so a row filling
+         up goes green, then orange, then red, and the color says how near
+         the end the share is before the figure is read. */
+      const along = lamp / count;
+      if (along >= LEDS_HOT_FROM) led.setAttribute("zone", "hot");
+      else if (along >= LEDS_WARM_FROM) led.setAttribute("zone", "warm");
       this.row.append(led);
     }
 
