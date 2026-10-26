@@ -113,6 +113,22 @@ def test_a_grab_that_gives_up_leaves_nothing_once_its_file_arrives(where, monkey
     assert list(where.glob(grab.GRAB_GLOB)) == []
 
 
+def test_a_grab_under_the_name_just_swept_is_the_picture(where, monkeypatch):
+    """Previous names a grab by the lowest number not taken, so the file the
+    next grab writes takes the name of the one just swept. Counted before the
+    sweep, that name read as already there, and four grabs on next4 on
+    26.10.2026 answered nothing while their picture lay there whole."""
+    stale = where / "next_screen_000.png"
+    stale.write_bytes(grab.PNG_HEAD + b"swept" + grab.PNG_TAIL)
+    aged(stale, grab.GRAB_TIMEOUT_SECONDS + 1)
+    monkeypatch.setattr(grab.emulator, "press", writes(where, "next_screen_000.png"))
+
+    picture = grab.grabbed(where / CONFIGURATION)
+
+    assert picture == PICTURE
+    assert list(where.glob(grab.GRAB_GLOB)) == []
+
+
 def test_nothing_comes_of_a_shortcut_that_was_not_sent(where, monkeypatch):
     monkeypatch.setattr(grab.emulator, "press", lambda keys: False)
 

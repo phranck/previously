@@ -129,7 +129,10 @@ def grabbed(previous_config):
 
     A file that was there already and is older than a grab waits goes first.
     It is what a grab that gave up got afterwards, and to every later grab it
-    is already there, so nothing else would ever remove it.
+    is already there, so nothing else would ever remove it. The count of what
+    is there is taken after that sweep, because the emulator names a grab by
+    the lowest number not taken: the name just swept is the name the next
+    grab gets, and taken before the sweep it would read as already there.
     """
     if emulator.pid() is None:
         return None
@@ -137,9 +140,9 @@ def grabbed(previous_config):
     if not os.access(where, os.W_OK):
         return None
 
-    before = set(where.glob(GRAB_GLOB))
-    for left in _left_behind(before):
+    for left in _left_behind(where.glob(GRAB_GLOB)):
         _remove(left)
+    before = set(where.glob(GRAB_GLOB))
     if not emulator.press(GRAB_KEYS):
         return None
 
@@ -185,7 +188,7 @@ def _waits_for_a_whole_picture(where, before):
 def _left_behind(found):
     """The grabs among these that no grab is waiting for any more.
 
-    @param found - What was in the directory before the keys were sent.
+    @param found - The grab files in the directory, before the keys are sent.
     @returns list of pathlib.Path, the ones older than GRAB_TIMEOUT_SECONDS.
 
     A grab gives up after that long, and a file the emulator writes after it
