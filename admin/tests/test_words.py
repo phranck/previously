@@ -12,6 +12,8 @@ import subprocess
 
 import pytest
 
+from previously import config, machines
+
 #: The little page that lets node run it.
 PAGE = pathlib.Path(__file__).resolve().parent / "words_page.mjs"
 
@@ -76,3 +78,18 @@ def test_room_a_restart_gives_back_is_said_in_sizes_as_well():
                         "needs 3.1 GB and 2.1 GB is free. Restarting the Pi "
                         "frees the 2.1 GB its swap file takes, so restart it "
                         "and try again.")
+
+
+@pytest.mark.parametrize("machine", [
+    machine for machine in machines.CATALOGUE if any(machine.dimensions)
+], ids=lambda machine: machine.identifier)
+def test_a_shipped_machine_with_a_board_is_named_as_the_info_window_names_it(machine):
+    """A machine's name is shown as it is in every language, and the Info
+    window and the Config Editor build their own out of the model and the
+    board. The two stand on one screen, so the catalog's name is held to the
+    form `nameOf` makes, which is where a German "mit" once stood in the
+    English interface."""
+    described = {"kind": machine.kind, "model": config.MACHINE_NAMES[machine.kind],
+                 "turbo": machine.turbo, "dimension": True}
+
+    assert said({"call": "nameOf", "with": [described]}) == machine.name
