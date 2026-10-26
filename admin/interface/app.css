@@ -615,6 +615,18 @@ nx-window[name="activity"] .info-body + .readings { margin-top: var(--portrait-g
 .document code,
 .document pre { font: var(--terminal-size)/1 var(--terminal-font); }
 
+/* Code inside a sentence stands on the pink a window gives what has to be
+   noticed, so a command reads as apart from the words around it. phranck
+   chose it on 26 October 2026. A line that breaks inside the code carries the
+   pink onto the next line rather than leaving it open at the break. A block
+   keeps its own look below. */
+.document :not(pre) > code {
+  padding: 0 3px;
+  background: var(--notice);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
 /* A block keeps its own line breaks and its own indentation, which is what a
    fence is for, and it scrolls sideways rather than wrapping: a wrapped command
    is one somebody would copy wrongly. It sits sunken in the page, with the
