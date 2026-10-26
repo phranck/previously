@@ -21,8 +21,8 @@ import threading
 import time
 import urllib.parse
 
-from . import (activity, change, config, files, grab, kiosk, machines, pi,
-               release, saved, setup, systems, terminal, websocket)
+from . import (activity, change, config, files, grab, kiosk, machines, notices,
+               pi, release, saved, setup, systems, terminal, websocket)
 from .password import (COOKIE, LARGEST, SESSION_SECONDS, SMALLEST, Attempts, Sessions,
                        acceptable)
 
@@ -243,6 +243,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # spend them.
             asked = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self._json(self._update(check=asked.get("check") == ["1"]))
+        if route == "/api/notices":
+            # A reading, open the way /api/status is: it says nothing the
+            # windows it points at do not already show to anybody.
+            return self._json({"notices": notices.current(self.settings)})
         if route == "/api/update/notes":
             return self._json(self._release_notes())
         if route == "/api/session":
@@ -1333,6 +1337,7 @@ def serve(settings, password=None):
     Handler.sessions = Sessions()
     Handler.attempts = Attempts()
     address = (settings.address, settings.port)
+    notices.watch()
     with http.server.ThreadingHTTPServer(address, Handler) as httpd:
         print("previously %s on http://%s:%d"
               % (VERSION, settings.address, settings.port), flush=True)

@@ -69,20 +69,21 @@ def settings_for(tmp_path, **overrides):
 
 @pytest.fixture(autouse=True)
 def nothing_remembered_about_packages():
-    """What dpkg, apt and GitHub last said, thrown away before and after every
-    test.
+    """What dpkg, apt, GitHub and the archive last said, thrown away before and
+    after every test.
 
-    The service keeps both answers for a while, because the Installer window
+    The service keeps these answers for a while, because the Installer window
     asks twice a second and the Raspberry Pi window every five seconds. Between
     two tests it would be one test's machine answering another test's question.
     """
-    from previously import release, setup
+    from previously import archive, release, setup
 
-    setup.forget()
-    release.forget()
+    keepers = (setup, release, archive)
+    for keeper in keepers:
+        keeper.forget()
     yield
-    setup.forget()
-    release.forget()
+    for keeper in keepers:
+        keeper.forget()
 
 
 @pytest.fixture

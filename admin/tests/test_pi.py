@@ -153,7 +153,8 @@ def test_every_reading_is_answered_even_where_none_can_be_had(monkeypatch):
     answer = pi.readings()
 
     assert set(answer) == {
-        "model", "board", "uptime_seconds", "temperature_c", "throttling",
+        "model", "board", "uptime_seconds", "temperature_c", "temperature_limit_c",
+        "throttling",
         "emulator", "crashes", "sound", "disk", "memory",
     }
 

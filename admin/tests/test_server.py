@@ -138,6 +138,15 @@ def test_the_board_readings_say_which_version_is_answering(service):
     assert "uptime_seconds" in payload
 
 
+def test_what_is_worth_saying_is_open(service):
+    """Every browser draws what the Pi decided, signed in or not, as every
+    reading is."""
+    status, _, body = fetch(service + "/api/notices")
+
+    assert status == 200
+    assert isinstance(json.loads(body)["notices"], list)
+
+
 #: What one reading of Activity Monitor holds, whether it is asked for or
 #: streamed.
 ACTIVITY_READING = {"model", "board", "cores", "load", "memory", "emulator"}
