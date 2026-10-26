@@ -61,10 +61,11 @@ UTIME_FIELD = 11
 STIME_FIELD = 12
 STARTTIME_FIELD = 19
 
-#: How often a stream sends a reading. Twice a second, because a bar that
-#: moves more slowly reads as a figure rather than as a monitor, and on a
-#: stream each reading costs what the reading costs and no more.
-EVERY_SECONDS = 0.5
+#: How often a stream sends a reading. Four times a second, as a trial (#723),
+#: because a bar that moves more slowly reads as a figure rather than as a
+#: monitor, and on a stream each reading costs what the reading costs and no
+#: more.
+EVERY_SECONDS = 0.25
 
 #: How old a sample may be and still be compared against. A sample older than
 #: this was left by a window that has since been closed, and what changed since
