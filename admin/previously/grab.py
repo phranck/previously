@@ -126,6 +126,10 @@ def grabbed(previous_config):
     emulator counts its grabs up rather than overwriting. The count is taken
     before the keys are sent, since the emulator writes the moment they land
     and a count taken afterwards would already hold what it is waiting for.
+
+    A file that was there already and is older than a grab waits goes first.
+    It is what a grab that gave up got afterwards, and to every later grab it
+    is already there, so nothing else would ever remove it.
     """
     if emulator.pid() is None:
         return None
@@ -134,6 +138,8 @@ def grabbed(previous_config):
         return None
 
     before = set(where.glob(GRAB_GLOB))
+    for left in _left_behind(before):
+        _remove(left)
     if not emulator.press(GRAB_KEYS):
         return None
 
@@ -174,6 +180,30 @@ def _waits_for_a_whole_picture(where, before):
             return newest
         time.sleep(LOOK_EVERY_SECONDS)
     return None
+
+
+def _left_behind(found):
+    """The grabs among these that no grab is waiting for any more.
+
+    @param found - What was in the directory before the keys were sent.
+    @returns list of pathlib.Path, the ones older than GRAB_TIMEOUT_SECONDS.
+
+    A grab gives up after that long, and a file the emulator writes after it
+    gave up is nobody's: the grab that asked for it has answered with nothing,
+    and every grab after it counts the file as already there. Two such grabs
+    stayed in the emulator's directory on a Pi 5 on 23.10.2026. One younger
+    than that may still be what another grab in flight is waiting for, since a
+    status poll and a press of Grab can run at once, so it stays.
+    """
+    oldest = time.time() - GRAB_TIMEOUT_SECONDS
+    left = []
+    for path in found:
+        try:
+            if path.stat().st_mtime < oldest:
+                left.append(path)
+        except OSError:
+            continue
+    return left
 
 
 def _is_whole(path):
