@@ -583,7 +583,7 @@ nx-window[name="activity"] .info-body + .readings { margin-top: var(--portrait-g
 nx-row.charted { align-items: start; }
 nx-row.charted label {
   border-block: 1px solid transparent;
-  line-height: calc(var(--reading-height) - 2px);
+  line-height: calc(var(--lamps-height) - 2px);
 }
 .charted-reading {
   display: grid;
