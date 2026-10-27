@@ -1034,11 +1034,17 @@ def units(monkeypatch, tmp_path):
     return states
 
 
+def the_command(commands, verb):
+    """@returns list of str, the one `systemctl <verb>` command that was
+    run, whole."""
+    return next(command for command in commands
+                if command[:2] == ["systemctl", verb])
+
+
 def systemctl(commands, verb):
     """@returns list of str, the units one `systemctl <verb>` was given,
     without a flag such as `--now` that stands among them."""
-    return [word for word in next(command[2:] for command in commands
-                                  if command[:2] == ["systemctl", verb])
+    return [word for word in the_command(commands, verb)[2:]
             if not word.startswith("--")]
 
 
@@ -1056,11 +1062,8 @@ def test_what_nothing_here_needs_is_switched_off(tmp_path, commands, units):
 
 
 def test_the_apt_timers_that_run_for_nothing_are_switched_off(tmp_path, commands, units):
-    """Raspberry Pi OS starts apt's daily script twice a day at a random
-    moment, while NeXTSTEP runs. Nothing on the card sets an `APT::Periodic`
-    interval and unattended-upgrades is not on it, so a run fetches no lists
-    and no packages and costs a Pi 4 three seconds of CPU for nothing. The
-    tool runs `apt-get update` itself before it installs anything."""
+    """Both wake the Pi twice a day while NeXTSTEP runs, for a script that
+    skips every step on the card as imaged. `LEFT_OUT` says why."""
     work = work_in(tmp_path)
     work.at("lean", 9)
 
@@ -1071,16 +1074,14 @@ def test_the_apt_timers_that_run_for_nothing_are_switched_off(tmp_path, commands
 
 
 def test_what_is_switched_off_is_stopped_as_well(tmp_path, commands, units):
-    """`systemctl disable` alone leaves a running unit running until the next
-    boot. On next4 both apt timers stood disabled and still due that night."""
+    """`systemctl disable` on its own leaves a running unit running until the
+    next boot."""
     work = work_in(tmp_path)
     work.at("lean", 9)
 
     setup.STEPS["lean"](work)
 
-    disabling = next(command for command in commands
-                     if command[:2] == ["systemctl", "disable"])
-    assert "--now" in disabling
+    assert "--now" in the_command(commands, "disable")
 
 
 def test_an_image_switches_off_without_stopping(tmp_path, commands, units, not_booted):
@@ -1091,9 +1092,7 @@ def test_an_image_switches_off_without_stopping(tmp_path, commands, units, not_b
 
     setup.STEPS["lean"](work)
 
-    disabling = next(command for command in commands
-                     if command[:2] == ["systemctl", "disable"])
-    assert "--now" not in disabling
+    assert "--now" not in the_command(commands, "disable")
 
 
 def test_a_failed_run_switches_back_on_only_what_it_switched_off(
