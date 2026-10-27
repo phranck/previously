@@ -7,6 +7,7 @@ whichever window that line belongs to. Reading both files is what catches it, an
 no browser has to be opened to do that.
 """
 
+import html.parser
 import re
 
 import pytest
@@ -398,25 +399,54 @@ def test_nothing_in_the_interface_writes_markup_from_a_string():
     assert written == set(), written
 
 
-#: A view that scrolls, and what is in it. The kit's scroller takes its bar from
-#: one element, which is its first child unless something tells it otherwise.
-A_SCROLLER = re.compile(r"<nx-scroller[^>]*>(.*?)</nx-scroller>", re.S)
+#: Elements the markup writes without a closing tag, which a walk over it has
+#: to know so that the depth stays right past them.
+VOID_ELEMENTS = {"input", "br", "img", "meta", "link", "hr"}
 
 
-def test_a_scroller_holding_more_than_one_view_is_told_which_one_to_measure():
-    """`nx-scroller` draws its bar from one element and takes the first child
-    where nobody says otherwise, which is what `drive` is for. A window holding
-    a room per kind of document therefore shows a bar for whichever room happens
-    to be first: notes in a window whose picture room is empty scrolled to the
-    wheel and showed no bar at all."""
+def scroller_children(markup):
+    """@returns list of int, how many elements each `nx-scroller` in the
+    markup holds directly, in the order they stand."""
+    counts = []
+    open_scrollers = []
+    depth = 0
+
+    class Walk(html.parser.HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            nonlocal depth
+            if open_scrollers and depth == open_scrollers[-1][1] + 1:
+                counts[open_scrollers[-1][0]] += 1
+            if tag == "nx-scroller":
+                counts.append(0)
+                open_scrollers.append((len(counts) - 1, depth))
+            if tag not in VOID_ELEMENTS:
+                depth += 1
+
+        def handle_endtag(self, tag):
+            nonlocal depth
+            if tag in VOID_ELEMENTS:
+                return
+            depth -= 1
+            if tag == "nx-scroller" and open_scrollers and open_scrollers[-1][1] == depth:
+                open_scrollers.pop()
+
+    Walk().feed(markup)
+    return counts
+
+
+def test_every_scroller_holds_one_view():
+    """`nx-scroller` draws its bar from its first child and nothing in the
+    markup tells it otherwise, so a scroller holding two rooms measures
+    whichever happens to be first: notes in a window whose picture room came
+    first scrolled to the wheel and showed no bar at all. Every scroller
+    therefore holds one element, and a window with a room per kind of document
+    gives each room a scroller of its own."""
     markup = (INTERFACE / "index.html").read_text(encoding="utf-8")
-    page = page_source()
 
-    for inside in A_SCROLLER.findall(markup):
-        rooms = re.findall(r'\bid="([^"]+)"', inside)
-        if len(rooms) < 2:
-            continue
-        assert ".drive(" in page, rooms
+    counts = scroller_children(markup)
+
+    assert len(counts) > 5, counts
+    assert counts == [1] * len(counts), counts
 
 
 def test_preview_puts_back_what_it_was_showing_when_it_comes_back_open():
