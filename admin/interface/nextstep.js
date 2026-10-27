@@ -2978,7 +2978,7 @@ class NxChart extends HTMLElement {
     const columns = [...this.field.children];
     for (const [index, column] of columns.entries()) {
       const value = this.history[index];
-      const lamps = [...column.children];
+      const lamps = /** @type {HTMLElement[]} */ ([...column.children]);
       const lit = value === null || top <= 0
         ? 0 : Math.round(Math.min(Math.max(value / top, 0), 1) * lamps.length);
       for (const [place, lamp] of lamps.entries()) {
