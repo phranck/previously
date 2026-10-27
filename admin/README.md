@@ -159,6 +159,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
 | `GET /api/setup` | Which systems there are, which are here, how much room is left, and what is being installed |
 | `POST /api/setup` | Asks the privileged helper to install, update, remove or fetch something |
+| `GET /api/software` | The whole software catalog, and which system the machine boots |
 | `GET /api/update` | Which version of this tool is installed, which is published, and how a replacement of it is getting on |
 | `GET /api/update/notes` | What the published release says about itself, as the Markdown it was written in |
 | `POST /api/update` | Asks the privileged helper to replace this tool with the newest release |
@@ -317,7 +318,7 @@ A system is a disk, and several of them fit on the card. `Disks` in the File Vie
 
 A system is a disk and the machine boots it. Developer Tools, applications and whatever else somebody wants inside NeXTSTEP are media: they go on a free slot of the SCSI bus beside the disk that is running, write protected, and NeXTSTEP mounts them the way it mounted a CD on the bus. `Discs` in the File Viewer holds what is there, and a disc that is in the machine says which slot it is on.
 
-**They are files somebody puts on the Pi**, in `~/nextstep/discs`, rather than anything this tool fetches. The six systems are a known set with measured sizes and digests; these are not, and a list of addresses for NeXT media is one this tool could not stand behind. So the folder appears when somebody puts something in it and not before.
+**They are files on the Pi**, in `~/nextstep/discs`. The folder appears when something is in it and not before.
 
 **Inserting one is the same cycle as changing a disk.** Previous can put a disc on a slot that is already a CD drive without resetting the machine, and its own dialog does exactly that: `Change_DoNeedReset` in its `src/change.c` asks for a reset only where a slot's device type changes, and a change of image alone re-initializes the SCSI emulation. What it cannot do is notice a file written from outside, because it reads `previous.cfg` when it starts and never again. So from here a disc arrives with the guest shut down properly first, exactly as a disk does.
 
@@ -336,6 +337,16 @@ Both directions need the machine switched off. A copy taken while NeXTSTEP is wr
 **A copy only shows up once it is whole.** It is written under its name with `.copying` after it and renamed when the last byte is in, so a copy cut short by a power cut or a stopped helper is never listed in `Backups` and never offered to be put back. A copy being put back is written beside its disk with `.coming-back` after it and moved over the disk when it is whole, so one cut short leaves the disk that was there. A system is fetched and unpacked in a folder of its own inside the disks folder, named `fetching.` and a suffix, and its disk is moved out once it is whole. Whatever a copy, a put back or a fetch cut short left behind, of any system, goes with the next job the helper carries out, before that job writes anything, and the room check counts it as free until then.
 
 **Which system needs which machine is not written down anywhere this tool can read**, so it is not guessed at. What answers it is the machine itself: a disk that will not boot on the configuration in force does not come up, and the rollback puts the old one back. That is the same answer the tool already gives for a machine it cannot run, and it needs no table that would be wrong somewhere.
+
+## Software, which the catalog offers
+
+**The Software folder lists what the catalog offers for the system the machine boots.** The catalog is a table in `software.py`, made the way the systems in `systems.py` are: every entry names the address of a file, its size and its digest, and the systems it runs on. It starts with the NeXTSTEP 3.3 Developer CD from archive.org. Nothing in the folder is on the card yet, and double clicking an entry opens an Info window that says what it is.
+
+**The folder shows what fits the system that boots.** The NeXTSTEP 3.3 Developer CD builds NEXTSTEP programs, and OPENSTEP 4.x has a development environment of its own, so the CD appears while NeXTSTEP 3.3 boots. Each group, such as Developer, is a folder of its own once it has anything in it.
+
+**Every entry is checked field by field** in `software.problems`, and the shipped list is held to the same rules by its tests. The address is https, carries no name and password, and names a host rather than an IP address, so an entry cannot point the Pi at its own network.
+
+**Name, version and description stand as written**, in English, whatever language the interface speaks. Only the labels beside them are translated.
 
 ## Switching the machine on and off
 
@@ -627,6 +638,8 @@ Previously          the root, drawn as a home the way NeXTSTEP drew one
   Machines
     System          the eleven this project ships, which cannot be changed
     User            what somebody saved, and only once there is something
+  Software          what the catalog offers for the system that boots
+    Developer       one folder per group that has anything in it
 ```
 
 **Everything in it is shown by its name, in every language.** A viewer shows names, and NeXTSTEP's did: `/NextApps` in a German installation holds `Preferences.app` and `Terminal.app` exactly as an English one does, and the Workspace shows the directory called `Apps` under that name. So the folders, the bundles and the machines read the same whatever language the rest of the interface is in.
