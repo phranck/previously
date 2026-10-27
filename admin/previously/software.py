@@ -13,14 +13,24 @@ name for it.
 
 The shipped list is checked by the same rules as an entry somebody adds,
 because a download reads both the same way.
+
+What is changed on the Pi lives in one file in the service's own state
+directory, laid over the shipped list: an entry added, a shipped entry edited,
+and a shipped entry removed. The shipped list stays as it came with the
+package, so an update brings its new entries and every change made here
+survives it, and an edited or removed shipped entry can always be brought back.
+`saved.py` keeps the configurations somebody saved the same way.
 """
 
 import collections
 import ipaddress
+import json
+import os
 import re
 import urllib.parse
 
 from . import systems
+from .answers import told
 
 #: The groups an entry can be in, in the order the Software folder lists them,
 #: and the folder each is shown as. A folder's name is shown as it is in every
@@ -47,10 +57,13 @@ DIGEST_DIGITS = {"sha1": 40, "sha256": 64}
 #: anything but a name.
 IDENTIFIER = re.compile(r"^[a-z0-9][a-z0-9.-]{0,63}$")
 
-#: The longest a name, a version, a description and an address may be. A name
-#: and a version stand on one line of a window, and a description under them.
+#: What a version is made of: a short run of letters, digits, dots, hyphens
+#: and plus signs, which is every way a release number is written.
+VERSION = re.compile(r"^[A-Za-z0-9.+-]{1,32}$")
+
+#: The longest a name, a description and an address may be. A name stands on
+#: one line of a window, and a description under it.
 LONGEST_NAME = 80
-LONGEST_VERSION = 20
 LONGEST_DESCRIPTION = 500
 LONGEST_ADDRESS = 2048
 
@@ -82,24 +95,51 @@ CATALOGUE = (
 #: By identifier, which is what a request carries.
 BY_IDENTIFIER = {entry.identifier: entry for entry in CATALOGUE}
 
+#: The fields the browser sends for an entry: all of them but the identifier,
+#: which follows from the name when an entry is added and never changes after.
+FIELDS = tuple(field for field in Entry._fields if field != "identifier")
 
-def find(identifier):
-    """The entry of that name.
+#: What the file of changes is called, in the service's state directory.
+OVERLAY = "software.json"
+
+#: What that file says about itself, so a later format can tell itself apart.
+FILE_VERSION = 1
+
+#: What is changed on the Pi: the entries added or edited, in the order they
+#: were first written, and the identifiers of the shipped entries removed.
+Overlay = collections.namedtuple("Overlay", "entries removed")
+NOTHING_CHANGED = Overlay((), ())
+
+
+class NotReadable(Exception):
+    """The file of changes is there and cannot be read as this format.
+
+    Every change refuses while it is, because writing would destroy whatever
+    could not be read, and the shipped list is offered in the meantime.
+    """
+
+
+def find(identifier, path=None):
+    """The entry of that name, as the catalog lists it on this Pi.
 
     @param identifier - What a request asked for.
+    @param path - pathlib.Path of the file of changes, or None for the shipped
+      list alone.
     @returns Entry, or None where nothing is called that.
     """
-    return BY_IDENTIFIER.get(identifier)
+    return next((entry for entry in catalogue(path) if entry.identifier == identifier), None)
 
 
-def for_system(system):
+def for_system(system, path=None):
     """What can be put on a machine running that system.
 
     @param system - An identifier of `systems.CATALOGUE`, or None where no
       system is booted.
+    @param path - pathlib.Path of the file of changes, or None for the shipped
+      list alone.
     @returns list of Entry, in catalog order, empty where nothing is for it.
     """
-    return [entry for entry in CATALOGUE if system in entry.systems]
+    return [entry for entry in catalogue(path) if system in entry.systems]
 
 
 def problems(entry):
@@ -114,7 +154,7 @@ def problems(entry):
     against its algorithm only where the algorithm is one this knows.
     """
     wrong = []
-    if not IDENTIFIER.match(entry.identifier or ""):
+    if not (isinstance(entry.identifier, str) and IDENTIFIER.match(entry.identifier)):
         wrong.append("identifier")
     if not _is_line(entry.name, LONGEST_NAME):
         wrong.append("name")
@@ -122,17 +162,20 @@ def problems(entry):
         wrong.append("description")
     if entry.group not in GROUPS:
         wrong.append("group")
-    if not _is_line(entry.version, LONGEST_VERSION):
+    if not (isinstance(entry.version, str) and VERSION.match(entry.version)):
         wrong.append("version")
-    if not entry.systems or any(systems.find(system) is None for system in entry.systems):
+    if not (isinstance(entry.systems, tuple) and entry.systems
+            and all(isinstance(system, str) and systems.find(system) is not None
+                    for system in entry.systems)):
         wrong.append("systems")
     if not _is_address(entry.address):
         wrong.append("address")
     if not _is_size(entry.size):
         wrong.append("size")
-    if entry.algorithm not in DIGEST_DIGITS:
+    if not (isinstance(entry.algorithm, str) and entry.algorithm in DIGEST_DIGITS):
         wrong.append("algorithm")
-    elif not re.fullmatch("[0-9a-f]{%d}" % DIGEST_DIGITS[entry.algorithm], entry.digest or ""):
+    elif not (isinstance(entry.digest, str)
+              and re.fullmatch("[0-9a-f]{%d}" % DIGEST_DIGITS[entry.algorithm], entry.digest)):
         wrong.append("digest")
     if entry.kind not in KINDS:
         wrong.append("kind")
@@ -159,6 +202,247 @@ def described(entry):
         "for": [systems.find(system).name for system in entry.systems],
         "source": source(entry),
     }
+
+
+def overlay_in(state_directory):
+    """@returns pathlib.Path - Where the file of changes is kept, in the
+    service's state directory."""
+    return state_directory / OVERLAY
+
+
+def read(path):
+    """What is changed on this Pi.
+
+    @param path - pathlib.Path of the file of changes, or None.
+    @returns Overlay, empty where there is no file.
+    @raises NotReadable - The file is there and is not this format, or holds an
+      entry that breaks a rule. Nothing writes such an entry, so one there was
+      written by hand, and a download must not read it.
+    """
+    if path is None:
+        return NOTHING_CHANGED
+    try:
+        found = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return NOTHING_CHANGED
+    except (OSError, ValueError) as error:
+        raise NotReadable(str(error)) from error
+
+    entries = found.get("entries") if isinstance(found, dict) else None
+    removed = found.get("removed") if isinstance(found, dict) else None
+    if not isinstance(entries, list) or not isinstance(removed, list):
+        raise NotReadable("%s holds no list of entries and of what was removed" % path)
+    if not all(isinstance(identifier, str) for identifier in removed):
+        raise NotReadable("%s names something removed by other than its identifier" % path)
+
+    kept = []
+    for values in entries:
+        if not isinstance(values, dict) or set(values) != set(Entry._fields):
+            raise NotReadable("%s holds an entry with other fields than an entry has" % path)
+        entry = _entry(values["identifier"], values)
+        wrong = problems(entry)
+        if wrong:
+            raise NotReadable("%s holds %s with %s that break their rules"
+                              % (path, entry.identifier, ", ".join(wrong)))
+        kept.append(entry)
+    return Overlay(tuple(kept), tuple(removed))
+
+
+def catalogue(path=None):
+    """Every entry as this Pi lists it: the shipped ones as they were changed
+    here, without those removed here, then those added here.
+
+    @param path - pathlib.Path of the file of changes, or None.
+    @returns tuple of Entry. The shipped list alone where the file cannot be
+      read, because a listing has nothing to do about that: the moment
+      somebody changes something, the change refuses and says why.
+    """
+    return tuple(entry for entry, _ in _merged(_readable(path)))
+
+
+def origins(path=None):
+    """Which entries are not as shipped.
+
+    @param path - pathlib.Path of the file of changes, or None.
+    @returns dict of identifier to "changed" for a shipped entry edited here or
+      "added" for one added here. A shipped entry as it came is not in it.
+    """
+    return {entry.identifier: origin for entry, origin in _merged(_readable(path))
+            if origin != "shipped"}
+
+
+def removed(path=None):
+    """The shipped entries removed here, which can be brought back.
+
+    @param path - pathlib.Path of the file of changes, or None.
+    @returns tuple of Entry, as shipped, in the shipped order.
+    """
+    gone = _readable(path).removed
+    return tuple(entry for entry in CATALOGUE if entry.identifier in gone)
+
+
+def save(path, values, replacing=None):
+    """Adds an entry, or writes over one.
+
+    @param path - pathlib.Path of the file of changes.
+    @param values - The entry's fields as the browser sends them, which are
+      FIELDS and nothing else.
+    @param replacing - The identifier of the entry being edited, or None to add
+      one. An entry keeps its identifier when it is edited, because a file
+      downloaded for it is named after that.
+    @returns (bool, dict) as every other operation of this service answers.
+    """
+    try:
+        overlay = read(path)
+    except NotReadable as error:
+        return False, told("software.not-readable", detail=str(error))
+
+    if not isinstance(values, dict) or set(values) != set(FIELDS):
+        return False, told("software.not-an-entry")
+
+    listed = [entry.identifier for entry, _ in _merged(overlay)]
+    if replacing is not None and replacing not in listed:
+        return False, told("software.no-such", asked=replacing)
+
+    name = values["name"].strip() if isinstance(values["name"], str) else values["name"]
+    entry = _entry(replacing or _identifier_from(name), {**values, "name": name})
+    # The identifier follows from the name, so a name that makes none is what
+    # is wrong.
+    wrong = list(dict.fromkeys("name" if field == "identifier" else field
+                               for field in problems(entry)))
+    if wrong:
+        return False, told("software.refused", fields=wrong)
+    if replacing is None and entry.identifier in listed + list(overlay.removed):
+        return False, told("software.name-taken", name=name)
+
+    entries = [kept for kept in overlay.entries if kept.identifier != entry.identifier]
+    if entry != BY_IDENTIFIER.get(entry.identifier):
+        at = next((index for index, kept in enumerate(overlay.entries)
+                   if kept.identifier == entry.identifier), len(entries))
+        entries.insert(at, entry)
+    return _write(path, Overlay(tuple(entries), overlay.removed),
+                  told("software.kept", name=name))
+
+
+def remove(path, identifier):
+    """Takes an entry out of the catalog.
+
+    @param path - pathlib.Path of the file of changes.
+    @param identifier - Which one.
+    @returns (bool, dict)
+
+    One added here is gone for good. A shipped one is written down as removed,
+    because the shipped list cannot change, and can be brought back.
+    """
+    try:
+        overlay = read(path)
+    except NotReadable as error:
+        return False, told("software.not-readable", detail=str(error))
+
+    found = next((entry for entry, _ in _merged(overlay) if entry.identifier == identifier), None)
+    if found is None:
+        return False, told("software.no-such", asked=identifier)
+
+    entries = tuple(kept for kept in overlay.entries if kept.identifier != identifier)
+    gone = overlay.removed + ((identifier,) if identifier in BY_IDENTIFIER else ())
+    return _write(path, Overlay(entries, gone), told("software.removed", name=found.name))
+
+
+def restore(path, identifier):
+    """Brings a shipped entry back as it was shipped, edited or removed.
+
+    @param path - pathlib.Path of the file of changes.
+    @param identifier - Which one.
+    @returns (bool, dict)
+    """
+    try:
+        overlay = read(path)
+    except NotReadable as error:
+        return False, told("software.not-readable", detail=str(error))
+
+    shipped = BY_IDENTIFIER.get(identifier)
+    if shipped is None:
+        return False, told("software.not-shipped", asked=identifier)
+
+    return _write(path,
+                  Overlay(tuple(kept for kept in overlay.entries if kept.identifier != identifier),
+                          tuple(gone for gone in overlay.removed if gone != identifier)),
+                  told("software.restored", name=shipped.name))
+
+
+def _readable(path):
+    """@returns Overlay - What `read` answers, and nothing changed where the
+    file cannot be read."""
+    try:
+        return read(path)
+    except NotReadable:
+        return NOTHING_CHANGED
+
+
+def _merged(overlay):
+    """The shipped list with the changes laid over it.
+
+    @param overlay - An Overlay.
+    @returns list of (Entry, origin), origin being "shipped", "changed" or
+      "added": the shipped entries in their order, then the added ones in the
+      order they were added.
+    """
+    changed = {entry.identifier: entry for entry in overlay.entries}
+    merged = [(changed[shipped.identifier], "changed") if shipped.identifier in changed
+              else (shipped, "shipped")
+              for shipped in CATALOGUE if shipped.identifier not in overlay.removed]
+    merged += [(entry, "added") for entry in overlay.entries
+               if entry.identifier not in BY_IDENTIFIER]
+    return merged
+
+
+def _entry(identifier, values):
+    """@returns Entry - One built from its fields, with its systems as a tuple
+    where they came as a list, which is what JSON carries."""
+    fields = {field: values[field] for field in FIELDS}
+    if isinstance(fields["systems"], list):
+        fields["systems"] = tuple(fields["systems"])
+    return Entry(identifier=identifier, **fields)
+
+
+def _identifier_from(name):
+    """What an entry added under that name is identified by.
+
+    @param name - Its name.
+    @returns str, the name in lowercase with every run of anything but letters,
+      digits and dots written as one hyphen, or "" where nothing is left.
+    """
+    if not isinstance(name, str):
+        return ""
+    return re.sub(r"[^a-z0-9.]+", "-", name.lower()).strip("-.")[:64].rstrip("-.")
+
+
+def _write(path, overlay, said):
+    """Writes the whole file of changes, or says why it could not.
+
+    @param path - pathlib.Path of the file.
+    @param overlay - Everything changed, as it is to be written.
+    @param said - What to answer with where it worked.
+    @returns (bool, dict)
+
+    Written beside itself and moved into place, so a write that fails part way
+    leaves the file as it was. The state directory is the service's own, which
+    its unit creates.
+    """
+    beside = path.with_suffix(path.suffix + ".new")
+    body = json.dumps({
+        "version": FILE_VERSION,
+        "entries": [{**entry._asdict(), "systems": list(entry.systems)}
+                    for entry in overlay.entries],
+        "removed": list(overlay.removed),
+    }, ensure_ascii=False, indent=2) + "\n"
+    try:
+        beside.write_text(body, encoding="utf-8")
+        os.replace(beside, path)
+    except OSError as error:
+        beside.unlink(missing_ok=True)
+        return False, told("software.could-not-write", detail=str(error))
+    return True, said
 
 
 def _is_text(value, longest):

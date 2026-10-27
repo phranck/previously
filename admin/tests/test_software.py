@@ -65,6 +65,8 @@ def test_no_two_shipped_entries_share_an_identifier():
     ({"description": "x" * 501}, "description"),
     ({"group": "music"}, "group"),
     ({"version": "3.3 final release candidate edition"}, "version"),
+    ({"version": "3.3 beta"}, "version"),
+    ({"version": "x" * 33}, "version"),
     ({"systems": ()}, "systems"),
     ({"systems": ("nextstep-9.9",)}, "systems"),
     ({"address": "http://archive.org/download/x/y.iso"}, "address"),
@@ -80,6 +82,13 @@ def test_no_two_shipped_entries_share_an_identifier():
     ({"digest": "Z" * 40}, "digest"),
     ({"algorithm": "sha256"}, "digest"),
     ({"kind": "floppy"}, "kind"),
+    # What a file written by hand can hold, and JSON can carry.
+    ({"identifier": 5}, "identifier"),
+    ({"group": ["tools"]}, "group"),
+    ({"systems": (["nextstep-3.3"],)}, "systems"),
+    ({"algorithm": ["sha1"]}, "algorithm"),
+    ({"digest": 5}, "digest"),
+    ({"kind": ["disc"]}, "kind"),
 ])
 def test_a_field_that_breaks_its_rule_is_named(changed, problem):
     """Each rule is about the one field, so what is wrong can be said next to
@@ -110,3 +119,196 @@ def test_the_systems_named_are_the_installers():
     entry = an_entry(systems=tuple(system.identifier for system in systems.CATALOGUE))
 
     assert software.problems(entry) == []
+
+
+def a_package(**changed):
+    """@returns dict, the fields of a well formed entry as the browser sends
+    them, with what is given changed. No identifier, because it follows from
+    the name."""
+    values = dict(
+        name="Emacs",
+        description="The editor.",
+        group="tools",
+        version="21.4",
+        systems=["nextstep-3.3", "openstep-4.2"],
+        address="https://example.org/emacs.tar.gz",
+        size=4_000_000,
+        algorithm="sha256",
+        digest="ab" * 32,
+        kind="file",
+    )
+    values.update(changed)
+    return values
+
+
+def listed(path):
+    """@returns list of identifiers, in the order the catalog lists them."""
+    return [entry.identifier for entry in software.catalogue(path)]
+
+
+def test_with_nothing_changed_the_catalog_is_the_shipped_list(tmp_path):
+    assert software.catalogue(tmp_path / "software.json") == software.CATALOGUE
+
+
+def test_an_added_entry_follows_the_shipped_ones(tmp_path):
+    path = tmp_path / "software.json"
+
+    ok, told = software.save(path, a_package())
+
+    assert ok, told
+    assert told == {"reason": "software.kept", "name": "Emacs"}
+    assert listed(path) == ["nextstep-3.3-developer", "emacs"]
+    assert software.find("emacs", path).systems == ("nextstep-3.3", "openstep-4.2")
+
+
+def test_the_identifier_is_the_name_written_as_one(tmp_path):
+    path = tmp_path / "software.json"
+
+    software.save(path, a_package(name="OmniWeb 3.1 Pro"))
+
+    assert listed(path)[-1] == "omniweb-3.1-pro"
+
+
+def test_an_edited_shipped_entry_keeps_its_place_and_says_it_was_changed(tmp_path):
+    path = tmp_path / "software.json"
+    shipped = software.described(software.find("nextstep-3.3-developer"))
+    values = {field: shipped[field] for field in software.FIELDS}
+    values["description"] = "Changed."
+
+    ok, _ = software.save(path, values, replacing="nextstep-3.3-developer")
+
+    assert ok
+    assert listed(path) == ["nextstep-3.3-developer"]
+    assert software.find("nextstep-3.3-developer", path).description == "Changed."
+    assert software.origins(path) == {"nextstep-3.3-developer": "changed"}
+
+
+def test_a_removed_shipped_entry_is_gone_and_can_be_brought_back(tmp_path):
+    path = tmp_path / "software.json"
+
+    ok, told = software.remove(path, "nextstep-3.3-developer")
+
+    assert ok
+    assert told == {"reason": "software.removed", "name": "NeXTSTEP 3.3 Developer"}
+    assert listed(path) == []
+    assert [entry.identifier for entry in software.removed(path)] == ["nextstep-3.3-developer"]
+
+    ok, told = software.restore(path, "nextstep-3.3-developer")
+
+    assert ok
+    assert told == {"reason": "software.restored", "name": "NeXTSTEP 3.3 Developer"}
+    assert software.catalogue(path) == software.CATALOGUE
+    assert software.removed(path) == ()
+
+
+def test_an_edited_shipped_entry_can_be_brought_back_as_shipped(tmp_path):
+    path = tmp_path / "software.json"
+    shipped = software.described(software.find("nextstep-3.3-developer"))
+    values = {field: shipped[field] for field in software.FIELDS}
+    software.save(path, {**values, "version": "3.3-patched"}, replacing="nextstep-3.3-developer")
+
+    ok, _ = software.restore(path, "nextstep-3.3-developer")
+
+    assert ok
+    assert software.catalogue(path) == software.CATALOGUE
+
+
+def test_an_added_entry_is_removed_for_good(tmp_path):
+    path = tmp_path / "software.json"
+    software.save(path, a_package())
+
+    ok, _ = software.remove(path, "emacs")
+
+    assert ok
+    assert listed(path) == ["nextstep-3.3-developer"]
+    assert software.removed(path) == ()
+    assert software.restore(path, "emacs") == (
+        False, {"reason": "software.not-shipped", "asked": "emacs"})
+
+
+def test_what_is_wrong_with_an_entry_is_said_field_by_field(tmp_path):
+    path = tmp_path / "software.json"
+
+    ok, told = software.save(path, a_package(address="http://example.org/x", size=0))
+
+    assert not ok
+    assert told == {"reason": "software.refused", "fields": ["address", "size"]}
+    assert not path.exists()
+
+
+def test_a_field_nobody_asked_for_is_refused(tmp_path):
+    path = tmp_path / "software.json"
+
+    ok, told = software.save(path, {**a_package(), "identifier": "../../etc"})
+
+    assert not ok
+    assert told == {"reason": "software.not-an-entry"}
+    assert not path.exists()
+
+
+def test_a_name_that_is_taken_is_refused(tmp_path):
+    """Compared as the identifier the name becomes, and against the shipped
+    entries that were removed as well, so bringing one back cannot collide."""
+    path = tmp_path / "software.json"
+    software.remove(path, "nextstep-3.3-developer")
+
+    ok, told = software.save(path, a_package(name="NeXTSTEP 3.3 developer"))
+
+    assert not ok
+    assert told == {"reason": "software.name-taken", "name": "NeXTSTEP 3.3 developer"}
+
+
+def test_an_entry_keeps_its_identifier_when_it_is_renamed(tmp_path):
+    """A downloaded file is named after the identifier, so it does not move."""
+    path = tmp_path / "software.json"
+    software.save(path, a_package())
+
+    ok, _ = software.save(path, a_package(name="GNU Emacs"), replacing="emacs")
+
+    assert ok
+    assert listed(path) == ["nextstep-3.3-developer", "emacs"]
+    assert software.find("emacs", path).name == "GNU Emacs"
+
+
+def test_replacing_what_is_not_there_is_refused(tmp_path):
+    ok, told = software.save(tmp_path / "software.json", a_package(), replacing="nothing")
+
+    assert (ok, told) == (False, {"reason": "software.no-such", "asked": "nothing"})
+
+
+def test_a_file_that_cannot_be_read_refuses_every_change_and_leaves_the_shipped_list(tmp_path):
+    """Writing would destroy whatever could not be read, and the shipped list
+    is still there to offer."""
+    path = tmp_path / "software.json"
+    path.write_text("{ not json", encoding="utf-8")
+
+    ok, told = software.save(path, a_package())
+
+    assert not ok
+    assert told["reason"] == "software.not-readable"
+    assert path.read_text(encoding="utf-8") == "{ not json"
+    assert software.catalogue(path) == software.CATALOGUE
+
+
+def test_an_entry_written_into_the_file_by_hand_is_held_to_the_same_rules(tmp_path):
+    path = tmp_path / "software.json"
+    path.write_text(
+        '{"version": 1, "entries": [{"identifier": "x", "name": "X", "description": "",'
+        ' "group": "tools", "version": "1", "systems": ["nextstep-3.3"],'
+        ' "address": "https://10.0.0.1/x", "size": 1, "algorithm": "sha1",'
+        ' "digest": "' + "a" * 40 + '", "kind": "file"}], "removed": []}',
+        encoding="utf-8")
+
+    with pytest.raises(software.NotReadable):
+        software.read(path)
+    assert software.catalogue(path) == software.CATALOGUE
+
+
+def test_what_the_service_writes_it_reads_back_whole(tmp_path):
+    """Through a restart, which is a second read of the same file."""
+    path = tmp_path / "software.json"
+    software.save(path, a_package())
+    software.remove(path, "nextstep-3.3-developer")
+
+    assert software.read(path) == software.read(path)
+    assert listed(path) == ["emacs"]
