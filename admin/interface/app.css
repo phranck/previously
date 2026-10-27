@@ -609,6 +609,19 @@ nx-row.charted label {
   --document-size: 14px;
 }
 
+/* The notes beside the list of releases: two scrolling views side by side,
+   the list as wide as its longest entry and the document taking the rest.
+   The row is bounded to the room the window gives, so each view scrolls
+   inside it rather than growing the window to its content. */
+.notes {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 8px;
+}
+
 /* Release notes, rendered from the Markdown they were written in. The window
    already draws NeXT's white page under a picture, and this is the same page
    with text on it rather than a second kind of surface. */

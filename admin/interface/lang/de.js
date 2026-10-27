@@ -221,8 +221,9 @@ export const de = {
   /* --- the buttons ------------------------------------------------------ */
   "preview.empty": "Nichts zu zeigen.",
   "preview.notes.title": "Previously {version}",
-  "preview.version": "Version",
   "preview.versions.run": "{first} bis {last}",
+  "preview.since": "Seit {version}",
+  "preview.updating": "Drücke „Aktualisieren“ im Info-Fenster des Raspberry Pi, um das neueste Release zu bekommen. Bietet es noch keines an, schließ das Fenster und öffne es wieder.",
   "preview.no-notes": "Diese Version sagt nichts über sich selbst.",
   "grab.take": "Aufnehmen",
   "grab.idle": "Nichts zu fotografieren. Die Maschine läuft nicht.",

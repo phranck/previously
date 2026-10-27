@@ -603,21 +603,28 @@
      is the picture's name rather than the application's, the way a document
      window is titled. -->
 <nx-window name="preview" data-t-title="app.preview" drop
-           x="640" y="120" w="576" h="480" min-w="320" min-h="240" closed>
-  <!-- Which release's notes are showing, in a titled box because every pop-up
-       list is titled. There only while notes are, and the notes renderer is
-       what shows and fills it. -->
-  <fieldset class="group" id="preview-versions" hidden>
-    <legend data-t="preview.version"></legend>
-    <nx-popup id="preview-version"></nx-popup>
-  </fieldset>
+           x="640" y="120" w="640" h="480" min-w="420" min-h="240" closed>
   <!-- One room per kind of document, and the window shows whichever the
        renderer for what it was handed owns. A window that knew both kinds
-       would have three special cases by the third one. -->
-  <nx-scroller>
+       would have three special cases by the third one. A picture is one
+       scrolling view. Notes are two side by side: every release as a list in
+       NeXT's white with a scroller of its own, newest first, and the notes of
+       the chosen one beside it, which is the shape a list that can outgrow
+       the window takes. -->
+  <nx-scroller id="preview-picture-view">
     <div class="shot" id="preview-picture"></div>
-    <div class="document" id="preview-document" hidden></div>
   </nx-scroller>
+  <div class="notes" id="preview-notes" hidden>
+    <nx-scroller>
+      <div class="options" id="preview-releases"></div>
+    </nx-scroller>
+    <nx-scroller>
+      <div class="document" id="preview-document"></div>
+    </nx-scroller>
+  </div>
+  <!-- How to get the newest release, said once under the notes rather than
+       in every release's own. -->
+  <p class="note" id="preview-updating" data-t="preview.updating" hidden></p>
   <p class="note" id="preview-note"></p>
 </nx-window>
 

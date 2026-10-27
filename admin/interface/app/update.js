@@ -278,8 +278,9 @@ function wireTheUpdate() {
 
   hold("#pi-update", Needs.Quiet, () => updateIsFree);
   byId("pi-update").addEventListener("click", askForTheNewest);
-  /* The newest release's notes, and the click itself is not a version. */
-  byId("pi-notes").addEventListener("click", () => showTheReleaseNotes());
+  /* Everything since the release that is here, as one document, which is what
+     somebody deciding whether to press Update wants to read. */
+  byId("pi-notes").addEventListener("click", () => showTheReleaseNotes(null, true));
 
   /* Opening it asks straight away, because a window that filled itself at the
      next poll would stand empty for a moment first, and this is also the one

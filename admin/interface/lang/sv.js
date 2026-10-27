@@ -221,8 +221,9 @@ export const sv = {
   /* --- the buttons ------------------------------------------------------ */
   "preview.empty": "Ingenting att visa.",
   "preview.notes.title": "Previously {version}",
-  "preview.version": "Version",
   "preview.versions.run": "{first} till {last}",
+  "preview.since": "Sedan {version}",
+  "preview.updating": "Tryck på Uppdatera i Raspberry Pi:ns Info-fönster för att få den senaste versionen. Om det inte erbjuder någon än, stäng fönstret och öppna det igen.",
   "preview.no-notes": "Den här versionen säger ingenting om sig själv.",
   "grab.take": "Ta en bild",
   "grab.idle": "Ingenting att fotografera. Maskinen körs inte.",
