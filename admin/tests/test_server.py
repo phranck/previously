@@ -220,38 +220,47 @@ def close_a_stream(connection, answer):
 
 
 def events(answer, count):
-    """@returns list of the first `count` readings a stream sent, parsed."""
+    """@returns list of the first `count` events a stream sent, each as its
+    kind and what it carried, parsed."""
     found = []
+    kind = None
     while len(found) < count:
         line = answer.fp.readline().decode("utf-8")
-        if line.startswith("data: "):
-            found.append(json.loads(line[len("data: "):]))
+        if line.startswith("event: "):
+            kind = line[len("event: "):].strip()
+        elif line.startswith("data: "):
+            found.append((kind, json.loads(line[len("data: "):])))
     return found
 
 
 @pytest.fixture
 def quick_readings(monkeypatch):
-    """A stream that sends a reading every hundredth of a second, so a test
-    reads several without waiting half a second for each."""
-    monkeypatch.setattr(server.activity, "EVERY_SECONDS", 0.01)
+    """A stream that sends both kinds of event every hundredth of a second, so
+    a test reads several without waiting for each."""
+    monkeypatch.setattr(server.activity, "CORES_EVERY_SECONDS", 0.01)
+    monkeypatch.setattr(server.activity, "REST_EVERY_SECONDS", 0.01)
     monkeypatch.setattr(server.Handler, "streams", server.StreamCount())
 
 
 def test_the_readings_stream_while_somebody_listens(service, quick_readings):
     """Activity Monitor is sent its readings rather than asking for each,
-    because a request costs the service more than the reading in it. Each one
-    is the object `/api/activity` answers with, and it needs no password."""
+    because a request costs the service more than the reading in it. The cores
+    come as one kind of event and everything else as another, together what
+    `/api/activity` answers with, the rest first, and it needs no password."""
     connection, answer = open_a_stream(service)
     try:
-        sent = events(answer, 3)
+        sent = events(answer, 6)
     finally:
         close_a_stream(connection, answer)
 
     assert answer.status == 200
     assert answer.headers["Content-Type"].startswith("text/event-stream")
     assert answer.headers["Cache-Control"] == "no-store"
-    assert all(set(reading) == ACTIVITY_READING
-               for reading in sent)
+    assert sent[0][0] == "rest"
+    assert {kind for kind, _ in sent} == {"rest", "cores"}
+    assert all(set(said) == {"cores"} for kind, said in sent if kind == "cores")
+    assert all(set(said) == ACTIVITY_READING - {"cores"}
+               for kind, said in sent if kind == "rest")
 
 
 def test_a_stream_ends_with_its_connection(service, quick_readings):
@@ -297,7 +306,8 @@ def test_a_stream_nobody_reads_gives_its_thread_back(service, monkeypatch):
     """A browser that holds the connection and stops reading would otherwise
     hold the thread for good. Once the socket is full, a write that waits past
     its limit ends the stream."""
-    monkeypatch.setattr(server.activity, "EVERY_SECONDS", 0)
+    monkeypatch.setattr(server.activity, "CORES_EVERY_SECONDS", 0)
+    monkeypatch.setattr(server.activity, "REST_EVERY_SECONDS", 0)
     monkeypatch.setattr(server, "STREAM_WRITE_SECONDS", 0.2)
     monkeypatch.setattr(server.Handler, "streams", server.StreamCount())
     connection, answer = open_a_stream(service)

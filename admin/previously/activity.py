@@ -1,4 +1,4 @@
-"""What every core is doing, cheap enough to send twice a second.
+"""What every core is doing, cheap enough to send five times a second.
 
 `pi.py` answers the question a person asks when they open a window to check on
 the board, and it may fork for it: `vcgencmd` twice and `ps` once. That is the
@@ -61,11 +61,15 @@ UTIME_FIELD = 11
 STIME_FIELD = 12
 STARTTIME_FIELD = 19
 
-#: How often a stream sends a reading. Four times a second, as a trial (#723),
-#: because a bar that moves more slowly reads as a figure rather than as a
-#: monitor, and on a stream each reading costs what the reading costs and no
-#: more.
-EVERY_SECONDS = 0.25
+#: How often a stream sends what the cores are doing: five times a second,
+#: because a row of lamps that moves more slowly reads as a figure rather than
+#: as a monitor. Reading `/proc/stat` alone is the cheapest thing here.
+CORES_EVERY_SECONDS = 0.2
+
+#: How often it sends everything else: the memory, the load and what the
+#: emulator costs. Twice a second, which is how often the emulator's chart takes
+#: a column, and the share it shows is worked out over that half second.
+REST_EVERY_SECONDS = 0.5
 
 #: How old a sample may be and still be compared against. A sample older than
 #: this was left by a window that has since been closed, and what changed since
@@ -91,39 +95,61 @@ _LOOKED_AT = None
 
 
 class Sampler:
-    """One caller's last sample, so what it is told is what changed since it
-    last asked."""
+    """One caller's last samples, so what it is told is what changed since it
+    last asked.
+
+    The cores and the emulator are sampled apart, each against its own last
+    sample, because a stream sends them at different rates: a share of the
+    cores over the last fifth of a second, and the emulator's over the last half.
+    """
 
     def __init__(self):
-        #: The last sample, as (when, cores, emulator ticks), or None before the
-        #: first. `when` is the monotonic clock, because the wall clock can step.
-        self.last = None
+        #: The last sample of the cores, as (when, cores), and of the emulator,
+        #: as (when, its ticks), or None before the first. `when` is the
+        #: monotonic clock, because the wall clock can step.
+        self.last_cores = None
+        self.last_ticks = None
+
+    def cores(self):
+        """What each core has been doing since the last time this was asked.
+
+        @returns list of percentages in the kernel's own order, or None where
+          there is nothing to compare against.
+        """
+        now = time.monotonic()
+        cores = _cpu_times()
+        before = _comparable(self.last_cores, now)
+        self.last_cores = (now, cores)
+        return _busy(cores, before[1] if before else None)
+
+    def rest(self):
+        """Everything a monitor draws but the cores.
+
+        @returns dict with `model`, `board`, `load`, `memory` and `emulator`.
+          Anything that could not be read is None, and the window draws that as
+          empty rather than as zero. `model` and `board` say which board this
+          is, read where the Raspberry Pi window reads them.
+        """
+        now = time.monotonic()
+        ticks = _emulator_ticks()
+        before = _comparable(self.last_ticks, now)
+        self.last_ticks = (now, ticks)
+        return {
+            "model": hardware.model(),
+            "board": hardware.board(),
+            "load": _load(),
+            "memory": pi.memory(),
+            "emulator": _emulator(ticks, before[1] if before else None,
+                                  now - before[0] if before else 0),
+        }
 
     def readings(self):
         """Everything a monitor draws, in one answer.
 
         @returns dict with `model`, `board`, `cores`, `load`, `memory` and
-          `emulator`. Anything that could not be read is None, and the window
-          draws that as empty rather than as zero. `model` and `board` say which
-          board this is, read where the Raspberry Pi window reads them, and the
-          window shows the board's drawing over its model as that one does.
+          `emulator`, as `rest` and `cores` answer them.
         """
-        now = time.monotonic()
-        cores = _cpu_times()
-        ticks = _emulator_ticks()
-        before = (self.last if self.last and now - self.last[0] <= COMPARABLE_FOR_SECONDS
-                  else None)
-        self.last = (now, cores, ticks)
-
-        seconds = now - before[0] if before else 0
-        return {
-            "model": hardware.model(),
-            "board": hardware.board(),
-            "cores": _busy(cores, before[1] if before else None),
-            "load": _load(),
-            "memory": pi.memory(),
-            "emulator": _emulator(ticks, before[2] if before else None, seconds),
-        }
+        return {**self.rest(), "cores": self.cores()}
 
 
 #: The sampler `/api/activity` answers from, which everybody asking that route
@@ -143,9 +169,16 @@ def forget():
     """Throws the shared sample and the process number away, so a test starts
     from the state a service that has just come up is in."""
     global _PID, _LOOKED_AT
-    _SHARED.last = None
+    _SHARED.last_cores = None
+    _SHARED.last_ticks = None
     _PID = None
     _LOOKED_AT = None
+
+
+def _comparable(last, now):
+    """@returns the last sample where it is recent enough to compare against,
+    and None where there is none or it is older than COMPARABLE_FOR_SECONDS."""
+    return last if last and now - last[0] <= COMPARABLE_FOR_SECONDS else None
 
 
 def _cpu_times():
