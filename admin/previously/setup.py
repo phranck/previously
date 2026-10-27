@@ -252,6 +252,12 @@ LEFT_OUT = (
     "udisks2.service",
     # Switches SSH on from a file on the boot partition, and SSH is on.
     "sshswitch.service",
+    # Start apt's daily script twice a day at a random moment, while NeXTSTEP
+    # runs, and the script does nothing here: nothing on the card sets an
+    # `APT::Periodic` interval and unattended-upgrades is not on it, so a run
+    # fetches no lists and no packages and costs a Pi 4 three seconds of CPU.
+    # The tool runs `apt-get update` itself before it installs anything.
+    "apt-daily.timer", "apt-daily-upgrade.timer",
 )
 
 #: The file that keeps cloud-init from starting, as its documentation names it.

@@ -1052,6 +1052,21 @@ def test_what_nothing_here_needs_is_switched_off(tmp_path, commands, units):
     assert setup.CLOUD_INIT_OFF.exists()
 
 
+def test_the_apt_timers_that_run_for_nothing_are_switched_off(tmp_path, commands, units):
+    """Raspberry Pi OS starts apt's daily script twice a day at a random
+    moment, while NeXTSTEP runs. Nothing on the card sets an `APT::Periodic`
+    interval and unattended-upgrades is not on it, so a run fetches no lists
+    and no packages and costs a Pi 4 three seconds of CPU for nothing. The
+    tool runs `apt-get update` itself before it installs anything."""
+    work = work_in(tmp_path)
+    work.at("lean", 9)
+
+    setup.STEPS["lean"](work)
+
+    assert {"apt-daily.timer", "apt-daily-upgrade.timer"} <= set(
+        systemctl(commands, "disable"))
+
+
 def test_a_failed_run_switches_back_on_only_what_it_switched_off(
         tmp_path, commands, units, monkeypatch):
     units["udisks2.service"] = "disabled"
