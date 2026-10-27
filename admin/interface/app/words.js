@@ -109,7 +109,13 @@ function nameOf(machine) {
  */
 function modelOf(machine) {
   let name = machine.model;
-  if (machine.turbo && machine.kind !== 0) name += " Turbo";
+  /* The 1988 machine took no turbo board, so whatever its flag says there is
+     no Turbo to add, and no Nitro either, which is a turbo board at one clock.
+     The product's name runs model, Turbo, Color, Nitro. */
+  const turbo = machine.turbo && machine.kind !== 0;
+  if (turbo) name += " Turbo";
+  if (machine.colour) name += " Color";
+  if (turbo && machine.nitro) name += " Nitro";
   return name;
 }
 

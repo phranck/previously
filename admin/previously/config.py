@@ -63,6 +63,13 @@ MACHINE_NAMES = {
     2: "NeXTstation",
 }
 
+#: What the emulator takes for a Nitro: a turbo board at this clock. The file
+#: has no setting of its own for one. Previous maps the Nitro's cache
+#: controller for a turbo board at 40 MHz in its src/cpu/memory.c and names
+#: the machine Nitro in its status bar, so this is a fact of the emulator's
+#: like the names above, and `machines.py` takes its catalog's rule from here.
+NITRO_MHZ = 40
+
 #: Which case a machine type comes in. The boot ROM draws the machine on its
 #: own panel while it tests the hardware, and it has two pictures: the cube for
 #: types 0 and 1, which share an enclosure, and the station for type 2. The
@@ -133,6 +140,7 @@ def describe(system, memory, dimension):
     """
     machine_type = _int(system, "nMachineType", 1)
     turbo = _bool(system, "bTurbo")
+    mhz = _int(system, "nCpuFreq", 25)
     # Any slot, because a cube holds three boards and a machine with one in the
     # second is a machine with a NeXTdimension. Counted off the keys that are
     # there rather than against a number, so this module holds no second answer
@@ -143,15 +151,19 @@ def describe(system, memory, dimension):
     return {
         "kind": machine_type,
         # The model's own name, which is not translated in any language and is
-        # therefore a fact like the chips. What gets added to it, the Turbo and
-        # the board, is a sentence and belongs to the browser.
+        # therefore a fact like the chips. What gets added to it, the Turbo,
+        # the Color, the Nitro and the board, is a sentence and belongs to the
+        # browser.
         "model": MACHINE_NAMES.get(machine_type, "?"),
         "enclosure": enclosure(machine_type),
         "turbo": turbo,
         "colour": _bool(system, "bColor"),
+        # A fact rather than a clock rule for the browser to hold, because the
+        # file has no setting for it and what makes a Nitro is the emulator's.
+        "nitro": turbo and mhz == NITRO_MHZ,
         "dimension": dimension_seated,
         "cpu": CPU_NAMES.get(_int(system, "nCpuLevel", 1), "68040"),
-        "mhz": _int(system, "nCpuFreq", 25),
+        "mhz": mhz,
         "memory_mb": _memory(memory),
         "banks": [_int(memory, "nMemoryBankSize%d" % bank) for bank in range(4)],
         # The three that decide whether a configuration runs at all, named

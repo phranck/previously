@@ -217,6 +217,8 @@ export interface MachineDescription {
   turbo: boolean;
   /** Whether the color board is seated. */
   colour: boolean;
+  /** Whether the machine is a Nitro: a turbo board at config.NITRO_MHZ. */
+  nitro: boolean;
   /** Whether any NeXTdimension board is seated. */
   dimension: boolean;
   /** The processor, such as "68040". */

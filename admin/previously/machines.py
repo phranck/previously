@@ -40,11 +40,10 @@ FPU_ON_CHIP = "68040"
 #: machine is, and adds NITRO_MHZ only where a turbo board is seated.
 CLOCKS = (16, 20, 25, 33)
 
-#: The fifth, which is what the catalog calls a Nitro. The file has no setting
-#: of its own for Nitro: Previous takes a turbo board at this clock for one,
-#: maps the Nitro's cache controller for it in its src/cpu/memory.c, and names it
-#: Nitro in its status bar.
-NITRO_MHZ = 40
+#: The fifth, which is what the catalog calls a Nitro. What makes one is the
+#: emulator's own rule, and `config.py` holds it beside the emulator's other
+#: facts, because `config.describe` reports a Nitro off the file.
+NITRO_MHZ = config.NITRO_MHZ
 
 #: What a machine runs at when nothing else has been chosen, which is what
 #: Configuration_SetSystemDefaults writes every time the machine type or the
