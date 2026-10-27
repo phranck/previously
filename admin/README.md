@@ -201,6 +201,8 @@ The other two ways are worse in both directions. Forking a shell here would hand
 
 The SSH client is told not to check the host key and not to write one down, because the service's home is read only and the other end of the loopback is this machine: an impostor there would already be root on it. It is also told to use passwords rather than keys, so that a key put in `authorized_keys` later cannot quietly turn the login prompt off.
 
+**A password always logs in, and a key as well where one was given.** Raspberry Pi Imager offers a password or keys and not both, and choosing keys has cloud-init write `PasswordAuthentication no`, which refuses the Terminal with `Permission denied (publickey)`. The package therefore installs `/etc/ssh/sshd_config.d/10-previously.conf`, which turns passwords on again. It sorts before cloud-init's file, because sshd takes the first value it reads for a setting. Removing the package takes the file away again.
+
 `websocket.py` is the protocol, out of the standard library: the handshake from `hashlib`, the frames from `struct`. `terminal.py` is the session and the two directions it is pumped in.
 
 In the browser, `interface/terminal.js` is the view and `interface/app/shell.js` holds the socket and the login prompt. The view draws what it is given, says what was typed into it and says how large it has become; what is on the other end is the page's business.
