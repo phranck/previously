@@ -136,6 +136,19 @@ test("the lamps near the end of a row are orange and then red, by their place", 
   ]);
 });
 
+test("the green lamps grow paler along the row, from the first green one to the last", () => {
+  const row = lay(`<nx-leds lamps="20"></nx-leds>`);
+  const along = [...row.querySelectorAll(".led")]
+    .map((lamp) => lamp.style.getPropertyValue("--along"));
+
+  /* Fourteen green ones graded from the start to the end of the green part,
+     and the orange and red ones a color each. */
+  assert.equal(along[0], "0");
+  assert.equal(along[13], "1");
+  assert.ok(Number(along[1]) > 0 && Number(along[12]) < 1, along.join(" "));
+  assert.deepEqual(along.slice(14), Array(6).fill(""));
+});
+
 test("a row filled in before it is on the page is drawn when it arrives", () => {
   lay("");
   const row = document.createElement("nx-leds");

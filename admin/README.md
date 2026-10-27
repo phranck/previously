@@ -566,7 +566,7 @@ NeXTSTEP had no Activity Monitor, and a Pi that boots straight into an emulator 
 
 **The board in the upper left, the cores beside it.** The board's picture stands there with its model under it, as in the Raspberry Pi window, and both windows read the board and its model from the same place and pick the drawing the same way.
 
-**One row of lamps per core.** Each core's load is a run of twenty narrow upright lamps on a dark field, lit from the left, the way BeOS's Pulse drew a processor. One lamp is five per cent, and the figure stands beside the row. How many rows there are is the board's to say, so a Pi 5 draws four and a two-core board draws two.
+**One row of lamps per core.** Each core's load is a run of twenty narrow upright lamps on a dark field, lit from the left, the way BeOS's Pulse drew a processor. One lamp is five per cent, and the figure stands beside the row. A lit lamp glows in its color onto the field, and the green ones grow paler towards the orange, so the row brightens as it fills. How many rows there are is the board's to say, so a Pi 5 draws four and a two-core board draws two.
 
 **Under the cores, indented to their column, the readings that are not the load of one core.** Memory is a row of lamps for what is in use, with what is in use and what there is beside it, such as `1.2/4.0 GB`. A gigabyte of memory is 1024 MB here, so a 4 GB board reads as 4.0 GB. The three load averages are figures, read against the number of cores, because 4.0 is a machine working flat out on four cores and one four times oversubscribed on one. The last line is what the emulator costs. Its percentage is of one core, so around 150 is ordinary with a NeXTdimension.
 

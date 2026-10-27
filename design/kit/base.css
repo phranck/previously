@@ -60,8 +60,8 @@
   /* Measured off the screenshot: not a gray, the dark value with more blue. */
   --desktop: #555577;
 
-  /* A lamp that is on: beside a state, in a busy window, and in a row of
-     nx-leds. The green design/boards.py lights the board's own lamp with, so a
+  /* A lamp that is on: beside a state, in a busy window, and the glow round a
+     lamp of nx-leds. The green design/boards.py lights the board's own lamp with, so a
      lamp on the screen and a lamp on the drawn board are one green. */
   --live: #2ec84a;
   /* The lamps near the end of a row of nx-leds, which warn the way a level
@@ -70,6 +70,16 @@
      at the same brightness. */
   --warm: #f0a020;
   --hot: #e0302a;
+  /* A lamp of nx-leds and nx-chart, which glows on its black field: the lit
+     one is a paler core with its color round it, and the dark one is nearly
+     black. The green cores run from the first to the second along the green
+     part of a row, darker at its start. phranck's choice of 27 October 2026,
+     look C of #729. */
+  --lamp-live-start: #3fd05c;
+  --lamp-live: #7dff96;
+  --lamp-warm: #ffd27a;
+  --lamp-hot: #ff8a80;
+  --lamp-dark: #262626;
 
   /* What a field carries when it has to be noticed: a version newer than the
      one running, and what a window is busy with. NeXTSTEP had nothing of this

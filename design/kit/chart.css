@@ -1,8 +1,8 @@
 /* --- nx-chart ------------------------------------------------------------ */
 
 /* The field and the lamps of nx-leds, turned on their side: the same sunken
-   black field with six pixels of it around the lamps, and lamps that are dark
-   gray until they light. A lamp is a square of four pixels with two between,
+   black field with six pixels of it around the lamps, and the same lamps,
+   nearly black until they light. A lamp is a square of four pixels with two between,
    the pitch of nx-leds. That is a whole number of device pixels at every size
    the interface offers on a display of two device pixels per pixel, 10 and 5
    at 125 per cent, so every gap in the row is as wide as every other. A
@@ -32,7 +32,5 @@ nx-chart .column {
   width: 4px;
 }
 
-nx-chart .led { height: 4px; background: var(--dark); }
-nx-chart .led[lit] { background: var(--live); }
-nx-chart .led[lit][zone="warm"] { background: var(--warm); }
-nx-chart .led[lit][zone="hot"] { background: var(--hot); }
+/* How a lamp looks, dark or lit, is nx-leds' `.led`. */
+nx-chart .led { height: 4px; }

@@ -2,10 +2,9 @@
 
 /* A row of lamps on a dark field, lighting from the left as whatever it
    measures fills up. NeXTSTEP had nothing of the kind, so this is BeOS's
-   Pulse, which drew each processor as a run of LEDs, built from this desk's
-   own parts: the sunken edge every reading stands in, and the lamp the
-   readings already use for a state, lit in the same green and dark in the
-   same gray. A lit lamp therefore means here what it means beside "running".
+   Pulse, which drew each processor as a run of LEDs, set in the sunken edge
+   every reading stands in. The lamps glow in the green a lamp beside
+   "running" is lit with, so a lit lamp means here what it means there.
 
    The lamps are whole pixels at a size stated here, not shares of whatever
    width the row is given. A lamp of 9.6 pixels is drawn as a blend of two
@@ -42,12 +41,26 @@ nx-leds .lamps {
 nx-leds .led {
   width: var(--led-width);
   height: var(--led-height);
-  background: var(--dark);
 }
 
-nx-leds .led[lit] { background: var(--live); }
-nx-leds .led[lit][zone="warm"] { background: var(--warm); }
-nx-leds .led[lit][zone="hot"] { background: var(--hot); }
+/* A lamp, of a row here and of a chart, which is this row on its side. Lit,
+   it glows in its color onto the black field round it. A green one is as far
+   from the darker green to the paler one as `--along` says, which the element
+   sets from where the lamp stands in the green part. */
+.led { background: var(--lamp-dark); }
+.led[lit] {
+  background: color-mix(in srgb, var(--lamp-live) calc(var(--along, 1) * 100%),
+                        var(--lamp-live-start));
+  box-shadow: 0 0 2px var(--live), 0 0 5px color-mix(in srgb, var(--live) 70%, transparent);
+}
+.led[lit][zone="warm"] {
+  background: var(--lamp-warm);
+  box-shadow: 0 0 2px var(--warm), 0 0 5px color-mix(in srgb, var(--warm) 70%, transparent);
+}
+.led[lit][zone="hot"] {
+  background: var(--lamp-hot);
+  box-shadow: 0 0 2px var(--hot), 0 0 5px color-mix(in srgb, var(--hot) 70%, transparent);
+}
 
 /* The figure, which changes while somebody reads it, so its digits are held
    to one width and the words after them do not shift about. Where the row is

@@ -2985,8 +2985,16 @@ class NxChart extends HTMLElement {
         lamp.toggleAttribute("lit", place < lit);
         const stands = (place + 1) / lamps.length * top;
         const zone = stands > this.hot ? "hot" : stands > this.warm ? "warm" : null;
-        if (zone) lamp.setAttribute("zone", zone);
-        else lamp.removeAttribute("zone");
+        if (zone) {
+          lamp.setAttribute("zone", zone);
+          lamp.style.removeProperty("--along");
+          continue;
+        }
+        lamp.removeAttribute("zone");
+        /* A green lamp grows paler with the value it stands for, up to where
+           orange begins, or up the whole column where nothing warns. */
+        lamp.style.setProperty("--along", alongTheGreen(Number.isFinite(this.warm)
+          ? stands / this.warm : place / Math.max(lamps.length - 1, 1)));
       }
     }
   }
@@ -3016,6 +3024,18 @@ const LEDS_FOLLOW_MS = 120;
  *  under a lamp, so the row stops moving only once it lights what the share
  *  lights. */
 const LEDS_ARRIVED = 0.5;
+
+/**
+ * How far along the green part of a row or a column a lamp stands, as the
+ * stylesheet's `--along` reads it, which grades its green from darker to
+ * paler.
+ * @param {number} share - From 0 at the start of the green part to 1 at its
+ *   end. Anything beyond is held to that.
+ * @returns {string} The share to three places, as a custom property takes it.
+ */
+function alongTheGreen(share) {
+  return String(Number(Math.min(Math.max(share, 0), 1).toFixed(3)));
+}
 
 /**
  * A row of lamps lighting from the left, for a share of something.
@@ -3057,15 +3077,18 @@ class NxLeds extends HTMLElement {
     this.row = document.createElement("div");
     this.row.className = "lamps";
     const count = Number(this.getAttribute("lamps")) || LEDS_IN_A_ROW;
+    const green = Math.ceil(count * LEDS_WARM_FROM);
     for (let lamp = 0; lamp < count; lamp += 1) {
       const led = document.createElement("i");
       led.className = "led";
       /* Each lamp keeps the color of its place in the row, so a row filling
          up goes green, then orange, then red, and the color says how near
-         the end the share is before the figure is read. */
+         the end the share is before the figure is read. The green ones grow
+         paler towards the orange. */
       const along = lamp / count;
       if (along >= LEDS_HOT_FROM) led.setAttribute("zone", "hot");
       else if (along >= LEDS_WARM_FROM) led.setAttribute("zone", "warm");
+      else led.style.setProperty("--along", alongTheGreen(lamp / Math.max(green - 1, 1)));
       this.row.append(led);
     }
 
@@ -3249,6 +3272,7 @@ export {
   WAYS,
   ZOOM_MS,
   ZOOM_RECTANGLES,
+  alongTheGreen,
   between,
   closestTo,
   deskIsNew,
