@@ -1035,8 +1035,11 @@ def units(monkeypatch, tmp_path):
 
 
 def systemctl(commands, verb):
-    """@returns list of str, the units one `systemctl <verb>` was given."""
-    return next(command[2:] for command in commands if command[:2] == ["systemctl", verb])
+    """@returns list of str, the units one `systemctl <verb>` was given,
+    without a flag such as `--now` that stands among them."""
+    return [word for word in next(command[2:] for command in commands
+                                  if command[:2] == ["systemctl", verb])
+            if not word.startswith("--")]
 
 
 def test_what_nothing_here_needs_is_switched_off(tmp_path, commands, units):
@@ -1065,6 +1068,32 @@ def test_the_apt_timers_that_run_for_nothing_are_switched_off(tmp_path, commands
 
     assert {"apt-daily.timer", "apt-daily-upgrade.timer"} <= set(
         systemctl(commands, "disable"))
+
+
+def test_what_is_switched_off_is_stopped_as_well(tmp_path, commands, units):
+    """`systemctl disable` alone leaves a running unit running until the next
+    boot. On next4 both apt timers stood disabled and still due that night."""
+    work = work_in(tmp_path)
+    work.at("lean", 9)
+
+    setup.STEPS["lean"](work)
+
+    disabling = next(command for command in commands
+                     if command[:2] == ["systemctl", "disable"])
+    assert "--now" in disabling
+
+
+def test_an_image_switches_off_without_stopping(tmp_path, commands, units, not_booted):
+    """Nothing runs in pi-gen's chroot, so there is nothing to stop, and what
+    is switched off there never starts at the image's first boot."""
+    work = work_in(tmp_path)
+    work.at("lean", 9)
+
+    setup.STEPS["lean"](work)
+
+    disabling = next(command for command in commands
+                     if command[:2] == ["systemctl", "disable"])
+    assert "--now" not in disabling
 
 
 def test_a_failed_run_switches_back_on_only_what_it_switched_off(

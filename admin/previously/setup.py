@@ -1888,10 +1888,17 @@ def _lean(work):
 
 
 def _left_out():
-    """Switches off whichever of `LEFT_OUT` are on, and keeps cloud-init away.
+    """Switches off whichever of `LEFT_OUT` are on, stops them, and keeps
+    cloud-init away.
 
     @returns list of str, the units switched off, with the file that keeps
       cloud-init away as one more entry where this wrote one.
+
+    Stopped as well as switched off, because `systemctl disable` on its own
+    leaves a running unit running until the next boot: on next4 both apt
+    timers stood disabled and still due that night. Nothing runs in pi-gen's
+    chroot, so an image is only switched off, and what is off there never
+    starts at its first boot.
 
     A machine that is running keeps cloud-init away from its next boot on.
     An image keeps it for its first boot, which applies what Raspberry Pi
@@ -1899,7 +1906,7 @@ def _left_out():
     """
     on = [unit for unit in LEFT_OUT if unit_state(unit) == "enabled"]
     if on:
-        run(["systemctl", "disable", *on])
+        run(["systemctl", "disable", *(["--now"] if booted() else []), *on])
     if CLOUD_INIT_OFF.parent.is_dir() and not CLOUD_INIT_OFF.exists():
         if booted():
             CLOUD_INIT_OFF.touch()
