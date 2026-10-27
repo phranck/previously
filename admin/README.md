@@ -327,7 +327,7 @@ A system is a disk and the machine boots it. Developer Tools, applications and w
 
 **An image that says ISO 9660 says so in the panel.** NeXT's own CDs carry a variation of 4.3BSD FFS, so an ISO 9660 image mounts nowhere however good it is. That is a positive test on the signature at offset 0x8001 and nothing more: an image that says nothing may still be anything, and the tool claims nothing about those.
 
-**A disc wears the generic SCSI device**, because NeXTSTEP 3.3 has no picture of a CD at all. Its Workspace carries a hard disk, a floppy, the magneto-optical cartridge, the network and a SCSI device, and a CD-ROM on the bus is the last of those. Nothing is invented for it.
+**A disc wears NeXTSTEP's compact disc**, the rainbow disc the Workspace shows for a mounted CD. NeXTSTEP 3.3 keeps it in the bundle of its CD file system, `/usr/filesystems/CDROM.fs`, rather than among the Workspace's own pictures.
 
 **A disk can be copied, and a copy can be put back.** A system is one file, so a backup of it is a copy of that file, kept in `Backups` inside the disks folder and shown there as what it is. Both directions are the helper's work, because a disk is two gigabytes and that folder is one this service may not write, so the Installer window is where the copying is watched.
 

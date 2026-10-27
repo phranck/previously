@@ -1789,8 +1789,8 @@ def test_a_disc_is_a_thing_beside_the_disks(service, tmp_path):
     assert kept["kind"] == "disc"
     assert kept["name"] == "DeveloperTools"
     assert kept["id"] == "DeveloperTools.img"
-    # NeXTSTEP 3.3 has no picture of a CD, so it wears the generic SCSI device.
-    assert kept["icon"] == "scsi"
+    # The compact disc NeXTSTEP 3.3 draws for a CD file system.
+    assert kept["icon"] == "cdrom"
     assert kept["iso"] is False
     # Not in the machine, which is what says it can be put in.
     assert kept["slot"] is None

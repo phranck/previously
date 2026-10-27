@@ -27,9 +27,9 @@ const Art = {
   Installer: "Installer",
   Picture: "tiff",
   Disk: "winchester",
-  /* NeXTSTEP 3.3 has no picture of a CD, so a disc wears the generic SCSI
-     device, which is what a CD-ROM on the bus is. */
-  Disc: "scsi",
+  /* The compact disc NeXTSTEP 3.3 draws for a CD, out of its CD file
+     system's bundle. */
+  Disc: "cdrom",
 };
 
 /** Which picture a machine wears, by the case the service says it comes in.

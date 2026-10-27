@@ -48,7 +48,11 @@ ICONS = {
     "floppy": ("floppy", "a floppy disk"),
     "folder": ("folder", "a folder"),
     "net": ("net", "the network"),
-    "scsi": ("scsi", "a SCSI device"),
+    # The compact disc, which the Workspace draws for a CD from the bundle of
+    # the file system that reads it rather than from its own directory. A disc
+    # wears it in the File Viewer.
+    "/usr/filesystems/CDROM.fs/CDROM.fs":
+        ("cdrom", "a compact disc, as NeXTSTEP's CD file system drew one"),
     "defaultUnixIcon": ("defaultUnixIcon", "a Unix program, which the console is"),
     # NeXTSTEP's own icon for an application that brought none of its own.
     # Configure.app, which configured a real NeXT's hardware and would have

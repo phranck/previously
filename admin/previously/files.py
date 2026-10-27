@@ -77,11 +77,10 @@ DISCS_AT = "/Discs"
 #: a hard disk. What it arrived as is not what it is.
 DISK_ICON = "winchester"
 
-#: And what a disc wears. NeXTSTEP 3.3 has no picture of a CD: its Workspace
-#: carries a hard disk, a floppy, the magneto-optical cartridge, the network
-#: and a SCSI device, and nothing else. A CD-ROM on the bus is the last of
-#: those, so that is what it wears and nothing is invented for it.
-DISC_ICON = "scsi"
+#: And what a disc wears: the compact disc NeXTSTEP 3.3 draws for a CD, which
+#: its CD file system's bundle carries as CDROM.fs.tiff rather than the
+#: Workspace's own directory.
+DISC_ICON = "cdrom"
 
 #: Which set a machine belongs to. The eleven this project ships cannot be
 #: changed, and everything somebody saved can, so every machine says which it is
@@ -233,10 +232,7 @@ def _disc(path, inserted):
     @param inserted - What each SCSI slot holds, or None.
     @returns dict
 
-    It wears the generic SCSI device, because NeXTSTEP 3.3 has no picture of a
-    CD at all: its Workspace carries a hard disk, a floppy, the magneto-optical
-    cartridge, the network and a SCSI device, and a CD-ROM on the bus is the
-    last of those. Nothing is invented for it.
+    It wears the compact disc NeXTSTEP 3.3 draws for a CD.
     """
     on = None
     for slot, what in enumerate(inserted or []):

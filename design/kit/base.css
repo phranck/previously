@@ -234,6 +234,7 @@
      NeXT's own figure of an attention panel in chapter 5 of the user
      interface documentation. */
   --return-key: url("parts/return-key.png");
+  --cdrom: url("parts/cdrom.png");
   --Installer: url("parts/Installer.png");
   --Updates: url("parts/Updates.png");
   --Localization: url("parts/Localization.png");
@@ -245,7 +246,6 @@
   --png: url("parts/png.png");
   --Preferences: url("parts/Preferences.png");
   --root: url("parts/root.png");
-  --scsi: url("parts/scsi.png");
   --Terminal: url("parts/Terminal.png");
   --tiff: url("parts/tiff.png");
   --trash: url("parts/trash.png");
