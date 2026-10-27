@@ -1012,32 +1012,30 @@ def test_the_package_keeps_swap_off_the_card(build, tmp_path):
 # -- the login behind the Terminal ---------------------------------------
 
 
-def test_the_terminal_may_log_in_with_a_password_over_the_loopback(build, tmp_path):
-    """The Terminal's SSH client offers a password and nothing else, and
-    Raspberry Pi Imager's choice of keys alone has cloud-init write
-    `PasswordAuthentication no` for every address, which refused every login
-    with "Permission denied (publickey)" on next4 and next5 on 27.10.2026. A
-    Match block in a drop-in ends with its file (sshd -T on OpenSSH 10.0 on
-    next5), so the network stays as the Imager left it."""
-    from previously import terminal
-
+def test_a_password_always_logs_in(build, tmp_path):
+    """Raspberry Pi Imager offers a password or keys and not both, and
+    choosing keys has cloud-init write `PasswordAuthentication no` into
+    50-cloud-init.conf. That refused the Terminal, whose SSH client offers a
+    password and nothing else, with "Permission denied (publickey)" on next4
+    and next5 on 27.10.2026. sshd takes the first value it reads for a
+    setting, so the drop-in sorts before cloud-init's."""
     build.lay_out(tmp_path / "tree")
     written = (tmp_path / "tree" / build.SSHD_DROP_IN).read_text(encoding="utf-8")
     lines = [line.strip() for line in written.splitlines()
              if line.strip() and not line.startswith("#")]
+    directory, name = build.SSHD_DROP_IN.rsplit("/", 1)
 
-    assert build.SSHD_DROP_IN.startswith("etc/ssh/sshd_config.d/")
-    assert build.SSHD_DROP_IN.endswith(".conf")
-    assert lines[0].startswith("Match Address ")
-    assert terminal.SSH_HOST in lines[0].split(" ", 2)[2].split(",")
-    assert lines[1:] == ["PasswordAuthentication yes"]
+    assert directory == "etc/ssh/sshd_config.d"
+    assert name.endswith(".conf")
+    assert name < "50-cloud-init.conf"
+    assert lines == ["PasswordAuthentication yes"]
 
 
 def test_sshd_reads_the_drop_in_when_it_comes_and_when_it_goes(build, tmp_path):
     """sshd reads its configuration when it starts and when it is reloaded,
     so a drop-in nobody reloads it for changes nothing until the next boot.
     It is not a conffile, so removing the package takes it away as well, and
-    the loopback is closed to passwords again."""
+    the machine's own settings decide about passwords again."""
     postinst = build.scripts()["postinst"]
     postrm = build.scripts()["postrm"]
     reloaded = "systemctl try-reload-or-restart %s || true" % build.SSHD_UNIT

@@ -127,20 +127,19 @@ SWAP_DROP_IN = (
     "[Main]\n"
     "Mechanism=zram\n")
 
-#: What lets the Terminal log in. Its SSH client offers a password and nothing
-#: else, `terminal.SSH_OPTIONS`, and a card Raspberry Pi Imager set up for keys
-#: alone has cloud-init write `PasswordAuthentication no` for every address.
-#: This takes passwords back from the loopback alone, so the network stays as
-#: the Imager left it: a Match block in a drop-in ends with its file. Under
-#: /etc, because sshd reads drop-ins nowhere else, and named to sort after the
-#: numbered ones, so an administrator's own Match for the loopback comes first
-#: and wins.
-SSHD_DROP_IN = "etc/ssh/sshd_config.d/" + NAME + "-terminal.conf"
+#: What keeps the password working. Raspberry Pi Imager offers a password or
+#: keys and not both, and choosing keys has cloud-init write
+#: `PasswordAuthentication no` into 50-cloud-init.conf, which refuses the
+#: Terminal's SSH client, `terminal.SSH_OPTIONS`, and everybody else who logs
+#: in with the password. A password always logs in, and a key does as well
+#: where one was given. Under /etc, because sshd reads drop-ins nowhere else,
+#: and named to sort before cloud-init's, because sshd takes the first value
+#: it reads for a setting.
+SSHD_DROP_IN = "etc/ssh/sshd_config.d/10-" + NAME + ".conf"
 SSHD_DROP_IN_TEXT = (
-    "# Written by the previously package. The admin's Terminal logs in to this\n"
-    "# machine over the loopback with a password, and only there.\n"
-    "Match Address 127.0.0.1,::1\n"
-    "    PasswordAuthentication yes\n")
+    "# Written by the previously package. A password always logs in, and a\n"
+    "# key as well where one was given.\n"
+    "PasswordAuthentication yes\n")
 
 #: The unit sshd runs as on Debian, told to read that drop-in.
 SSHD_UNIT = "ssh.service"
@@ -584,8 +583,8 @@ setup.refresh_quiet()
     udevadm control --reload-rules || true
     udevadm trigger --subsystem-match=misc --sysname-match=uinput || true
 
-    # sshd told about the drop-in that lets the Terminal log in. Not fatal: a
-    # machine without sshd has no login for the Terminal anyway.
+    # sshd told about the drop-in that keeps the password working. Not fatal:
+    # a machine without sshd has no login for the Terminal anyway.
     systemctl try-reload-or-restart %(sshd)s || true
 
     systemctl daemon-reload
@@ -646,8 +645,8 @@ if [ "$1" = remove ]; then
     # and the script, which have gone with the package, so the board draws no
     # picture of a tool that is not there.
     update-initramfs -u -k "$(uname -r)" || true
-    # sshd told that the Terminal's drop-in has gone, so the loopback takes
-    # no password any more where the machine's own settings say so.
+    # sshd told that the drop-in has gone, so the machine's own settings
+    # decide about passwords again.
     systemctl try-reload-or-restart %(sshd)s || true
 fi
 
