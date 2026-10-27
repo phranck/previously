@@ -130,10 +130,9 @@
      reserves six pixels this one does not use. Whole and even, for the reason
      stated there. */
   --status-line: 12px;
-  /* One reading in a list of them, a line of figures or a row of lamps alike,
-     so a column of both reads as one list. A label beside something taller
+  /* A row of lamps in a list of readings. A label beside something taller
      stands in the first of these, level with where a row of lamps would be. */
-  --reading-height: 22px;
+  --lamps-height: 22px;
 
   --row: 20px;           /* the menu raster, and the height of one entry */
   --title-height: 21px;  /* 19 px of bar and 2 px of the shadow under it */
@@ -1417,12 +1416,11 @@ nx-row label { text-align: right; font-weight: bold; }
 
 /* A reading: text on the window's gray. A white sunken field is what the
    Controls chapter makes a text field, a place to type, and nobody types
-   here, so a reading wears neither. Three pixels above and below keep a row
-   22 high, the height of a row of lamps, so a column of figures and lamps
-   still reads as one list. */
+   here, so a reading wears neither. It is a line high and no more, as a
+   reading with a state lamp is, so every row of text in a list steps by the
+   line and the gap alike. */
 nx-field {
   display: block;
-  padding: 3px 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1790,17 +1788,15 @@ nx-leds {
   min-width: 0;
 }
 
-/* The field. A row of lamps is as high as a reading, so a row with a bar in
-   it and a row with a figure in it stand the same height and a column of
-   both reads as one list. The field above and below the lamps is what that
-   height leaves inside the one pixel edge, six pixels at 22. A zoom rounds
+/* The field. The field above and below the lamps is what the height of a row
+   of lamps leaves inside the one pixel edge, six pixels at 22. A zoom rounds
    that padding alike above and below, so the lamps stand in the middle at
    every zoom. */
 nx-leds .lamps {
   flex: 0 0 auto;
   display: flex;
   gap: var(--led-gap);
-  padding: calc((var(--reading-height) - var(--led-height)) / 2 - 1px) 6px;
+  padding: calc((var(--lamps-height) - var(--led-height)) / 2 - 1px) 6px;
   background: var(--black);
   border: 1px solid;
   border-image: var(--sunken);

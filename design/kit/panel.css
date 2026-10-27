@@ -53,12 +53,11 @@ nx-row label { text-align: right; font-weight: bold; }
 
 /* A reading: text on the window's gray. A white sunken field is what the
    Controls chapter makes a text field, a place to type, and nobody types
-   here, so a reading wears neither. Three pixels above and below keep a row
-   22 high, the height of a row of lamps, so a column of figures and lamps
-   still reads as one list. */
+   here, so a reading wears neither. It is a line high and no more, as a
+   reading with a state lamp is, so every row of text in a list steps by the
+   line and the gap alike. */
 nx-field {
   display: block;
-  padding: 3px 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -25,17 +25,15 @@ nx-leds {
   min-width: 0;
 }
 
-/* The field. A row of lamps is as high as a reading, so a row with a bar in
-   it and a row with a figure in it stand the same height and a column of
-   both reads as one list. The field above and below the lamps is what that
-   height leaves inside the one pixel edge, six pixels at 22. A zoom rounds
+/* The field. The field above and below the lamps is what the height of a row
+   of lamps leaves inside the one pixel edge, six pixels at 22. A zoom rounds
    that padding alike above and below, so the lamps stand in the middle at
    every zoom. */
 nx-leds .lamps {
   flex: 0 0 auto;
   display: flex;
   gap: var(--led-gap);
-  padding: calc((var(--reading-height) - var(--led-height)) / 2 - 1px) 6px;
+  padding: calc((var(--lamps-height) - var(--led-height)) / 2 - 1px) 6px;
   background: var(--black);
   border: 1px solid;
   border-image: var(--sunken);
