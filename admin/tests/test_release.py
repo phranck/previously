@@ -522,6 +522,54 @@ def test_releases_without_notes_are_not_one_entry():
     assert release.runs(every) == [["1.1.0"], ["1.0.0"]]
 
 
+# -- what the notes window shows of a release ------------------------------
+
+
+#: A release's notes in one language, with the section every release ends on.
+WITH_UPDATING = ("One fix.\n\n## Fixed\n\n- Something.\n\n## Updating\n\n"
+                 "Press Update in the Raspberry Pi's Info window.")
+
+
+@pytest.mark.parametrize("heading", [
+    "Updating", "Aktualisieren", "Mettre à jour", "Aggiornare", "Actualizar",
+    "Uppdatera",
+])
+def test_the_section_about_updating_is_left_out_in_every_language(heading):
+    """The window says it once at its foot, in the language of the interface,
+    so a document of several releases does not say it once per release."""
+    notes = "One fix.\n\n## Fixed\n\n- Something.\n\n## %s\n\nPress Update." % heading
+
+    assert release.without_updating(notes) == "One fix.\n\n## Fixed\n\n- Something."
+
+
+def test_notes_without_that_section_are_left_as_they_are():
+    assert release.without_updating("One fix.\n\n## Fixed\n\n- Something.") \
+        == "One fix.\n\n## Fixed\n\n- Something."
+
+
+def test_only_that_section_goes_wherever_it_stands():
+    """A release that put it before another section loses that section alone."""
+    notes = "One fix.\n\n## Updating\n\nPress Update.\n\n## Fixed\n\n- Something."
+
+    assert release.without_updating(notes) == "One fix.\n\n## Fixed\n\n- Something."
+
+
+def test_several_releases_read_as_one_document_newest_first():
+    """Each under its version as a heading, in the language asked for and
+    without the section about updating, so somebody three releases behind
+    reads what changed in one piece."""
+    german = ('\n\n<details lang="de"><summary>Deutsch</summary>\n\n'
+              'Zwei Fixes.\n\n## Aktualisieren\n\nDrücke.\n\n</details>\n')
+    every = [
+        {"version": "1.3.1", "notes": WITH_UPDATING},
+        {"version": "1.3.0", "notes": "Two fixes." + german},
+    ]
+
+    assert release.combined(every, "de") == (
+        "# 1.3.1\n\nOne fix.\n\n## Fixed\n\n- Something.\n\n"
+        "# 1.3.0\n\nZwei Fixes.")
+
+
 # -- what this is released from -------------------------------------------
 
 

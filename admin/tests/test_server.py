@@ -2246,7 +2246,8 @@ def test_what_a_release_says_about_itself_has_its_own_address(
 
     assert status == 200
     assert said == {"version": "1.0.2", "notes": "## Installing it",
-                    "versions": [{"first": "1.0.2", "last": "1.0.2"}]}
+                    "versions": [{"first": "1.0.2", "last": "1.0.2"}],
+                    "installed": None, "newer": [], "since": False}
 
 
 def test_the_notes_come_in_the_language_the_page_asks_for(service, monkeypatch):
@@ -2287,7 +2288,8 @@ def test_a_board_that_knows_of_no_release_says_so_rather_than_failing(
     status, _, body = fetch(service + "/api/update/notes")
 
     assert status == 200
-    assert json.loads(body) == {"version": None, "notes": "", "versions": []}
+    assert json.loads(body) == {"version": None, "notes": "", "versions": [],
+                                "installed": None, "newer": [], "since": False}
 
 
 @pytest.fixture
@@ -2397,6 +2399,50 @@ def test_the_newest_is_offered_before_the_list_knows_of_it(service, monkeypatch)
     assert said["versions"] == [{"first": "1.3.2", "last": "1.3.2"},
                                 {"first": "1.3.1", "last": "1.3.1"}]
     assert said["notes"] == "Newer."
+
+
+def test_the_notes_since_the_installed_release_read_as_one_document(
+        service, three_releases, monkeypatch):
+    """Somebody three releases behind reads what changed in one piece, each
+    release under its version, newest first, in the language asked for. The
+    answer says which releases those are, so the window can offer the entry."""
+    monkeypatch.setattr(server.setup, "version_of", lambda package: "1.2.6")
+
+    _, _, body = fetch(service + "/api/update/notes?since=1&language=de")
+    said = json.loads(body)
+
+    assert said["since"] is True
+    assert said["version"] == "1.3.1"
+    assert said["installed"] == "1.2.6"
+    assert said["newer"] == ["1.3.1", "1.3.0"]
+    assert said["notes"] == "# 1.3.1\n\nTwo fixes.\n\n# 1.3.0\n\nNotes in deiner Sprache."
+
+
+def test_with_nothing_newer_the_newest_notes_stand_in(
+        service, three_releases, monkeypatch):
+    """A machine on the newest release has nothing since it, so the window
+    opens on the newest release as it always did."""
+    monkeypatch.setattr(server.setup, "version_of", lambda package: "1.3.1")
+
+    _, _, body = fetch(service + "/api/update/notes?since=1")
+    said = json.loads(body)
+
+    assert said["since"] is False
+    assert said["newer"] == []
+    assert said["version"] == "1.3.1"
+    assert said["notes"] == "Two fixes."
+
+
+def test_the_section_about_updating_is_not_in_what_the_window_shows(
+        service, monkeypatch):
+    """The window says it once at its foot, in the language of the interface,
+    so the notes of several releases do not say it once each."""
+    monkeypatch.setattr(server.release, "published", lambda check=False: {
+        "version": "1.3.1", "notes": "Two fixes.\n\n## Updating\n\nPress Update."})
+
+    _, _, body = fetch(service + "/api/update/notes")
+
+    assert json.loads(body)["notes"] == "Two fixes."
 
 
 def test_asking_for_a_replacement_needs_a_session(service, tmp_path):

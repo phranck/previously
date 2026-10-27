@@ -102,6 +102,18 @@ TRANSLATION = re.compile(
 #: Where a paragraph ends in Markdown, which is at a blank line.
 PARAGRAPH_END = re.compile(r"\n[ \t]*\n")
 
+#: How a release's notes head the section that says how to update, in each of
+#: the interface's languages. The notes window says that once at its foot, so
+#: the section is taken out of what it shows, and a document of several
+#: releases does not say it once per release. A release heading it otherwise
+#: keeps it, which is a repeat rather than a loss.
+UPDATING_HEADINGS = ("Updating", "Aktualisieren", "Mettre à jour", "Aggiornare",
+                     "Actualizar", "Uppdatera")
+UPDATING = re.compile(
+    r"^## (?:%s)[ \t]*\n.*?(?=^## |\Z)"
+    % "|".join(re.escape(heading) for heading in UPDATING_HEADINGS),
+    re.S | re.M)
+
 #: The least time between two lookups, whoever asks for one. Three a minute,
 #: which is what opening the Raspberry Pi window is allowed to cost.
 #:
@@ -268,6 +280,31 @@ def notes_in(notes, language):
         if code == language:
             return text.strip()
     return TRANSLATION.sub("", notes).strip()
+
+
+def without_updating(notes):
+    """A release's notes without the section that says how to update.
+
+    @param notes - The notes in one language, as `notes_in` answers them.
+    @returns str, the same notes with that section taken out, wherever it
+      stands, and as they were where there is none.
+    """
+    return UPDATING.sub("", notes).strip()
+
+
+def combined(every, language):
+    """The notes of several releases as one document.
+
+    @param every - Releases as `history` answers them, newest first.
+    @param language - Which language, as `notes_in` takes it.
+    @returns str, Markdown: each release under its version as a heading, in
+      that language and without the section about updating, so somebody
+      several releases behind reads what changed in one piece.
+    """
+    return "\n\n".join(
+        ("# %s\n\n%s" % (entry["version"],
+                         without_updating(notes_in(entry["notes"], language)))).strip()
+        for entry in every)
 
 
 def runs(every):

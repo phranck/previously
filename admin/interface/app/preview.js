@@ -11,7 +11,6 @@
  * would have three special cases by the third one.
  */
 
-import { NxPopup } from "../nextstep.js";
 import { currentLanguage, t } from "../strings.js";
 import { drawPicture } from "./grab.js";
 import { render } from "./markdown.js";
@@ -20,7 +19,7 @@ import { byId, menuEntry, theMenu, theWindow } from "./page.js";
 import { askForPassword, askPanel } from "./panels.js";
 import { ask, tell } from "./service.js";
 import { drawMachines, find, root } from "./viewer.js";
-import { Art } from "./words.js";
+import { Art, released } from "./words.js";
 
 /** @typedef {import("../answers.js").ReleaseRun} ReleaseRun */
 
@@ -38,6 +37,12 @@ import { Art } from "./words.js";
  *   or null where no release is known.
  * @property {ReleaseRun[]} [versions] - Notes only: every entry there is,
  *   newest first.
+ * @property {string | null} [installed] - Notes only: what dpkg has of this
+ *   tool, or null.
+ * @property {string[]} [newer] - Notes only: the releases newer than that,
+ *   newest first.
+ * @property {boolean} [since] - Notes only: whether `notes` is the document
+ *   of every release in `newer` rather than one release's.
  */
 
 /**
@@ -76,7 +81,7 @@ const SHOWING_KEY = "previously.preview";
  */
 const RENDERERS = {
   picture: {
-    room: "preview-picture",
+    room: "preview-picture-view",
 
     /**
      * @param {PreviewDocument} document_ - What the tree says about a kept
@@ -109,31 +114,24 @@ const RENDERERS = {
   },
 
   notes: {
-    room: "preview-document",
+    room: "preview-notes",
 
     /**
-     * @param {PreviewDocument} document_ - Carrying `notes`, `version` and
-     *   `versions`.
+     * @param {PreviewDocument} document_ - Carrying `notes`, `version`,
+     *   `versions`, `installed`, `newer` and `since`.
      * @returns {Promise<string>} What to say where there are none.
      *
      * Turned into elements rather than into markup, which `markdown.js` is
      * what does: the text comes off a network and nothing built here is ever a
      * string of markup.
      *
-     * The releases go into the pop-up list above the notes, which is how
-     * somebody reaches the notes of one before the newest. An entry standing
-     * for several releases, whose notes are one page, is named by the first
-     * and the last of them and opens the notes of the last.
+     * The releases go into the list beside the notes, which is how somebody
+     * reaches the notes of one before the newest, and how to update is said
+     * once under both rather than in every release's own notes.
      */
     async show(document_) {
-      const versions = document_.versions ?? [];
-      byId("preview-version", NxPopup).offer(
-        versions.map(({ first, last }) => ({
-          value: last,
-          label: first === last ? last : t("preview.versions.run", { first, last }),
-        })),
-        document_.version);
-      byId("preview-versions").hidden = versions.length === 0;
+      drawTheReleases(document_);
+      byId("preview-updating").hidden = false;
 
       if (!document_.notes) return t("preview.no-notes");
       byId("preview-document").append(render(document_.notes));
@@ -142,10 +140,49 @@ const RENDERERS = {
 
     clear() {
       byId("preview-document").replaceChildren();
-      byId("preview-versions").hidden = true;
+      byId("preview-releases").replaceChildren();
+      byId("preview-updating").hidden = true;
     },
   },
 };
+
+/**
+ * Draws the list of releases beside the notes, with the one showing chosen.
+ * @param {PreviewDocument} document_ - The notes being shown.
+ *
+ * Newest first, as the service lists them. An entry standing for several
+ * releases whose notes are one page is named by the first and the last of
+ * them and opens the notes of the last. Where a release newer than the
+ * installed one is published, the list opens with an entry for everything
+ * since the installed one, which is what the Raspberry Pi window opens on.
+ * A list with a scroller rather than a pop-up, because it grows by one entry
+ * per release, and that is how a set that can outgrow the window is offered.
+ */
+function drawTheReleases(document_) {
+  const entries = [];
+  if (document_.newer?.length) {
+    entries.push({
+      label: t("preview.since", { version: released(document_.installed) }),
+      chosen: Boolean(document_.since),
+      open: () => showTheReleaseNotes(null, true),
+    });
+  }
+  for (const { first, last } of document_.versions ?? []) {
+    entries.push({
+      label: first === last ? last : t("preview.versions.run", { first, last }),
+      chosen: !document_.since && last === document_.version,
+      open: () => showTheReleaseNotes(last),
+    });
+  }
+  byId("preview-releases").replaceChildren(...entries.map((entry) => {
+    const row = document.createElement("div");
+    row.className = "option";
+    row.textContent = entry.label;
+    row.toggleAttribute("chosen", entry.chosen);
+    row.addEventListener("click", entry.open);
+    return row;
+  }));
+}
 
 /**
  * Shows one document in Preview.
@@ -164,14 +201,8 @@ async function showInPreview(document_) {
   window_.open();
   /* With the release where it is notes, so a reload or a change of language
      comes back to the notes somebody chose rather than to the newest. */
-  keepShowing({ kind: document_.kind, name: document_.name, version: document_.version });
-
-  /* The scroller takes its bar from one element, which is its first child
-     unless it is told otherwise, and this window has a room per kind of
-     document. Without this the bar measures whichever room happens to be
-     first: notes in a window whose picture room is empty scroll to the wheel
-     and show no bar at all, which is what they did. */
-  window_.querySelector("nx-scroller")?.drive(byId(renderer.room));
+  keepShowing({ kind: document_.kind, name: document_.name,
+                version: document_.version, since: document_.since });
 
   byId("preview-note").textContent = await renderer.show(document_);
 }
@@ -240,7 +271,9 @@ function fillPreviewIfItCameBackOpen() {
     byId("preview-note").textContent = t("preview.empty");
     return;
   }
-  if (showing.kind === "notes") return void showTheReleaseNotes(showing.version);
+  if (showing.kind === "notes") {
+    return void showTheReleaseNotes(showing.version, showing.since);
+  }
   showInPreview(showing);
 }
 
@@ -257,9 +290,13 @@ function emptyThePreview(kind) {
 }
 
 /**
- * Opens the notes of a release.
+ * Opens the notes of a release, or of every release since the installed one.
  * @param {string | null} [version] - Which release, the newest where none is
  *   named.
+ * @param {boolean} [since] - Whether to open every release newer than the
+ *   installed one as one document instead, which is what the Raspberry Pi
+ *   window asks for. The newest release's notes answer where nothing is
+ *   newer.
  *
  * Its own address rather than a field of the answer the Raspberry Pi window
  * polls, because that one is asked every two seconds and these are thousands of
@@ -267,12 +304,13 @@ function emptyThePreview(kind) {
  *
  * In the language the interface speaks. A release carries its notes in each of
  * them, and the service answers with English where one is missing. The answer
- * names every release there is, which the pop-up list above the notes offers.
+ * names every release there is, which the list beside the notes offers.
  */
-async function showTheReleaseNotes(version) {
+async function showTheReleaseNotes(version, since = false) {
   /** @type {Record<string, string>} */
   const asked = { language: currentLanguage() };
-  if (version) asked.version = version;
+  if (since) asked.since = "1";
+  else if (version) asked.version = version;
   const answer = await ask("/api/update/notes", asked);
   showInPreview({
     kind: "notes",
@@ -280,6 +318,9 @@ async function showTheReleaseNotes(version) {
     notes: answer?.notes ?? "",
     version: answer?.version ?? null,
     versions: answer?.versions ?? [],
+    installed: answer?.installed ?? null,
+    newer: answer?.newer ?? [],
+    since: answer?.since ?? false,
   });
 }
 
@@ -294,7 +335,7 @@ function showTheNotesAgain() {
   const window_ = theWindow("preview");
   const showing = whatItWasShowing();
   if (!window_ || window_.hidden || showing?.kind !== "notes") return;
-  showTheReleaseNotes(showing.version);
+  showTheReleaseNotes(showing.version, showing.since);
 }
 
 /**
@@ -350,11 +391,6 @@ function openPictureMenu(thing, x, y) {
 
 /** Wires Preview, which holds nothing of its own once it is closed. */
 function wirePreview() {
-  /* A release chosen in the pop-up list is a release whose notes are asked for,
-     in the language the interface speaks. */
-  byId("preview-version").addEventListener("nx-pick",
-    (event) => showTheReleaseNotes(event.detail.value));
-
   theWindow("preview")?.addEventListener("nx-close", () => {
     emptyThePreview();
     /* So a desk that comes back does not reopen a window onto a document

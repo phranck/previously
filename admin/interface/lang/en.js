@@ -234,8 +234,9 @@ export const en = {
   /* --- the buttons ------------------------------------------------------ */
   "preview.empty": "Nothing to show.",
   "preview.notes.title": "Previously {version}",
-  "preview.version": "Version",
   "preview.versions.run": "{first} to {last}",
+  "preview.since": "Since {version}",
+  "preview.updating": "Press Update in the Raspberry Pi's Info window to get the newest release. If it does not offer one yet, close the window and open it again.",
   "preview.no-notes": "That release says nothing about itself.",
   "grab.take": "Take a Picture",
   "grab.idle": "Nothing to photograph. The machine is not running.",

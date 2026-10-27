@@ -773,6 +773,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         first and the last of them, and a version inside one is answered with
         the notes of its last.
 
+        With `?since=1`, the notes of every release newer than the one dpkg
+        has, as one document newest first, where there is any; the answer
+        says so with `since`, and names those releases in `newer` either way,
+        so the window can offer that entry. Without anything newer the newest
+        release's notes answer, as they do for a version nobody published.
+
         Nothing waits here either. The newest release's notes came with the
         answer GitHub gave about it, and the others come from the list of every
         release, which this asks for behind the answer where it is out of date.
@@ -781,7 +787,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         Markdown, which is what GitHub keeps them as, and the browser is what
         renders them. Sent as the text it is rather than as markup, so there is
-        nothing in this answer a page could be talked into running.
+        nothing in this answer a page could be talked into running. The section
+        about updating is left out of every release's notes, because the window
+        says it once at its foot.
 
         In the language the page asks for with `?language=`, which is the one
         its interface speaks, and in English where the release carries none in
@@ -790,12 +798,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
         asked = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         language = asked.get("language", [""])[0]
         wanted = asked.get("version", [""])[0]
+        since = asked.get("since") == ["1"]
         newest = release.published()
         every = release.history(check=True)
 
         runs = release.runs(every)
         if newest and newest["version"] not in {entry["version"] for entry in every}:
             runs.insert(0, [newest["version"]])
+            every = [newest, *every]
+        here = setup.version_of(release.PACKAGE)
+        newer = [entry for entry in every
+                 if setup.newer_than(here, entry["version"])]
+        offered = {
+            "versions": [{"first": run[-1], "last": run[0]} for run in runs],
+            "installed": here,
+            "newer": [entry["version"] for entry in newer],
+        }
+
+        if since and newer:
+            return {"version": newer[0]["version"],
+                    "notes": release.combined(newer, language),
+                    "since": True, **offered}
 
         asked_for = next((run for run in runs if wanted in run), None)
         chosen = (next((entry for entry in every
@@ -803,8 +826,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                   or newest or (every[0] if every else None))
         return {
             "version": chosen["version"] if chosen else None,
-            "notes": release.notes_in(chosen["notes"], language) if chosen else "",
-            "versions": [{"first": run[-1], "last": run[0]} for run in runs],
+            "notes": (release.without_updating(release.notes_in(chosen["notes"], language))
+                      if chosen else ""),
+            "since": False,
+            **offered,
         }
 
     def _ask_to_update(self):

@@ -221,8 +221,9 @@ export const fr = {
   /* --- the buttons ------------------------------------------------------ */
   "preview.empty": "Rien à montrer.",
   "preview.notes.title": "Previously {version}",
-  "preview.version": "Version",
   "preview.versions.run": "de {first} à {last}",
+  "preview.since": "Depuis {version}",
+  "preview.updating": "Appuyez sur « Mettre à jour » dans la fenêtre Infos du Raspberry Pi pour obtenir la version la plus récente. Si elle n’en propose pas encore, fermez la fenêtre et rouvrez-la.",
   "preview.no-notes": "Cette version ne dit rien d'elle-même.",
   "grab.take": "Prendre une image",
   "grab.idle": "Rien à photographier. La machine ne tourne pas.",

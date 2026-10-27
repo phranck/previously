@@ -803,6 +803,14 @@ export interface ReleaseNotesAnswer {
   notes: string;
   /** Every entry, newest first, and empty until a list has come back. */
   versions: ReleaseRun[];
+  /** What dpkg has of this tool, build included, or null. */
+  installed: string | null;
+  /** The releases newer than `installed`, newest first, and empty where
+   *  nothing is or nothing is installed. */
+  newer: string[];
+  /** Whether `notes` is the document of every release in `newer`, which
+   *  `?since=1` asks for, rather than one release's. */
+  since: boolean;
 }
 
 /* -- POST routes ----------------------------------------------------------- */

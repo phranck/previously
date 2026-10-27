@@ -414,17 +414,21 @@
 </nx-window>
 
 <nx-window name="preview" data-t-title="app.preview" drop
-           x="640" y="120" w="576" h="480" min-w="320" min-h="240" closed>
+           x="640" y="120" w="640" h="480" min-w="420" min-h="240" closed>
 
-  <fieldset class="group" id="preview-versions" hidden>
-    <legend data-t="preview.version"></legend>
-    <nx-popup id="preview-version"></nx-popup>
-  </fieldset>
-
-  <nx-scroller>
+  <nx-scroller id="preview-picture-view">
     <div class="shot" id="preview-picture"></div>
-    <div class="document" id="preview-document" hidden></div>
   </nx-scroller>
+  <div class="notes" id="preview-notes" hidden>
+    <nx-scroller>
+      <div class="options" id="preview-releases"></div>
+    </nx-scroller>
+    <nx-scroller>
+      <div class="document" id="preview-document"></div>
+    </nx-scroller>
+  </div>
+
+  <p class="note" id="preview-updating" data-t="preview.updating" hidden></p>
   <p class="note" id="preview-note"></p>
 </nx-window>
 
