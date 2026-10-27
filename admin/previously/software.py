@@ -360,7 +360,7 @@ def restore(path, identifier):
     except NotReadable as error:
         return False, told("software.not-readable", detail=str(error))
 
-    shipped = BY_IDENTIFIER.get(identifier)
+    shipped = BY_IDENTIFIER.get(identifier) if isinstance(identifier, str) else None
     if shipped is None:
         return False, told("software.not-shipped", asked=identifier)
 

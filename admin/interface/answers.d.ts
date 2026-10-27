@@ -133,6 +133,23 @@ export interface ToldValues {
   /** `detail` is the OSError's text. */
   "saved.could-not-write": { detail: string };
 
+  // software.save, remove and restore
+  "software.kept": { name: string };
+  "software.removed": { name: string };
+  "software.restored": { name: string };
+  /** `fields` names the fields that break their rules, out of
+   *  software.FIELDS, in that order. */
+  "software.refused": { fields: string[] };
+  "software.not-an-entry": {};
+  "software.name-taken": { name: string };
+  /** `asked` is the posted `replacing` or `entry`, handed back. */
+  "software.no-such": { asked: JsonValue };
+  "software.not-shipped": { asked: JsonValue };
+  /** `detail` is the text of software.NotReadable. */
+  "software.not-readable": { detail: string };
+  /** `detail` is the OSError's text. */
+  "software.could-not-write": { detail: string };
+
   // setup.Refused and setup._said_of
   /** `command` is the program's name, `seconds` the limit. */
   "setup.took-too-long": { command: string; seconds: number };
@@ -795,9 +812,21 @@ export interface SoftwareAnswer {
   /** Every group, in the order the Software folder lists them, with the name
    *  of its folder. */
   groups: { identifier: string; name: string }[];
-  /** Every entry of the catalog, whatever system it is for. */
-  entries: SoftwarePackage[];
+  /** Every entry of the catalog as this Pi lists it, whatever system it is
+   *  for: the shipped ones as changed here, then those added here. */
+  entries: SoftwareListed[];
+  /** The shipped entries removed here, as shipped, which can be brought
+   *  back. */
+  removed: SoftwarePackage[];
 }
+
+/** One entry of /api/software, which says how it came to be on this Pi, from
+ *  software.origins. */
+export type SoftwareListed = SoftwarePackage & {
+  /** "shipped" as it came with the package, "changed" where a shipped entry
+   *  was edited here, "added" where it was added here. */
+  origin: "shipped" | "changed" | "added";
+};
 
 /** GET /api/update, from Handler._update. */
 export interface UpdateAnswer {
@@ -998,6 +1027,33 @@ export type UpdateRequestAnswer =
   | (Outcome<"setup.asked", "setup.one-at-a-time" | "setup.request-refused"> & UpdateAnswer)
   | Refusal;
 
+/** POST /api/software, from Handler._keep_software, with /api/software's body
+ *  beside the outcome. */
+export type SoftwareSaveAnswer =
+  | (Outcome<
+      "software.kept",
+      | "software.not-readable"
+      | "software.not-an-entry"
+      | "software.no-such"
+      | "software.refused"
+      | "software.name-taken"
+      | "software.could-not-write"
+    > &
+      SoftwareAnswer)
+  | Refusal;
+
+/** POST /api/software/remove, from Handler._change_software. */
+export type SoftwareRemoveAnswer =
+  | (Outcome<"software.removed", "software.not-readable" | "software.no-such" | "software.could-not-write"> &
+      SoftwareAnswer)
+  | Refusal;
+
+/** POST /api/software/restore, from Handler._change_software. */
+export type SoftwareRestoreAnswer =
+  | (Outcome<"software.restored", "software.not-readable" | "software.not-shipped" | "software.could-not-write"> &
+      SoftwareAnswer)
+  | Refusal;
+
 /** POST /api/picture/delete, from Handler._delete_picture: 200 with true where
  *  the picture went, 404 with false otherwise. */
 export type PictureDeleteAnswer = { ok: boolean } | Refusal;
@@ -1050,6 +1106,9 @@ export interface PostAnswers {
   "/api/setup": SetupRequestAnswer;
   "/api/update": UpdateRequestAnswer;
   "/api/picture/delete": PictureDeleteAnswer;
+  "/api/software": SoftwareSaveAnswer;
+  "/api/software/remove": SoftwareRemoveAnswer;
+  "/api/software/restore": SoftwareRestoreAnswer;
   "/api/updates": UpdatesChosenAnswer;
   "/api/updates/look": UpdatesChosenAnswer;
 }

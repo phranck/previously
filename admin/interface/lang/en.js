@@ -448,6 +448,16 @@ export const en = {
   "told.saved.no-such": "There is no saved configuration called {asked}.",
   "told.saved.not-readable": "The saved configurations could not be read, so nothing was changed: {detail}",
   "told.saved.could-not-write": "The configuration could not be written: {detail}",
+  "told.software.kept": "{name} is in the catalog.",
+  "told.software.removed": "{name} is out of the catalog.",
+  "told.software.restored": "{name} is back as it was shipped.",
+  "told.software.refused": "Some fields are not filled in as they have to be.",
+  "told.software.not-an-entry": "That is not an entry of the catalog.",
+  "told.software.name-taken": "{name} is taken. Every entry has a name of its own.",
+  "told.software.no-such": "There is no entry called {asked}.",
+  "told.software.not-shipped": "{asked} did not come with Previously, so there is nothing to bring back.",
+  "told.software.not-readable": "The changes to the catalog could not be read, so nothing was changed: {detail}",
+  "told.software.could-not-write": "The catalog could not be written: {detail}",
 
   /* --- installing -------------------------------------------------------- */
   "app.installer": "Installer",

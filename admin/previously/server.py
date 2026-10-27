@@ -232,7 +232,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.settings.machines_file, self.settings.documents,
                 self.settings.disks,
                 config.booting_from(self.settings.previous_config),
-                config.slots(self.settings.previous_config)))
+                config.slots(self.settings.previous_config),
+                self._software_changes()))
         if route == "/api/machine/settled":
             return self._settled_configuration()
         if route == "/api/setup":
@@ -315,6 +316,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._remove_configuration()
         if route == "/api/picture/delete":
             return self._delete_picture()
+        if route == "/api/software":
+            return self._keep_software()
+        if route == "/api/software/remove":
+            return self._change_software(software.remove)
+        if route == "/api/software/restore":
+            return self._change_software(software.restore)
         if route == "/api/setup":
             return self._ask_to_set_up()
         if route == "/api/update":
@@ -693,19 +700,57 @@ class Handler(http.server.BaseHTTPRequestHandler):
         }
 
     def _software(self):
-        """The software catalog, and which system the machine boots.
+        """The software catalog as this Pi lists it, and which system boots.
 
         A reading, open the way `/api/setup` is: the catalog says nothing about
         whoever sits at the machine. All of it rather than what fits the booted
         system, with that system beside it, so a reader can pick what fits.
+        Every entry says whether it is as shipped, changed or added here, and
+        the shipped ones removed here are listed so they can be brought back.
         """
+        changes = self._software_changes()
+        made = software.origins(changes)
         here = systems.here(self.settings.disks)
         return {
             "booted": systems.booted(here, config.booting_from(self.settings.previous_config)),
             "groups": [{"identifier": group, "name": name}
                        for group, name in software.FOLDERS.items()],
-            "entries": [software.described(entry) for entry in software.CATALOGUE],
+            "entries": [{**software.described(entry),
+                         "origin": made.get(entry.identifier, "shipped")}
+                        for entry in software.catalogue(changes)],
+            "removed": [software.described(entry) for entry in software.removed(changes)],
         }
+
+    def _software_changes(self):
+        """@returns pathlib.Path - Where the changes to the catalog are kept."""
+        return software.overlay_in(self.settings.state_directory)
+
+    def _keep_software(self):
+        """Adds an entry to the catalog, or writes over the one `replacing`
+        names, and answers with the catalog as it now stands."""
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        finished, said = software.save(self._software_changes(), body.get("entry"),
+                                       replacing=body.get("replacing"))
+        return self._json({"ok": finished, **said, **self._software()},
+                          status=200 if finished else 409)
+
+    def _change_software(self, change):
+        """Removes an entry, or brings a shipped one back, and answers with the
+        catalog as it now stands.
+
+        @param change - `software.remove` or `software.restore`, either of
+          which takes the identifier the request names as `entry`.
+        """
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        finished, said = change(self._software_changes(), body.get("entry"))
+        return self._json({"ok": finished, **said, **self._software()},
+                          status=200 if finished else 409)
 
     def _ask_to_set_up(self):
         """Leaves the request the privileged helper acts on.

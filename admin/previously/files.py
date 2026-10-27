@@ -153,7 +153,7 @@ APPLICATIONS = (
 
 
 def tree(machines_file=None, documents=None, disks=None, booting=None,
-         inserted=None):
+         inserted=None, software_file=None):
     """Everything Previously holds, as one place with places in it.
 
     @param machines_file - pathlib.Path of the file the configurations somebody
@@ -169,6 +169,8 @@ def tree(machines_file=None, documents=None, disks=None, booting=None,
     @param inserted - What `previous.cfg` has on each SCSI slot, as
       `config.slots` answers it, so a disc that is in the machine says which
       slot it is on.
+    @param software_file - pathlib.Path of the changes made on this Pi to the
+      software catalog, or None for the shipped list alone.
     @returns dict, a folder with `name`, `icon`, `path` and `entries`, and a
       `label` and a `version` on the applications, which are what each is
       called in words and which release of it this is.
@@ -194,7 +196,7 @@ def tree(machines_file=None, documents=None, disks=None, booting=None,
             _folder("Pictures", PICTURES, FOLDER_ICON, pictures(documents)),
         ]),
         _folder("Machines", "/Machines", FOLDER_ICON, _machine_folders(machines_file)),
-        *_software_folder(booted),
+        *_software_folder(booted, software_file),
     ])
 
 
@@ -268,11 +270,13 @@ def _disc(path, inserted):
     }
 
 
-def _software_folder(booted):
+def _software_folder(booted, software_file):
     """The Software folder, where the catalog offers anything for the system
     the machine boots.
 
     @param booted - The identifier of that system, or None.
+    @param software_file - pathlib.Path of the changes made on this Pi to the
+      catalog, or None.
     @returns list holding one folder, or an empty one.
 
     One folder per group with anything in it, in the catalog's order of
@@ -280,7 +284,7 @@ def _software_folder(booted):
     not there. Absent while nothing boots, because what fits is decided by the
     system, and a machine booting none has none.
     """
-    offered = software.for_system(booted)
+    offered = software.for_system(booted, software_file)
     groups = [
         _folder(name, "%s/%s" % (SOFTWARE, name), FOLDER_ICON,
                 [_software(entry) for entry in offered if entry.group == group])

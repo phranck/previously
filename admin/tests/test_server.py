@@ -1961,6 +1961,91 @@ def test_the_catalog_is_open_and_says_what_boots(service, tmp_path):
     assert {"identifier": "developer", "name": "Developer"} in answer["groups"]
 
 
+def a_package():
+    """@returns dict, an entry as the Software module sends it."""
+    return {"name": "Emacs", "description": "The editor.", "group": "tools",
+            "version": "21.4", "systems": ["nextstep-3.3"],
+            "address": "https://example.org/emacs.tar.gz", "size": 4000000,
+            "algorithm": "sha256", "digest": "ab" * 32, "kind": "file"}
+
+
+def where_the_changes_are():
+    """@returns pathlib.Path of the file of changes to the catalog."""
+    return server.Handler.settings.state_directory / "software.json"
+
+
+def answer_of(response):
+    """@returns dict, the body of an answer as an object."""
+    return json.loads(response.read())
+
+
+def test_adding_software_needs_a_session(service):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/software", {"entry": a_package()}, signed_in=False)
+
+    assert refused.value.code == 403
+    assert not where_the_changes_are().exists(), "refused and kept it anyway"
+
+
+def test_added_software_is_in_the_catalog_and_in_the_tree(service, tmp_path):
+    a_disk(tmp_path, "nextstep-3.3", booting=True)
+
+    answer = answer_of(tell(service, "/api/software", {"entry": a_package()}))
+
+    assert answer["ok"] is True
+    assert answer["reason"] == "software.kept"
+    # The catalog rides along, so the window draws what is now there.
+    added = next(entry for entry in answer["entries"] if entry["identifier"] == "emacs")
+    assert added["origin"] == "added"
+    tools = next(folder for folder in software_folder(service)["entries"]
+                 if folder["name"] == "Tools")
+    assert [entry["id"] for entry in tools["entries"]] == ["emacs"]
+
+
+def test_an_entry_that_breaks_a_rule_is_refused_with_the_fields(service):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/software",
+             {"entry": {**a_package(), "address": "https://192.168.1.1/x"}})
+
+    answer = json.loads(refused.value.read())
+    assert refused.value.code == 409
+    assert answer["reason"] == "software.refused"
+    assert answer["fields"] == ["address"]
+
+
+def test_a_request_that_is_not_an_object_is_refused(service):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/software", ["not", "an", "object"])
+
+    assert refused.value.code == 400
+
+
+def test_shipped_software_can_be_removed_and_brought_back(service, tmp_path):
+    a_disk(tmp_path, "nextstep-3.3", booting=True)
+
+    gone = answer_of(tell(service, "/api/software/remove",
+                          {"entry": "nextstep-3.3-developer"}))
+
+    assert gone["reason"] == "software.removed"
+    assert [entry["identifier"] for entry in gone["removed"]] == ["nextstep-3.3-developer"]
+    assert software_folder(service) is None
+
+    back = answer_of(tell(service, "/api/software/restore",
+                          {"entry": "nextstep-3.3-developer"}))
+
+    assert back["reason"] == "software.restored"
+    assert back["removed"] == []
+    assert software_folder(service) is not None
+
+
+def test_removing_software_needs_a_session(service):
+    for route in ["/api/software/remove", "/api/software/restore"]:
+        with pytest.raises(urllib.error.HTTPError) as refused:
+            tell(service, route, {"entry": "nextstep-3.3-developer"}, signed_in=False)
+        assert refused.value.code == 403
+    assert not where_the_changes_are().exists()
+
+
 def test_the_status_says_whether_this_machine_is_set_up_at_all(service):
     """A Pi with nothing on it is not broken, it is new, and from a page that
     has to guess those two look identical. The service knows, because it is the
