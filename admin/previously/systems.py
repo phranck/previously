@@ -205,6 +205,25 @@ def here(disks):
     return found
 
 
+def booted(here_now, booting):
+    """Which system the machine is set to boot.
+
+    @param here_now - What `here` answered, identifier to the path of its disk.
+    @param booting - The whole path the configuration boots from, as
+      `config.booting_from` reads it, or None.
+    @returns str, the identifier, or None where the machine boots none of them.
+
+    Compared whole, because two disks can be called the same thing in two
+    folders, and a machine pointed at a disk somewhere else boots none of these.
+    """
+    if booting is None:
+        return None
+    for identifier, disk in here_now.items():
+        if str(disk) == str(booting):
+            return identifier
+    return None
+
+
 def backups_in(disks):
     """Where the copies of the disks are kept.
 

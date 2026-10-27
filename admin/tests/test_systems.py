@@ -180,3 +180,14 @@ def test_what_a_fetch_cut_short_left_is_a_leftover_and_is_measured(tmp_path):
 
     assert systems.leftovers_in(tmp_path) == [left]
     assert systems.leftover_bytes(tmp_path) == 1024
+
+
+def test_the_booted_system_is_the_one_whose_disk_the_machine_boots(tmp_path):
+    """Compared whole, because two disks can be called the same thing in two
+    folders, and a machine pointed at a disk somewhere else boots none of these."""
+    here = {"nextstep-3.3": tmp_path / "nextstep-3.3.dd",
+            "openstep-4.2": tmp_path / "openstep-4.2.dd"}
+
+    assert systems.booted(here, str(tmp_path / "openstep-4.2.dd")) == "openstep-4.2"
+    assert systems.booted(here, str(tmp_path / "elsewhere" / "openstep-4.2.dd")) is None
+    assert systems.booted(here, None) is None

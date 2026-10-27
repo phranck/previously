@@ -1901,6 +1901,66 @@ def test_the_copies_that_have_been_made_are_in_the_tree(service, tmp_path):
     assert kept["id"] == "nextstep-3.3 2026-09-28 15.10.42.dd"
 
 
+def software_folder(service):
+    """@returns dict, the Software folder of the tree, or None where there is none."""
+    _, _, body = fetch(service + "/api/files")
+    return next((entry for entry in json.loads(body)["entries"]
+                 if entry["name"] == "Software"), None)
+
+
+def test_the_software_for_the_booted_system_is_in_the_tree(service, tmp_path):
+    a_disk(tmp_path, "nextstep-3.3", booting=True)
+
+    group, = software_folder(service)["entries"]
+    offered = next(entry for entry in group["entries"]
+                   if entry["id"] == "nextstep-3.3-developer")
+
+    # The group's folder is named in English, as every folder here is.
+    assert group["name"] == "Developer"
+    assert offered["kind"] == "software"
+    assert offered["name"] == "NeXTSTEP 3.3 Developer"
+    assert offered["path"] == "/Software/Developer/nextstep-3.3-developer"
+    # A CD image wears the compact disc, as a disc in Discs does.
+    assert offered["icon"] == "cdrom"
+    assert offered["bytes"] == 403111936
+    assert offered["package"]["version"] == "3.3"
+    assert offered["package"]["for"] == ["NeXTSTEP 3.3"]
+    assert offered["package"]["source"] == "archive.org"
+    assert offered["package"]["kind"] == "disc"
+
+
+def test_there_is_no_software_folder_for_a_system_nothing_is_offered_for(service, tmp_path):
+    """The developer CD builds NEXTSTEP programs, and OPENSTEP has its own."""
+    a_disk(tmp_path, "openstep-4.2", booting=True)
+
+    assert software_folder(service) is None
+
+
+def test_there_is_no_software_folder_while_nothing_boots(service, tmp_path):
+    a_disk(tmp_path, "nextstep-3.3")
+
+    assert software_folder(service) is None
+
+
+def test_the_catalog_is_open_and_says_what_boots(service, tmp_path):
+    """A reading, open the way /api/setup is: the catalog says nothing about
+    whoever sits at the machine."""
+    a_disk(tmp_path, "nextstep-3.3", booting=True)
+
+    status, headers, body = fetch(service + "/api/software")
+    answer = json.loads(body)
+    entry = next(entry for entry in answer["entries"]
+                 if entry["identifier"] == "nextstep-3.3-developer")
+
+    assert status == 200
+    assert headers["Cache-Control"] == "no-store"
+    assert answer["booted"] == "nextstep-3.3"
+    assert entry["systems"] == ["nextstep-3.3"]
+    assert entry["address"].startswith("https://archive.org/download/")
+    assert entry["algorithm"] == "sha1"
+    assert {"identifier": "developer", "name": "Developer"} in answer["groups"]
+
+
 def test_the_status_says_whether_this_machine_is_set_up_at_all(service):
     """A Pi with nothing on it is not broken, it is new, and from a page that
     has to guess those two look identical. The service knows, because it is the

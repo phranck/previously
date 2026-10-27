@@ -18,6 +18,8 @@ applications is choosing in a place rather than reading a list.
       Machines
         System          the eleven this project ships, which cannot be changed
         User            what somebody saved, and only once there is something
+      Software          what the catalog offers for the system that boots
+        Developer       one folder per group that has anything in it
 
 Documents is the exception and is read off the card, because a picture is a
 file and files change. These are looked at here rather than in NeXTSTEP, so
@@ -45,7 +47,7 @@ import collections
 import datetime
 import pathlib
 
-from . import config, discs, machines, saved, systems
+from . import config, discs, machines, saved, software, systems
 
 #: What the root is called and what it wears. NeXTSTEP drew a person's own
 #: directory as a house, and this is the one place everything here lives in.
@@ -72,6 +74,11 @@ BACKUPS = "/Disks/Backups"
 #: Where the discs stand, beside the disks rather than inside them: a disc is
 #: not a system and nothing here boots one.
 DISCS_AT = "/Discs"
+
+#: Where the software the catalog offers for the booted system stands, one
+#: folder per group with anything in it. Nothing in it is on the card yet: it
+#: is what can be put there.
+SOFTWARE = "/Software"
 
 #: What a disk wears. It is a hard disk, so it wears the one NeXTSTEP drew for
 #: a hard disk. What it arrived as is not what it is.
@@ -157,7 +164,8 @@ def tree(machines_file=None, documents=None, disks=None, booting=None,
     @param disks - pathlib.Path the disk images live in. None leaves the Disks
       folder out, the way User is left out until something is in it.
     @param booting - What `previous.cfg` says the machine boots, as the whole
-      path, so the disk that is in force can be marked.
+      path, so the disk that is in force can be marked and the software for its
+      system offered.
     @param inserted - What `previous.cfg` has on each SCSI slot, as
       `config.slots` answers it, so a disc that is in the machine says which
       slot it is on.
@@ -165,6 +173,8 @@ def tree(machines_file=None, documents=None, disks=None, booting=None,
       `label` and a `version` on the applications, which are what each is
       called in words and which release of it this is.
     """
+    here = systems.here(disks) if disks is not None else {}
+    booted = systems.booted(here, booting)
     return _folder(ROOT, "/", HOME_ICON, [
         _folder("Apps", "/Apps", FOLDER_ICON, [
             {
@@ -178,20 +188,22 @@ def tree(machines_file=None, documents=None, disks=None, booting=None,
             }
             for application in APPLICATIONS
         ]),
-        *_disk_folder(disks, booting),
+        *_disk_folder(disks, here, booted),
         *_disc_folder(disks, inserted),
         _folder("Documents", DOCUMENTS, FOLDER_ICON, [
             _folder("Pictures", PICTURES, FOLDER_ICON, pictures(documents)),
         ]),
         _folder("Machines", "/Machines", FOLDER_ICON, _machine_folders(machines_file)),
+        *_software_folder(booted),
     ])
 
 
-def _disk_folder(disks, booting):
+def _disk_folder(disks, here, booted):
     """The Disks folder, where there is one to show.
 
     @param disks - pathlib.Path the disk images live in, or None.
-    @param booting - The whole path the configuration boots from, or None.
+    @param here - What `systems.here` found there, identifier to disk.
+    @param booted - The identifier of the system the machine boots, or None.
     @returns list holding one folder, or an empty one.
 
     Empty where nothing has been installed, the way User is absent until
@@ -200,12 +212,11 @@ def _disk_folder(disks, booting):
     """
     if disks is None:
         return []
-    here = [_disk(system, path, booting)
-            for system, path in sorted(systems.here(disks).items())]
+    found = [_disk(identifier, path, booted) for identifier, path in sorted(here.items())]
     kept = _backups(disks)
     if kept:
-        here.append(_folder("Backups", BACKUPS, FOLDER_ICON, kept))
-    return [_folder("Disks", DISKS, FOLDER_ICON, here)] if here else []
+        found.append(_folder("Backups", BACKUPS, FOLDER_ICON, kept))
+    return [_folder("Disks", DISKS, FOLDER_ICON, found)] if found else []
 
 
 def _disc_folder(disks, inserted):
@@ -257,6 +268,48 @@ def _disc(path, inserted):
     }
 
 
+def _software_folder(booted):
+    """The Software folder, where the catalog offers anything for the system
+    the machine boots.
+
+    @param booted - The identifier of that system, or None.
+    @returns list holding one folder, or an empty one.
+
+    One folder per group with anything in it, in the catalog's order of
+    groups, because a folder with nothing in it promises something that is
+    not there. Absent while nothing boots, because what fits is decided by the
+    system, and a machine booting none has none.
+    """
+    offered = software.for_system(booted)
+    groups = [
+        _folder(name, "%s/%s" % (SOFTWARE, name), FOLDER_ICON,
+                [_software(entry) for entry in offered if entry.group == group])
+        for group, name in software.FOLDERS.items()
+        if any(entry.group == group for entry in offered)
+    ]
+    return [_folder("Software", SOFTWARE, FOLDER_ICON, groups)] if groups else []
+
+
+def _software(entry):
+    """One piece of software as an entry of its group's folder.
+
+    @param entry - A software.Entry.
+    @returns dict, with the whole entry under `package` for the Info window.
+
+    A CD image wears the compact disc a disc in Discs wears, and anything else
+    the sheet the Workspace drew for a file it knew nothing about.
+    """
+    return {
+        "id": entry.identifier,
+        "name": entry.name,
+        "icon": DISC_ICON if entry.kind == "disc" else OTHER_FILE_ICON,
+        "path": "%s/%s/%s" % (SOFTWARE, software.FOLDERS[entry.group], entry.identifier),
+        "kind": "software",
+        "bytes": entry.size,
+        "package": software.described(entry),
+    }
+
+
 def _backups(disks):
     """The copies that have been made, newest first.
 
@@ -303,12 +356,12 @@ def _a_copy_called(path, system):
                       when.rsplit(".", 1)[0] if when else "")
 
 
-def _disk(identifier, path, booting):
+def _disk(identifier, path, booted):
     """One disk as an entry of the folder it sits in.
 
     @param identifier - Which system it holds, as systems.CATALOGUE names it.
     @param path - pathlib.Path of the image on the card.
-    @param booting - The whole path the configuration boots from, or None.
+    @param booted - The identifier of the system the machine boots, or None.
     @returns dict
 
     It wears a hard disk, because that is what it is. A system is not drawn as
@@ -323,9 +376,8 @@ def _disk(identifier, path, booting):
         "icon": DISK_ICON,
         "path": "%s/%s" % (DISKS, identifier),
         "kind": "disk",
-        # Which one the machine is set to boot. Compared whole, because two
-        # disks can be called the same thing in different folders.
-        "booting": booting is not None and str(path) == str(booting),
+        # Which one the machine is set to boot.
+        "booting": identifier == booted,
         "bytes": _size_of(path),
     }
 

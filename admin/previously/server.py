@@ -22,8 +22,8 @@ import time
 import urllib.parse
 
 from . import (activity, change, config, files, grab, kiosk, machines,
-               notifications, pi, release, saved, setup, systems, terminal, updates,
-               websocket)
+               notifications, pi, release, saved, setup, software, systems, terminal,
+               updates, websocket)
 from .password import (COOKIE, LARGEST, SESSION_SECONDS, SMALLEST, Attempts, Sessions,
                        acceptable)
 
@@ -237,6 +237,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._settled_configuration()
         if route == "/api/setup":
             return self._json(self._setup())
+        if route == "/api/software":
+            return self._json(self._software())
         if route == "/api/update":
             # Opening the window that shows this asks GitHub again; the poll
             # that redraws it while it is open does not, because sixty
@@ -666,9 +668,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         disks = self.settings.disks
         here = systems.here(disks)
         # Which of them the machine is set to boot, so the window knows which
-        # one cannot be started again. Compared whole, because two disks can be
-        # called the same thing in two folders.
-        booting = config.booting_from(self.settings.previous_config)
+        # one cannot be started again.
+        booted = systems.booted(here, config.booting_from(self.settings.previous_config))
         return {
             "systems": [
                 {
@@ -677,8 +678,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     "size": system.size,
                     "unpacked": systems.UNPACKED_BYTES,
                     "here": system.identifier in here,
-                    "booting": (booting is not None
-                                and str(here.get(system.identifier)) == str(booting)),
+                    "booting": system.identifier == booted,
                 }
                 for system in systems.CATALOGUE
             ],
@@ -690,6 +690,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "needs": systems.ROOM_BYTES,
             "room": systems.room_beside(disks),
             "progress": kiosk.setting_up(self.settings.setup_directory),
+        }
+
+    def _software(self):
+        """The software catalog, and which system the machine boots.
+
+        A reading, open the way `/api/setup` is: the catalog says nothing about
+        whoever sits at the machine. All of it rather than what fits the booted
+        system, with that system beside it, so a reader can pick what fits.
+        """
+        here = systems.here(self.settings.disks)
+        return {
+            "booted": systems.booted(here, config.booting_from(self.settings.previous_config)),
+            "groups": [{"identifier": group, "name": name}
+                       for group, name in software.FOLDERS.items()],
+            "entries": [software.described(entry) for entry in software.CATALOGUE],
         }
 
     def _ask_to_set_up(self):
