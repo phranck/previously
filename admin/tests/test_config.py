@@ -154,6 +154,25 @@ def test_the_catalog_and_the_file_describe_a_machine_the_same_way(tmp_path):
     assert from_file == from_catalogue
 
 
+@pytest.mark.parametrize("identifier, nitro", [
+    ("nextcube-turbo-nitro", True),
+    ("nextstation-turbo-color-nitro", True),
+    ("nextcube-turbo", False),
+    ("nextstation-turbo-color", False),
+])
+def test_a_nitro_travels_as_a_fact(identifier, nitro):
+    """The file has no setting for Nitro: Previous takes a turbo board at 40
+    MHz for one and names it so in its status bar. The browser adds the word
+    to the name, so the fact crosses the wire rather than the clock rule."""
+    from previously import machines
+
+    settings = machines.settings_for(machines.find(identifier))
+    described = config.describe(
+        settings["System"], settings["Memory"], settings["Dimension"])
+
+    assert described.get("nitro") is nitro
+
+
 def test_the_three_chips_are_named(tmp_path):
     """They are what a machine is made of, and getting one wrong is what makes
     a configuration reset for ever instead of booting. Their names are facts
