@@ -48,6 +48,7 @@ ICONS = {
     "floppy": ("floppy", "a floppy disk"),
     "folder": ("folder", "a folder"),
     "net": ("net", "the network"),
+    "scsi": ("scsi", "a SCSI device"),
     # The compact disc, which the Workspace draws for a CD from the bundle of
     # the file system that reads it rather than from its own directory. A disc
     # wears it in the File Viewer.
