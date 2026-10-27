@@ -429,6 +429,8 @@
 
 <nx-window name="software-entry" data-t-title="window.software-entry" fixed x="600" y="160" w="460" closed>
   <div class="readings software-form" id="software-form">
+
+    <nx-row id="se-file-row" hidden><label data-t="info.file"></label><nx-popup id="se-file"></nx-popup></nx-row>
     <nx-row><label for="se-name" data-t="info.name"></label><input class="entry" id="se-name" spellcheck="false"></nx-row>
     <nx-row><label for="se-version" data-t="info.version"></label><input class="entry" id="se-version" spellcheck="false"></nx-row>
     <nx-row><label for="se-description" data-t="info.description"></label><textarea class="entry" id="se-description" rows="3"></textarea></nx-row>

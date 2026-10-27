@@ -87,6 +87,11 @@
      on 29 September 2026, and the palest of pinks reads as a mark on a gray
      desk without reading as a warning. */
   --notice: #ffe8fb;
+  /* What a place carries while something dragged over it would land there.
+     A pale lime green, a shade stronger than the pink because it stands on a
+     white list rather than on the gray desk. phranck's choice on the mockup
+     of #750, 27 October 2026. */
+  --receiving: #e2f7c8;
 
   --icon: 48px;          /* what NeXTSTEP drew an icon at, and these are those */
   --tile: 128px;         /* the tile an icon and its name sit on, measured off

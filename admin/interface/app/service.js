@@ -46,12 +46,13 @@ const Saved = /** @type {const} */ ({
 });
 
 /** What can be asked about the software catalog, all from the Software module
- *  of Preferences. None of it fetches anything: these change the list of what
- *  can be. */
+ *  of Preferences. None of it fetches a package: the first three change the
+ *  list of what can be, and Lookup reads what an address says about one. */
 const Software = /** @type {const} */ ({
   Keep: "/api/software",
   Remove: "/api/software/remove",
   Restore: "/api/software/restore",
+  Lookup: "/api/software/lookup",
 });
 
 /** How long an operation may take before the page stops waiting for the

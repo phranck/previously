@@ -6,7 +6,7 @@ import { t } from "../strings.js";
 import { byId, show, theWindow } from "./page.js";
 import { askPanel } from "./panels.js";
 import { Software, ask, tell } from "./service.js";
-import { Needs, hold, holdTheControls } from "./system.js";
+import { Needs, allowed, hold, holdTheControls } from "./system.js";
 import { drawMachines } from "./viewer.js";
 import { say, sized } from "./words.js";
 
@@ -16,6 +16,7 @@ import { say, sized } from "./words.js";
 /** @typedef {import("../answers.js").SoftwarePackage} SoftwarePackage */
 /** @typedef {import("../answers.js").PostAnswers} PostAnswers */
 /** @typedef {import("../answers.js").PasswordNotGiven} PasswordNotGiven */
+/** @typedef {import("../answers.js").LookupFile} LookupFile */
 
 /** The digests an entry can be checked with, as software.DIGEST_DIGITS names
  *  them, with what they are called. Technical names, read the same in every
@@ -226,36 +227,151 @@ async function restoreTheChosenEntry() {
 }
 
 /**
- * Opens the form on an entry, or empty to add one.
- * @param {SoftwareListed | null} entry - What to edit, or null.
+ * Opens the form on an entry, or on a new one.
+ * @param {SoftwareListed | null} entry - What to edit, or null to add one.
+ * @param {Partial<SoftwarePackage> | null} [filled] - What a lookup filled in
+ *   for a new one, or null to start empty.
+ * @param {LookupFile[] | null} [files] - The files of the item the lookup read,
+ *   offered in the File row, or null where there is nothing to choose.
+ * @param {string | null} [chosenFile] - The address of the file filled in.
  *
- * A new entry starts for the system the machine boots, as a CD image checked
- * with SHA-1, which is what archive.org states for every file it holds.
+ * A new entry starts for the system the machine boots.
  */
-function openTheForm(entry) {
+function openTheForm(entry, filled = null, files = null, chosenFile = null) {
   const window_ = theWindow("software-entry");
   if (!window_ || !catalog) return;
   editing = entry?.identifier ?? null;
 
-  value("se-name", entry?.name ?? "");
   value("se-version", entry?.version ?? "");
-  value("se-description", entry?.description ?? "");
-  value("se-address", entry?.address ?? "");
-  value("se-size", entry ? String(entry.size) : "");
-  value("se-digest", entry?.digest ?? "");
-
+  fill(entry ?? filled ?? {});
   byId("se-group", NxPopup).offer(
     catalog.groups.map((group) => ({ value: group.identifier, label: group.name })),
     entry?.group);
-  byId("se-algorithm", NxPopup).offer(ALGORITHMS, entry?.algorithm);
-  for (const radio of byId("se-kind").querySelectorAll("input")) {
-    radio.checked = radio.value === (entry?.kind ?? "disc");
-  }
   drawTheSystems(entry ? entry.systems : (catalog.booted ? [catalog.booted] : []));
+
+  byId("se-file-row").hidden = !files;
+  if (files) {
+    byId("se-file", NxPopup).offer(
+      files.map((file) => ({ value: file.address, label: file.name })), chosenFile);
+  }
 
   show("se-note", "");
   window_.open();
   byId("se-name", HTMLInputElement).focus();
+}
+
+
+/**
+ * Writes the fields an address can fill into the form, and empties those it
+ * says nothing about.
+ * @param {Partial<SoftwarePackage>} source - An entry, or what a lookup filled.
+ *
+ * A CD image checked with SHA-1 where nothing says otherwise, which is what
+ * archive.org states for every file it holds. A field the source leaves out
+ * is emptied rather than kept, because choosing another file of an item must
+ * not leave the size of the one before beside the name of this one.
+ */
+function fill(source) {
+  value("se-name", source.name ?? "");
+  value("se-description", source.description ?? "");
+  value("se-address", source.address ?? "");
+  value("se-size", source.size === undefined ? "" : String(source.size));
+  value("se-digest", source.digest ?? "");
+  byId("se-algorithm", NxPopup).offer(ALGORITHMS, source.algorithm);
+  for (const radio of byId("se-kind").querySelectorAll("input")) {
+    radio.checked = radio.value === (source.kind ?? "disc");
+  }
+}
+
+/**
+ * Reads an address into a new entry and opens the form on it.
+ * @param {string} address - What was dropped on the list.
+ *
+ * Where the address names an item holding several files, the form opens on
+ * the CD image among them, or on the largest where there is none, with the
+ * others offered above the name. What archive.org could not say is left for
+ * whoever adds the entry, and Save is what keeps it.
+ */
+async function lookUp(address) {
+  if (!allowed(Needs.Contact, "software-note")) return;
+  const answer = await tell(Software.Lookup, { address });
+  if (!answer || !("reason" in answer) || !answer.ok) {
+    show("software-note", answer === null ? t("note.no-service") : say(answer));
+    return;
+  }
+  if (answer.reason === "lookup.found") {
+    openTheForm(null, answer.fields);
+    show("se-note", say(answer));
+    return;
+  }
+  const files = answer.files;
+  const chosen = files.find((file) => file.kind === "disc")
+    ?? [...files].sort((one, other) => (other.size ?? 0) - (one.size ?? 0))[0];
+  const found = await tell(Software.Lookup, { address: chosen.address });
+  if (!found || !("reason" in found) || !found.ok || found.reason !== "lookup.found") {
+    show("software-note", found === null ? t("note.no-service") : say(found));
+    return;
+  }
+  openTheForm(null, found.fields, files, chosen.address);
+  show("se-note", say(answer));
+}
+
+/**
+ * Fills the form again for another file of the same item.
+ * @param {string} address - The file chosen in the File pop-up list.
+ */
+async function lookUpAnotherFile(address) {
+  const found = await tell(Software.Lookup, { address });
+  show("se-note", found === null ? t("note.no-service") : say(found));
+  if (found && "reason" in found && found.ok && found.reason === "lookup.found") {
+    fill(found.fields);
+  }
+}
+
+/**
+ * The address a drop carries.
+ * @param {DataTransfer | null} carried - What was dropped.
+ * @returns {string} The first address of its list, or "" where it holds none.
+ *
+ * Read from `text/uri-list` alone, the form a browser hands an address in.
+ * The interface's own drags carry `text/plain`, so a machine or a folder
+ * dragged over from the File Viewer is not taken for an address.
+ */
+function addressIn(carried) {
+  const lines = (carried?.getData("text/uri-list") ?? "").split(/\r?\n/);
+  return lines.map((line) => line.trim()).find((line) => line && !line.startsWith("#")) ?? "";
+}
+
+/**
+ * Makes the package list take a dropped address.
+ *
+ * While an address is over it, the list says it will take it, which is the
+ * receiving green and its running edge in app.css. A drop is kept from the
+ * browser, which would otherwise leave the page for the address.
+ */
+function wireTheDrop() {
+  const target = document.querySelector("nx-window[name='preferences'] nx-scroller.packages");
+  if (!(target instanceof HTMLElement)) return;
+  const carriesAnAddress = (/** @type {DragEvent} */ event) =>
+    [...(event.dataTransfer?.types ?? [])].includes("text/uri-list");
+
+  target.addEventListener("dragover", (event) => {
+    if (!carriesAnAddress(event)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    target.toggleAttribute("droppable", true);
+  });
+  target.addEventListener("dragleave", (event) => {
+    if (event.relatedTarget instanceof Node && target.contains(event.relatedTarget)) return;
+    target.toggleAttribute("droppable", false);
+  });
+  target.addEventListener("drop", (event) => {
+    if (!carriesAnAddress(event)) return;
+    event.preventDefault();
+    target.toggleAttribute("droppable", false);
+    const address = addressIn(event.dataTransfer);
+    if (address) lookUp(address);
+  });
 }
 
 /**
@@ -386,6 +502,10 @@ function wireTheSoftware() {
   byId("software-restore").addEventListener("click", restoreTheChosenEntry);
   byId("se-save").addEventListener("click", saveTheForm);
   byId("se-cancel").addEventListener("click", () => theWindow("software-entry")?.close());
+  byId("se-file").addEventListener("nx-pick", (event) => {
+    if (event instanceof CustomEvent) lookUpAnotherFile(event.detail.value);
+  });
+  wireTheDrop();
 
   const form = byId("software-form");
   form.addEventListener("keydown", (event) => {

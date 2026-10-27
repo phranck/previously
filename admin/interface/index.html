@@ -593,7 +593,8 @@
     </div>
     <!-- The software catalog as this Pi lists it, six rows high so one entry
          still reads as a list, with what can be done to the chosen one under
-         it. Restore stands apart on the left, because it undoes what the
+         it. An archive.org address dropped on the list opens the Software
+         Entry window filled in from what archive.org says. Restore stands apart on the left, because it undoes what the
          other three do. The note says what happened where something did, and
          otherwise that this is the Pi's own setting. -->
     <div class="module-page groups" id="software-page" hidden>
@@ -618,6 +619,9 @@
      are kept as typed, in whatever language they are written in. -->
 <nx-window name="software-entry" data-t-title="window.software-entry" fixed x="600" y="160" w="460" closed>
   <div class="readings software-form" id="software-form">
+    <!-- Only where an address dropped on the list named an item holding
+         several files worth having: which of them the entry is for. -->
+    <nx-row id="se-file-row" hidden><label data-t="info.file"></label><nx-popup id="se-file"></nx-popup></nx-row>
     <nx-row><label for="se-name" data-t="info.name"></label><input class="entry" id="se-name" spellcheck="false"></nx-row>
     <nx-row><label for="se-version" data-t="info.version"></label><input class="entry" id="se-version" spellcheck="false"></nx-row>
     <nx-row><label for="se-description" data-t="info.description"></label><textarea class="entry" id="se-description" rows="3"></textarea></nx-row>

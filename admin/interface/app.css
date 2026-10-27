@@ -194,6 +194,31 @@ nx-scroller.languages { flex: 1 1 auto; min-height: 0; }
    package is on the card. */
 nx-scroller.packages { flex: 0 0 auto; height: calc(var(--row) * 6 + 2px); }
 
+/* While an address is dragged over the list, the list says it will take it:
+   in the receiving green, with a dashed black edge two wide, six on and six
+   off, running against the clock. The edge is four gradients, one along each
+   side, and running is their positions moving: the top to the left, the left
+   down, the foot to the right and the right up. Standing still where the
+   system asks for less motion. phranck's choice on the mockup of #750. */
+nx-scroller.packages[droppable] .options {
+  background-color: var(--receiving);
+  background-image:
+    linear-gradient(90deg, var(--black) 50%, transparent 50%),
+    linear-gradient(90deg, var(--black) 50%, transparent 50%),
+    linear-gradient(0deg, var(--black) 50%, transparent 50%),
+    linear-gradient(0deg, var(--black) 50%, transparent 50%);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-size: 12px 2px, 12px 2px, 2px 12px, 2px 12px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  animation: receiving 0.9s linear infinite;
+}
+@keyframes receiving {
+  to { background-position: -12px 0, 12px 100%, 0 12px, 100% -12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  nx-scroller.packages[droppable] .options { animation: none; }
+}
+
 /* A shipped entry removed here, still listed so it can be brought back, in
    the gray a disabled menu entry wears: it is here and not for now. */
 .system.gone:not([chosen]) { color: var(--dark); }
