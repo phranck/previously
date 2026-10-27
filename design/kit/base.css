@@ -128,6 +128,10 @@
      reserves six pixels this one does not use. Whole and even, for the reason
      stated there. */
   --status-line: 12px;
+  /* One reading in a list of them, a line of figures or a row of lamps alike,
+     so a column of both reads as one list. A label beside something taller
+     stands in the first of these, level with where a row of lamps would be. */
+  --reading-height: 22px;
 
   --row: 20px;           /* the menu raster, and the height of one entry */
   --title-height: 21px;  /* 19 px of bar and 2 px of the shadow under it */

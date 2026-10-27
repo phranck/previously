@@ -130,6 +130,10 @@
      reserves six pixels this one does not use. Whole and even, for the reason
      stated there. */
   --status-line: 12px;
+  /* One reading in a list of them, a line of figures or a row of lamps alike,
+     so a column of both reads as one list. A label beside something taller
+     stands in the first of these, level with where a row of lamps would be. */
+  --reading-height: 22px;
 
   --row: 20px;           /* the menu raster, and the height of one entry */
   --title-height: 21px;  /* 19 px of bar and 2 px of the shadow under it */
@@ -1786,15 +1790,17 @@ nx-leds {
   min-width: 0;
 }
 
-/* The field. Six pixels of it around eight of lamp inside a one pixel edge
-   is 22, which is the height of the nx-field a reading is written in, so a
-   row with a bar in it and a row with a figure in it stand the same height
-   and a column of both reads as one list. */
+/* The field. A row of lamps is as high as a reading, so a row with a bar in
+   it and a row with a figure in it stand the same height and a column of
+   both reads as one list. The field above and below the lamps is what that
+   height leaves inside the one pixel edge, six pixels at 22. A zoom rounds
+   that padding alike above and below, so the lamps stand in the middle at
+   every zoom. */
 nx-leds .lamps {
   flex: 0 0 auto;
   display: flex;
   gap: var(--led-gap);
-  padding: 6px;
+  padding: calc((var(--reading-height) - var(--led-height)) / 2 - 1px) 6px;
   background: var(--black);
   border: 1px solid;
   border-image: var(--sunken);

@@ -574,12 +574,17 @@ nx-row .beside nx-field { flex: 1 1 auto; min-width: 0; }
    picture and the readings beside it, rather than by the step inside a list. */
 nx-window[name="activity"] .info-body + .readings { margin-top: var(--portrait-gap); }
 
-/* A chart with its figures under it. The label stands level with the middle
-   of the chart rather than with the figures, so it names the picture, and the
-   figures are plain text in the readings' own size, because nobody types
-   there. */
+/* A chart with its figures under it. The label stands at the top of the
+   chart, at the height it has beside a row of lamps, so every label in the
+   window keeps one rhythm. It has the row's one pixel edge as well, unseen,
+   because a zoom rounds that edge to a whole pixel and the label then rounds
+   with it. The figures are plain text in the readings' own size, because
+   nobody types there. */
 nx-row.charted { align-items: start; }
-nx-row.charted label { align-self: center; }
+nx-row.charted label {
+  border-block: 1px solid transparent;
+  line-height: calc(var(--reading-height) - 2px);
+}
 .charted-reading {
   display: grid;
   gap: 3px;
