@@ -74,6 +74,9 @@ nx-window[name="preferences"] .module-row {
 /* NetInstallHelper's open package with the globe, which NeXT drew for
    software arriving over the network. */
 .module[value="updates"] .art { background-image: var(--Updates); }
+/* The Installer's open package with the arrow, which NeXT drew for putting
+   software on a machine. */
+.module[value="software"] .art { background-image: var(--Installer); }
 
 /* The chosen module's own name, as Preferences itself called it. */
 .module-name {
@@ -151,14 +154,31 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
    that touch. Measured off the Keyboard module on the running system: the
    groove is one row of shadow with one of light inside it, and the chosen
    button is white where the others are gray. */
-/* The one child of the scroller, holding whichever module's panel is up. */
-.module-panel { min-height: 100%; }
+/* What stands under the module row, holding whichever module's page is up and
+   taking the rest of the window. Nothing in it scrolls but a list, which
+   carries a scroller of its own. */
+.module-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 
-/* One module's own page inside it. Named for the module rather than `panel`,
-   which is the name the kit's own attention panel already carries: a bare rule
-   for that one reaches inside `nx-ask` and moves its title bar off the frame.
-   `tests/test_kit.py` holds this interface to naming nothing the kit builds. */
-.module-page { padding: 10px; }
+/* One module's own page inside it, on the window's own edge as the module row
+   is, so a group stands nine points from the frame on every side. Named for
+   the module rather than `panel`, which is the name the kit's own attention
+   panel already carries: a bare rule for that one reaches inside `nx-ask` and
+   moves its title bar off the frame. `tests/test_kit.py` holds this interface
+   to naming nothing the kit builds. */
+.module-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The languages fill the page, as the one list Localization holds. */
+nx-scroller.languages { flex: 1 1 auto; min-height: 0; }
 
 /* A page of several titled groups, one under the other with the air the
    Keyboard module leaves between its own. */
@@ -168,6 +188,37 @@ nx-terminal .xterm-viewport::-webkit-scrollbar {
   align-content: start;
 }
 .module-page.groups .group > label.two-state { margin: 3px 0; }
+
+/* The software catalog: six rows high, so one entry still reads as a list,
+   and the rows are the Installer's, with the mark column kept for whether a
+   package is on the card. */
+nx-scroller.packages { flex: 0 0 auto; height: calc(var(--row) * 6 + 2px); }
+
+/* A shipped entry removed here, still listed so it can be brought back, in
+   the gray a disabled menu entry wears: it is here and not for now. */
+.system.gone:not([chosen]) { color: var(--dark); }
+
+/* Restore undoes what the other three do, so it stands apart from them at the
+   left of the row. */
+.software-buttons > :first-child { margin-right: auto; }
+
+/* The form an entry is edited in: the labels right aligned in a column of
+   their own, as every reading is, and each field to the right of its label,
+   level with the first line of what it holds. Nothing in it is cut off, so
+   a field's focus ring stands whole. */
+.software-form { overflow: visible; }
+.software-form nx-row { grid-template-columns: 96px 1fr; align-items: start; }
+.software-form nx-row > label { padding-top: 3px; }
+.software-form nx-popup { justify-self: start; }
+
+/* Choices of the same kind side by side, two to a row, with their words
+   beside them as every switch in this interface has. */
+.software-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; padding-top: 2px; }
+.software-choices label.two-state { font-weight: normal; text-align: left; }
+
+/* The digest and its algorithm on one line, the field taking what the pop-up
+   list leaves. */
+.software-pair { display: grid; grid-template-columns: 1fr max-content; gap: 8px; align-items: center; }
 
 /* The manual choice with the button that acts on it standing to its right,
    on the same line, so the button reads as belonging to that choice. */

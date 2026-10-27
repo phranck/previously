@@ -70,6 +70,29 @@ nx-field {
   white-space: nowrap;
 }
 
+/* A text field, which is a place to type: white, sunken and one line tall, as
+   the Controls chapter makes one. Its edge is the `sunken` edge every sunken
+   surface on the desk is drawn with. A field of several lines is the same
+   field taller, and nobody drags it to another size. Disabled greys the text
+   and leaves the white as it is. */
+input.entry,
+textarea.entry {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  font: var(--text-size) var(--font);
+  color: var(--black);
+  background: var(--white);
+  padding: 3px 5px;
+  border: 1px solid;
+  border-image: var(--sunken);
+}
+textarea.entry { resize: none; line-height: 1.3; }
+input.entry:disabled,
+textarea.entry:disabled { color: var(--dark); }
+input.entry:focus,
+textarea.entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
+
 .state { display: flex; align-items: center; gap: 7px; }
 /* The lamp, and the one a busy window carries before its words further down.
    The box is stated here because `*` reaches no pseudo-element, and without it

@@ -45,6 +45,15 @@ const Saved = /** @type {const} */ ({
   Remove: "/api/machine/remove",
 });
 
+/** What can be asked about the software catalog, all from the Software module
+ *  of Preferences. None of it fetches anything: these change the list of what
+ *  can be. */
+const Software = /** @type {const} */ ({
+  Keep: "/api/software",
+  Remove: "/api/software/remove",
+  Restore: "/api/software/restore",
+});
+
 /** How long an operation may take before the page stops waiting for the
  *  answer. Longer than the longest change of machine, which is
  *  LONGEST_SECONDS in change.py: a machine that comes up blank and is put
@@ -143,6 +152,7 @@ export {
   Kiosk,
   Board,
   Saved,
+  Software,
   ask,
   send,
   tell,

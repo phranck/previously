@@ -68,6 +68,7 @@
         "HTMLElement": "readonly",
         "HTMLButtonElement": "readonly",
         "HTMLInputElement": "readonly",
+        "HTMLTextAreaElement": "readonly",
         "Image": "readonly",
         "Audio": "readonly",
         "URL": "readonly",

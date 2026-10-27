@@ -356,7 +356,7 @@
 </nx-menu>
 
 <nx-window name="preferences" data-t-title="app.preferences" fixed
-           x="560" y="120" w="440" h="350" min-h="240" closed>
+           x="560" y="120" w="440" h="371" min-h="240" closed>
 
   <nx-scroller class="modules" bars="across">
     <div class="module-row">
@@ -364,13 +364,15 @@
       <div class="module" value="monitor"><i class="art"></i></div>
       <div class="module" value="notifications"><i class="art"></i></div>
       <div class="module" value="updates"><i class="art"></i></div>
+      <div class="module" value="software"><i class="art"></i></div>
     </div>
   </nx-scroller>
   <p class="module-name" id="module-name"></p>
 
-  <nx-scroller>
    <div class="module-panel">
-    <div class="options" id="languages"></div>
+    <div class="module-page" id="languages-page">
+      <nx-scroller class="languages"><div class="options" id="languages"></div></nx-scroller>
+    </div>
     <div class="module-page" id="sizes" hidden>
 
       <fieldset class="group">
@@ -405,11 +407,48 @@
           <label class="two-state"><input type="radio" class="radio" name="updates-mode" value="manual"><span data-t="updates.manual"></span></label>
           <button id="updates-look" data-t="button.look-now"></button>
         </div>
-        <p class="note" data-t="updates.hint"></p>
+        <p class="note" data-t="preferences.pi-wide"></p>
+      </fieldset>
+    </div>
+
+    <div class="module-page groups" id="software-page" hidden>
+      <fieldset class="group">
+        <legend data-t="preferences.software.packages"></legend>
+        <nx-scroller class="packages"><div class="options" id="software-list"></div></nx-scroller>
+        <div class="buttons software-buttons">
+          <button id="software-restore" data-t="button.restore"></button>
+          <button id="software-remove" data-t="button.remove"></button>
+          <button id="software-edit" data-t="button.edit"></button>
+          <button id="software-add" data-t="button.add"></button>
+        </div>
+        <p class="note" id="software-note"></p>
       </fieldset>
     </div>
    </div>
-  </nx-scroller>
+</nx-window>
+
+<nx-window name="software-entry" data-t-title="window.software-entry" fixed x="600" y="160" w="460" closed>
+  <div class="readings software-form" id="software-form">
+    <nx-row><label for="se-name" data-t="info.name"></label><input class="entry" id="se-name" spellcheck="false"></nx-row>
+    <nx-row><label for="se-version" data-t="info.version"></label><input class="entry" id="se-version" spellcheck="false"></nx-row>
+    <nx-row><label for="se-description" data-t="info.description"></label><textarea class="entry" id="se-description" rows="3"></textarea></nx-row>
+    <nx-row><label data-t="info.group"></label><nx-popup id="se-group"></nx-popup></nx-row>
+    <nx-row><label data-t="info.kind"></label>
+      <div class="software-choices" id="se-kind">
+        <label class="two-state"><input type="radio" class="radio" name="se-kind" value="disc"><span data-t="software.kind.disc"></span></label>
+        <label class="two-state"><input type="radio" class="radio" name="se-kind" value="file"><span data-t="software.kind.file"></span></label>
+      </div></nx-row>
+    <nx-row><label data-t="info.for"></label><div class="software-choices" id="se-systems"></div></nx-row>
+    <nx-row><label for="se-address" data-t="info.address"></label><input class="entry" id="se-address" spellcheck="false"></nx-row>
+    <nx-row><label for="se-size" data-t="info.size"></label><input class="entry" id="se-size" inputmode="numeric" spellcheck="false"></nx-row>
+    <nx-row><label for="se-digest" data-t="info.digest"></label>
+      <div class="software-pair"><input class="entry" id="se-digest" spellcheck="false"><nx-popup id="se-algorithm"></nx-popup></div></nx-row>
+  </div>
+  <p class="note" id="se-note"></p>
+  <div class="buttons">
+    <button id="se-cancel" data-t="button.cancel"></button>
+    <button id="se-save" data-t="button.save"></button>
+  </div>
 </nx-window>
 
 <nx-window name="terminal" title="Terminal" flush drop

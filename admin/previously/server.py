@@ -715,6 +715,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "booted": systems.booted(here, config.booting_from(self.settings.previous_config)),
             "groups": [{"identifier": group, "name": name}
                        for group, name in software.FOLDERS.items()],
+            "systems": [{"identifier": system.identifier, "name": system.name}
+                        for system in systems.CATALOGUE],
             "entries": [{**software.described(entry),
                          "origin": made.get(entry.identifier, "shipped")}
                         for entry in software.catalogue(changes)],

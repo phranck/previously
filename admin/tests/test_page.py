@@ -298,8 +298,10 @@ HELD = re.compile(r'\bhold\(\s*"#([^"]+)"')
 #: The buttons that read something and change nothing, which the system's state
 #: leaves alone: what a release says about itself can be read in Preview whatever
 #: the machine is doing, and asking GitHub and the archive whether there is
-#: anything newer changes nothing on the machine either.
-READING_BUTTONS = {"pi-notes", "updates-look"}
+#: anything newer changes nothing on the machine either. Cancel in the window a
+#: software entry is edited in closes that window and nothing else, and it has
+#: to work whatever the machine is doing, or the window could not be closed.
+READING_BUTTONS = {"pi-notes", "updates-look", "se-cancel"}
 
 
 def test_every_button_that_changes_something_follows_the_system(page, markup):

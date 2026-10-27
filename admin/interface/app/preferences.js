@@ -1,5 +1,5 @@
 /* Preferences: the language, the size, how notifications reach this browser,
-   and whether the Pi looks for updates on its own. */
+   whether the Pi looks for updates on its own, and the software catalog. */
 
 import { LANGUAGE_NAMES, currentLanguage, setLanguage, t, writeWords } from "../strings.js";
 import { redrawActivity } from "./activity.js";
@@ -12,6 +12,7 @@ import { ask, tell } from "./service.js";
 import { byId } from "./page.js";
 import { showTheNotesAgain } from "./preview.js";
 import { drawSizes } from "./size.js";
+import { drawTheSoftware, refreshTheSoftware, wireTheSoftware } from "./software.js";
 import { refresh } from "./status.js";
 import { drawPlace } from "./viewer.js";
 
@@ -37,10 +38,11 @@ function drawLanguages() {
 /** What each module of Preferences is called and which panel it shows.
  *  @type {Record<string, {name: string, panel: string}>} */
 const MODULES = {
-  localization: { name: "preferences.localization", panel: "languages" },
+  localization: { name: "preferences.localization", panel: "languages-page" },
   monitor: { name: "preferences.monitor", panel: "sizes" },
   notifications: { name: "preferences.notifications", panel: "notifications-page" },
   updates: { name: "preferences.updates", panel: "updates-page" },
+  software: { name: "preferences.software", panel: "software-page" },
 };
 
 /**
@@ -62,6 +64,9 @@ function showModule(which) {
     byId(one.panel).hidden = name !== which;
   }
   writeWords(byId("module-name"), t(module.name));
+  /* The catalog is the Pi's and can change from another browser, so it is
+     asked for each time its module comes up. */
+  if (which === "software") refreshTheSoftware();
 }
 
 /**
@@ -155,6 +160,7 @@ function wirePreferences() {
   drawSizes();
   wireNotificationSettings();
   wireUpdateSettings();
+  wireTheSoftware();
 }
 
 /**
@@ -194,6 +200,8 @@ function speak(code) {
     /* The notifications are put into words here from the last list the Pi
        sent, so they are drawn again rather than waiting for the next. */
     redrawTheNotifications();
+    /* A removed entry says so in words, so the list is drawn again. */
+    drawTheSoftware();
   });
 }
 

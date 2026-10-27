@@ -812,6 +812,8 @@ export interface SoftwareAnswer {
   /** Every group, in the order the Software folder lists them, with the name
    *  of its folder. */
   groups: { identifier: string; name: string }[];
+  /** Every system an entry can be for, in systems.CATALOGUE's order. */
+  systems: { identifier: string; name: string }[];
   /** Every entry of the catalog as this Pi lists it, whatever system it is
    *  for: the shipped ones as changed here, then those added here. */
   entries: SoftwareListed[];

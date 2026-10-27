@@ -159,7 +159,10 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
 | `GET /api/setup` | Which systems there are, which are here, how much room is left, and what is being installed |
 | `POST /api/setup` | Asks the privileged helper to install, update, remove or fetch something |
-| `GET /api/software` | The whole software catalog, and which system the machine boots |
+| `GET /api/software` | The whole software catalog as this Pi has it, where each entry came from, the shipped ones removed, and which system the machine boots |
+| `POST /api/software` | Adds an entry to the catalog, or writes over the one it replaces |
+| `POST /api/software/remove` | Takes an entry out of the catalog |
+| `POST /api/software/restore` | Brings a shipped entry back as it was shipped |
 | `GET /api/update` | Which version of this tool is installed, which is published, and how a replacement of it is getting on |
 | `GET /api/update/notes` | What the published release says about itself, as the Markdown it was written in |
 | `POST /api/update` | Asks the privileged helper to replace this tool with the newest release |
@@ -346,7 +349,9 @@ Both directions need the machine switched off. A copy taken while NeXTSTEP is wr
 
 **Every entry is checked field by field** in `software.problems`, and the shipped list is held to the same rules by its tests. The address is https, carries no name and password, and names a host rather than an IP address, so an entry cannot point the Pi at its own network.
 
-**Name, version and description stand as written**, in English, whatever language the interface speaks. Only the labels beside them are translated.
+**Name, version and description stand as written**, whatever language the interface speaks, and the shipped ones are written in English. Only the labels beside them are translated.
+
+**What is changed on the Pi lives beside the shipped list**, in `software.json` in the service's state directory: the entries added, the shipped ones edited, and the shipped ones removed. An update of the package brings its new entries and leaves every change made here standing, and a shipped entry edited or removed here can be brought back as shipped. An added entry takes its identifier from its name and keeps it when it is edited. Preferences is where all of it is done.
 
 ## Switching the machine on and off
 
@@ -561,13 +566,17 @@ Adding a string means adding it to all six catalogs. `tests/test_strings.py` fai
 
 ## Preferences
 
-NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath, and this is that with four modules in it: Localization offers the six languages, Monitor offers the size the interface is drawn at, Notifications offers how notifications reach this browser, and Updates offers whether the Pi looks for updates on its own.
+NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath, and this is that with five modules in it: Localization offers the six languages, Monitor offers the size the interface is drawn at, Notifications offers how notifications reach this browser, Updates offers whether the Pi looks for updates on its own, and Software keeps the software catalog.
+
+**Only a list scrolls**, never a module's page. A list inside a module carries its own scroller, as the languages and the packages do, and every page stands on the window's own edge, nine points from the frame on every side.
 
 Localization and Monitor are two of NeXTSTEP's own fourteen modules. Localization offers the six languages. Everything it shows comes out of the disk image rather than from us: `Localization.tiff` is the picture Preferences.app carried for it, the window's title is what each language's `preferences.strings` called the application, and the module's name is the `Long Name` in the `Info` file of its own bundle. Three of the six left the application's name untranslated, so the window says `Preferences` in French, Italian and Swedish and `Präferenzen` in German, exactly as it did. Monitor's picture is the one `design/extract.py` takes from `/NextApps/Preferences.app/Monitor.preferences/Monitor`.
 
 **Notifications** is this tool's own module and wears the information sign the Info notification wears. Its first group, In This Browser, holds two switches: whether notifications show at all, and whether one that appears plays a sound. The sound is Glass out of `/NextLibrary/Sounds`, one of the sounds NeXTSTEP's Sound module offered as the system beep, which `design/extract.py` writes as `web/sounds/Glass.wav`. Its second group, Position, puts four radio buttons at the corners of Preferences' own monitor picture, and the stack moves to the corner chosen, clear of the dock on the right and of the floor at the foot. All three settings belong to this browser and are kept in `localStorage`, as the language and the size are, and a change shows on the stack at once.
 
 **Updates** is this tool's own as well, and wears the open package with the globe that NeXT drew for `NetInstallHelper.app`, which `design/extract.py` takes out of the disk image. Two radio buttons say whether the Pi looks for updates automatically or manually, and beside the manual one stands a button that has the Pi look once, at once. The button is off while the Pi looks on its own. This setting belongs to the Pi rather than to a browser, because the Pi is what looks: `GET /api/updates` answers it, `POST /api/updates` changes it and needs the password, and `POST /api/updates/look` is the button. A choice the Pi refuses is drawn back to what it holds.
+
+**Software** is this tool's own and wears the open package with the arrow that NeXT drew for its Installer. It lists the catalog as this Pi has it, six rows high: the shipped entries as changed here, then those added here, and the shipped ones removed here in gray with "removed" where a version stands. Add and Edit open the Software Entry window, a form whose Save enters the entry; a field the service refuses gets the cursor with its text selected. Remove asks first and says whether the entry can come back. Restore brings a shipped entry back as it was shipped, and asks first where that throws away edits. Everything here belongs to the Pi and needs the password: `POST /api/software` adds or replaces an entry, `POST /api/software/remove` and `POST /api/software/restore` take one out or bring a shipped one back, and every answer carries the catalog as it now stands, which the File Viewer's Software folder follows at once.
 
 The switches and radio buttons are the browser's own inputs wearing NeXTSTEP's own bitmaps, which `../design/kit/switches.css` lays on them. The Application Kit compiled `NXswitch` and `NXradio` into its library rather than shipping them as files, so `../design/controls.py` cuts all four out of two grabs of Preferences on the running system.
 

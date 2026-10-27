@@ -1959,6 +1959,9 @@ def test_the_catalog_is_open_and_says_what_boots(service, tmp_path):
     assert entry["address"].startswith("https://archive.org/download/")
     assert entry["algorithm"] == "sha1"
     assert {"identifier": "developer", "name": "Developer"} in answer["groups"]
+    # Every system an entry can be for, so the window that edits one can offer
+    # them by name.
+    assert {"identifier": "openstep-4.2", "name": "OPENSTEP 4.2"} in answer["systems"]
 
 
 def a_package():

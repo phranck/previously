@@ -1174,19 +1174,13 @@ nx-ask .lines p:last-child { margin: 0; }
    the color of the sentence it stands in rather than taking one of its own. */
 nx-ask .lines a { color: inherit; }
 
-/* The line a panel takes an answer on, which is a name or a password. NeXT's
-   text fields are white, sunken and one line tall. Its edge is the `sunken`
-   class in base.css, the edge every sunken surface on the desk is drawn
-   with. */
+/* The line a panel takes an answer on, which is a name or a password: the
+   kit's text field from panel.css, in the monospaced face, under the
+   message. */
 nx-ask .entry {
-  width: 100%;
   margin-top: 10px;
   font: 12px var(--mono);
-  color: var(--black);
-  background: var(--white);
-  padding: 3px 5px;
 }
-nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
 
 /* The button Return presses carries the Return-key symbol, to the right of its
    label, and it carries it only while Return will press it, which here is
@@ -1443,6 +1437,29 @@ nx-field {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* A text field, which is a place to type: white, sunken and one line tall, as
+   the Controls chapter makes one. Its edge is the `sunken` edge every sunken
+   surface on the desk is drawn with. A field of several lines is the same
+   field taller, and nobody drags it to another size. Disabled greys the text
+   and leaves the white as it is. */
+input.entry,
+textarea.entry {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  font: var(--text-size) var(--font);
+  color: var(--black);
+  background: var(--white);
+  padding: 3px 5px;
+  border: 1px solid;
+  border-image: var(--sunken);
+}
+textarea.entry { resize: none; line-height: 1.3; }
+input.entry:disabled,
+textarea.entry:disabled { color: var(--dark); }
+input.entry:focus,
+textarea.entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
 
 .state { display: flex; align-items: center; gap: 7px; }
 /* The lamp, and the one a busy window carries before its words further down.
