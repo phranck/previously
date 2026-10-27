@@ -20,6 +20,13 @@
   padding-left: calc(var(--portrait) + var(--portrait-gap));
 }
 
+/* Where a second group follows, the picture reaches down beside it, into the
+   room its indent leaves, rather than deciding where it starts. A picture
+   taller than the first group would otherwise push the second one down by
+   the difference. The margin takes the picture out of the row's height, and
+   no picture is taller than it is wide. */
+.info-body:has(+ .readings) > nx-portrait { margin-bottom: calc(-1 * var(--portrait)); }
+
 nx-portrait {
   display: grid;
   justify-items: center;
