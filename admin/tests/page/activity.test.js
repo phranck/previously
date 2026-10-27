@@ -56,6 +56,10 @@ const READING = {
   emulator: { cpu_percent: 57, memory_mb: 180, uptime_seconds: 2160 },
 };
 
+/** The same reading, split the way the stream sends it: the cores apart from
+ *  everything else. */
+const { cores: CORES, ...REST } = READING;
+
 /** @returns {any} The Activity Monitor window. */
 function theWindow() {
   return document.querySelector('nx-window[name="activity"]');
@@ -74,9 +78,11 @@ test("opening the window opens one stream, and a reading is drawn", () => {
 
   assert.equal(Stream.opened.length, 1);
   assert.equal(Stream.opened[0].url, "/api/activity/stream");
-  Stream.opened[0].send("message", JSON.stringify(READING));
+  Stream.opened[0].send("rest", JSON.stringify(REST));
+  Stream.opened[0].send("cores", JSON.stringify({ cores: CORES }));
   assert.equal(document.getElementById("activity-model").textContent, READING.model);
   assert.equal(document.querySelectorAll("#activity-cores nx-leds").length, 4);
+  assert.equal(document.querySelectorAll("#activity-cores nx-leds")[3].value, 100);
 });
 
 test("closing the window closes the stream", () => {
@@ -93,7 +99,7 @@ test("opening it again opens a new one", () => {
 });
 
 test("a reading puts in the drawing of the board it names", () => {
-  Stream.opened[1].send("message", JSON.stringify(
+  Stream.opened[1].send("rest", JSON.stringify(
     { ...READING, model: "Raspberry Pi Compute Module 4 Rev 1.1", board: "cm4" }));
 
   assert.equal(document.getElementById("activity-board").style.backgroundImage,
@@ -116,7 +122,7 @@ function filled(id) {
   return document.getElementById(id).history.filter((value) => value !== null).length;
 }
 
-test("the emulator takes a column with every reading, the load one every five seconds", () => {
+test("the emulator takes a column with every reading of the rest, the load one every five seconds", () => {
   theWindow().close();
   theWindow().open();
 
@@ -126,6 +132,19 @@ test("the emulator takes a column with every reading, the load one every five se
 
   assert.equal(filled("activity-emulator-chart"), 6);
   assert.equal(filled("activity-load-chart"), 2);
+});
+
+test("the cores alone redraw the cores and leave the charts as they are", () => {
+  theWindow().close();
+  theWindow().open();
+  const stream = Stream.opened.at(-1);
+  stream.send("rest", JSON.stringify(REST));
+
+  stream.send("cores", JSON.stringify({ cores: [0, 0, 0, 25] }));
+  stream.send("cores", JSON.stringify({ cores: [0, 0, 0, 75] }));
+
+  assert.equal(document.querySelectorAll("#activity-cores nx-leds")[3].value, 75);
+  assert.equal(filled("activity-emulator-chart"), 1);
 });
 
 test("the load chart reaches at least the cores, and warns at seven tenths of them", () => {

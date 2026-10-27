@@ -1,5 +1,6 @@
-/* Activity Monitor: what every core of the board is doing, twice a second,
-   and the load and the emulator's share as charts of what came before. */
+/* Activity Monitor: what every core of the board is doing, five times a
+   second, and the load and the emulator's share as charts of what came
+   before. */
 
 import { NxChart, NxLeds } from "../nextstep.js";
 import { t } from "../strings.js";
@@ -10,9 +11,9 @@ import { NOTHING, costOf, decimal, memoryInUse } from "./words.js";
 /** @typedef {import("../answers.js").ActivityAnswer} ActivityAnswer */
 
 /** Where the readings come from while the window is open: a stream of
- *  Server-Sent Events, one reading every half second, each the object
- *  `/api/activity` answers with. A request per reading would cost the service
- *  more than the readings themselves. */
+ *  Server-Sent Events of two kinds, `cores` five times a second and `rest`
+ *  twice, together the object `/api/activity` answers with. A request per
+ *  reading would cost the service more than the readings themselves. */
 const STREAM = "/api/activity/stream";
 
 /** How long to wait before opening the stream again where the service closed
@@ -68,15 +69,26 @@ function openTheStream() {
      while it was closed was not measured. */
   for (const chart of charts()) chart.clear();
   loadTakenAt = 0;
+  lastReading = null;
 
   const opened = new EventSource(STREAM);
   stream = opened;
-  opened.addEventListener("message", (event) => {
-    /** @type {ActivityAnswer} */
-    const reading = JSON.parse(event.data);
-    lastReading = reading;
-    drawActivity(reading);
-    chartActivity(reading);
+  /* The rest comes twice a second and takes the charts on; the cores come
+     five times a second. Each is laid over what is already known, so the
+     window always draws one whole reading. */
+  opened.addEventListener("rest", (event) => {
+    /** @type {Omit<ActivityAnswer, "cores">} */
+    const rest = JSON.parse(event.data);
+    lastReading = { cores: null, ...lastReading, ...rest };
+    chartActivity(lastReading);
+    drawActivity(lastReading);
+  });
+  opened.addEventListener("cores", (event) => {
+    /** @type {Pick<ActivityAnswer, "cores">} */
+    const { cores } = JSON.parse(event.data);
+    if (!lastReading) return;
+    lastReading = { ...lastReading, cores };
+    drawActivity(lastReading);
   });
   opened.addEventListener("error", () => {
     drawActivity(null);
@@ -164,7 +176,6 @@ function showShare(meter, share, words) {
   meter.says = share === null ? NOTHING : words(share);
 }
 
-
 /** @returns {NxChart[]} The load chart and the emulator chart, as the markup
  *  holds them. */
 function charts() {
@@ -176,10 +187,11 @@ function charts() {
  * @param {ActivityAnswer} activity - The reading.
  * @param {number} [now] - The page's clock, for a test.
  *
- * The emulator takes a column with every reading, because its share is worked
- * out afresh between each two. The load takes one every LOAD_EVERY_MS, and its
- * chart reaches at least the number of cores, so a full column is every core
- * busy, and grows with a load beyond that.
+ * Called with every reading of the rest, twice a second. The emulator takes a
+ * column each time, its share worked out by the service over that half
+ * second. The load takes one every LOAD_EVERY_MS, and its chart reaches at
+ * least the number of cores, so a full column is every core busy, and grows
+ * with a load beyond that.
  */
 function chartActivity(activity, now = Date.now()) {
   const [load, emulator] = charts();

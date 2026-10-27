@@ -222,7 +222,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 **pi.readings(self.settings.runtime_directory)})
         if route == "/api/activity":
             # Its own route rather than more of the one above, because a
-            # monitor draws this twice a second and that one forks three times
+            # monitor draws this five times a second and that one forks three times
             # to answer.
             return self._json(activity.readings())
         if route == "/api/activity/stream":
@@ -928,10 +928,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _activity_stream(self):
         """Sends Activity Monitor its readings for as long as it is listening.
 
-        Server-Sent Events: one reading every `activity.EVERY_SECONDS`, each as
-        an event carrying the same object `/api/activity` answers with. Open
-        without a session for the same reason that route is. What it sends is
-        about the board, and nothing about whoever is sitting at the machine.
+        Server-Sent Events of two kinds on the one connection: `cores`, what
+        the cores are doing, every `activity.CORES_EVERY_SECONDS`, and `rest`,
+        everything else, every `activity.REST_EVERY_SECONDS`. Two kinds rather
+        than two streams, because a stream holds a thread and the service
+        allows only so many, and two per window would halve how many browsers
+        can watch. The first event is `rest`, so the window knows the board
+        before it draws a core. Open without a session for the same reason
+        `/api/activity` is: what it sends is about the board, and nothing about
+        whoever is sitting at the machine.
 
         A stream rather than a request per reading, because a request costs
         the service 1.5 ms of a core where the reading in it costs 0.4. The
@@ -957,11 +962,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(b"retry: %d\n\n" % STREAM_RETRY_MS)
 
             sampler = activity.Sampler()
+            rest_due = cores_due = time.monotonic()
             while True:
-                reading = json.dumps(sampler.readings(), ensure_ascii=False)
-                self.wfile.write(("data: %s\n\n" % reading).encode("utf-8"))
-                self.wfile.flush()
-                time.sleep(activity.EVERY_SECONDS)
+                now = time.monotonic()
+                if now >= rest_due:
+                    self._send_event("rest", sampler.rest())
+                    rest_due = max(rest_due + activity.REST_EVERY_SECONDS, now)
+                if now >= cores_due:
+                    self._send_event("cores", {"cores": sampler.cores()})
+                    cores_due = max(cores_due + activity.CORES_EVERY_SECONDS, now)
+                time.sleep(max(0, min(rest_due, cores_due) - time.monotonic()))
         except OSError:
             # The browser closed the window or went away, or stopped reading.
             # Either way there is nobody left to send to.
@@ -969,6 +979,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         finally:
             self.close_connection = True
             self.streams.give_back(source)
+
+    def _send_event(self, kind, said):
+        """Writes one Server-Sent Event of a kind, carrying an object as JSON.
+
+        @param kind - The event's name, which the page listens for.
+        @param said - What it carries.
+        """
+        reading = json.dumps(said, ensure_ascii=False)
+        self.wfile.write(("event: %s\ndata: %s\n\n" % (kind, reading)).encode("utf-8"))
+        self.wfile.flush()
 
     def _screen(self):
         """Answers with a picture of what the emulated machine is showing.

@@ -105,8 +105,8 @@ def test_a_sample_left_long_ago_is_not_compared_against(monkeypatch, tmp_path):
     average of that hour, drawn as what the board is doing now."""
     proc(monkeypatch, tmp_path, [(100, 900)])
     activity.readings()
-    when, cores, ticks = activity._SHARED.last
-    activity._SHARED.last = (when - activity.COMPARABLE_FOR_SECONDS - 1, cores, ticks)
+    when, cores = activity._SHARED.last_cores
+    activity._SHARED.last_cores = (when - activity.COMPARABLE_FOR_SECONDS - 1, cores)
     proc(monkeypatch, tmp_path, [(150, 950)])
 
     assert activity.readings()["cores"] is None
@@ -129,6 +129,20 @@ def test_every_stream_measures_against_its_own_last_sample(monkeypatch, tmp_path
     # all of what passed since the second did.
     assert first.readings()["cores"] == [50.0]
     assert second.readings()["cores"] == [0.0]
+
+
+def test_the_cores_are_measured_apart_from_the_rest(monkeypatch, tmp_path):
+    """A stream sends the cores more often than the rest, so asking for the
+    rest must not move the sample the cores are measured against."""
+    sampler = activity.Sampler()
+    proc(monkeypatch, tmp_path, [(100, 900)])
+    sampler.cores()
+    proc(monkeypatch, tmp_path, [(150, 950)])
+    sampler.rest()
+    proc(monkeypatch, tmp_path, [(200, 1000)])
+
+    assert sampler.cores() == [50.0]
+    assert "cores" not in sampler.rest()
 
 
 def test_a_core_that_appears_keeps_the_shape_of_the_answer(monkeypatch, tmp_path):
