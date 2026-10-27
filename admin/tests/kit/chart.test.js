@@ -94,6 +94,29 @@ test("each lamp takes the color of the value it stands for", () => {
   assert.deepEqual(zones(chart, 0), [null, "warm", "hot", "hot"]);
 });
 
+test("the green lamps grow paler up a column, by the value they stand for", () => {
+  const chart = lay(`<nx-chart columns="1" lamps="4"></nx-chart>`);
+  chart.floor = 4;
+  chart.warm = 2.8;
+  chart.hot = 4;
+
+  chart.push(4);
+
+  /* The lamps stand for 1, 2, 3 and 4, and orange begins above 2.8. */
+  assert.deepEqual([...chart.querySelectorAll(".led")]
+    .map((lamp) => lamp.style.getPropertyValue("--along")), ["0.357", "0.714", "", ""]);
+});
+
+test("a chart that never warns grades its green up the whole column", () => {
+  const chart = lay(`<nx-chart columns="1" lamps="4"></nx-chart>`);
+  chart.floor = 4;
+
+  chart.push(4);
+
+  assert.deepEqual([...chart.querySelectorAll(".led")]
+    .map((lamp) => lamp.style.getPropertyValue("--along")), ["0", "0.333", "0.667", "1"]);
+});
+
 test("clearing empties every column", () => {
   const chart = lay(`<nx-chart columns="2" lamps="4"></nx-chart>`);
   chart.floor = 100;

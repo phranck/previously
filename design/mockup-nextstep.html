@@ -70,8 +70,8 @@
   /* Measured off the screenshot: not a gray, the dark value with more blue. */
   --desktop: #555577;
 
-  /* A lamp that is on: beside a state, in a busy window, and in a row of
-     nx-leds. The green design/boards.py lights the board's own lamp with, so a
+  /* A lamp that is on: beside a state and in a busy window. The green
+     design/boards.py lights the board's own lamp with, so a
      lamp on the screen and a lamp on the drawn board are one green. */
   --live: #2ec84a;
   /* The lamps near the end of a row of nx-leds, which warn the way a level
@@ -80,6 +80,16 @@
      at the same brightness. */
   --warm: #f0a020;
   --hot: #e0302a;
+  /* A lamp of nx-leds and nx-chart, which glows on its black field: the lit
+     one is a paler core with a pixel of its color round it, and the dark one
+     is nearly black. The green cores run from the first to the second along
+     the green part of a row, darker at its start. phranck's choice of 27
+     October 2026 in the mockups of #729. */
+  --lamp-live-start: #16782b;
+  --lamp-live: #7dff96;
+  --lamp-warm: #ffd27a;
+  --lamp-hot: #ff8a80;
+  --lamp-dark: #262626;
 
   /* What a field carries when it has to be noticed: a version newer than the
      one running, and what a window is busy with. NeXTSTEP had nothing of this
@@ -1713,8 +1723,8 @@ nx-slider .unit {
 /* --- nx-chart ------------------------------------------------------------ */
 
 /* The field and the lamps of nx-leds, turned on their side: the same sunken
-   black field with six pixels of it around the lamps, and lamps that are dark
-   gray until they light. A lamp is a square of four pixels with two between,
+   black field with six pixels of it around the lamps, and the same lamps,
+   nearly black until they light. A lamp is a square of four pixels with two between,
    the pitch of nx-leds. That is a whole number of device pixels at every size
    the interface offers on a display of two device pixels per pixel, 10 and 5
    at 125 per cent, so every gap in the row is as wide as every other. A
@@ -1744,19 +1754,16 @@ nx-chart .column {
   width: 4px;
 }
 
-nx-chart .led { height: 4px; background: var(--dark); }
-nx-chart .led[lit] { background: var(--live); }
-nx-chart .led[lit][zone="warm"] { background: var(--warm); }
-nx-chart .led[lit][zone="hot"] { background: var(--hot); }
+/* How a lamp looks, dark or lit, is nx-leds' `.led`. */
+nx-chart .led { height: 4px; }
 
 /* --- nx-leds ------------------------------------------------------------- */
 
 /* A row of lamps on a dark field, lighting from the left as whatever it
    measures fills up. NeXTSTEP had nothing of the kind, so this is BeOS's
-   Pulse, which drew each processor as a run of LEDs, built from this desk's
-   own parts: the sunken edge every reading stands in, and the lamp the
-   readings already use for a state, lit in the same green and dark in the
-   same gray. A lit lamp therefore means here what it means beside "running".
+   Pulse, which drew each processor as a run of LEDs, set in the sunken edge
+   every reading stands in. A lit lamp is green, as the lamp beside "running"
+   is, so it means here what it means there.
 
    The lamps are whole pixels at a size stated here, not shares of whatever
    width the row is given. A lamp of 9.6 pixels is drawn as a blend of two
@@ -1793,12 +1800,29 @@ nx-leds .lamps {
 nx-leds .led {
   width: var(--led-width);
   height: var(--led-height);
-  background: var(--dark);
 }
 
-nx-leds .led[lit] { background: var(--live); }
-nx-leds .led[lit][zone="warm"] { background: var(--warm); }
-nx-leds .led[lit][zone="hot"] { background: var(--hot); }
+/* A lamp, of a row here and of a chart, which is this row on its side, and of
+   nothing else: a bare `.led` would reach any element of the class. Lit, it
+   glows one pixel into the black field round it, in its own color, so it
+   stands sharp. A green one is as far from the darker green to the paler one
+   as `--along` says, which the element sets from where the lamp stands in the
+   green part. */
+:is(nx-leds, nx-chart) .led { background: var(--lamp-dark); }
+:is(nx-leds, nx-chart) .led[lit] {
+  --core: color-mix(in srgb, var(--lamp-live) calc(var(--along, 1) * 100%),
+                    var(--lamp-live-start));
+  background: var(--core);
+  box-shadow: 0 0 1px var(--core);
+}
+:is(nx-leds, nx-chart) .led[lit][zone="warm"] {
+  background: var(--lamp-warm);
+  box-shadow: 0 0 1px var(--warm);
+}
+:is(nx-leds, nx-chart) .led[lit][zone="hot"] {
+  background: var(--lamp-hot);
+  box-shadow: 0 0 1px var(--hot);
+}
 
 /* The figure, which changes while somebody reads it, so its digits are held
    to one width and the words after them do not shift about. Where the row is
@@ -4907,15 +4931,23 @@ class NxChart extends HTMLElement {
     const columns = [...this.field.children];
     for (const [index, column] of columns.entries()) {
       const value = this.history[index];
-      const lamps = [...column.children];
+      const lamps = /** @type {HTMLElement[]} */ ([...column.children]);
       const lit = value === null || top <= 0
         ? 0 : Math.round(Math.min(Math.max(value / top, 0), 1) * lamps.length);
       for (const [place, lamp] of lamps.entries()) {
         lamp.toggleAttribute("lit", place < lit);
         const stands = (place + 1) / lamps.length * top;
         const zone = stands > this.hot ? "hot" : stands > this.warm ? "warm" : null;
-        if (zone) lamp.setAttribute("zone", zone);
-        else lamp.removeAttribute("zone");
+        if (zone) {
+          lamp.setAttribute("zone", zone);
+          lamp.style.removeProperty("--along");
+          continue;
+        }
+        lamp.removeAttribute("zone");
+        /* A green lamp grows paler with the value it stands for, up to where
+           orange begins, or up the whole column where nothing warns. */
+        lamp.style.setProperty("--along", alongTheGreen(Number.isFinite(this.warm)
+          ? stands / this.warm : place / Math.max(lamps.length - 1, 1)));
       }
     }
   }
@@ -4945,6 +4977,18 @@ const LEDS_FOLLOW_MS = 120;
  *  under a lamp, so the row stops moving only once it lights what the share
  *  lights. */
 const LEDS_ARRIVED = 0.5;
+
+/**
+ * How far along the green part of a row or a column a lamp stands, as the
+ * stylesheet's `--along` reads it, which grades its green from darker to
+ * paler.
+ * @param {number} share - From 0 at the start of the green part to 1 at its
+ *   end. Anything beyond is held to that.
+ * @returns {string} The share to three places, as a custom property takes it.
+ */
+function alongTheGreen(share) {
+  return String(Number(Math.min(Math.max(share, 0), 1).toFixed(3)));
+}
 
 /**
  * A row of lamps lighting from the left, for a share of something.
@@ -4986,15 +5030,18 @@ class NxLeds extends HTMLElement {
     this.row = document.createElement("div");
     this.row.className = "lamps";
     const count = Number(this.getAttribute("lamps")) || LEDS_IN_A_ROW;
+    const green = Math.ceil(count * LEDS_WARM_FROM);
     for (let lamp = 0; lamp < count; lamp += 1) {
       const led = document.createElement("i");
       led.className = "led";
       /* Each lamp keeps the color of its place in the row, so a row filling
          up goes green, then orange, then red, and the color says how near
-         the end the share is before the figure is read. */
+         the end the share is before the figure is read. The green ones grow
+         paler towards the orange. */
       const along = lamp / count;
       if (along >= LEDS_HOT_FROM) led.setAttribute("zone", "hot");
       else if (along >= LEDS_WARM_FROM) led.setAttribute("zone", "warm");
+      else led.style.setProperty("--along", alongTheGreen(lamp / Math.max(green - 1, 1)));
       this.row.append(led);
     }
 
@@ -5178,6 +5225,7 @@ export {
   WAYS,
   ZOOM_MS,
   ZOOM_RECTANGLES,
+  alongTheGreen,
   between,
   closestTo,
   deskIsNew,

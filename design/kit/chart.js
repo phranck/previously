@@ -105,15 +105,23 @@ class NxChart extends HTMLElement {
     const columns = [...this.field.children];
     for (const [index, column] of columns.entries()) {
       const value = this.history[index];
-      const lamps = [...column.children];
+      const lamps = /** @type {HTMLElement[]} */ ([...column.children]);
       const lit = value === null || top <= 0
         ? 0 : Math.round(Math.min(Math.max(value / top, 0), 1) * lamps.length);
       for (const [place, lamp] of lamps.entries()) {
         lamp.toggleAttribute("lit", place < lit);
         const stands = (place + 1) / lamps.length * top;
         const zone = stands > this.hot ? "hot" : stands > this.warm ? "warm" : null;
-        if (zone) lamp.setAttribute("zone", zone);
-        else lamp.removeAttribute("zone");
+        if (zone) {
+          lamp.setAttribute("zone", zone);
+          lamp.style.removeProperty("--along");
+          continue;
+        }
+        lamp.removeAttribute("zone");
+        /* A green lamp grows paler with the value it stands for, up to where
+           orange begins, or up the whole column where nothing warns. */
+        lamp.style.setProperty("--along", alongTheGreen(Number.isFinite(this.warm)
+          ? stands / this.warm : place / Math.max(lamps.length - 1, 1)));
       }
     }
   }
