@@ -252,6 +252,13 @@ LEFT_OUT = (
     "udisks2.service",
     # Switches SSH on from a file on the boot partition, and SSH is on.
     "sshswitch.service",
+    # Start apt's daily script twice a day at a random moment, while NeXTSTEP
+    # runs. The card as this project images it sets no `APT::Periodic`
+    # interval and carries no unattended-upgrades, so the script skips every
+    # step: a run fetches nothing and costs a Pi 4 three seconds of CPU. The
+    # tool runs `apt-get update` itself before it installs anything. A card
+    # somebody has set up to install updates on its own is treated the same.
+    "apt-daily.timer", "apt-daily-upgrade.timer",
 )
 
 #: The file that keeps cloud-init from starting, as its documentation names it.
@@ -1887,15 +1894,20 @@ def _left_out():
     @returns list of str, the units switched off, with the file that keeps
       cloud-init away as one more entry where this wrote one.
 
-    A machine that is running keeps cloud-init away from its next boot on.
-    An image keeps it for its first boot, which applies what Raspberry Pi
-    Imager set, and away from every boot after that.
+    On a machine that has booted the units are stopped as well, because
+    `systemctl disable` on its own leaves a running unit running until the
+    next boot. An image is only switched off, since nothing runs in pi-gen's
+    chroot, and what is off there never starts at its first boot. The same
+    split holds for cloud-init: a machine that has booted keeps it away from
+    its next boot on, and an image keeps it for its first boot, which applies
+    what Raspberry Pi Imager set, and away from every boot after that.
     """
+    has_booted = booted()
     on = [unit for unit in LEFT_OUT if unit_state(unit) == "enabled"]
     if on:
-        run(["systemctl", "disable", *on])
+        run(["systemctl", "disable", *(["--now"] if has_booted else []), *on])
     if CLOUD_INIT_OFF.parent.is_dir() and not CLOUD_INIT_OFF.exists():
-        if booted():
+        if has_booted:
             CLOUD_INIT_OFF.touch()
             on.append(str(CLOUD_INIT_OFF))
         elif _made_to_hold(CLOUD_INIT_ONCE, _cloud_init_once().encode("utf-8"),
@@ -1908,6 +1920,10 @@ def _brought_back(off):
     """Switches on again what `_left_out` switched off.
 
     @param off - What it answered.
+
+    Switched on for the next boot and not started now, because
+    NetworkManager-wait-online.service waits for the network once it runs, and
+    neither an undo nor a removal is to wait on the network.
     """
     files = (CLOUD_INIT_OFF, CLOUD_INIT_ONCE)
     units = [unit for unit in off if unit not in {str(path) for path in files}]
