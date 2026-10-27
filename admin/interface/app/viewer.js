@@ -9,6 +9,7 @@ import { changeTo, editOnWhatIsRunning, notYet } from "./machines.js";
 import { byId, show, targetName, theWindow } from "./page.js";
 import { showInPreview } from "./preview.js";
 import { ask } from "./service.js";
+import { showSoftwareInfo } from "./software.js";
 import { lastStatus, refresh } from "./status.js";
 import { EDITOR, machineArt } from "./words.js";
 
@@ -206,6 +207,8 @@ function open(path, asker) {
   if (entry.kind === "backup") return putTheCopyBack(entry);
   /* A disc goes into the machine, or comes out of it again. */
   if (entry.kind === "disc") return useTheDisc(entry);
+  /* Software is not on the card yet, so opening it says what it is. */
+  if (entry.kind === "software") return showSoftwareInfo(entry, asker);
   /* Named rather than left as what everything else falls through to, because
      what else is in here has grown and falling through would have asked the
      machine to become whatever was double clicked. */

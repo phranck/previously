@@ -39,6 +39,7 @@ export const de = {
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Info",
   "window.machine": "Maschine",
+  "window.software": "Software",
   "app.preferences": "Präferenzen",
   "preferences.localization": "Lokalisierungs-Präferenzen",
   "preferences.monitor": "Monitor-Präferenzen",
@@ -169,6 +170,13 @@ export const de = {
   "info.unreadable": "Konfiguration nicht lesbar",
   "info.not-set-up": "noch nichts installiert",
   "info.no-disk": "keine eingelegt",
+  "info.version": "Version",
+  "info.for": "Für",
+  "info.kind": "Art",
+  "info.size": "Größe",
+  "info.source": "Quelle",
+  "software.kind.disc": "CD-Image",
+  "software.kind.file": "Paket",
 
   "state.running": "läuft {since}",
   "state.stopped": "angehalten",

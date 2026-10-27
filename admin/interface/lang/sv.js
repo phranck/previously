@@ -39,6 +39,7 @@ export const sv = {
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Info",
   "window.machine": "Maskin",
+  "window.software": "Programvara",
   "app.preferences": "Preferences",
   "preferences.localization": "Lokala inställningar",
   "preferences.monitor": "Bildskärmsinställningar",
@@ -169,6 +170,13 @@ export const sv = {
   "info.unreadable": "konfigurationen går inte att läsa",
   "info.not-set-up": "ingenting installerat än",
   "info.no-disk": "ingen isatt",
+  "info.version": "Version",
+  "info.for": "För",
+  "info.kind": "Typ",
+  "info.size": "Storlek",
+  "info.source": "Källa",
+  "software.kind.disc": "CD-avbild",
+  "software.kind.file": "Paket",
 
   "state.running": "igång {since}",
   "state.stopped": "stoppad",

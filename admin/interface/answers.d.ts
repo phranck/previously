@@ -559,6 +559,50 @@ export type MachineEntry = Omit<MachineDescription, "kind"> & {
   configuration: SavedConfiguration;
 };
 
+/** One entry of the software catalog, from software.described. Name, version
+ *  and description are the catalog's own and are shown as they are. */
+export interface SoftwarePackage {
+  /** What a request names it by, such as "nextstep-3.3-developer". */
+  identifier: string;
+  name: string;
+  description: string;
+  /** One of software.GROUPS, such as "developer". */
+  group: string;
+  version: string;
+  /** The identifiers of the systems it runs on, out of systems.CATALOGUE. */
+  systems: string[];
+  /** The names of those systems, in the same order. */
+  for: string[];
+  /** Where it is downloaded from, an https address. */
+  address: string;
+  /** The file's size in bytes. */
+  size: number;
+  /** "sha1" or "sha256", as software.DIGEST_DIGITS. */
+  algorithm: string;
+  /** The file's digest in lowercase hexadecimal. */
+  digest: string;
+  /** "disc" for a CD image and "file" for anything else, as software.KINDS. */
+  kind: string;
+  /** The host of `address`, which the Info window shows as where it comes
+   *  from. */
+  source: string;
+}
+
+/** A piece of software the catalog offers for the booted system, from
+ *  files._software. Nothing of it is on the card. */
+export interface SoftwareEntry {
+  /** The entry's identifier. */
+  id: string;
+  name: string;
+  /** "cdrom" for a CD image, and "defaultIcon" for anything else. */
+  icon: string;
+  path: string;
+  kind: "software";
+  /** What it weighs once downloaded. */
+  bytes: number;
+  package: SoftwarePackage;
+}
+
 /** Anything the tree can hold. */
 export type TreeEntry =
   | Folder<TreeEntry>
@@ -567,7 +611,8 @@ export type TreeEntry =
   | BackupEntry
   | DiscEntry
   | PictureEntry
-  | MachineEntry;
+  | MachineEntry
+  | SoftwareEntry;
 
 /* -- GET routes ------------------------------------------------------------ */
 
@@ -701,7 +746,8 @@ export interface ActivityAnswer {
 }
 
 /** GET /api/files, from files.tree: the root folder, which holds Apps, Disks
- *  where there is one, Discs where there is one, Documents and Machines. */
+ *  where there is one, Discs where there is one, Documents, Machines, and
+ *  Software where the catalog offers anything for the booted system. */
 export type FilesAnswer = Folder<TreeEntry>;
 
 /** GET /api/machine/settled, from Handler._settled_configuration. */
@@ -739,6 +785,18 @@ export interface SetupAnswer {
   /** Null where the helper has not run since the board started, or its file
    *  does not hold a JSON object. */
   progress: SetupProgress | null;
+}
+
+/** GET /api/software, from Handler._software. */
+export interface SoftwareAnswer {
+  /** The identifier of the system the machine boots, or null where it boots
+   *  none of those on the card. */
+  booted: string | null;
+  /** Every group, in the order the Software folder lists them, with the name
+   *  of its folder. */
+  groups: { identifier: string; name: string }[];
+  /** Every entry of the catalog, whatever system it is for. */
+  entries: SoftwarePackage[];
 }
 
 /** GET /api/update, from Handler._update. */
@@ -966,6 +1024,7 @@ export interface GetAnswers {
   "/api/machine/settled": SettledAnswer;
   "/api/session": SessionAnswer;
   "/api/setup": SetupAnswer;
+  "/api/software": SoftwareAnswer;
   "/api/update": UpdateAnswer;
   "/api/update/notes": ReleaseNotesAnswer;
   "/api/notifications": NotificationsAnswer;

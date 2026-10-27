@@ -48,6 +48,7 @@ export const en = {
   /* --- the windows ----------------------------------------------------- */
   "window.info": "Info",
   "window.machine": "Machine",
+  "window.software": "Software",
   "app.preferences": "Preferences",
   "preferences.localization": "Localization Preferences",
   "preferences.monitor": "Monitor Preferences",
@@ -182,6 +183,13 @@ export const en = {
   "info.unreadable": "configuration not readable",
   "info.not-set-up": "nothing installed yet",
   "info.no-disk": "none inserted",
+  "info.version": "Version",
+  "info.for": "For",
+  "info.kind": "Kind",
+  "info.size": "Size",
+  "info.source": "Source",
+  "software.kind.disc": "CD image",
+  "software.kind.file": "Package",
 
   "state.running": "running {since}",
   "state.stopped": "stopped",

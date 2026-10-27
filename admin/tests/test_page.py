@@ -34,8 +34,9 @@ BY_NAME = re.compile(
 
 #: What the editor reads off one entry of `offers.kinds`. That group is the one
 #: place a cell takes its label from the service instead of from this page's own
-#: words, because a machine type is named by the emulator.
-FROM_A_KIND = re.compile(r"\bkind\.(\w+)")
+#: words, because a machine type is named by the emulator. A catalog key such
+#: as `software.kind.disc` has a dot in front of `kind` and is not one of these.
+FROM_A_KIND = re.compile(r"(?<!\.)\bkind\.(\w+)")
 
 #: Which subject each of the editor's groups belongs to, and the subjects the
 #: page offers to choose between. The window shows one subject at a time, so the

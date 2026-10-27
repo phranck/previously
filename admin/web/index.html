@@ -188,6 +188,23 @@
   </div>
 </nx-window>
 
+<nx-window name="software-info" data-t-title="window.software" fixed x="640" y="400" w="440" closed>
+  <div class="info-body">
+    <nx-portrait>
+      <i class="art icon" id="si-icon" style="background-image: var(--cdrom)"></i>
+      <span class="caption" id="si-caption">&mdash;</span>
+    </nx-portrait>
+    <div class="readings">
+      <nx-row><label data-t="info.version"></label><nx-field id="si-version">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.for"></label><nx-field id="si-for">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.kind"></label><nx-field id="si-kind">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.size"></label><nx-field id="si-size">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.source"></label><nx-field id="si-source">&mdash;</nx-field></nx-row>
+    </div>
+  </div>
+  <p class="note" id="si-description"></p>
+</nx-window>
+
 <nx-window name="editor" data-t-title="app.config-editor" fixed drop
            x="220" y="90" w="470" closed>
   <div class="info-body">
