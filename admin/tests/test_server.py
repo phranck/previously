@@ -6,6 +6,7 @@ line, the headers and the body.
 """
 
 import json
+import pathlib
 import socket
 import subprocess
 import threading
@@ -2047,6 +2048,47 @@ def test_removing_software_needs_a_session(service):
             tell(service, route, {"entry": "nextstep-3.3-developer"}, signed_in=False)
         assert refused.value.code == 403
     assert not where_the_changes_are().exists()
+
+
+def recorded_archive(monkeypatch):
+    """Answers every question to archive.org with what it said about
+    NeXTSTEP33CISC on 27 October 2026, so nothing here reaches the network."""
+    recorded = pathlib.Path(__file__).resolve().parent / "recorded" / "archive-NeXTSTEP33CISC.json"
+    monkeypatch.setattr(server.lookup, "reading", lambda hosts: lambda url: recorded.read_bytes())
+
+
+def test_looking_an_address_up_needs_a_session(service, monkeypatch):
+    """It has the Pi ask a third party on the caller's behalf."""
+    recorded_archive(monkeypatch)
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/software/lookup",
+             {"address": "https://archive.org/details/NeXTSTEP33CISC"}, signed_in=False)
+
+    assert refused.value.code == 403
+
+
+def test_an_archive_org_address_answers_the_fields_it_fills(service, monkeypatch):
+    recorded_archive(monkeypatch)
+
+    answer = answer_of(tell(
+        service, "/api/software/lookup",
+        {"address": "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP_3.3_Developer.iso"}))
+
+    assert answer["ok"] is True
+    assert answer["reason"] == "lookup.found"
+    assert answer["fields"]["size"] == 403111936
+    assert answer["fields"]["kind"] == "disc"
+
+
+def test_an_address_nothing_reads_is_refused(service, monkeypatch):
+    recorded_archive(monkeypatch)
+
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/software/lookup", {"address": "https://example.org/x.iso"})
+
+    assert refused.value.code == 409
+    assert json.loads(refused.value.read())["reason"] == "lookup.no-adapter"
 
 
 def test_the_status_says_whether_this_machine_is_set_up_at_all(service):

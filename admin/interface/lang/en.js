@@ -474,6 +474,16 @@ export const en = {
   "told.software.not-shipped": "{asked} did not come with Previously, so there is nothing to bring back.",
   "told.software.not-readable": "The changes to the catalog could not be read, so nothing was changed: {detail}",
   "told.software.could-not-write": "The catalog could not be written: {detail}",
+  "told.lookup.found": "Filled in from what the archive says.",
+  "told.lookup.choose": "The item holds several files. Choose one.",
+  "told.lookup.not-an-address": "That is not an https address.",
+  "told.lookup.no-adapter": "Previously reads entries from archive.org, and {host} is not it.",
+  "told.lookup.not-an-item": "That address names no item on archive.org.",
+  "told.lookup.no-such-item": "archive.org has no item called {item}.",
+  "told.lookup.no-such-file": "The item holds no file called {file}.",
+  "told.lookup.nothing-to-offer": "{item} holds nothing but archive.org's own files.",
+  "told.lookup.unreachable": "archive.org could not be reached: {detail}",
+  "told.lookup.unreadable": "archive.org answered with something that is not a description of an item.",
 
   /* --- installing -------------------------------------------------------- */
   "app.installer": "Installer",

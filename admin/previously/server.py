@@ -21,7 +21,7 @@ import threading
 import time
 import urllib.parse
 
-from . import (activity, change, config, files, grab, kiosk, machines,
+from . import (activity, change, config, files, grab, kiosk, lookup, machines,
                notifications, pi, release, saved, setup, software, systems, terminal,
                updates, websocket)
 from .password import (COOKIE, LARGEST, SESSION_SECONDS, SMALLEST, Attempts, Sessions,
@@ -322,6 +322,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._change_software(software.remove)
         if route == "/api/software/restore":
             return self._change_software(software.restore)
+        if route == "/api/software/lookup":
+            return self._look_up_software()
         if route == "/api/setup":
             return self._ask_to_set_up()
         if route == "/api/update":
@@ -753,6 +755,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
         finished, said = change(self._software_changes(), body.get("entry"))
         return self._json({"ok": finished, **said, **self._software()},
                           status=200 if finished else 409)
+
+    def _look_up_software(self):
+        """Reads an address into the fields of a software entry.
+
+        Behind the session like every POST, because it has the Pi ask a third
+        party on the caller's behalf. Nothing is written: what comes back fills
+        the window an entry is added in, and Save is what keeps it.
+        """
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        finished, said = lookup.look_up(body.get("address"))
+        return self._json({"ok": finished, **said}, status=200 if finished else 409)
 
     def _ask_to_set_up(self):
         """Leaves the request the privileged helper acts on.

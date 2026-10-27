@@ -150,6 +150,22 @@ export interface ToldValues {
   /** `detail` is the OSError's text. */
   "software.could-not-write": { detail: string };
 
+  // lookup.look_up
+  /** `fields` are the entry's fields the address filled, out of
+   *  software.FIELDS; each one only where it passed its rule. */
+  "lookup.found": { fields: Partial<Omit<SoftwarePackage, "identifier" | "for" | "source">> };
+  /** `files` are the files of the item worth having, to choose one from. */
+  "lookup.choose": { files: LookupFile[] };
+  "lookup.not-an-address": {};
+  "lookup.no-adapter": { host: string };
+  "lookup.not-an-item": {};
+  "lookup.no-such-item": { item: string };
+  "lookup.no-such-file": { file: string };
+  "lookup.nothing-to-offer": { item: string };
+  /** `detail` is the error's text. */
+  "lookup.unreachable": { detail: string };
+  "lookup.unreadable": {};
+
   // setup.Refused and setup._said_of
   /** `command` is the program's name, `seconds` the limit. */
   "setup.took-too-long": { command: string; seconds: number };
@@ -1056,6 +1072,33 @@ export type SoftwareRestoreAnswer =
       SoftwareAnswer)
   | Refusal;
 
+/** One file of an archive.org item, as the choice of file shows it, from
+ *  lookup.ArchiveOrg._offer. */
+export interface LookupFile {
+  name: string;
+  /** In bytes, or null where archive.org states none that passes. */
+  size: number | null;
+  /** "disc" for a CD image and "file" for anything else. */
+  kind: string;
+  /** Where the file is downloaded from, which is what is looked up next. */
+  address: string;
+}
+
+/** POST /api/software/lookup, from Handler._look_up_software. */
+export type LookupAnswer =
+  | Outcome<
+      "lookup.found" | "lookup.choose",
+      | "lookup.not-an-address"
+      | "lookup.no-adapter"
+      | "lookup.not-an-item"
+      | "lookup.no-such-item"
+      | "lookup.no-such-file"
+      | "lookup.nothing-to-offer"
+      | "lookup.unreachable"
+      | "lookup.unreadable"
+    >
+  | Refusal;
+
 /** POST /api/picture/delete, from Handler._delete_picture: 200 with true where
  *  the picture went, 404 with false otherwise. */
 export type PictureDeleteAnswer = { ok: boolean } | Refusal;
@@ -1111,6 +1154,7 @@ export interface PostAnswers {
   "/api/software": SoftwareSaveAnswer;
   "/api/software/remove": SoftwareRemoveAnswer;
   "/api/software/restore": SoftwareRestoreAnswer;
+  "/api/software/lookup": LookupAnswer;
   "/api/updates": UpdatesChosenAnswer;
   "/api/updates/look": UpdatesChosenAnswer;
 }
