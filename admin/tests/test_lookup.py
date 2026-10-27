@@ -61,6 +61,15 @@ def test_the_description_is_plain_text():
     assert len(description) <= software.LONGEST_DESCRIPTION
 
 
+def test_a_line_break_in_the_description_stays_a_space_between_words():
+    """archive.org writes `nebula-se`'s description in lines parted by <br>,
+    and the words either side of one are two words."""
+    text = lookup.plain_text(
+        "Nebula Second Edition<br>June 1994<br/>Version 2.0<p>Thank you</p>", 500)
+
+    assert text == "Nebula Second Edition June 1994 Version 2.0 Thank you"
+
+
 def test_what_is_filled_in_passes_the_catalog_s_own_rules():
     """The fields the window gets are the ones a save checks, so whatever the
     adapter fills in is something the catalog takes."""

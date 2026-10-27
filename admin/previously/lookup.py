@@ -235,11 +235,29 @@ def _name_of(file_name):
 
 
 class _Text(html.parser.HTMLParser):
-    """Collects the text of a piece of HTML and nothing else."""
+    """Collects the text of a piece of HTML and nothing else.
+
+    A line break and the edge of a block part words the way a space does,
+    because archive.org writes descriptions in lines parted by `<br>`, and the
+    last word of one line and the first of the next are two words.
+    """
+
+    PARTING = {"br", "p", "div", "li", "tr", "td", "h1", "h2", "h3", "h4", "h5", "h6"}
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.pieces = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.PARTING:
+            self.pieces.append(" ")
+
+    def handle_endtag(self, tag):
+        if tag in self.PARTING:
+            self.pieces.append(" ")
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
 
     def handle_data(self, data):
         self.pieces.append(data)
