@@ -304,12 +304,20 @@
       <nx-row><label data-t="info.kind"></label><nx-field id="si-kind">&mdash;</nx-field></nx-row>
       <nx-row><label data-t="info.size"></label><nx-field id="si-size">&mdash;</nx-field></nx-row>
       <nx-row><label data-t="info.source"></label><nx-field id="si-source">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.on-the-pi"></label><nx-field id="si-here">&mdash;</nx-field></nx-row>
     </div>
   </div>
+  <!-- How far the download has got, while one runs for this entry. -->
+  <div class="gauge" id="si-gauge" hidden>
+    <div class="gauge-fill" id="si-fill"></div>
+  </div>
   <p class="note" id="si-description"></p>
-  <!-- View Origin only where the entry knows the page it came from. -->
-  <div class="buttons">
+  <p class="note" id="si-note"></p>
+  <!-- View Origin is disabled where the entry has no page, and Download where
+       the entry is no CD image, is downloaded already, or one is running. -->
+  <div class="buttons parted">
     <button id="si-page" data-t="button.view-origin"></button>
+    <button id="si-download" data-t="button.download"></button>
   </div>
 </nx-window>
 
@@ -506,6 +514,9 @@
   <!-- And the one a disc carries, whose wording is whichever way round it is:
        a disc is either in the machine or it is not. -->
   <nx-menu-item name="disc" data-t="menu.insert"></nx-menu-item>
+  <!-- And the one a CD image of the software catalog carries. Once it is
+       downloaded, the entry above offers it as the disc it has become. -->
+  <nx-menu-item name="download" data-t="menu.download"></nx-menu-item>
   <!-- Last, and the only one a folder on the shelf shows. The rule that takes
        the shadow off the foot of a menu asks for the last child, so the entry
        that can stand alone has to be it. The page writes its wording, which is

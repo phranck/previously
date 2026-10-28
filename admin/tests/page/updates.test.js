@@ -13,6 +13,9 @@ const sent = [];
 
 answering(async (route, options = {}) => {
   if (route === "/api/updates" && options.method !== "POST") return json({ automatic: holds });
+  /* The catalog is asked for as Preferences is wired, and is not what these
+     tests are about. */
+  if (route === "/api/software") return json({}, 404);
   if (options.method === "POST") {
     const body = options.body ? JSON.parse(options.body) : null;
     sent.push([route, body]);

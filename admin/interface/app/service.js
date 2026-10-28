@@ -45,14 +45,16 @@ const Saved = /** @type {const} */ ({
   Remove: "/api/machine/remove",
 });
 
-/** What can be asked about the software catalog, all from the Software module
- *  of Preferences. None of it fetches a package: the first three change the
- *  list of what can be, and Lookup reads what an address says about one. */
+/** What can be asked about the software catalog. The first three change the
+ *  list of what can be and Lookup reads what an address says about one, all
+ *  from the Software module of Preferences. Download has the Pi download an
+ *  entry's CD image, from its Info window or the File Viewer. */
 const Software = /** @type {const} */ ({
   Keep: "/api/software",
   Remove: "/api/software/remove",
   Restore: "/api/software/restore",
   Lookup: "/api/software/lookup",
+  Download: "/api/software/download",
 });
 
 /** How long an operation may take before the page stops waiting for the

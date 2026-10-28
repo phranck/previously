@@ -173,6 +173,23 @@ export interface ToldValues {
   "lookup.unreachable": { detail: string };
   "lookup.unreadable": {};
 
+  // downloads.Downloads.start, the download it runs, and
+  // Handler._download_software. `name` is the entry's name.
+  "download.started": { name: string };
+  "download.finished": { name: string };
+  "download.not-a-disc": { name: string };
+  "download.not-allowed": { name: string };
+  "download.already-there": { name: string };
+  /** `size` and `free` are bytes. */
+  "download.no-room": { name: string; size: number; free: number };
+  /** `name` is the entry that is downloading. */
+  "download.busy": { name: string };
+  /** `size` is the entry's and `got` what arrived, in bytes. */
+  "download.wrong-size": { name: string; size: number; got: number };
+  "download.wrong-digest": { name: string };
+  "download.failed": { name: string };
+  "download.no-such-entry": {};
+
   // setup.Refused and setup._said_of
   /** `command` is the program's name, `seconds` the limit. */
   "setup.took-too-long": { command: string; seconds: number };
@@ -553,7 +570,8 @@ export interface BackupEntry {
   bytes: number;
 }
 
-/** A disc somebody put on the card, from files._disc. */
+/** A disc somebody put on the card or the catalog downloaded, from
+ *  files._disc. */
 export interface DiscEntry {
   /** The file's name, which /api/disc takes as `disc`. */
   id: string;
@@ -638,7 +656,7 @@ export interface SoftwarePackage {
 }
 
 /** A piece of software the catalog offers for the booted system, from
- *  files._software. Nothing of it is on the card. */
+ *  files._software. */
 export interface SoftwareEntry {
   /** The entry's identifier. */
   id: string;
@@ -649,6 +667,9 @@ export interface SoftwareEntry {
   kind: "software";
   /** What it weighs once downloaded. */
   bytes: number;
+  /** The path in this tree of its downloaded image, which stands in Discs,
+   *  or null where it has not been downloaded. */
+  disc: string | null;
   package: SoftwarePackage;
 }
 
@@ -855,14 +876,38 @@ export interface SoftwareAnswer {
   /** The shipped entries removed here, as shipped, which can be brought
    *  back. */
   removed: SoftwarePackage[];
+  /** What the download running or last run is doing, or null where nothing
+   *  has been downloaded since the service started. */
+  download: DownloadState | null;
+  /** Free bytes where downloads land, or null where nothing can be asked. */
+  room: number | null;
+}
+
+/** What one download is doing, from downloads.Downloads.state. */
+export interface DownloadState {
+  /** The identifier of the entry it is for. */
+  entry: string;
+  /** Bytes arrived so far, and the entry's size. */
+  done: number;
+  of: number;
+  running: boolean;
+  /** How it ended, or null while it runs. */
+  outcome: Told<
+    | "download.finished"
+    | "download.not-allowed"
+    | "download.wrong-size"
+    | "download.wrong-digest"
+    | "download.failed"
+  > | null;
 }
 
 /** One entry of /api/software, which says how it came to be on this Pi, from
- *  software.origins. */
+ *  software.origins, and whether its image is downloaded. */
 export type SoftwareListed = SoftwarePackage & {
   /** "shipped" as it came with the package, "changed" where a shipped entry
    *  was edited here, "added" where it was added here. */
   origin: "shipped" | "changed" | "added";
+  downloaded: boolean;
 };
 
 /** GET /api/update, from Handler._update. */
@@ -1091,6 +1136,20 @@ export type SoftwareRestoreAnswer =
       SoftwareAnswer)
   | Refusal;
 
+/** POST /api/software/download, from Handler._download_software. */
+export type SoftwareDownloadAnswer =
+  | (Outcome<
+      "download.started",
+      | "download.no-such-entry"
+      | "download.not-a-disc"
+      | "download.not-allowed"
+      | "download.already-there"
+      | "download.no-room"
+      | "download.busy"
+    > &
+      SoftwareAnswer)
+  | Refusal;
+
 /** One file of an archive.org item, as the choice of file shows it, from
  *  lookup.ArchiveOrg._offer. */
 export interface LookupFile {
@@ -1174,6 +1233,7 @@ export interface PostAnswers {
   "/api/software/remove": SoftwareRemoveAnswer;
   "/api/software/restore": SoftwareRestoreAnswer;
   "/api/software/lookup": LookupAnswer;
+  "/api/software/download": SoftwareDownloadAnswer;
   "/api/updates": UpdatesChosenAnswer;
   "/api/updates/look": UpdatesChosenAnswer;
 }

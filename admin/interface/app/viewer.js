@@ -10,7 +10,7 @@ import { changeTo, editOnWhatIsRunning, notYet } from "./machines.js";
 import { byId, show, targetName, theWindow } from "./page.js";
 import { showInPreview } from "./preview.js";
 import { ask } from "./service.js";
-import { showSoftwareInfo } from "./software.js";
+import { showSoftwareInfo, showTheDownloadInTheViewer } from "./software.js";
 import { lastStatus, refresh } from "./status.js";
 import { EDITOR, machineArt } from "./words.js";
 
@@ -115,6 +115,9 @@ function drawPlace() {
   });
   markCurrent(lastStatus?.configuration?.catalogue,
               lastStatus?.file?.newer_than_the_machine);
+  /* The folder was drawn afresh, so the gauge of a running download goes
+     back under its entry. */
+  showTheDownloadInTheViewer();
 }
 
 /**
@@ -212,7 +215,8 @@ function open(path, asker) {
   if (entry.kind === "backup") return putTheCopyBack(entry);
   /* A disc goes into the machine, or comes out of it again. */
   if (entry.kind === "disc") return useTheDisc(entry);
-  /* Software is not on the card yet, so opening it says what it is. */
+  /* Software opens its Info window, which says what it is and whether it is
+     on the card, and downloads it. */
   if (entry.kind === "software") return showSoftwareInfo(entry, asker);
   /* Named rather than left as what everything else falls through to, because
      what else is in here has grown and falling through would have asked the

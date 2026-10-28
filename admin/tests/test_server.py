@@ -1993,7 +1993,8 @@ def test_a_downloaded_disc_stands_in_the_discs_folder(service, tmp_path):
 
 
 def test_the_software_folder_says_which_disc_is_downloaded(service, tmp_path):
-    """The image's name, which is what Insert asks for, or nothing."""
+    """Where its image stands in Discs, where Insert takes it from, or
+    nothing."""
     a_disk(tmp_path, "nextstep-3.3", booting=True)
 
     def offered():
@@ -2003,7 +2004,7 @@ def test_the_software_folder_says_which_disc_is_downloaded(service, tmp_path):
 
     assert offered()["disc"] is None
     a_download(tmp_path)
-    assert offered()["disc"] == "nextstep-3.3-developer.iso"
+    assert offered()["disc"] == "/Discs/nextstep-3.3-developer.iso"
 
 
 def test_the_catalog_says_what_is_downloaded_and_what_the_download_does(service, tmp_path):
@@ -2015,6 +2016,8 @@ def test_the_catalog_says_what_is_downloaded_and_what_the_download_does(service,
     assert answer["download"] is None
     assert {entry["identifier"]: entry["downloaded"] for entry in answer["entries"]} == {
         "nextstep-3.3-developer": True}
+    # What is free where downloads land, which the question before one says.
+    assert isinstance(answer["room"], int)
 
 
 def test_downloading_needs_a_session(service):

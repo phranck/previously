@@ -639,6 +639,14 @@ nx-scroller.packages[droppable] .options {
   background: var(--dark);
 }
 
+/* Under an entry of the File Viewer while its download runs, close under its
+   name. 72 pixels, half again the 48 of an icon, which is what the mockup of
+   28 October 2026 settled. */
+nx-thing .gauge {
+  width: 72px;
+  margin: 2px auto 0;
+}
+
 
 /* --- the raspberry pi window --------------------------------------------- */
 

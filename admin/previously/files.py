@@ -304,8 +304,8 @@ def _software(entry, documents):
     @param entry - A software.Entry.
     @param documents - pathlib.Path of the owner's documents folder, or None.
     @returns dict, with the whole entry under `package` for the Info window,
-      and under `disc` the name of its downloaded image, which is what Insert
-      asks for, or None where it has not been downloaded.
+      and under `disc` the path in this tree of its downloaded image, which
+      stands in Discs, or None where it has not been downloaded.
 
     A CD image wears the compact disc a disc in Discs wears, and anything else
     the sheet the Workspace drew for a file it knew nothing about.
@@ -318,7 +318,7 @@ def _software(entry, documents):
         "path": "%s/%s/%s" % (SOFTWARE, software.FOLDERS[entry.group], entry.identifier),
         "kind": "software",
         "bytes": entry.size,
-        "disc": image.name if image else None,
+        "disc": "%s/%s" % (DISCS_AT, image.name) if image else None,
         "package": software.described(entry),
     }
 

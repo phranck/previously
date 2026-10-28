@@ -71,6 +71,21 @@ let formPage = "";
 /** The page of the entry the Info window shows, or "" for none. */
 let infoPage = "";
 
+/** The identifier of the entry the Info window shows, or null.
+ *  @type {string | null} */
+let infoEntry = null;
+
+/** How often the page asks how far a download has got while one runs. The
+ *  gauge is the only sign of it, and a few megabytes arrive in that time. */
+const DOWNLOAD_POLL_MS = 1000;
+
+/** Whether a download ran at the last answer, so its end is noticed once. */
+let wasRunning = false;
+
+/** The timer that asks again while a download runs, or null.
+ *  @type {ReturnType<typeof setTimeout> | null} */
+let following = null;
+
 /**
  * Opens an entry's page on archive.org in a window of its own.
  * @param {string} page - The page.
@@ -114,8 +129,164 @@ function showSoftwareInfo(entry, asker) {
   show("si-description", about.description);
   infoPage = about.page;
   byId("si-page", HTMLButtonElement).disabled = !infoPage;
+  infoEntry = about.identifier;
+  show("si-here", NOTHING);
+  show("si-note", "");
+  drawTheDownload();
 
   window_.open(asker);
+  /* Whether it is downloaded, and how far a download has got, are the Pi's
+     and change while nobody looks, so they are asked for each time. */
+  followTheDownload();
+}
+
+
+/**
+ * @param {string | null} identifier - An entry's identifier.
+ * @returns {SoftwareListed | undefined} The entry as the catalog last listed
+ *   it, which says whether it is downloaded.
+ */
+function theListed(identifier) {
+  return catalog?.entries.find((entry) => entry.identifier === identifier);
+}
+
+/**
+ * @param {string} identifier - An entry's identifier.
+ * @returns {boolean} Whether a download of that entry is running.
+ */
+function downloading(identifier) {
+  return Boolean(catalog?.download?.running && catalog.download.entry === identifier);
+}
+
+/** @returns {number} How far the running download has got, from 0 to 100. */
+function percentDone() {
+  const download = catalog?.download;
+  return download && download.of ? Math.min(100, (100 * download.done) / download.of) : 0;
+}
+
+/**
+ * @param {string | null} identifier - An entry's identifier.
+ * @returns {boolean} Whether it can be downloaded now: a CD image, not
+ *   downloaded yet, while no download runs.
+ */
+function canDownload(identifier) {
+  const listed = theListed(identifier);
+  return listed?.kind === "disc" && !listed.downloaded && !catalog?.download?.running;
+}
+
+/**
+ * Draws where the entry of the Info window stands on the Pi, and the gauge of
+ * the download wherever it shows.
+ *
+ * "On the Pi" says whether it is downloaded, or how far the download has got,
+ * with the gauge under it while it runs. Download is held by `canDownload`,
+ * which `holdTheControls` asks.
+ */
+function drawTheDownload() {
+  const listed = theListed(infoEntry);
+  if (listed) {
+    const running = downloading(listed.identifier);
+    show("si-here", running
+      ? t("software.here.loading", {
+        done: sized(catalog?.download?.done), of: sized(catalog?.download?.of),
+      })
+      : t(listed.downloaded ? "software.here.done" : "software.here.not"));
+    byId("si-gauge").hidden = !running;
+    byId("si-fill").style.width = `${running ? percentDone() : 0}%`;
+  }
+  showTheDownloadInTheViewer();
+  holdTheControls();
+}
+
+/**
+ * Puts the gauge under the entry of the File Viewer that is downloading, and
+ * takes it away from any that is not.
+ *
+ * The viewer draws a folder afresh whenever it changes, so it calls this
+ * after every drawing, and so does every answer about the download.
+ */
+function showTheDownloadInTheViewer() {
+  for (const thing of document.querySelectorAll("#file-viewer .contents nx-thing")) {
+    const where = thing.getAttribute("value") ?? "";
+    const identifier = where.split("/").pop() ?? "";
+    const running = where.startsWith("/Software/") && downloading(identifier);
+    let gauge = thing.querySelector(".gauge");
+    if (!running) {
+      gauge?.remove();
+      continue;
+    }
+    if (!gauge) {
+      gauge = document.createElement("div");
+      gauge.className = "gauge";
+      const fill = document.createElement("div");
+      fill.className = "gauge-fill";
+      gauge.append(fill);
+      thing.append(gauge);
+    }
+    const fill = gauge.firstElementChild;
+    if (fill instanceof HTMLElement) fill.style.width = `${percentDone()}%`;
+  }
+}
+
+/**
+ * Asks the Pi how the download stands, draws it, and asks again while it
+ * runs.
+ *
+ * Where it has just ended, the Info window says how, and the File Viewer is
+ * drawn again, because a finished image stands in Discs.
+ */
+async function followTheDownload() {
+  if (following !== null) clearTimeout(following);
+  following = null;
+  const answer = await ask("/api/software");
+  if (answer) catalog = answer;
+  const running = Boolean(catalog?.download?.running);
+  if (wasRunning && !running) {
+    const outcome = catalog?.download?.outcome;
+    if (outcome && catalog?.download?.entry === infoEntry) show("si-note", say(outcome));
+    drawMachines();
+  }
+  wasRunning = running;
+  drawTheDownload();
+  if (running) following = setTimeout(followTheDownload, DOWNLOAD_POLL_MS);
+}
+
+/**
+ * Has the Pi download an entry's CD image, once the panel has been answered.
+ * @param {string} identifier - The entry.
+ * @param {string} note - Where to say what came of it: the Info window's
+ *   note, or the File Viewer's where the context menu asked.
+ *
+ * The panel says how large the image is and what is left on the card
+ * afterwards, as the Installer's does before it fetches a system.
+ */
+async function downloadTheEntry(identifier, note) {
+  if (!allowed(Needs.Contact, note)) return;
+  const listed = theListed(identifier);
+  if (!listed) return;
+  const room = catalog?.room ?? null;
+  const agreed = await askPanel({
+    name: t("ask.download.title", { name: listed.name }),
+    text: [
+      t("ask.download.cost", { name: listed.name, size: sized(listed.size) }),
+      t("ask.fetch.left", {
+        free: sized(room),
+        left: sized(room === null ? null : Math.max(0, room - listed.size)),
+      }),
+      t("ask.download.time"),
+    ],
+    icon: iconOf(listed.kind),
+    confirm: t("button.download"),
+    dangerous: false,
+  });
+  if (!agreed) return;
+
+  const answer = await tell(Software.Download, { entry: identifier });
+  if (answer && "entries" in answer) catalog = answer;
+  show(note, answer === null ? t("note.no-service") : say(answer));
+  wasRunning = Boolean(catalog?.download?.running);
+  drawTheDownload();
+  if (wasRunning) following = setTimeout(followTheDownload, DOWNLOAD_POLL_MS);
 }
 
 /**
@@ -587,6 +758,7 @@ function wireTheSoftware() {
   hold("#software-edit", Needs.Contact, () => Boolean(theChosenEntry()));
   hold("#software-add", Needs.Contact, () => catalog !== null);
   hold("#se-save", Needs.Contact);
+  hold("#si-download", Needs.Contact, () => canDownload(infoEntry));
 
   byId("software-add").addEventListener("click", () => openTheForm(null));
   byId("software-edit").addEventListener("click", () => openTheForm(theChosenEntry() ?? null));
@@ -596,6 +768,9 @@ function wireTheSoftware() {
   byId("se-cancel").addEventListener("click", () => theWindow("software-entry")?.close());
   byId("se-page").addEventListener("click", () => viewOrigin(formPage));
   byId("si-page").addEventListener("click", () => viewOrigin(infoPage));
+  byId("si-download").addEventListener("click", () => {
+    if (infoEntry !== null) downloadTheEntry(infoEntry, "si-note");
+  });
   byId("se-file").addEventListener("nx-pick", (event) => {
     if (event instanceof CustomEvent) lookUpAnotherFile(event.detail.value);
   });
@@ -613,6 +788,17 @@ function wireTheSoftware() {
     if (next instanceof HTMLElement) next.focus();
   });
   drawTheSoftware();
+  /* A download runs on in the Pi while no page is open, so a page that
+     opens finds out at once whether one is running and follows it. */
+  followTheDownload();
 }
 
-export { drawTheSoftware, refreshTheSoftware, showSoftwareInfo, wireTheSoftware };
+export {
+  canDownload,
+  downloadTheEntry,
+  drawTheSoftware,
+  refreshTheSoftware,
+  showSoftwareInfo,
+  showTheDownloadInTheViewer,
+  wireTheSoftware,
+};

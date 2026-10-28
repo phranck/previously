@@ -8,6 +8,7 @@ import { byId, menuEntry, show, targetName, theMenu, theWindow } from "./page.js
 import { askPanel, askPanelFor, linesOf } from "./panels.js";
 import { openPictureMenu } from "./preview.js";
 import { Saved, tell } from "./service.js";
+import { canDownload, downloadTheEntry } from "./software.js";
 import { endOperation, lastStatus, refresh, setBusy } from "./status.js";
 import { Needs, allowed, may } from "./system.js";
 import { catalogue, drawMachines, find, goTo, keepOnShelf, open, root, visitFromTheShelf } from "./viewer.js";
@@ -216,9 +217,10 @@ function notYet(name) {
  * @param {number} y
  * @returns {boolean} Whether there was anything to offer.
  *
- * A machine gets the whole menu. Anything else gets one entry, and only where
- * it lies on the shelf: a folder is opened by double clicking it, so a menu of
- * entries that all refuse would be worse than none.
+ * A machine gets the whole menu. A disk, a copy, a disc and a CD image of the
+ * software catalog get the entries that are about them. Anything else gets
+ * one entry, and only where it lies on the shelf: a folder is opened by double
+ * clicking it, so a menu of entries that all refuse would be worse than none.
  */
 function openMachineMenu(thing, x, y) {
   const where = thing.getAttribute("value") ?? "";
@@ -228,9 +230,14 @@ function openMachineMenu(thing, x, y) {
   const found = find(root, where);
   const disk = found?.kind === "disk" ? found : null;
   const copy = found?.kind === "backup" ? found : null;
-  const disc = found?.kind === "disc" ? found : null;
+  const software = found?.kind === "software" ? found : null;
+  /* A CD image of the catalog that has been downloaded stands in Discs, and
+     offers there what a disc offers, so its entry here offers the same. */
+  const downloaded = software?.disc ? find(root, software.disc) : null;
+  const disc = found?.kind === "disc" ? found
+    : downloaded?.kind === "disc" ? downloaded : null;
   const onShelf = Boolean(thing.closest(".keep"));
-  if (!machine && !disk && !copy && !disc && !onShelf) return false;
+  if (!machine && !disk && !copy && !disc && !software && !onShelf) return false;
 
   const menu = theMenu("machine-menu");
   if (!menu) return false;
@@ -246,6 +253,7 @@ function openMachineMenu(thing, x, y) {
   const backup = menuEntry(menu, "backup");
   const restore = menuEntry(menu, "restore");
   const media = menuEntry(menu, "disc");
+  const download = menuEntry(menu, "download");
   const shelf = menuEntry(menu, "shelf");
 
   /* Three of the entries are about a machine, so a folder on the shelf shows
@@ -290,6 +298,18 @@ function openMachineMenu(thing, x, y) {
       if (media.hasAttribute("disabled")) return;
       menu.close();
       useTheDisc(disc);
+    };
+  }
+  /* A CD image of the catalog until it is downloaded, after which the entry
+     above offers it as a disc. Greyed while it may not start, such as while
+     another download runs. */
+  download.hidden = software?.package.kind !== "disc" || Boolean(disc);
+  if (software) {
+    download.toggleAttribute("disabled", !may(Needs.Contact) || !canDownload(software.id));
+    download.onclick = () => {
+      if (download.hasAttribute("disabled")) return;
+      menu.close();
+      downloadTheEntry(software.id, "machine-note");
     };
   }
 

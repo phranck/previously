@@ -15,6 +15,7 @@ function described(identifier, name, origin) {
     address: `https://archive.org/download/item/${identifier}.iso`, size: 1000,
     algorithm: "sha1", digest: "a".repeat(40), kind: "disc", source: "archive.org",
     cover: "", picture: null, page: `https://archive.org/details/${identifier}`, origin,
+    downloaded: false,
   };
 }
 
@@ -29,6 +30,8 @@ const CATALOG = {
             described("added-one", "Added One", "added"),
             { ...described("typed-one", "Typed One", "added"), page: "" }],
   removed: [described("gone-one", "Gone One", "shipped")],
+  download: null,
+  room: 1e9,
 };
 
 /** What archive.org's adapter answers for a dropped address: the fields of
@@ -40,13 +43,37 @@ const FOUND = {
   page: "https://archive.org/details/nebula-se",
 };
 
-answering(async (route) => {
-  if (String(route).startsWith("/api/software/lookup")) return json(FOUND);
-  return String(route).startsWith("/api/software") ? json(CATALOG) : never();
+/** What the Pi says of the download, and whether Shipped One is downloaded,
+ *  which a test sets. */
+let download = null;
+let downloadedOne = false;
+
+/** What was asked to be downloaded. */
+const posted = [];
+
+/** @returns {object} The catalog as the Pi answers it now. */
+function catalogNow() {
+  return {
+    ...CATALOG, download,
+    entries: CATALOG.entries.map((entry) => (entry.identifier === "shipped-one"
+      ? { ...entry, downloaded: downloadedOne } : entry)),
+  };
+}
+
+answering(async (route, options = {}) => {
+  const path = String(route);
+  if (path.startsWith("/api/software/lookup")) return json(FOUND);
+  if (path.startsWith("/api/software/download")) {
+    posted.push(JSON.parse(options.body));
+    download = { entry: "shipped-one", done: 400, of: 1000, running: true, outcome: null };
+    return json({ ok: true, reason: "download.started", name: "Shipped One", ...catalogNow() });
+  }
+  return path.startsWith("/api/software") ? json(catalogNow()) : never();
 });
 
 const system = await import("../../interface/app/system.js");
 const software = await import("../../interface/app/software.js");
+const { t } = await import("../../interface/strings.js");
 
 /** Lays the page, wires the module and draws the catalog. */
 async function theModule() {
@@ -142,4 +169,83 @@ test("double clicking a shipped entry removed here opens nothing", async () => {
   await settled();
 
   assert.equal(document.querySelector('nx-window[name="software-entry"]').hidden, true);
+});
+
+/** Opens the Info window of Shipped One, as a double click in the File
+ *  Viewer does. */
+async function itsInfo() {
+  software.showSoftwareInfo({ package: CATALOG.entries[0], icon: "cdrom" });
+  await settled();
+}
+
+test("the Info window says an entry is not on the Pi and offers Download", async () => {
+  download = null;
+  downloadedOne = false;
+  await theModule();
+
+  await itsInfo();
+
+  assert.equal(document.getElementById("si-here").textContent, t("software.here.not"));
+  assert.equal(document.getElementById("si-download").disabled, false);
+  assert.equal(shown("si-gauge"), false);
+});
+
+test("a downloaded entry says so and is not offered again", async () => {
+  download = null;
+  downloadedOne = true;
+  await theModule();
+
+  await itsInfo();
+
+  assert.equal(document.getElementById("si-here").textContent, t("software.here.done"));
+  assert.equal(document.getElementById("si-download").disabled, true);
+});
+
+test("the File Viewer shows the gauge under the entry that downloads", async () => {
+  download = { entry: "shipped-one", done: 400, of: 1000, running: true, outcome: null };
+  await theModule();
+  const contents = document.querySelector("#file-viewer .contents");
+  const thing = document.createElement("nx-thing");
+  thing.setAttribute("value", "/Software/Developer/shipped-one");
+  const other = document.createElement("nx-thing");
+  other.setAttribute("value", "/Software/Developer/added-one");
+  contents.append(thing, other);
+
+  software.showTheDownloadInTheViewer();
+
+  assert.equal(thing.querySelector(".gauge-fill").style.width, "40%");
+  assert.equal(other.querySelector(".gauge"), null);
+  download = null;
+});
+
+test("Download asks first, has the Pi start it, and says when it is done", async () => {
+  download = null;
+  downloadedOne = false;
+  posted.length = 0;
+  await theModule();
+  await itsInfo();
+
+  document.getElementById("si-download").click();
+  await settled();
+  const panel = document.getElementById("ask");
+  assert.ok(panel.hasAttribute("data-open"), "no panel came up");
+  panel.close(true);
+  await settled();
+
+  assert.deepEqual(posted, [{ entry: "shipped-one" }]);
+  assert.equal(shown("si-gauge"), true);
+  assert.equal(document.getElementById("si-fill").style.width, "40%");
+  assert.equal(document.getElementById("si-download").disabled, true);
+
+  /* The Pi finishes, and the next time the page asks it says so. */
+  download = { entry: "shipped-one", done: 1000, of: 1000, running: false,
+               outcome: { reason: "download.finished", name: "Shipped One" } };
+  downloadedOne = true;
+  await new Promise((done) => setTimeout(done, 1200));
+  await settled();
+
+  assert.equal(shown("si-gauge"), false);
+  assert.equal(document.getElementById("si-here").textContent, t("software.here.done"));
+  assert.equal(document.getElementById("si-note").textContent,
+               t("told.download.finished", { name: "Shipped One" }));
 });

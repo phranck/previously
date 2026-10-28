@@ -73,6 +73,12 @@ function say(told) {
     return t(key, { ...values, free: sized(told.free), needed: sized(told.needed),
                     back: sized(told.back) });
   }
+  if (told.reason === "download.no-room") {
+    return t(key, { ...values, size: sized(told.size), free: sized(told.free) });
+  }
+  if (told.reason === "download.wrong-size") {
+    return t(key, { ...values, size: sized(told.size), got: sized(told.got) });
+  }
   if (told.reason === "board.on-its-way") return t(`${key}.${told.action}`, values);
   /* What the Pi was asked to do, which is five different things and therefore
      five sentences: one for all of them would say nothing about any. */

@@ -718,7 +718,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         Every entry says whether it is as shipped, changed or added here, and
         whether its image has been downloaded, and the shipped ones removed
         here are listed so they can be brought back. `download` is what the
-        download running or last run is doing.
+        download running or last run is doing, and `room` what is free where
+        downloads land, in bytes or None.
         """
         changes = self._software_changes()
         made = software.origins(changes)
@@ -736,6 +737,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         for entry in software.catalogue(changes)],
             "removed": [software.described(entry) for entry in software.removed(changes)],
             "download": self.downloads.state(),
+            "room": systems.room_beside(self.downloads.folder()),
         }
 
     def _software_changes(self):

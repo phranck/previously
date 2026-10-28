@@ -200,12 +200,19 @@
       <nx-row><label data-t="info.kind"></label><nx-field id="si-kind">&mdash;</nx-field></nx-row>
       <nx-row><label data-t="info.size"></label><nx-field id="si-size">&mdash;</nx-field></nx-row>
       <nx-row><label data-t="info.source"></label><nx-field id="si-source">&mdash;</nx-field></nx-row>
+      <nx-row><label data-t="info.on-the-pi"></label><nx-field id="si-here">&mdash;</nx-field></nx-row>
     </div>
   </div>
-  <p class="note" id="si-description"></p>
 
-  <div class="buttons">
+  <div class="gauge" id="si-gauge" hidden>
+    <div class="gauge-fill" id="si-fill"></div>
+  </div>
+  <p class="note" id="si-description"></p>
+  <p class="note" id="si-note"></p>
+
+  <div class="buttons parted">
     <button id="si-page" data-t="button.view-origin"></button>
+    <button id="si-download" data-t="button.download"></button>
   </div>
 </nx-window>
 
@@ -351,6 +358,8 @@
   <nx-menu-item name="restore" data-t="menu.restore"></nx-menu-item>
 
   <nx-menu-item name="disc" data-t="menu.insert"></nx-menu-item>
+
+  <nx-menu-item name="download" data-t="menu.download"></nx-menu-item>
 
   <nx-menu-item name="shelf" data-t="menu.keep"></nx-menu-item>
 </nx-menu>
