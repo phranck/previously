@@ -47,8 +47,9 @@ def test_an_address_naming_a_file_fills_in_what_archive_org_says_about_it():
     assert fields["algorithm"] == "sha1"
     assert fields["digest"] == "268c66059c3c48df3bb4d2498785f2459bfa73cd"
     assert fields["kind"] == "disc"
-    # Asked of the item's metadata and of nothing else.
-    assert read.asked == ["https://archive.org/metadata/NeXTSTEP33CISC"]
+    # Asked of the item's metadata and of the thumbnail of its cover, both on
+    # archive.org, and of nothing else.
+    assert read.asked == ["https://archive.org/metadata/NeXTSTEP33CISC", FOLIO]
 
 
 def test_the_description_is_plain_text():
@@ -73,7 +74,7 @@ def test_a_line_break_in_the_description_stays_a_space_between_words():
 def test_what_is_filled_in_passes_the_catalog_s_own_rules():
     """The fields the window gets are the ones a save checks, so whatever the
     adapter fills in is something the catalog takes."""
-    _, said = lookup.look_up(DEVELOPER, answering())
+    _, said = lookup.look_up(DEVELOPER, archive())
     entry = software.Entry(identifier="x", group="developer", version="3.3",
                            systems=("nextstep-3.3",), **said["fields"])
 
@@ -176,3 +177,75 @@ def test_a_value_that_breaks_its_rule_is_left_out_rather_than_filled_in():
     assert "size" not in said["fields"]
     assert "digest" not in said["fields"]
     assert said["fields"]["name"] == "NeXTSTEP 3.3 Developer"
+
+
+RECORDED_DIR = RECORDED.parent
+FOLIO = "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP%20CD%20Folio_thumb.jpg"
+NEBULA_FRONT = "https://archive.org/download/nebula-se/1neb%20%20front_thumb.jpg"
+
+
+def archive(**changed):
+    """@returns A reader that answers as archive.org did on 27 and 28 October
+    2026: the metadata of both items and the two thumbnails, with what is
+    given in `changed` answered instead, by address."""
+    answers = {
+        "https://archive.org/metadata/NeXTSTEP33CISC": RECORDED.read_bytes(),
+        "https://archive.org/metadata/nebula-se":
+            (RECORDED_DIR / "archive-nebula-se.json").read_bytes(),
+        FOLIO: (RECORDED_DIR / "archive-NeXTSTEP33CISC-folio_thumb.jpg").read_bytes(),
+        NEBULA_FRONT: (RECORDED_DIR / "archive-nebula-se-front_thumb.jpg").read_bytes(),
+    }
+    answers.update(changed)
+
+    def read(url):
+        if url not in answers:
+            raise urllib.error.URLError("nothing recorded for " + url)
+        return answers[url]
+    return read
+
+
+def test_the_cover_is_the_thumbnail_of_the_item_s_folio_where_it_has_no_front():
+    ok, said = lookup.look_up(DEVELOPER, archive())
+
+    assert ok
+    assert said["fields"]["cover"] == FOLIO
+    # The thumbnail itself rides along, so the window can show it before the
+    # entry is kept and the Pi can hand it out.
+    assert said["picture"].startswith("data:image/jpeg;base64,/9j/")
+
+
+def test_the_front_wins_over_the_back_and_the_disc():
+    _, said = lookup.look_up("https://archive.org/download/nebula-se/NEBULA_SE.ISO", archive())
+
+    assert said["fields"]["cover"] == NEBULA_FRONT
+
+
+def test_a_thumbnail_that_is_no_picture_is_no_cover():
+    _, said = lookup.look_up(DEVELOPER, archive(**{FOLIO: b"<html>moved</html>"}))
+
+    assert "cover" not in said["fields"]
+    assert "picture" not in said
+
+
+def test_a_thumbnail_out_of_reach_leaves_the_entry_without_a_cover():
+    read = archive()
+
+    def unreachable(url):
+        if url == FOLIO:
+            raise urllib.error.URLError("timed out")
+        return read(url)
+
+    ok, said = lookup.look_up(DEVELOPER, unreachable)
+
+    assert ok
+    assert "cover" not in said["fields"]
+
+
+def test_an_item_without_pictures_has_no_cover():
+    answer = json.loads(RECORDED.read_bytes())
+    answer["files"] = [one for one in answer["files"] if one.get("format") != "JPEG"
+                       and one.get("format") != "JPEG Thumb"]
+    ok, said = lookup.look_up(DEVELOPER, answering(json.dumps(answer).encode()))
+
+    assert ok
+    assert "cover" not in said["fields"]

@@ -21,7 +21,7 @@ import threading
 import time
 import urllib.parse
 
-from . import (activity, change, config, files, grab, kiosk, lookup, machines,
+from . import (activity, change, config, covers, files, grab, kiosk, lookup, machines,
                notifications, pi, release, saved, setup, software, systems, terminal,
                updates, websocket)
 from .password import (COOKIE, LARGEST, SESSION_SECONDS, SMALLEST, Attempts, Sessions,
@@ -240,6 +240,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._json(self._setup())
         if route == "/api/software":
             return self._json(self._software())
+        if route == software.COVER_ROUTE:
+            return self._cover()
         if route == "/api/update":
             # Opening the window that shows this asks GitHub again; the poll
             # that redraws it while it is open does not, because sixty
@@ -319,7 +321,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if route == "/api/software":
             return self._keep_software()
         if route == "/api/software/remove":
-            return self._change_software(software.remove)
+            return self._change_software(software.remove, forget_the_cover=True)
         if route == "/api/software/restore":
             return self._change_software(software.restore)
         if route == "/api/software/lookup":
@@ -736,23 +738,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if body is None:
             return self._json({"error": "unreadable request"}, status=400)
 
+        replacing = body.get("replacing")
         finished, said = software.save(self._software_changes(), body.get("entry"),
-                                       replacing=body.get("replacing"))
+                                       replacing=replacing)
+        # A cover switched off leaves nothing kept behind it.
+        if finished and replacing is not None \
+                and not software.find(replacing, self._software_changes()).cover:
+            covers.forget(self.settings.state_directory, replacing)
         return self._json({"ok": finished, **said, **self._software()},
                           status=200 if finished else 409)
 
-    def _change_software(self, change):
+    def _change_software(self, change, forget_the_cover=False):
         """Removes an entry, or brings a shipped one back, and answers with the
         catalog as it now stands.
 
         @param change - `software.remove` or `software.restore`, either of
           which takes the identifier the request names as `entry`.
+        @param forget_the_cover - Whether the picture kept for that entry goes
+          with it, which removing asks for.
         """
         body = self._sent()
         if body is None:
             return self._json({"error": "unreadable request"}, status=400)
 
         finished, said = change(self._software_changes(), body.get("entry"))
+        if finished and forget_the_cover:
+            covers.forget(self.settings.state_directory, body["entry"])
         return self._json({"ok": finished, **said, **self._software()},
                           status=200 if finished else 409)
 
@@ -769,6 +780,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         finished, said = lookup.look_up(body.get("address"))
         return self._json({"ok": finished, **said}, status=200 if finished else 409)
+
+    def _cover(self):
+        """Hands out the cover of a catalog entry, which `?entry=` names.
+
+        Open like `/api/software`, because the File Viewer shows it to anybody
+        who opens it. archive.org is asked only for an entry in the catalog
+        whose cover is not kept yet, and only for the address the entry holds,
+        never one from the request. Kept for a day by the browser, because the
+        page asks with a stamp of the cover's address, so a cover that changes
+        is asked for at another address.
+        """
+        asked = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        entry = software.find(asked.get("entry", [""])[0], self._software_changes())
+        found = covers.cover_of(self.settings.state_directory, entry) if entry else None
+        if found is None:
+            return self._json({"error": "not found"}, status=404)
+
+        picture, kind = found
+        self.send_response(200)
+        self.send_header("Content-Type", kind)
+        self.send_header("Content-Length", str(len(picture)))
+        self.send_header("Cache-Control", "public, max-age=%d" % KEEP_SECONDS)
+        self.end_headers()
+        self.wfile.write(picture)
 
     def _ask_to_set_up(self):
         """Leaves the request the privileged helper acts on.

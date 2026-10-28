@@ -23,7 +23,7 @@ import re
 import urllib.error
 import urllib.parse
 
-from . import fetching, software, systems
+from . import covers, fetching, software, systems
 from .answers import told
 
 #: How long archive.org may take to answer, which measured about one second
@@ -71,6 +71,9 @@ class ArchiveOrg:
     #: The kinds of file archive.org keeps about an item rather than in it.
     NOT_CONTENT = ("Metadata", "Archive BitTorrent", "Item Tile", "JPEG Thumb")
 
+    #: The kinds of picture a cover can be, as archive.org names them.
+    PICTURES = ("JPEG", "PNG", "GIF")
+
     def handles(self, parts):
         """@returns bool - Whether the address is on archive.org itself."""
         return parts.hostname in ("archive.org", "www.archive.org")
@@ -114,7 +117,47 @@ class ArchiveOrg:
         else:
             raise Refused("lookup.nothing-to-offer", item=item)
 
-        return told("lookup.found", fields=self._fields(item, chosen, answer.get("metadata")))
+        fields = self._fields(item, chosen, answer.get("metadata"))
+        cover = self._cover(item, files, read)
+        if cover is None:
+            return told("lookup.found", fields=fields)
+        address, picture = cover
+        return told("lookup.found", fields={**fields, "cover": address},
+                    picture=covers.data_address(picture))
+
+    def _cover(self, item, files, read):
+        """The thumbnail of the item's cover, where it has one.
+
+        @param item - The item's identifier.
+        @param files - Every file the item lists.
+        @param read - Reads an address and answers its bytes.
+        @returns (str, bytes), the thumbnail's address and the picture, or
+          None. The picture whose name says front or cover is the cover,
+          otherwise one that says folio, otherwise the first; its thumbnail is
+          the one archive.org made of it.
+        """
+        pictures = [one for one in files if self._worth_having(one)
+                    and one.get("format") in self.PICTURES]
+        if not pictures:
+            return None
+        chosen = min(pictures, key=lambda one: self._rank(one["name"]))
+        thumbnail = next((one for one in files if isinstance(one, dict)
+                          and one.get("format") == "JPEG Thumb"
+                          and one.get("original") == chosen["name"]
+                          and isinstance(one.get("name"), str)), None)
+        if thumbnail is None:
+            return None
+        address = self._address(item, thumbnail)
+        picture = covers.fetched(address, read)
+        return None if picture is None else (address, picture)
+
+    def _rank(self, name):
+        """@returns int - How surely a picture of that name is the cover, the
+        surest first."""
+        lowered = name.lower()
+        if "front" in lowered or "cover" in lowered:
+            return 0
+        return 1 if "folio" in lowered else 2
 
     def _worth_having(self, one):
         """@returns bool - Whether a file of the item is one somebody came for,

@@ -19,7 +19,7 @@ import urllib.request
 import pytest
 
 from conftest import settings_for
-from previously import files, machines, saved, server
+from previously import files, machines, saved, server, software
 from previously.password import COOKIE, Attempts, Password, Sessions
 
 #: What the machine in these tests has been given. Long enough to be a password
@@ -1970,7 +1970,7 @@ def a_package():
     return {"name": "Emacs", "description": "The editor.", "group": "tools",
             "version": "21.4", "systems": ["nextstep-3.3"],
             "address": "https://example.org/emacs.tar.gz", "size": 4000000,
-            "algorithm": "sha256", "digest": "ab" * 32, "kind": "file"}
+            "algorithm": "sha256", "digest": "ab" * 32, "kind": "file", "cover": ""}
 
 
 def where_the_changes_are():
@@ -2089,6 +2089,84 @@ def test_an_address_nothing_reads_is_refused(service, monkeypatch):
 
     assert refused.value.code == 409
     assert json.loads(refused.value.read())["reason"] == "lookup.no-adapter"
+
+
+FOLIO = (pathlib.Path(__file__).resolve().parent / "recorded"
+         / "archive-NeXTSTEP33CISC-folio_thumb.jpg").read_bytes()
+
+
+def recorded_covers(monkeypatch):
+    """Answers every cover asked of archive.org with the NeXTSTEP folio's
+    thumbnail as recorded on 28 October 2026, and counts the asking.
+
+    @returns list, the addresses asked for.
+    """
+    asked = []
+
+    def read(url):
+        asked.append(url)
+        return FOLIO
+    monkeypatch.setattr(server.covers, "reading", lambda: read)
+    return asked
+
+
+def test_a_cover_is_open_and_fetched_once(service, monkeypatch):
+    """Open like the catalog, because the File Viewer is. archive.org is
+    asked the first time and the kept picture answers after that."""
+    asked = recorded_covers(monkeypatch)
+
+    for _ in range(2):
+        status, headers, body = fetch(service + "/api/software/cover?entry=nextstep-3.3-developer")
+        assert status == 200
+        assert headers["Content-Type"] == "image/jpeg"
+        assert body == FOLIO
+
+    assert asked == ["https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP%20CD%20Folio_thumb.jpg"]
+
+
+def test_a_cover_nobody_has_is_not_found(service, monkeypatch):
+    asked = recorded_covers(monkeypatch)
+    tell(service, "/api/software", {"entry": a_package()})
+
+    for entry in ["emacs", "nothing-here", "../../etc/passwd"]:
+        with pytest.raises(urllib.error.HTTPError) as refused:
+            fetch(service + "/api/software/cover?" + urllib.parse.urlencode({"entry": entry}))
+        assert refused.value.code == 404
+    assert asked == []
+
+
+def test_removing_an_entry_takes_its_kept_cover_with_it(service, monkeypatch):
+    recorded_covers(monkeypatch)
+    fetch(service + "/api/software/cover?entry=nextstep-3.3-developer")
+    kept = server.Handler.settings.state_directory / "covers"
+    assert list(kept.iterdir())
+
+    tell(service, "/api/software/remove", {"entry": "nextstep-3.3-developer"})
+
+    assert not list(kept.iterdir())
+
+
+def test_a_cover_switched_off_takes_the_kept_picture_with_it(service, monkeypatch):
+    recorded_covers(monkeypatch)
+    fetch(service + "/api/software/cover?entry=nextstep-3.3-developer")
+    kept = server.Handler.settings.state_directory / "covers"
+    shipped = answer_of(urllib.request.urlopen(service + "/api/software"))["entries"][0]
+    values = {field: shipped[field] for field in software.FIELDS}
+
+    tell(service, "/api/software",
+         {"entry": {**values, "cover": ""}, "replacing": "nextstep-3.3-developer"})
+
+    assert not list(kept.iterdir())
+
+
+def test_the_tree_says_where_an_entry_s_cover_is(service, tmp_path):
+    a_disk(tmp_path, "nextstep-3.3", booting=True)
+
+    group, = software_folder(service)["entries"]
+    offered, = group["entries"]
+
+    assert offered["package"]["picture"].startswith(
+        "/api/software/cover?entry=nextstep-3.3-developer&v=")
 
 
 def test_the_status_says_whether_this_machine_is_set_up_at_all(service):

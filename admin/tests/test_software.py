@@ -6,6 +6,10 @@ held here to the shape that fetch relies on, and the shipped list is held to it
 like any entry somebody adds.
 """
 
+import json
+import pathlib
+import tempfile
+
 import pytest
 
 from previously import software, systems
@@ -25,6 +29,7 @@ def an_entry(**changed):
         algorithm="sha1",
         digest="268c66059c3c48df3bb4d2498785f2459bfa73cd",
         kind="disc",
+        cover="https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP%20CD%20Folio_thumb.jpg",
     )
     fields.update(changed)
     return software.Entry(**fields)
@@ -89,6 +94,12 @@ def test_no_two_shipped_entries_share_an_identifier():
     ({"algorithm": ["sha1"]}, "algorithm"),
     ({"digest": 5}, "digest"),
     ({"kind": ["disc"]}, "kind"),
+    # A cover comes from archive.org, which is the one place the Pi fetches
+    # one from, and from nowhere else.
+    ({"cover": "https://example.org/front.jpg"}, "cover"),
+    ({"cover": "http://archive.org/download/x/front_thumb.jpg"}, "cover"),
+    ({"cover": "https://archive.org.example.com/x.jpg"}, "cover"),
+    ({"cover": None}, "cover"),
 ])
 def test_a_field_that_breaks_its_rule_is_named(changed, problem):
     """Each rule is about the one field, so what is wrong can be said next to
@@ -136,6 +147,7 @@ def a_package(**changed):
         algorithm="sha256",
         digest="ab" * 32,
         kind="file",
+        cover="",
     )
     values.update(changed)
     return values
@@ -312,3 +324,37 @@ def test_what_the_service_writes_it_reads_back_whole(tmp_path):
 
     assert software.read(path) == software.read(path)
     assert listed(path) == ["emacs"]
+
+
+def test_an_entry_without_a_cover_has_none():
+    assert software.problems(an_entry(cover="")) == []
+
+
+def test_an_entry_written_before_covers_is_read_as_one_without():
+    """A file of changes from before the cover existed holds entries without
+    the field, and they are entries without a cover rather than a file that
+    cannot be read."""
+    path = pathlib.Path(tempfile.mkdtemp()) / "software.json"
+    path.write_text(json.dumps({"version": 1, "removed": [], "entries": [{
+        "identifier": "emacs", "name": "Emacs", "description": "", "group": "tools",
+        "version": "21.4", "systems": ["nextstep-3.3"],
+        "address": "https://example.org/emacs.tar.gz", "size": 1, "algorithm": "sha1",
+        "digest": "a" * 40, "kind": "file"}]}), encoding="utf-8")
+
+    assert software.find("emacs", path).cover == ""
+
+
+def test_the_shipped_developer_cd_wears_its_folio():
+    assert software.find("nextstep-3.3-developer").cover == (
+        "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP%20CD%20Folio_thumb.jpg")
+
+
+def test_an_entry_with_a_cover_says_where_the_page_gets_it():
+    """By the entry and a stamp of the cover's address, so a cover that
+    changes is a new address and no browser keeps the old one."""
+    described = software.described(an_entry())
+    other = software.described(an_entry(cover=an_entry().cover.replace("Folio", "Back")))
+
+    assert described["picture"].startswith("/api/software/cover?entry=nextstep-3.3-developer&v=")
+    assert described["picture"] != other["picture"]
+    assert software.described(an_entry(cover=""))["picture"] is None

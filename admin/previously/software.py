@@ -23,13 +23,14 @@ survives it, and an edited or removed shipped entry can always be brought back.
 """
 
 import collections
+import hashlib
 import ipaddress
 import json
 import os
 import re
 import urllib.parse
 
-from . import systems
+from . import fetching, systems
 from .answers import told
 
 #: The groups an entry can be in, in the order the Software folder lists them,
@@ -76,10 +77,11 @@ LARGEST_BYTES = 1_000_000_000
 #:
 #: `systems` are the identifiers of `systems.CATALOGUE` it runs on. `size`,
 #: `algorithm` and `digest` are what the file at `address` is, and a download
-#: refuses anything that arrives as something else.
+#: refuses anything that arrives as something else. `cover` is the address of
+#: a thumbnail of its cover on archive.org, or empty.
 Entry = collections.namedtuple(
     "Entry",
-    "identifier name description group version systems address size algorithm digest kind")
+    "identifier name description group version systems address size algorithm digest kind cover")
 
 #: Every entry this project ships.
 CATALOGUE = (
@@ -89,8 +91,16 @@ CATALOGUE = (
           "for NeXTSTEP 3.3.",
           "developer", "3.3", ("nextstep-3.3",),
           "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP_3.3_Developer.iso",
-          403111936, "sha1", "268c66059c3c48df3bb4d2498785f2459bfa73cd", "disc"),
+          403111936, "sha1", "268c66059c3c48df3bb4d2498785f2459bfa73cd", "disc",
+          "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP%20CD%20Folio_thumb.jpg"),
 )
+
+#: Where the page asks for an entry's cover, which the Pi fetches from
+#: archive.org once and hands out itself after that.
+COVER_ROUTE = "/api/software/cover"
+
+#: The hosts a cover may come from, which are the ones the adapter reads.
+COVER_HOSTS = systems.ARCHIVE_HOSTS
 
 #: By identifier, which is what a request carries.
 BY_IDENTIFIER = {entry.identifier: entry for entry in CATALOGUE}
@@ -179,6 +189,9 @@ def problems(entry):
         wrong.append("digest")
     if entry.kind not in KINDS:
         wrong.append("kind")
+    if not (entry.cover == "" or _is_address(entry.cover)
+            and fetching.allowed(entry.cover, COVER_HOSTS)):
+        wrong.append("cover")
     return wrong
 
 
@@ -193,15 +206,37 @@ def described(entry):
 
     @param entry - An Entry.
     @returns dict, every field of the entry, `source` as the Info window shows
-      where it comes from, and `for` as the names of the systems it is for,
-      which is how a person reads `systems`.
+      where it comes from, `for` as the names of the systems it is for, which
+      is how a person reads `systems`, and `picture` as where the page gets
+      its cover, or None where it has none.
     """
     return {
         **entry._asdict(),
         "systems": list(entry.systems),
         "for": [systems.find(system).name for system in entry.systems],
         "source": source(entry),
+        "picture": picture_of(entry),
     }
+
+
+def picture_of(entry):
+    """Where the page gets an entry's cover.
+
+    @param entry - An Entry.
+    @returns str, the cover route with the entry and a stamp of the cover's
+      address, or None where it has no cover. The stamp makes a changed cover
+      a new address, so no browser goes on showing the one before.
+    """
+    if not entry.cover:
+        return None
+    return "%s?%s" % (COVER_ROUTE, urllib.parse.urlencode(
+        {"entry": entry.identifier, "v": stamp(entry.cover)}))
+
+
+def stamp(cover):
+    """@returns str - Twelve hexadecimal digits that change with the cover's
+    address."""
+    return hashlib.sha1(cover.encode("utf-8")).hexdigest()[:12]
 
 
 def overlay_in(state_directory):
@@ -237,6 +272,9 @@ def read(path):
 
     kept = []
     for values in entries:
+        # An entry written before covers existed has none.
+        if isinstance(values, dict):
+            values = {"cover": "", **values}
         if not isinstance(values, dict) or set(values) != set(Entry._fields):
             raise NotReadable("%s holds an entry with other fields than an entry has" % path)
         entry = _entry(values["identifier"], values)
