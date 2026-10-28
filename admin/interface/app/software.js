@@ -76,6 +76,9 @@ let infoPage = "";
  * @param {string} page - The page.
  *
  * With `noopener`, so the page that opens cannot reach back into this one.
+ * The button stands in both windows whether or not an entry has a page, and
+ * is dimmed where it has none, because the Controls chapter keeps a button
+ * that would do nothing in its place with its label greyed.
  */
 function viewOrigin(page) {
   if (page) window.open(page, "_blank", "noopener");
@@ -109,7 +112,7 @@ function showSoftwareInfo(entry, asker) {
   show("si-source", about.source);
   show("si-description", about.description);
   infoPage = about.page;
-  byId("si-buttons").hidden = !infoPage;
+  byId("si-page", HTMLButtonElement).disabled = !infoPage;
 
   window_.open(asker);
 }
@@ -300,7 +303,7 @@ function openTheForm(entry, found = null, files = null, chosenFile = null) {
   fill(entry ?? found?.fields ?? {});
   showTheCover(entry ? entry.cover : found?.fields.cover, entry ? entry.picture : found?.picture);
   formPage = (entry ? entry.page : found?.page) ?? "";
-  byId("se-page").hidden = !formPage;
+  byId("se-page", HTMLButtonElement).disabled = !formPage;
   byId("se-group", NxPopup).offer(
     catalog.groups.map((group) => ({ value: group.identifier, label: group.name })),
     entry?.group);

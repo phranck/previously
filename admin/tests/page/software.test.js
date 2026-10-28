@@ -19,13 +19,15 @@ function described(identifier, name, origin) {
 }
 
 /** The catalog as /api/software answers it: one shipped entry, one added,
- *  and one shipped entry removed here. */
+ *  one added with an address off archive.org, which has no page, and one
+ *  shipped entry removed here. */
 const CATALOG = {
   booted: "nextstep-3.3",
   groups: [{ identifier: "developer", name: "Developer" }],
   systems: [{ identifier: "nextstep-3.3", name: "NeXTSTEP 3.3" }],
   entries: [described("shipped-one", "Shipped One", "shipped"),
-            described("added-one", "Added One", "added")],
+            described("added-one", "Added One", "added"),
+            { ...described("typed-one", "Typed One", "added"), page: "" }],
   removed: [described("gone-one", "Gone One", "shipped")],
 };
 
@@ -83,7 +85,7 @@ test("View Origin opens the entry's page in a window of its own", async () => {
     await settled();
     const button = document.getElementById("se-page");
 
-    assert.equal(button.hidden, false);
+    assert.equal(button.disabled, false);
     button.click();
   } finally {
     window.open = open;
@@ -104,7 +106,33 @@ test("an address dropped on the list opens the form with its item's page", async
   await settled();
 
   assert.equal(document.getElementById("se-name").value, "Nebula");
-  assert.equal(document.getElementById("se-page").hidden, false);
+  assert.equal(document.getElementById("se-page").disabled, false);
+});
+
+/** @returns {boolean} Whether a button can be seen, which it cannot where it
+ *  or a box around it is hidden. */
+function shown(id) {
+  return !document.getElementById(id).closest("[hidden]");
+}
+
+test("View Origin stands dimmed in the form of an entry without a page", async () => {
+  await theModule();
+
+  rowOf("Typed One").dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+  await settled();
+
+  assert.equal(shown("se-page"), true);
+  assert.equal(document.getElementById("se-page").disabled, true);
+});
+
+test("View Origin stands dimmed in the Info window of an entry without a page", async () => {
+  await theModule();
+
+  software.showSoftwareInfo({ package: CATALOG.entries[2], icon: "cdrom" });
+  await settled();
+
+  assert.equal(shown("si-page"), true);
+  assert.equal(document.getElementById("si-page").disabled, true);
 });
 
 test("double clicking a shipped entry removed here opens nothing", async () => {
