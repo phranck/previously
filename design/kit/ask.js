@@ -119,9 +119,32 @@ class NxAsk extends HTMLElement {
     /* The mark says Return will press the button, so it has to stop saying so
        the moment Return would not. In a browser that is the document losing
        focus, which is this desk's version of the panel not being the key
-       window. */
-    /** @type {() => void} */
-    this.focusChanged = () => this.markTheReturnKey();
+       window. The window coming back is also where typing goes back to the
+       field: an address dropped from another window brings the panel up
+       while this one is behind. */
+    /** @type {(event: Event) => void} */
+    this.focusChanged = (event) => {
+      this.markTheReturnKey();
+      if (event.type === "focus" && this.asksForSomething()) this.parts.entry.focus();
+    };
+
+    /* While the panel asks for something typed, the field is where typing
+       goes, whatever else in the panel is pressed. A press on its text or its
+       frame would otherwise take the focus off the field, and that press is
+       the one somebody makes to bring this window forward. A button and the
+       field itself keep their own press. */
+    this.addEventListener("mousedown", (event) => {
+      if (!this.asksForSomething()) return;
+      if (event.target instanceof Element && event.target.closest("input, button")) return;
+      event.preventDefault();
+      this.parts.entry.focus();
+    });
+  }
+
+  /** @returns {boolean} Whether the panel is up and asking for something
+   *  typed. */
+  asksForSomething() {
+    return this.hasAttribute("data-open") && !this.parts.entry.hidden;
   }
 
   /**

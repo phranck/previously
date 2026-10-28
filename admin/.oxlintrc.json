@@ -100,6 +100,7 @@
         "document": "readonly",
         "localStorage": "readonly",
         "dispatchEvent": "readonly",
+        "Event": "readonly",
         "PointerEvent": "readonly",
         "KeyboardEvent": "readonly",
         "MouseEvent": "readonly",
