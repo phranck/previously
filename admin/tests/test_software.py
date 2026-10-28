@@ -30,6 +30,7 @@ def an_entry(**changed):
         digest="268c66059c3c48df3bb4d2498785f2459bfa73cd",
         kind="disc",
         cover="https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP%20CD%20Folio_thumb.jpg",
+        page="https://archive.org/details/NeXTSTEP33CISC",
     )
     fields.update(changed)
     return software.Entry(**fields)
@@ -112,6 +113,11 @@ def test_no_two_shipped_entries_share_an_identifier():
     ({"cover": "http://archive.org/download/x/front_thumb.jpg"}, "cover"),
     ({"cover": "https://archive.org.example.com/x.jpg"}, "cover"),
     ({"cover": None}, "cover"),
+    # The page an entry came from is archive.org's, which is the one place the
+    # lookup reads, and the page opens it as it is.
+    ({"page": "https://example.org/details/x"}, "page"),
+    ({"page": "javascript:alert(1)"}, "page"),
+    ({"page": None}, "page"),
 ])
 def test_a_field_that_breaks_its_rule_is_named(changed, problem):
     """Each rule is about the one field, so what is wrong can be said next to
@@ -160,6 +166,7 @@ def a_package(**changed):
         digest="ab" * 32,
         kind="file",
         cover="",
+        page="",
     )
     values.update(changed)
     return values
@@ -354,11 +361,19 @@ def test_an_entry_written_before_covers_is_read_as_one_without():
         "digest": "a" * 40, "kind": "file"}]}), encoding="utf-8")
 
     assert software.find("emacs", path).cover == ""
+    assert software.find("emacs", path).page == ""
 
 
-def test_the_shipped_developer_cd_wears_its_folio():
-    assert software.find("nextstep-3.3-developer").cover == (
+def test_the_shipped_developer_cd_wears_its_folio_and_knows_its_page():
+    developer = software.find("nextstep-3.3-developer")
+
+    assert developer.cover == (
         "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP%20CD%20Folio_thumb.jpg")
+    assert developer.page == "https://archive.org/details/NeXTSTEP33CISC"
+
+
+def test_an_entry_without_a_page_has_none():
+    assert software.problems(an_entry(page="")) == []
 
 
 def test_an_entry_with_a_cover_says_where_the_page_gets_it():

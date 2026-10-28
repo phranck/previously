@@ -72,10 +72,10 @@ def fetched(address, read):
 
 def reading():
     """@returns A reader that asks archive.org for a cover, reaching only
-    `software.COVER_HOSTS` and reading no more than one byte past the
+    `software.ARCHIVE_HOSTS` and reading no more than one byte past the
     ceiling."""
     def read(url):
-        with fetching.opened(url, software.COVER_HOSTS, TIMEOUT_SECONDS) as answer:
+        with fetching.opened(url, software.ARCHIVE_HOSTS, TIMEOUT_SECONDS) as answer:
             return answer.read(LARGEST_COVER + 1)
     return read
 

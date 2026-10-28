@@ -1970,7 +1970,8 @@ def a_package():
     return {"name": "Emacs", "description": "The editor.", "group": "tools",
             "version": "21.4", "systems": ["nextstep-3.3"],
             "address": "https://example.org/emacs.tar.gz", "size": 4000000,
-            "algorithm": "sha256", "digest": "ab" * 32, "kind": "file", "cover": ""}
+            "algorithm": "sha256", "digest": "ab" * 32, "kind": "file", "cover": "",
+            "page": ""}
 
 
 def where_the_changes_are():

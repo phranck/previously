@@ -249,3 +249,14 @@ def test_an_item_without_pictures_has_no_cover():
 
     assert ok
     assert "cover" not in said["fields"]
+
+
+def test_the_page_is_the_item_s_whichever_address_was_dropped():
+    """The page holds the pictures, the files and the reviews, so it is the
+    place worth going back to, even where a file's address was dropped."""
+    _, from_a_file = lookup.look_up(DEVELOPER, archive())
+    _, from_the_item = lookup.look_up(
+        "https://archive.org/download/nebula-se/NEBULA_SE.ISO", archive())
+
+    assert from_a_file["fields"]["page"] == "https://archive.org/details/NeXTSTEP33CISC"
+    assert from_the_item["fields"]["page"] == "https://archive.org/details/nebula-se"

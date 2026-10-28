@@ -75,10 +75,12 @@ LARGEST_BYTES = 1_000_000_000
 #: `systems` are the identifiers of `systems.CATALOGUE` it runs on. `size`,
 #: `algorithm` and `digest` are what the file at `address` is, and a download
 #: refuses anything that arrives as something else. `cover` is the address of
-#: a thumbnail of its cover on archive.org, or empty.
+#: a thumbnail of its cover on archive.org, and `page` the page of the item it
+#: came from there, which View Origin opens, each or both empty.
 Entry = collections.namedtuple(
     "Entry",
-    "identifier name description group version systems address size algorithm digest kind cover")
+    "identifier name description group version systems address size algorithm digest kind"
+    " cover page")
 
 #: Every entry this project ships.
 CATALOGUE = (
@@ -89,15 +91,17 @@ CATALOGUE = (
           "developer", "3.3", ("nextstep-3.3",),
           "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP_3.3_Developer.iso",
           403111936, "sha1", "268c66059c3c48df3bb4d2498785f2459bfa73cd", "disc",
-          "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP%20CD%20Folio_thumb.jpg"),
+          "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP%20CD%20Folio_thumb.jpg",
+          "https://archive.org/details/NeXTSTEP33CISC"),
 )
 
 #: Where the page asks for an entry's cover, which the Pi fetches from
 #: archive.org once and hands out itself after that.
 COVER_ROUTE = "/api/software/cover"
 
-#: The hosts a cover may come from, which are the ones the adapter reads.
-COVER_HOSTS = systems.ARCHIVE_HOSTS
+#: The hosts a cover may come from and a page may be on, which are the ones
+#: the adapter reads.
+ARCHIVE_HOSTS = systems.ARCHIVE_HOSTS
 
 #: By identifier, which is what a request carries.
 BY_IDENTIFIER = {entry.identifier: entry for entry in CATALOGUE}
@@ -188,9 +192,10 @@ def problems(entry):
         wrong.append("digest")
     if entry.kind not in KINDS:
         wrong.append("kind")
-    if not (entry.cover == "" or _is_address(entry.cover)
-            and fetching.allowed(entry.cover, COVER_HOSTS)):
+    if not (entry.cover == "" or _is_on_the_archive(entry.cover)):
         wrong.append("cover")
+    if not (entry.page == "" or _is_on_the_archive(entry.page)):
+        wrong.append("page")
     return wrong
 
 
@@ -271,9 +276,9 @@ def read(path):
 
     kept = []
     for values in entries:
-        # An entry written before covers existed has none.
+        # An entry written before covers and pages existed has neither.
         if isinstance(values, dict):
-            values = {"cover": "", **values}
+            values = {"cover": "", "page": "", **values}
         if not isinstance(values, dict) or set(values) != set(Entry._fields):
             raise NotReadable("%s holds an entry with other fields than an entry has" % path)
         entry = _entry(values["identifier"], values)
@@ -529,3 +534,10 @@ def _is_address(value):
     except ValueError:
         return True
     return False
+
+
+def _is_on_the_archive(value):
+    """@returns bool - Whether it is an address an entry may hold, on one of
+    ARCHIVE_HOSTS, which is where a cover is fetched from and a page is opened
+    at."""
+    return _is_address(value) and fetching.allowed(value, ARCHIVE_HOSTS)
