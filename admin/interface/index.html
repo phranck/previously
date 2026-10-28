@@ -625,17 +625,15 @@
      the kind always hold a choice and are not marked.
 
      What the entry wears stands on the left, as the picture of every Info
-     window does: its cover, or the icon of its kind, with the switch that
-     takes a cover off under it where there is one, and View Origin under
-     that, as wide as the picture, where the entry knows its page. -->
+     window does, in a square it fills: its cover, or the icon of its kind.
+     The switch that takes a cover off stands under it where there is one.
+     View Origin stands at the left of the foot, where the entry knows its
+     page. -->
 <nx-window name="software-entry" data-t-title="window.software-entry" fixed x="560" y="160" w="560" closed>
   <div class="info-body">
     <div class="software-side">
-      <nx-portrait>
-        <i class="art icon" id="se-cover-art"></i>
-        <label class="two-state" id="se-cover-switch" hidden><input type="checkbox" class="switch" id="se-cover"><span data-t="software.cover.show"></span></label>
-      </nx-portrait>
-      <button id="se-page" data-t="button.view-origin" hidden></button>
+      <nx-portrait><i class="art icon" id="se-cover-art"></i></nx-portrait>
+      <label class="two-state" id="se-cover-switch" hidden><input type="checkbox" class="switch" id="se-cover"><span data-t="software.cover.show"></span></label>
     </div>
     <div class="readings software-form" id="software-form">
     <!-- Only where an address dropped on the list named an item holding
@@ -658,7 +656,8 @@
   </div>
   </div>
   <p class="note" id="se-note"></p>
-  <div class="buttons">
+  <div class="buttons parted">
+    <button id="se-page" data-t="button.view-origin" hidden></button>
     <button id="se-cancel" data-t="button.cancel"></button>
     <button id="se-save" data-t="button.save"></button>
   </div>

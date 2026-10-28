@@ -225,26 +225,43 @@ nx-scroller.packages[droppable] .options {
 #software-list .system { grid-template-columns: max-content max-content 1fr max-content; }
 .software-cover { width: 18px; height: 18px; background-size: contain; }
 
-/* The switch under the picture of the Software Entry window, which takes the
-   cover off, in the portrait's ordinary type rather than a label's bold. */
-nx-window[name="software-entry"] nx-portrait label.two-state { font-weight: normal; }
-
-/* The picture's column of that window, and View Origin under the picture,
-   as wide as it, with the step between two readings above it. */
+/* The picture's column of the Software Entry window: a square the cover
+   fills whole, and the switch that takes it off under it, at the column's
+   left edge and in ordinary type rather than a label's bold. Without a cover
+   the icon of the entry's kind stands in the middle at its own size, because
+   it is a bitmap drawn for that size. */
 .software-side {
   display: grid;
   align-content: start;
   gap: var(--reading-gap);
 }
-.software-side button { width: 100%; }
+.software-side nx-portrait {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  align-content: center;
+  overflow: hidden;
+}
+/* Laid over the whole inside of the square rather than sized in the grid,
+   where a height in percent finds nothing to be a percentage of. */
+.software-side nx-portrait .art.picture {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  background-size: cover;
+}
+.software-side label.two-state { justify-self: start; font-weight: normal; }
 
 /* A shipped entry removed here, still listed so it can be brought back, in
    the gray a disabled menu entry wears: it is here and not for now. */
 .system.gone:not([chosen]) { color: var(--dark); }
 
 /* A row whose first button does something of another kind than the rest
-   stands that one apart at the left, as Restore does, which undoes what
-   Remove, Edit and Add do. */
+   stands that one apart at the left: Restore, which undoes what Remove, Edit
+   and Add do, and View Origin, which leaves the form for a page elsewhere
+   rather than doing anything to the entry. Hidden, it takes no room, and the
+   others stand at the right as in any row. */
 .buttons.parted > :first-child { margin-right: auto; }
 
 /* The form an entry is edited in: the labels right aligned in a column of

@@ -434,11 +434,8 @@
 <nx-window name="software-entry" data-t-title="window.software-entry" fixed x="560" y="160" w="560" closed>
   <div class="info-body">
     <div class="software-side">
-      <nx-portrait>
-        <i class="art icon" id="se-cover-art"></i>
-        <label class="two-state" id="se-cover-switch" hidden><input type="checkbox" class="switch" id="se-cover"><span data-t="software.cover.show"></span></label>
-      </nx-portrait>
-      <button id="se-page" data-t="button.view-origin" hidden></button>
+      <nx-portrait><i class="art icon" id="se-cover-art"></i></nx-portrait>
+      <label class="two-state" id="se-cover-switch" hidden><input type="checkbox" class="switch" id="se-cover"><span data-t="software.cover.show"></span></label>
     </div>
     <div class="readings software-form" id="software-form">
 
@@ -460,7 +457,8 @@
   </div>
   </div>
   <p class="note" id="se-note"></p>
-  <div class="buttons">
+  <div class="buttons parted">
+    <button id="se-page" data-t="button.view-origin" hidden></button>
     <button id="se-cancel" data-t="button.cancel"></button>
     <button id="se-save" data-t="button.save"></button>
   </div>
