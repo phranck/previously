@@ -77,8 +77,9 @@ let infoPage = "";
  *
  * With `noopener`, so the page that opens cannot reach back into this one.
  * The button stands in both windows whether or not an entry has a page, and
- * is dimmed where it has none, because the Controls chapter keeps a button
- * that would do nothing in its place with its label greyed.
+ * is disabled where it has none, because the Controls chapter keeps a button
+ * that would do nothing in its place and disables it. Disabled, the kit greys
+ * its label.
  */
 function viewOrigin(page) {
   if (page) window.open(page, "_blank", "noopener");

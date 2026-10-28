@@ -115,7 +115,7 @@ function shown(id) {
   return !document.getElementById(id).closest("[hidden]");
 }
 
-test("View Origin stands dimmed in the form of an entry without a page", async () => {
+test("View Origin is disabled in the form of an entry without a page", async () => {
   await theModule();
 
   rowOf("Typed One").dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
@@ -125,7 +125,7 @@ test("View Origin stands dimmed in the form of an entry without a page", async (
   assert.equal(document.getElementById("se-page").disabled, true);
 });
 
-test("View Origin stands dimmed in the Info window of an entry without a page", async () => {
+test("View Origin is disabled in the Info window of an entry without a page", async () => {
   await theModule();
 
   software.showSoftwareInfo({ package: CATALOG.entries[2], icon: "cdrom" });
