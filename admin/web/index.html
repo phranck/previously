@@ -431,7 +431,7 @@
   <div class="readings software-form" id="software-form">
 
     <nx-row id="se-file-row" hidden><label data-t="info.file"></label><nx-popup id="se-file"></nx-popup></nx-row>
-    <nx-row><label for="se-name" data-t="info.name"></label><input class="entry" id="se-name" spellcheck="false"></nx-row>
+    <nx-row><label for="se-name" class="required" data-t="info.name"></label><input class="entry" id="se-name" spellcheck="false"></nx-row>
     <nx-row><label for="se-version" data-t="info.version"></label><input class="entry" id="se-version" spellcheck="false"></nx-row>
 
     <nx-row id="se-cover-row" hidden><label data-t="info.cover"></label>
@@ -444,10 +444,10 @@
         <label class="two-state"><input type="radio" class="radio" name="se-kind" value="disc"><span data-t="software.kind.disc"></span></label>
         <label class="two-state"><input type="radio" class="radio" name="se-kind" value="file"><span data-t="software.kind.file"></span></label>
       </div></nx-row>
-    <nx-row><label data-t="info.for"></label><div class="software-choices" id="se-systems"></div></nx-row>
-    <nx-row><label for="se-address" data-t="info.address"></label><input class="entry" id="se-address" spellcheck="false"></nx-row>
-    <nx-row><label for="se-size" data-t="info.size"></label><input class="entry" id="se-size" inputmode="numeric" spellcheck="false"></nx-row>
-    <nx-row><label for="se-digest" data-t="info.digest"></label>
+    <nx-row><label class="required" data-t="info.for"></label><div class="software-choices" id="se-systems"></div></nx-row>
+    <nx-row><label for="se-address" class="required" data-t="info.address"></label><input class="entry" id="se-address" spellcheck="false"></nx-row>
+    <nx-row><label for="se-size" class="required" data-t="info.size"></label><input class="entry" id="se-size" inputmode="numeric" spellcheck="false"></nx-row>
+    <nx-row><label for="se-digest" class="required" data-t="info.digest"></label>
       <div class="software-pair"><input class="entry" id="se-digest" spellcheck="false"><nx-popup id="se-algorithm"></nx-popup></div></nx-row>
   </div>
   <p class="note" id="se-note"></p>

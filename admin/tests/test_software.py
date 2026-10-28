@@ -39,6 +39,13 @@ def test_a_well_formed_entry_has_no_problems():
     assert software.problems(an_entry()) == []
 
 
+def test_an_entry_without_a_version_is_well_formed():
+    """Plenty of items name none, nebula-se among them, so a version is
+    checked only where one is given."""
+    assert software.problems(an_entry(version="")) == []
+    assert software.problems(an_entry(version=None)) == ["version"]
+
+
 @pytest.mark.parametrize("entry", software.CATALOGUE, ids=lambda entry: entry.identifier)
 def test_every_shipped_entry_is_well_formed(entry):
     """The shipped list is held to the same rules as an entry somebody adds,

@@ -616,13 +616,15 @@
 <!-- One entry of the software catalog, opened by Add and Edit in the Software
      module. A form: Tab walks it, Return goes to the next field rather than
      doing anything, and Save is what enters it. Name, version and description
-     are kept as typed, in whatever language they are written in. -->
+     are kept as typed, in whatever language they are written in. A label
+     marked required names a field that cannot be left empty; the group and
+     the kind always hold a choice and are not marked. -->
 <nx-window name="software-entry" data-t-title="window.software-entry" fixed x="600" y="160" w="460" closed>
   <div class="readings software-form" id="software-form">
     <!-- Only where an address dropped on the list named an item holding
          several files worth having: which of them the entry is for. -->
     <nx-row id="se-file-row" hidden><label data-t="info.file"></label><nx-popup id="se-file"></nx-popup></nx-row>
-    <nx-row><label for="se-name" data-t="info.name"></label><input class="entry" id="se-name" spellcheck="false"></nx-row>
+    <nx-row><label for="se-name" class="required" data-t="info.name"></label><input class="entry" id="se-name" spellcheck="false"></nx-row>
     <nx-row><label for="se-version" data-t="info.version"></label><input class="entry" id="se-version" spellcheck="false"></nx-row>
     <!-- Only where the entry has a cover: what it wears, and the switch that
          drops the cover for the icon of its kind. -->
@@ -636,10 +638,10 @@
         <label class="two-state"><input type="radio" class="radio" name="se-kind" value="disc"><span data-t="software.kind.disc"></span></label>
         <label class="two-state"><input type="radio" class="radio" name="se-kind" value="file"><span data-t="software.kind.file"></span></label>
       </div></nx-row>
-    <nx-row><label data-t="info.for"></label><div class="software-choices" id="se-systems"></div></nx-row>
-    <nx-row><label for="se-address" data-t="info.address"></label><input class="entry" id="se-address" spellcheck="false"></nx-row>
-    <nx-row><label for="se-size" data-t="info.size"></label><input class="entry" id="se-size" inputmode="numeric" spellcheck="false"></nx-row>
-    <nx-row><label for="se-digest" data-t="info.digest"></label>
+    <nx-row><label class="required" data-t="info.for"></label><div class="software-choices" id="se-systems"></div></nx-row>
+    <nx-row><label for="se-address" class="required" data-t="info.address"></label><input class="entry" id="se-address" spellcheck="false"></nx-row>
+    <nx-row><label for="se-size" class="required" data-t="info.size"></label><input class="entry" id="se-size" inputmode="numeric" spellcheck="false"></nx-row>
+    <nx-row><label for="se-digest" class="required" data-t="info.digest"></label>
       <div class="software-pair"><input class="entry" id="se-digest" spellcheck="false"><nx-popup id="se-algorithm"></nx-popup></div></nx-row>
   </div>
   <p class="note" id="se-note"></p>

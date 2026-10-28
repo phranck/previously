@@ -9,7 +9,7 @@ import { askPanel } from "./panels.js";
 import { Software, ask, tell } from "./service.js";
 import { Needs, allowed, hold, holdTheControls } from "./system.js";
 import { drawMachines } from "./viewer.js";
-import { say, sized } from "./words.js";
+import { NOTHING, say, sized } from "./words.js";
 
 /** @typedef {import("../answers.js").SoftwareEntry} SoftwareEntry */
 /** @typedef {import("../answers.js").SoftwareAnswer} SoftwareAnswer */
@@ -84,7 +84,7 @@ function showSoftwareInfo(entry, asker) {
   const portrait = byId("si-icon");
   wearCover(portrait, about.picture, entry.icon,
             () => wearCover(portrait, about.picture, entry.icon, () => {}));
-  show("si-version", about.version);
+  show("si-version", about.version || NOTHING);
   show("si-for", about.for.join(", "));
   show("si-kind", kindWord(about.kind));
   show("si-size", sized(about.size));

@@ -248,6 +248,11 @@ nx-scroller.packages[droppable] .options {
 .software-form nx-row > label { padding-top: 3px; }
 .software-form nx-popup { justify-self: start; }
 
+/* A field that cannot be left empty carries a star after its label, which
+   is what a form says that with everywhere. Written by the stylesheet rather
+   than into the words, so every language marks it the same way. */
+.software-form label.required::after { content: " *"; }
+
 /* Choices of the same kind side by side, two to a row, with their words
    beside them as every switch in this interface has. */
 .software-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; padding-top: 2px; }
