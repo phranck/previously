@@ -179,7 +179,6 @@ export const es = {
   "software.kind.file": "Paquete",
   "software.gone": "quitado",
   "software.cover.show": "Mostrar",
-  "info.cover": "Portada",
   "window.software-entry": "Entrada de software",
   "preferences.software": "Preferencias de software",
   "preferences.software.packages": "Paquetes",

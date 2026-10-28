@@ -225,21 +225,26 @@ nx-scroller.packages[droppable] .options {
 #software-list .system { grid-template-columns: max-content max-content 1fr max-content; }
 .software-cover { width: 18px; height: 18px; background-size: contain; }
 
-/* The Cover row of the Software Entry window: what the entry wears, at the
-   size of an icon, with the switch that drops it beside it. */
-.software-cover-choice { display: flex; align-items: center; gap: 12px; }
-.software-cover-choice .art { width: var(--icon); height: var(--icon); background-size: contain; }
-.software-cover-choice label.two-state { font-weight: normal; }
+/* The switch under the picture of the Software Entry window, which takes the
+   cover off, in the portrait's ordinary type rather than a label's bold. */
+nx-window[name="software-entry"] nx-portrait label.two-state { font-weight: normal; }
+
+/* The picture's column of that window, and View Origin under the picture,
+   as wide as it, with the step between two readings above it. */
+.software-side {
+  display: grid;
+  align-content: start;
+  gap: var(--reading-gap);
+}
+.software-side button { width: 100%; }
 
 /* A shipped entry removed here, still listed so it can be brought back, in
    the gray a disabled menu entry wears: it is here and not for now. */
 .system.gone:not([chosen]) { color: var(--dark); }
 
 /* A row whose first button does something of another kind than the rest
-   stands that one apart at the left: Restore, which undoes what Remove, Edit
-   and Add do, and View Origin, which leaves the form for a page elsewhere
-   rather than doing anything to the entry. Hidden, it takes no room, and the
-   others stand at the right as in any row. */
+   stands that one apart at the left, as Restore does, which undoes what
+   Remove, Edit and Add do. */
 .buttons.parted > :first-child { margin-right: auto; }
 
 /* The form an entry is edited in: the labels right aligned in a column of

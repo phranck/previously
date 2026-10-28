@@ -348,13 +348,14 @@ function fill(source) {
  * @param {string | null | undefined} picture - Where its picture is shown
  *   from.
  *
- * The row is there only where there is a cover to keep or drop, because the
- * form writes no cover of its own.
+ * The switch is there only where there is a cover to keep or drop, because
+ * the form writes no cover of its own. The picture above it is always there,
+ * as what the entry will wear.
  */
 function showTheCover(address, picture) {
   formCover = address ?? "";
   formPicture = picture ?? null;
-  byId("se-cover-row").hidden = !formCover;
+  byId("se-cover-switch").hidden = !formCover;
   byId("se-cover", HTMLInputElement).checked = Boolean(formCover);
   drawTheCoverPicture();
 }

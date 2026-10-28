@@ -622,19 +622,27 @@
      doing anything, and Save is what enters it. Name, version and description
      are kept as typed, in whatever language they are written in. A label
      marked required names a field that cannot be left empty; the group and
-     the kind always hold a choice and are not marked. -->
-<nx-window name="software-entry" data-t-title="window.software-entry" fixed x="600" y="160" w="460" closed>
-  <div class="readings software-form" id="software-form">
+     the kind always hold a choice and are not marked.
+
+     What the entry wears stands on the left, as the picture of every Info
+     window does: its cover, or the icon of its kind, with the switch that
+     takes a cover off under it where there is one, and View Origin under
+     that, as wide as the picture, where the entry knows its page. -->
+<nx-window name="software-entry" data-t-title="window.software-entry" fixed x="560" y="160" w="560" closed>
+  <div class="info-body">
+    <div class="software-side">
+      <nx-portrait>
+        <i class="art icon" id="se-cover-art"></i>
+        <label class="two-state" id="se-cover-switch" hidden><input type="checkbox" class="switch" id="se-cover"><span data-t="software.cover.show"></span></label>
+      </nx-portrait>
+      <button id="se-page" data-t="button.view-origin" hidden></button>
+    </div>
+    <div class="readings software-form" id="software-form">
     <!-- Only where an address dropped on the list named an item holding
          several files worth having: which of them the entry is for. -->
     <nx-row id="se-file-row" hidden><label data-t="info.file"></label><nx-popup id="se-file"></nx-popup></nx-row>
     <nx-row><label for="se-name" class="required" data-t="info.name"></label><input class="entry" id="se-name" spellcheck="false"></nx-row>
     <nx-row><label for="se-version" data-t="info.version"></label><input class="entry" id="se-version" spellcheck="false"></nx-row>
-    <!-- Only where the entry has a cover: what it wears, and the switch that
-         drops the cover for the icon of its kind. -->
-    <nx-row id="se-cover-row" hidden><label data-t="info.cover"></label>
-      <div class="software-cover-choice"><i class="art" id="se-cover-art"></i>
-        <label class="two-state"><input type="checkbox" class="switch" id="se-cover"><span data-t="software.cover.show"></span></label></div></nx-row>
     <nx-row><label for="se-description" data-t="info.description"></label><textarea class="entry" id="se-description" rows="3"></textarea></nx-row>
     <nx-row><label data-t="info.group"></label><nx-popup id="se-group"></nx-popup></nx-row>
     <nx-row><label data-t="info.kind"></label>
@@ -648,10 +656,9 @@
     <nx-row><label for="se-digest" class="required" data-t="info.digest"></label>
       <div class="software-pair"><input class="entry" id="se-digest" spellcheck="false"><nx-popup id="se-algorithm"></nx-popup></div></nx-row>
   </div>
+  </div>
   <p class="note" id="se-note"></p>
-  <!-- View Origin only where the entry knows the page it came from. -->
-  <div class="buttons parted">
-    <button id="se-page" data-t="button.view-origin" hidden></button>
+  <div class="buttons">
     <button id="se-cancel" data-t="button.cancel"></button>
     <button id="se-save" data-t="button.save"></button>
   </div>
