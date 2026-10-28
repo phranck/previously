@@ -359,7 +359,7 @@ export const it = {
   "pi.now": "ora: {what}",
   "pi.since-boot": "dall'avvio: {what}",
   "pi.power.fine": "regolare",
-  "pi.temperature.and": "{temperature}, {what}",
+  "pi.reading.and": "{reading}, {what}",
   "pi.emulator.running": "{percent}%, {mb} MB, {uptime}",
   "pi.emulator.stopped": "non in funzione",
   "pi.sound.playing": "{card}, suona",

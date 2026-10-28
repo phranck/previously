@@ -14,12 +14,14 @@ const pi = await import("../../interface/app/pi.js");
  * @param {number} temperature - The chip's temperature in degrees.
  * @param {string[]} now - The names of get_throttled's low bits that are set.
  * @param {string[]} since - The names of its high bits that are set.
+ * @param {number | null} [supply] - The supply voltage a Pi 5 measures, or
+ *   null for a Pi 4, which cannot.
  */
-function answer(temperature, now, since) {
+function answer(temperature, now, since, supply = null) {
   return {
     version: "1.12.6", model: "Raspberry Pi 4 Model B Rev 1.5", board: "pi4",
     uptime_seconds: 60, temperature_c: temperature, temperature_limit_c: 80,
-    throttling: { raw: 0, now, since_boot: since },
+    throttling: { raw: 0, now, since_boot: since }, supply_v: supply,
     emulator: null, crashes: null, sound: null, disk: null, memory: null,
   };
 }
@@ -61,4 +63,20 @@ test("under-voltage stands under Power and leaves Temperature alone", () => {
 
   assert.deepEqual(row("pi-temp"), { words: "52.0 °C", well: true });
   assert.deepEqual(row("pi-power"), { words: "now: under-voltage", well: false });
+});
+
+test("a Pi 5 shows its supply voltage in front of the state", () => {
+  layThePage();
+
+  pi.drawPi(answer(52.0, [], [], 5.0585));
+
+  assert.deepEqual(row("pi-power"), { words: "5.06 V, in order", well: true });
+});
+
+test("a Pi 5 short of power shows the voltage it gets", () => {
+  layThePage();
+
+  pi.drawPi(answer(52.0, ["under-voltage"], ["under-voltage"], 4.71));
+
+  assert.deepEqual(row("pi-power"), { words: "4.71 V, now: under-voltage", well: false });
 });

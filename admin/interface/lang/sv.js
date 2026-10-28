@@ -359,7 +359,7 @@ export const sv = {
   "pi.now": "nu: {what}",
   "pi.since-boot": "sedan starten: {what}",
   "pi.power.fine": "i ordning",
-  "pi.temperature.and": "{temperature}, {what}",
+  "pi.reading.and": "{reading}, {what}",
   "pi.emulator.running": "{percent}%, {mb} MB, {uptime}",
   "pi.emulator.stopped": "inte igång",
   "pi.sound.playing": "{card}, spelar",

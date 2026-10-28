@@ -142,7 +142,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/kiosk/start` | Lets the emulated machine come back |
 | `POST /api/kiosk/stop` | Shuts it down properly and keeps it down |
 | `POST /api/kiosk/restart` | Both, in that order |
-| `GET /api/pi` | Which board it is, temperature, power, sound, disk, what the emulator costs, whether it has crashed since the boot, and which version of this tool is answering |
+| `GET /api/pi` | Which board it is, temperature, power and, on a Pi 5, the supply voltage, sound, disk, what the emulator costs, whether it has crashed since the boot, and which version of this tool is answering |
 | `GET /api/activity` | Which board it is, what every core is doing, the load averages, memory, and what the emulator costs |
 | `GET /api/activity/stream` | The same, as Server-Sent Events for as long as the connection stays open: the cores five times a second, everything else twice |
 | `GET /api/files` | Everything this tool holds, as a place with places in it |

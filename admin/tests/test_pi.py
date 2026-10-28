@@ -74,6 +74,22 @@ def test_every_bit_that_is_named_is_read(answers):
     assert len(answer["since_boot"]) == 4
 
 
+# -- the supply voltage --------------------------------------------------
+
+
+def test_a_pi_5_says_its_supply_voltage(answers):
+    """What next5 answered on 28 October 2026."""
+    answers[("vcgencmd", "pmic_read_adc", "EXT5V_V")] = "EXT5V_V volt(24)=5.05850000V"
+    assert pi._supply_volts() == 5.0585
+
+
+def test_a_pi_4_has_no_supply_voltage_to_say(answers):
+    """What next4 answered on 28 October 2026: a Pi 4 has no PMIC to ask."""
+    answers[("vcgencmd", "pmic_read_adc", "EXT5V_V")] = (
+        'vc_gencmd_read_response returned -1\nerror=1 error_msg="Command not registered"')
+    assert pi._supply_volts() is None
+
+
 # -- the emulator --------------------------------------------------------
 
 
@@ -154,7 +170,7 @@ def test_every_reading_is_answered_even_where_none_can_be_had(monkeypatch):
 
     assert set(answer) == {
         "model", "board", "uptime_seconds", "temperature_c", "temperature_limit_c",
-        "throttling",
+        "throttling", "supply_v",
         "emulator", "crashes", "sound", "disk", "memory",
     }
 

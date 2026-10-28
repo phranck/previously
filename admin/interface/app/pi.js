@@ -84,13 +84,17 @@ function drawPi(pi) {
   const degrees = temperature === null ? NOTHING : `${temperature.toFixed(1)} °C`;
   const heat = happened(pi.throttling, HEAT);
   showState("pi-temp", temperature !== null && temperature < pi.temperature_limit_c && !heat,
-    heat ? t("pi.temperature.and", { temperature: degrees, what: heat }) : degrees);
+    heat ? t("pi.reading.and", { reading: degrees, what: heat }) : degrees);
 
+  /* A Pi 5 measures the voltage it is supplied with and a Pi 4 cannot, so the
+     voltage stands in front of the state only where there is one. */
   if (!pi.throttling) {
     showState("pi-power", true, NOTHING);
   } else {
     const power = happened(pi.throttling, POWER);
-    showState("pi-power", !power, power ?? t("pi.power.fine"));
+    const state = power ?? t("pi.power.fine");
+    showState("pi-power", !power, pi.supply_v === null ? state
+      : t("pi.reading.and", { reading: `${pi.supply_v.toFixed(2)} V`, what: state }));
   }
 
   show("pi-emulator", costOf(pi.emulator));

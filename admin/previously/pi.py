@@ -87,6 +87,7 @@ def readings(runtime_directory=None):
         "temperature_c": _temperature(),
         "temperature_limit_c": TEMPERATURE_LIMIT_C,
         "throttling": _throttling(),
+        "supply_v": _supply_volts(),
         "emulator": _emulator(),
         "crashes": crashes(runtime_directory),
         "sound": _sound(),
@@ -186,6 +187,18 @@ def _throttling():
         "since_boot": [word for bit, word in THROTTLING_SINCE_BOOT.items()
                        if bits & (1 << bit)],
     }
+
+
+def _supply_volts():
+    """@returns The voltage the board is supplied with, in volts, or None.
+
+    A Raspberry Pi 5 measures it in its PMIC and answers
+    `EXT5V_V volt(24)=5.05850000V`. A Pi 4 has no such channel and answers
+    that the command is not registered, so it has no supply voltage.
+    """
+    answer = _vcgencmd("pmic_read_adc", "EXT5V_V")
+    found = re.search(r"EXT5V_V volt\(\d+\)=([\d.]+)V", answer)
+    return float(found.group(1)) if found else None
 
 
 def _emulator():

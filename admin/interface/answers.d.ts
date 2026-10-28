@@ -729,6 +729,9 @@ export interface PiAnswer {
     now: string[];
     since_boot: string[];
   } | null;
+  /** From `vcgencmd pmic_read_adc EXT5V_V`, the supply voltage in volts.
+   *  Null on a Pi 4, which has no such reading. */
+  supply_v: number | null;
   /** From `ps`, null where the emulator is not running. */
   emulator: {
     uptime_seconds: number;
