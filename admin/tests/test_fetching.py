@@ -63,3 +63,70 @@ def test_an_address_this_may_not_ask_is_refused_before_it_is_asked(monkeypatch):
 
     with pytest.raises(urllib.error.URLError):
         fetching.opened("https://example.com/x.deb", HOSTS, 1)
+
+
+# -- addresses inside this network ---------------------------------------
+
+
+def resolving_to(monkeypatch, *addresses):
+    """Lets every host name resolve to these addresses, as getaddrinfo would
+    answer for a TCP connection."""
+    def answer(host, port, *rest, **named):
+        return [(None, None, None, "", (address, port)) for address in addresses]
+    monkeypatch.setattr(fetching.socket, "getaddrinfo", answer)
+
+
+@pytest.mark.parametrize("addresses", [
+    ("127.0.0.1",),
+    ("10.0.0.5",),
+    ("192.168.1.20",),
+    ("169.254.1.1",),
+    ("::1",),
+    ("fd00::1",),
+    ("fe80::1%eth0",),
+    # One address inside is enough, because the connection may take any of them.
+    ("207.241.224.2", "10.0.0.5"),
+])
+def test_a_host_that_resolves_into_this_network_is_not_public(monkeypatch, addresses):
+    """An entry somebody typed in could otherwise point the Pi at the router or
+    at itself."""
+    resolving_to(monkeypatch, *addresses)
+    assert fetching.public("https://downloads.example.org/x.iso") is False
+
+
+def test_a_host_that_resolves_only_into_the_internet_is_public(monkeypatch):
+    resolving_to(monkeypatch, "207.241.224.2", "2620:0:9c0:200::2")
+    assert fetching.public("https://archive.org/download/x/x.iso") is True
+
+
+def test_an_address_literal_is_not_public(monkeypatch):
+    """Named by a number, which no download of the catalog is."""
+    monkeypatch.setattr(fetching.socket, "getaddrinfo",
+                        lambda *asked, **named: pytest.fail("resolved it anyway"))
+    assert fetching.public("https://207.241.224.2/x.iso") is False
+
+
+def test_a_host_that_does_not_resolve_is_not_public(monkeypatch):
+    def answer(*asked, **named):
+        raise fetching.socket.gaierror("no such host")
+    monkeypatch.setattr(fetching.socket, "getaddrinfo", answer)
+    assert fetching.public("https://nowhere.example.org/x.iso") is False
+
+
+def test_a_redirect_into_this_network_ends_the_fetch(monkeypatch):
+    """The host is one of those allowed, and it resolves inside."""
+    resolving_to(monkeypatch, "10.0.0.1")
+    handler = fetching.OnlyThese(HOSTS, only_public=True)
+
+    with pytest.raises(urllib.error.HTTPError):
+        handler.redirect_request(None, None, 302, "Found", {}, "https://github.com/x.deb")
+
+
+def test_an_address_into_this_network_is_refused_before_it_is_asked(monkeypatch):
+    resolving_to(monkeypatch, "192.168.1.1")
+    monkeypatch.setattr(
+        fetching.urllib.request, "build_opener",
+        lambda *handlers: pytest.fail("asked it anyway"))
+
+    with pytest.raises(fetching.NotAllowed):
+        fetching.opened("https://github.com/x.deb", HOSTS, 1, only_public=True)

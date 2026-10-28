@@ -144,7 +144,7 @@ def test_every_answer_the_service_can_give_has_a_sentence(english):
     name that reaches the screen as it is."""
     service = ""
     for name in ["kiosk.py", "change.py", "saved.py", "server.py", "setup.py",
-                 "software.py", "lookup.py"]:
+                 "software.py", "lookup.py", "downloads.py"]:
         service += (INTERFACE.parent / "previously" / name).read_text(encoding="utf-8")
 
     for reason in sorted(set(TOLD.findall(service))):

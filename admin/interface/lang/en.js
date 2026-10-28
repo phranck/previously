@@ -487,6 +487,16 @@ export const en = {
   "told.lookup.nothing-to-offer": "{item} holds nothing but archive.org's own files.",
   "told.lookup.unreachable": "archive.org could not be reached: {detail}",
   "told.lookup.unreadable": "archive.org answered with something that is not a description of an item.",
+  "told.download.started": "{name} is downloading. The Pi goes on with it while this page is closed.",
+  "told.download.finished": "{name} is downloaded and can be inserted.",
+  "told.download.not-a-disc": "Only CD images can be downloaded, and {name} is none.",
+  "told.download.not-allowed": "The Pi does not download {name} from that address, because it is not https or leads into this network.",
+  "told.download.already-there": "{name} is downloaded already.",
+  "told.download.no-room": "{name} needs {size}, and the card has {free} left.",
+  "told.download.busy": "{name} is downloading. One download runs at a time.",
+  "told.download.wrong-size": "{got} arrived for {name} rather than {size}, so nothing was kept.",
+  "told.download.wrong-digest": "What arrived for {name} is not the file the catalog describes, so nothing was kept.",
+  "told.download.failed": "{name} could not be downloaded. The host did not answer, or the card could not take the file.",
 
   /* --- installing -------------------------------------------------------- */
   "app.installer": "Installer",
