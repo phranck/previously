@@ -280,6 +280,14 @@ body {
   image-rendering: pixelated;
 }
 
+/* A picture of a thing's own, such as a cover, held whole inside the square an
+   icon takes. It is a photograph made smaller rather than a bitmap at its own
+   size, so it is smoothed. */
+.art.picture {
+  background-size: contain;
+  image-rendering: auto;
+}
+
 /* A rectangle on its way from one place to another, which is how the desk
    says that what was in there is now in here. An outline and nothing else:
    filled, it would be a black flash across half the window. */
@@ -2220,6 +2228,21 @@ function showArt(el, name) {
   el.style.backgroundImage = "var(--" + name + ")";
 }
 
+
+/**
+ * Puts a picture from an address where an icon would be, whole and centered.
+ * @param {HTMLElement} el - What carries it.
+ * @param {string} address - Where the picture is: a path on this host or a
+ *   data address.
+ *
+ * Written as a CSS string, so a quote or a backslash in the address is a
+ * character of it rather than the end of it.
+ */
+function showPicture(el, address) {
+  el.style.backgroundImage = "url(" + JSON.stringify(address) + ")";
+  el.classList.add("picture");
+}
+
 /**
  * Runs a pointer gesture and reports the result when it ends.
  * @template Start
@@ -3995,7 +4018,9 @@ class NxShelf extends HTMLElement {
 
 /**
  * One thing on a shelf: a picture with a name under it.
- * @attr icon - Which picture it carries.
+ * @attr icon - Which picture it carries, by the name showArt knows.
+ * @attr picture - The address of a picture of its own, such as a cover, shown
+ *   whole in place of the icon.
  * @attr label - The name under it.
  * @attr chosen - Draw it selected.
  * @attr value - What it hands over when it is used. Without one it cannot be
@@ -4021,16 +4046,37 @@ class NxThing extends HTMLElement {
 
     this.append(slot, name);
     this.art = art;
+    this.drawPicture();
 
     if (this.hasAttribute("value")) this.carry();
     this.draggable = this.canBeUsed;
   }
 
-  /** Watched so that switching a thing off takes its drag handle with it. */
-  static get observedAttributes() { return ["disabled"]; }
+  /** Watched so that switching a thing off takes its drag handle with it, and
+   *  so that a picture that arrives later replaces the icon. */
+  static get observedAttributes() { return ["disabled", "picture"]; }
 
-  attributeChangedCallback() {
-    if (this.ready) this.draggable = this.canBeUsed;
+  /** @param {string} name - Which attribute changed. */
+  attributeChangedCallback(name) {
+    if (!this.ready) return;
+    if (name === "picture") this.drawPicture();
+    else this.draggable = this.canBeUsed;
+  }
+
+  /**
+   * Shows the picture the thing carries in place of its icon, or the icon
+   * where it carries none. The icon stays what the thing flies as, and what
+   * stands while the picture is on its way.
+   */
+  drawPicture() {
+    if (!this.art) return;
+    const picture = this.getAttribute("picture");
+    if (picture) {
+      showPicture(this.art, picture);
+    } else {
+      this.art.classList.remove("picture");
+      showArt(this.art, this.getAttribute("icon") ?? "");
+    }
   }
 
   /** @returns {string} What this thing hands over when it is used, which is
@@ -4077,7 +4123,7 @@ class NxThing extends HTMLElement {
   /** @param {string} icon - Swap the picture without rebuilding the thing. */
   set icon(icon) {
     this.setAttribute("icon", icon);
-    if (this.art) showArt(this.art, icon);
+    this.drawPicture();
   }
 }
 
@@ -4468,6 +4514,8 @@ class NxNotifications extends HTMLElement {
  * @typedef {object} ViewerEntry
  * @property {string} [label] - The name under it.
  * @property {string} [icon] - Which picture, by the name showArt knows.
+ * @property {string} [picture] - The address of a picture of its own, shown in
+ *   place of the icon.
  * @property {string} [value] - What choosing it hands over. Left out, it hands
  *   nothing over.
  * @property {boolean} [folder] - In the contents, that it has more inside.
@@ -4614,6 +4662,7 @@ class NxViewer extends HTMLElement {
   thing(entry) {
     const thing = document.createElement("nx-thing");
     thing.setAttribute("icon", entry.icon ?? "");
+    if (entry.picture) thing.setAttribute("picture", entry.picture);
     thing.setAttribute("label", entry.label ?? "");
     if (entry.value !== undefined) thing.setAttribute("value", entry.value);
     thing.toggleAttribute("dockable", Boolean(entry.dockable));
@@ -5269,6 +5318,7 @@ export {
   restoreFront,
   setDeskScale,
   showArt,
+  showPicture,
   stillness,
   zoom,
 };

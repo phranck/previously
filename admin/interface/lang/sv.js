@@ -178,6 +178,8 @@ export const sv = {
   "software.kind.disc": "CD-avbild",
   "software.kind.file": "Paket",
   "software.gone": "borttagen",
+  "software.cover.show": "Visa",
+  "info.cover": "Omslag",
   "window.software-entry": "Programpost",
   "preferences.software": "Programvaruinställningar",
   "preferences.software.packages": "Paket",

@@ -164,6 +164,7 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/software/remove` | Takes an entry out of the catalog |
 | `POST /api/software/restore` | Brings a shipped entry back as it was shipped |
 | `POST /api/software/lookup` | Reads an archive.org address into the fields of an entry, or into the files of an item to choose from |
+| `GET /api/software/cover` | The cover of the entry `?entry=` names, fetched from archive.org once and kept after that |
 | `GET /api/update` | Which version of this tool is installed, which is published, and how a replacement of it is getting on |
 | `GET /api/update/notes` | What the published release says about itself, as the Markdown it was written in |
 | `POST /api/update` | Asks the privileged helper to replace this tool with the newest release |
@@ -351,6 +352,8 @@ Both directions need the machine switched off. A copy taken while NeXTSTEP is wr
 **Every entry is checked field by field** in `software.problems`, and the shipped list is held to the same rules by its tests. The address is https, carries no name and password, and names a host rather than an IP address, so an entry cannot point the Pi at its own network.
 
 **Name, version and description stand as written**, whatever language the interface speaks, and the shipped ones are written in English. Only the labels beside them are translated.
+
+**An entry wears the cover its archive.org item carries**, in the Software folder, in its Info window and in the package list. The cover is archive.org's thumbnail of the item's front or cover picture, or of its folio, a few kilobytes. The Pi fetches it once, keeps it in its state directory and hands it out at `/api/software/cover`, so a browser asks nobody but the Pi, and it keeps only what begins as a JPEG, a PNG or a GIF. The page cuts it, because a browser decodes a JPEG and Python's standard library does not. A picture at least 1.6 times as wide as tall shows its right half, the front of a booklet scanned open, and inside that the first line from each edge that is at least 80 percent dark is taken as the frame the cover is printed in, and what lies outside goes. An entry without a cover wears the compact disc, or the plain sheet for a file that is no CD image, and the Cover row of the Software Entry window takes a cover off.
 
 **What is changed on the Pi lives beside the shipped list**, in `software.json` in the service's state directory: the entries added, the shipped ones edited, and the shipped ones removed. An update of the package brings its new entries and leaves every change made here standing, and a shipped entry edited or removed here can be brought back as shipped. An added entry takes its identifier from its name and keeps it when it is edited. Preferences is where all of it is done.
 

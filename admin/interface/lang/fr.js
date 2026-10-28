@@ -178,6 +178,8 @@ export const fr = {
   "software.kind.disc": "Image de CD",
   "software.kind.file": "Paquet",
   "software.gone": "retiré",
+  "software.cover.show": "Afficher",
+  "info.cover": "Pochette",
   "window.software-entry": "Entrée de logiciel",
   "preferences.software": "Préférences des logiciels",
   "preferences.software.packages": "Paquets",

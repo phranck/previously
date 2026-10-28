@@ -22,7 +22,9 @@ class NxShelf extends HTMLElement {
 
 /**
  * One thing on a shelf: a picture with a name under it.
- * @attr icon - Which picture it carries.
+ * @attr icon - Which picture it carries, by the name showArt knows.
+ * @attr picture - The address of a picture of its own, such as a cover, shown
+ *   whole in place of the icon.
  * @attr label - The name under it.
  * @attr chosen - Draw it selected.
  * @attr value - What it hands over when it is used. Without one it cannot be
@@ -48,16 +50,37 @@ class NxThing extends HTMLElement {
 
     this.append(slot, name);
     this.art = art;
+    this.drawPicture();
 
     if (this.hasAttribute("value")) this.carry();
     this.draggable = this.canBeUsed;
   }
 
-  /** Watched so that switching a thing off takes its drag handle with it. */
-  static get observedAttributes() { return ["disabled"]; }
+  /** Watched so that switching a thing off takes its drag handle with it, and
+   *  so that a picture that arrives later replaces the icon. */
+  static get observedAttributes() { return ["disabled", "picture"]; }
 
-  attributeChangedCallback() {
-    if (this.ready) this.draggable = this.canBeUsed;
+  /** @param {string} name - Which attribute changed. */
+  attributeChangedCallback(name) {
+    if (!this.ready) return;
+    if (name === "picture") this.drawPicture();
+    else this.draggable = this.canBeUsed;
+  }
+
+  /**
+   * Shows the picture the thing carries in place of its icon, or the icon
+   * where it carries none. The icon stays what the thing flies as, and what
+   * stands while the picture is on its way.
+   */
+  drawPicture() {
+    if (!this.art) return;
+    const picture = this.getAttribute("picture");
+    if (picture) {
+      showPicture(this.art, picture);
+    } else {
+      this.art.classList.remove("picture");
+      showArt(this.art, this.getAttribute("icon") ?? "");
+    }
   }
 
   /** @returns {string} What this thing hands over when it is used, which is
@@ -104,7 +127,7 @@ class NxThing extends HTMLElement {
   /** @param {string} icon - Swap the picture without rebuilding the thing. */
   set icon(icon) {
     this.setAttribute("icon", icon);
-    if (this.art) showArt(this.art, icon);
+    this.drawPicture();
   }
 }
 

@@ -3,6 +3,7 @@
 
 import { NxPopup } from "../nextstep.js";
 import { t } from "../strings.js";
+import { wearCover } from "./covers.js";
 import { byId, show, theWindow } from "./page.js";
 import { askPanel } from "./panels.js";
 import { Software, ask, tell } from "./service.js";
@@ -53,6 +54,15 @@ let chosenEntry = null;
  *  @type {string | null} */
 let editing = null;
 
+/** The cover the form holds, by its address on archive.org, or "" for none.
+ *  The form cannot write another address, only keep this one or drop it. */
+let formCover = "";
+
+/** Where the form's picture of that cover is: the route of a kept entry, or
+ *  the thumbnail a lookup handed along before the entry is kept.
+ *  @type {string | null} */
+let formPicture = null;
+
 /**
  * Shows what one piece of software is, in the window kept for that.
  * @param {SoftwareEntry} entry - What was double clicked in the Software folder.
@@ -71,7 +81,9 @@ function showSoftwareInfo(entry, asker) {
   const about = entry.package;
   window_.rename(about.name);
   show("si-caption", about.name);
-  byId("si-icon").style.backgroundImage = `var(--${entry.icon})`;
+  const portrait = byId("si-icon");
+  wearCover(portrait, about.picture, entry.icon,
+            () => wearCover(portrait, about.picture, entry.icon, () => {}));
   show("si-version", about.version);
   show("si-for", about.for.join(", "));
   show("si-kind", kindWord(about.kind));
@@ -80,6 +92,16 @@ function showSoftwareInfo(entry, asker) {
   show("si-description", about.description);
 
   window_.open(asker);
+}
+
+/**
+ * @param {string} kind - "disc" or "file", as software.KINDS.
+ * @returns {string} The icon an entry of that kind wears without a cover: the
+ *   compact disc for a CD image, and the sheet the Workspace drew for a file
+ *   it knew nothing about otherwise, as the File Viewer has them.
+ */
+function iconOf(kind) {
+  return kind === "disc" ? "cdrom" : "defaultIcon";
 }
 
 /**
@@ -149,13 +171,16 @@ function softwareRow(entry, said, gone) {
 
   const mark = document.createElement("i");
   mark.className = "system-mark";
+  const cover = document.createElement("i");
+  cover.className = "art software-cover";
+  wearCover(cover, entry.picture, iconOf(entry.kind), drawTheSoftware);
   const name = document.createElement("span");
   name.textContent = entry.name;
   const right = document.createElement("span");
   right.className = "system-cost";
   right.textContent = said;
 
-  row.append(mark, name, right);
+  row.append(mark, cover, name, right);
   row.addEventListener("click", () => {
     chosenEntry = entry.identifier;
     drawTheSoftware();
@@ -197,7 +222,7 @@ async function removeTheChosenEntry() {
   const sure = await askPanel({
     name: t("ask.remove.title", { name: entry.name }),
     text: [t(entry.origin === "added" ? "ask.remove-software.added" : "ask.remove-software.shipped")],
-    icon: entry.kind === "disc" ? "cdrom" : "defaultIcon",
+    icon: iconOf(entry.kind),
     confirm: t("button.remove"),
   });
   if (!sure) return;
@@ -218,7 +243,7 @@ async function restoreTheChosenEntry() {
     const sure = await askPanel({
       name: t("ask.restore-software.title", { name: edited.name }),
       text: [t("ask.restore-software.loss")],
-      icon: edited.kind === "disc" ? "cdrom" : "defaultIcon",
+      icon: iconOf(edited.kind),
       confirm: t("button.restore"),
     });
     if (!sure) return;
@@ -234,16 +259,19 @@ async function restoreTheChosenEntry() {
  * @param {LookupFile[] | null} [files] - The files of the item the lookup read,
  *   offered in the File row, or null where there is nothing to choose.
  * @param {string | null} [chosenFile] - The address of the file filled in.
+ * @param {string | null} [picture] - The cover a lookup handed along, shown
+ *   before the entry is kept.
  *
  * A new entry starts for the system the machine boots.
  */
-function openTheForm(entry, filled = null, files = null, chosenFile = null) {
+function openTheForm(entry, filled = null, files = null, chosenFile = null, picture = null) {
   const window_ = theWindow("software-entry");
   if (!window_ || !catalog) return;
   editing = entry?.identifier ?? null;
 
   value("se-version", entry?.version ?? "");
   fill(entry ?? filled ?? {});
+  showTheCover(entry ? entry.cover : filled?.cover, entry ? entry.picture : picture);
   byId("se-group", NxPopup).offer(
     catalog.groups.map((group) => ({ value: group.identifier, label: group.name })),
     entry?.group);
@@ -283,6 +311,34 @@ function fill(source) {
   }
 }
 
+
+/**
+ * Shows the cover the form holds, with the switch that drops it.
+ * @param {string | null | undefined} address - The cover's address on
+ *   archive.org, or nothing.
+ * @param {string | null | undefined} picture - Where its picture is shown
+ *   from.
+ *
+ * The row is there only where there is a cover to keep or drop, because the
+ * form writes no cover of its own.
+ */
+function showTheCover(address, picture) {
+  formCover = address ?? "";
+  formPicture = picture ?? null;
+  byId("se-cover-row").hidden = !formCover;
+  byId("se-cover", HTMLInputElement).checked = Boolean(formCover);
+  drawTheCoverPicture();
+}
+
+/** Draws the form's cover, or the icon of the kind chosen where the switch
+ *  is off, which is what the entry will wear. */
+function drawTheCoverPicture() {
+  const shown = byId("se-cover", HTMLInputElement).checked ? formPicture : null;
+  const radio = byId("se-kind").querySelector("input:checked");
+  const icon = iconOf(radio instanceof HTMLInputElement ? radio.value : "disc");
+  wearCover(byId("se-cover-art"), shown, icon, drawTheCoverPicture);
+}
+
 /**
  * Reads an address into a new entry and opens the form on it.
  * @param {string} address - What was dropped on the list.
@@ -300,7 +356,7 @@ async function lookUp(address) {
     return;
   }
   if (answer.reason === "lookup.found") {
-    openTheForm(null, answer.fields);
+    openTheForm(null, answer.fields, null, null, answer.picture);
     show("se-note", say(answer));
     return;
   }
@@ -312,7 +368,7 @@ async function lookUp(address) {
     show("software-note", found === null ? t("note.no-service") : say(found));
     return;
   }
-  openTheForm(null, found.fields, files, chosen.address);
+  openTheForm(null, found.fields, files, chosen.address, found.picture);
   show("se-note", say(answer));
 }
 
@@ -325,6 +381,7 @@ async function lookUpAnotherFile(address) {
   show("se-note", found === null ? t("note.no-service") : say(found));
   if (found && "reason" in found && found.ok && found.reason === "lookup.found") {
     fill(found.fields);
+    showTheCover(found.fields.cover, found.picture);
   }
 }
 
@@ -434,6 +491,7 @@ function whatTheFormHolds() {
     size: /^\d+$/.test(size) ? Number(size) : size,
     algorithm: byId("se-algorithm", NxPopup).value,
     digest: typed("se-digest").trim().toLowerCase(),
+    cover: byId("se-cover", HTMLInputElement).checked ? formCover : "",
   };
 }
 
@@ -505,6 +563,9 @@ function wireTheSoftware() {
   byId("se-file").addEventListener("nx-pick", (event) => {
     if (event instanceof CustomEvent) lookUpAnotherFile(event.detail.value);
   });
+  /* What the entry will wear follows the switch and the kind at once. */
+  byId("se-cover").addEventListener("change", drawTheCoverPicture);
+  byId("se-kind").addEventListener("change", drawTheCoverPicture);
   wireTheDrop();
 
   const form = byId("software-form");

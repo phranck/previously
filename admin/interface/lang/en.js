@@ -191,6 +191,8 @@ export const en = {
   "software.kind.disc": "CD image",
   "software.kind.file": "Package",
   "software.gone": "removed",
+  "software.cover.show": "Show",
+  "info.cover": "Cover",
   "window.software-entry": "Software Entry",
   "preferences.software": "Software Preferences",
   "preferences.software.packages": "Packages",

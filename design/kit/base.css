@@ -297,6 +297,14 @@ body {
   image-rendering: pixelated;
 }
 
+/* A picture of a thing's own, such as a cover, held whole inside the square an
+   icon takes. It is a photograph made smaller rather than a bitmap at its own
+   size, so it is smoothed. */
+.art.picture {
+  background-size: contain;
+  image-rendering: auto;
+}
+
 /* A rectangle on its way from one place to another, which is how the desk
    says that what was in there is now in here. An outline and nothing else:
    filled, it would be a black flash across half the window. */

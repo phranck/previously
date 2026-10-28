@@ -178,6 +178,8 @@ export const it = {
   "software.kind.disc": "Immagine CD",
   "software.kind.file": "Pacchetto",
   "software.gone": "rimosso",
+  "software.cover.show": "Mostra",
+  "info.cover": "Copertina",
   "window.software-entry": "Voce software",
   "preferences.software": "Preferenze software",
   "preferences.software.packages": "Pacchetti",

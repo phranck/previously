@@ -153,7 +153,12 @@ export interface ToldValues {
   // lookup.look_up
   /** `fields` are the entry's fields the address filled, out of
    *  software.FIELDS; each one only where it passed its rule. */
-  "lookup.found": { fields: Partial<Omit<SoftwarePackage, "identifier" | "for" | "source">> };
+  /** `picture` is the cover's thumbnail as a data address, where `fields`
+   *  carries a cover. */
+  "lookup.found": {
+    fields: Partial<Omit<SoftwarePackage, "identifier" | "for" | "source" | "picture">>;
+    picture?: string;
+  };
   /** `files` are the files of the item worth having, to choose one from. */
   "lookup.choose": { files: LookupFile[] };
   "lookup.not-an-address": {};
@@ -619,6 +624,11 @@ export interface SoftwarePackage {
   /** The host of `address`, which the Info window shows as where it comes
    *  from. */
   source: string;
+  /** The address of archive.org's thumbnail of its cover, or "" for none. */
+  cover: string;
+  /** Where the page gets that cover from the Pi, with a stamp of its address,
+   *  or null where it has none, from software.picture_of. */
+  picture: string | null;
 }
 
 /** A piece of software the catalog offers for the booted system, from

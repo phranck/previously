@@ -624,6 +624,11 @@
     <nx-row id="se-file-row" hidden><label data-t="info.file"></label><nx-popup id="se-file"></nx-popup></nx-row>
     <nx-row><label for="se-name" data-t="info.name"></label><input class="entry" id="se-name" spellcheck="false"></nx-row>
     <nx-row><label for="se-version" data-t="info.version"></label><input class="entry" id="se-version" spellcheck="false"></nx-row>
+    <!-- Only where the entry has a cover: what it wears, and the switch that
+         drops the cover for the icon of its kind. -->
+    <nx-row id="se-cover-row" hidden><label data-t="info.cover"></label>
+      <div class="software-cover-choice"><i class="art" id="se-cover-art"></i>
+        <label class="two-state"><input type="checkbox" class="switch" id="se-cover"><span data-t="software.cover.show"></span></label></div></nx-row>
     <nx-row><label for="se-description" data-t="info.description"></label><textarea class="entry" id="se-description" rows="3"></textarea></nx-row>
     <nx-row><label data-t="info.group"></label><nx-popup id="se-group"></nx-popup></nx-row>
     <nx-row><label data-t="info.kind"></label>

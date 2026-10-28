@@ -215,6 +215,21 @@ function showArt(el, name) {
   el.style.backgroundImage = "var(--" + name + ")";
 }
 
+
+/**
+ * Puts a picture from an address where an icon would be, whole and centered.
+ * @param {HTMLElement} el - What carries it.
+ * @param {string} address - Where the picture is: a path on this host or a
+ *   data address.
+ *
+ * Written as a CSS string, so a quote or a backslash in the address is a
+ * character of it rather than the end of it.
+ */
+function showPicture(el, address) {
+  el.style.backgroundImage = "url(" + JSON.stringify(address) + ")";
+  el.classList.add("picture");
+}
+
 /**
  * Runs a pointer gesture and reports the result when it ends.
  * @template Start

@@ -6,6 +6,8 @@
  * @typedef {object} ViewerEntry
  * @property {string} [label] - The name under it.
  * @property {string} [icon] - Which picture, by the name showArt knows.
+ * @property {string} [picture] - The address of a picture of its own, shown in
+ *   place of the icon.
  * @property {string} [value] - What choosing it hands over. Left out, it hands
  *   nothing over.
  * @property {boolean} [folder] - In the contents, that it has more inside.
@@ -152,6 +154,7 @@ class NxViewer extends HTMLElement {
   thing(entry) {
     const thing = document.createElement("nx-thing");
     thing.setAttribute("icon", entry.icon ?? "");
+    if (entry.picture) thing.setAttribute("picture", entry.picture);
     thing.setAttribute("label", entry.label ?? "");
     if (entry.value !== undefined) thing.setAttribute("value", entry.value);
     thing.toggleAttribute("dockable", Boolean(entry.dockable));

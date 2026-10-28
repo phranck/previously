@@ -219,6 +219,18 @@ nx-scroller.packages[droppable] .options {
   nx-scroller.packages[droppable] .options { animation: none; }
 }
 
+/* A row of the package list carries the entry's cover, or the icon of its
+   kind, as a square as tall as the row allows, between the mark column and
+   the name. */
+#software-list .system { grid-template-columns: max-content max-content 1fr max-content; }
+.software-cover { width: 18px; height: 18px; background-size: contain; }
+
+/* The Cover row of the Software Entry window: what the entry wears, at the
+   size of an icon, with the switch that drops it beside it. */
+.software-cover-choice { display: flex; align-items: center; gap: 12px; }
+.software-cover-choice .art { width: var(--icon); height: var(--icon); background-size: contain; }
+.software-cover-choice label.two-state { font-weight: normal; }
+
 /* A shipped entry removed here, still listed so it can be brought back, in
    the gray a disabled menu entry wears: it is here and not for now. */
 .system.gone:not([chosen]) { color: var(--dark); }

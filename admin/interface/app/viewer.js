@@ -2,6 +2,7 @@
 
 import { NEAR_FLIGHT_MS, NxViewer, deskRect, fly, zoom } from "../nextstep.js";
 import { t } from "../strings.js";
+import { coverNow } from "./covers.js";
 import { bootFromDisk, putTheCopyBack, useTheDisc } from "./disks.js";
 import { noticeTheApplications } from "./dock.js";
 import { readPath, readPaths, writeDown } from "./kept.js";
@@ -154,6 +155,10 @@ function entryFor(entry) {
     /* A folder and an application bring their own picture. A machine wears
        the one its boot ROM draws, and which that is follows from its case. */
     icon: entry.kind === "machine" ? machineArt(entry.enclosure) : entry.icon,
+    /* Software wears its cover where it has one, cut once and kept, and its
+       icon until then. */
+    picture: entry.kind === "software" && entry.package.picture
+      ? coverNow(entry.package.picture, drawPlace) ?? undefined : undefined,
     value: entry.path,
     folder: entry.kind === "folder",
     dockable: entry.kind === "application",
