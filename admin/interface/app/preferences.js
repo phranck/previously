@@ -5,6 +5,7 @@ import { LANGUAGE_NAMES, currentLanguage, setLanguage, t, writeWords } from "../
 import { redrawActivity } from "./activity.js";
 import { redrawTheEditor } from "./editor.js";
 import { drawTheInstaller, drawTheTabs, setupState } from "./installer.js";
+import { readPath, writeDown } from "./kept.js";
 import { drawTheMenu } from "./menu.js";
 import { changeNotificationSettings, notificationSettings, redrawTheNotifications,
          refreshTheNotifications } from "./notifications.js";
@@ -45,13 +46,21 @@ const MODULES = {
   software: { name: "preferences.software", panel: "software-page" },
 };
 
+/** The module that is up before anybody has chosen one. */
+const FIRST_MODULE = "localization";
+
+/** Where this browser keeps the module that is up, so a reload shows it
+ *  again, as the File Viewer keeps its folder. */
+const MODULE_KEY = "previously:module";
+
 /**
  * Shows one module of Preferences.
  * @param {string} which - Its name, as the picture in the row carries it.
  *
  * A row of pictures with the chosen one's panel underneath, which is how
  * NeXTSTEP built this window. Only one panel is up at a time, and the name
- * between the row and the panel is that module's own.
+ * between the row and the panel is that module's own. The module is kept in
+ * this browser, so the window shows it again after a reload.
  */
 function showModule(which) {
   const module = MODULES[which];
@@ -64,6 +73,7 @@ function showModule(which) {
     byId(one.panel).hidden = name !== which;
   }
   writeWords(byId("module-name"), t(module.name));
+  writeDown(MODULE_KEY, which);
   /* The catalog is the Pi's and can change from another browser, so it is
      asked for each time its module comes up. */
   if (which === "software") refreshTheSoftware();
@@ -156,7 +166,9 @@ function wirePreferences() {
     const cell = event.target instanceof Element ? event.target.closest(".module") : null;
     if (cell) showModule(cell.getAttribute("value") ?? "");
   });
-  showModule("localization");
+  /* What is kept may name a module this build no longer has. */
+  const kept = readPath(MODULE_KEY, FIRST_MODULE);
+  showModule(Object.hasOwn(MODULES, kept) ? kept : FIRST_MODULE);
   drawSizes();
   wireNotificationSettings();
   wireUpdateSettings();
@@ -180,7 +192,7 @@ function speak(code) {
     drawSizes();
     showModule(document.querySelector(
       "nx-window[name='preferences'] .module[chosen]")?.getAttribute("value")
-      ?? "localization");
+      ?? FIRST_MODULE);
     drawPlace();
     redrawTheEditor();
     /* Every figure and every sentence in the Installer is this page's, so it is

@@ -572,7 +572,7 @@ Adding a string means adding it to all six catalogs. `tests/test_strings.py` fai
 
 ## Preferences
 
-NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath, and this is that with five modules in it: Localization offers the six languages, Monitor offers the size the interface is drawn at, Notifications offers how notifications reach this browser, Updates offers whether the Pi looks for updates on its own, and Software keeps the software catalog.
+NeXTSTEP's Preferences is a row of module pictures across the top and the chosen module's panel underneath, and this is that with five modules in it: Localization offers the six languages, Monitor offers the size the interface is drawn at, Notifications offers how notifications reach this browser, Updates offers whether the Pi looks for updates on its own, and Software keeps the software catalog. This browser keeps which module is up, so Preferences shows the same one after a reload.
 
 **Only a list scrolls**, never a module's page. A list inside a module carries its own scroller, as the languages and the packages do, and every page stands on the window's own edge, nine points from the frame on every side.
 
