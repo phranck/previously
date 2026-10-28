@@ -185,6 +185,14 @@ function softwareRow(entry, said, gone) {
     chosenEntry = entry.identifier;
     drawTheSoftware();
   });
+  /* A double click does what Edit does, which is what a double click in a
+     selection list does: the chosen row's own action. A shipped entry removed
+     here cannot be edited, so it opens nothing. */
+  row.addEventListener("dblclick", () => {
+    if (gone || !allowed(Needs.Contact, "software-note")) return;
+    chosenEntry = entry.identifier;
+    openTheForm(theChosenEntry() ?? null);
+  });
   return row;
 }
 
