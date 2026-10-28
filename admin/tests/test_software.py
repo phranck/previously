@@ -46,6 +46,12 @@ def test_an_entry_without_a_version_is_well_formed():
     assert software.problems(an_entry(version=None)) == ["version"]
 
 
+def test_a_version_is_whatever_the_software_calls_it():
+    """Written any way at all: a release number, a date, an edition."""
+    for version in ["3.3", "Second Edition, June 1994", "2.0 (m68k/i386)", "v1.0β"]:
+        assert software.problems(an_entry(version=version)) == [], version
+
+
 @pytest.mark.parametrize("entry", software.CATALOGUE, ids=lambda entry: entry.identifier)
 def test_every_shipped_entry_is_well_formed(entry):
     """The shipped list is held to the same rules as an entry somebody adds,
@@ -76,9 +82,8 @@ def test_no_two_shipped_entries_share_an_identifier():
     ({"name": "two\nlines"}, "name"),
     ({"description": "x" * 501}, "description"),
     ({"group": "music"}, "group"),
-    ({"version": "3.3 final release candidate edition"}, "version"),
-    ({"version": "3.3 beta"}, "version"),
-    ({"version": "x" * 33}, "version"),
+    ({"version": "x" * 41}, "version"),
+    ({"version": "two\nlines"}, "version"),
     ({"systems": ()}, "systems"),
     ({"systems": ("nextstep-9.9",)}, "systems"),
     ({"address": "http://archive.org/download/x/y.iso"}, "address"),

@@ -58,14 +58,10 @@ DIGEST_DIGITS = {"sha1": 40, "sha256": 64}
 #: anything but a name.
 IDENTIFIER = re.compile(r"^[a-z0-9][a-z0-9.-]{0,63}$")
 
-#: What a version is made of where an entry names one: a short run of
-#: letters, digits, dots, hyphens and plus signs, which is every way a release
-#: number is written.
-VERSION = re.compile(r"^[A-Za-z0-9.+-]{1,32}$")
-
-#: The longest a name, a description and an address may be. A name stands on
-#: one line of a window, and a description under it.
+#: The longest a name, a version, a description and an address may be. A name
+#: and a version stand on one line of a window, and a description under them.
 LONGEST_NAME = 80
+LONGEST_VERSION = 40
 LONGEST_DESCRIPTION = 500
 LONGEST_ADDRESS = 2048
 
@@ -173,9 +169,9 @@ def problems(entry):
         wrong.append("description")
     if entry.group not in GROUPS:
         wrong.append("group")
-    # Plenty of software names no version, so none is no fault.
-    if not (isinstance(entry.version, str)
-            and (entry.version == "" or VERSION.match(entry.version))):
+    # Plenty of software names no version, so none is no fault, and one is
+    # written however the software writes it.
+    if not (entry.version == "" or _is_line(entry.version, LONGEST_VERSION)):
         wrong.append("version")
     if not (isinstance(entry.systems, tuple) and entry.systems
             and all(isinstance(system, str) and systems.find(system) is not None
