@@ -11,7 +11,7 @@ import textwrap
 
 import pytest
 
-from previously import change, config, discs, grab, kiosk, saved
+from previously import change, config, discs, downloads, grab, kiosk, saved
 
 REAL_SHAPE = textwrap.dedent("""\
     [Log]
@@ -588,6 +588,21 @@ def test_a_disc_goes_on_a_free_slot_beside_the_disk(settings, machine, media):
     # The disk the machine boots, and the disc that was already on the bus.
     assert written[0]["image"] == "/home/next/nextstep/NS33.dd"
     assert written[1]["image"] == "/home/next/discs/DeveloperTools.iso"
+
+
+def test_a_disc_the_catalog_downloaded_goes_in_as_well(settings, machine):
+    """Downloaded into the owner's Software folder rather than put beside the
+    disks, and offered by the name of its file all the same."""
+    where = settings.documents / downloads.FOLDER
+    where.mkdir(parents=True)
+    (where / "nextstep-3.3-developer.iso").write_bytes(b"not an iso")
+
+    finished, told = put_in("nextstep-3.3-developer.iso", settings, machine)
+
+    assert finished is True
+    assert told["reason"] == "disc.inserted"
+    assert config.slots(settings.previous_config)[2]["image"] == str(
+        where / "nextstep-3.3-developer.iso")
 
 
 def test_a_disc_that_is_not_on_this_machine_changes_nothing(settings, machine, media):

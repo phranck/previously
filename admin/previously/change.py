@@ -103,7 +103,8 @@ def to_disk(identifier, settings, sleep=None):
 def to_disc(name, settings, sleep=None):
     """Puts a disc on a free slot beside the disk the machine is booting.
 
-    @param name - Which disc, by the name of its file in the discs folder.
+    @param name - Which disc, by the name of its file in the discs folder or
+      in the folder the catalog downloads into.
     @param settings - Settings.
     @param sleep - Injected so a test does not wait in real time.
     @returns (bool, dict)
@@ -115,7 +116,7 @@ def to_disc(name, settings, sleep=None):
     reads `previous.cfg` when it starts and never again. So from here a disc
     arrives the way a disk does, with the guest shut down properly first.
     """
-    disc = discs.find(settings.disks, name)
+    disc = discs.find(settings.disks, name, settings.documents)
     if disc is None:
         return False, told("disc.no-such")
 

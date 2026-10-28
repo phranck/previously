@@ -484,6 +484,7 @@ export const it = {
   "told.download.wrong-size": "Per {name} sono arrivati {got} invece di {size}, quindi non è stato tenuto nulla.",
   "told.download.wrong-digest": "Ciò che è arrivato per {name} non è il file descritto dal catalogo, quindi non è stato tenuto nulla.",
   "told.download.failed": "{name} non è stato scaricato. Il server non ha risposto, o la scheda non ha potuto accogliere il file.",
+  "told.download.no-such-entry": "Il catalogo non contiene questa voce.",
   /* --- installing -------------------------------------------------------- */
   "app.installer": "Installer",
   "installer.emulator": "Emulatore",

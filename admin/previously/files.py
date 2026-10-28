@@ -47,7 +47,7 @@ import collections
 import datetime
 import pathlib
 
-from . import config, discs, machines, saved, software, systems
+from . import config, discs, downloads, machines, saved, software, systems
 
 #: What the root is called and what it wears. NeXTSTEP drew a person's own
 #: directory as a house, and this is the one place everything here lives in.
@@ -76,8 +76,8 @@ BACKUPS = "/Disks/Backups"
 DISCS_AT = "/Discs"
 
 #: Where the software the catalog offers for the booted system stands, one
-#: folder per group with anything in it. Nothing in it is on the card yet: it
-#: is what can be put there.
+#: folder per group with anything in it. An entry says whether its image has
+#: been downloaded, and the image itself stands in Discs.
 SOFTWARE = "/Software"
 
 #: What a disk wears. It is a hard disk, so it wears the one NeXTSTEP drew for
@@ -191,12 +191,12 @@ def tree(machines_file=None, documents=None, disks=None, booting=None,
             for application in APPLICATIONS
         ]),
         *_disk_folder(disks, here, booted),
-        *_disc_folder(disks, inserted),
+        *_disc_folder(disks, inserted, documents),
         _folder("Documents", DOCUMENTS, FOLDER_ICON, [
             _folder("Pictures", PICTURES, FOLDER_ICON, pictures(documents)),
         ]),
         _folder("Machines", "/Machines", FOLDER_ICON, _machine_folders(machines_file)),
-        *_software_folder(booted, software_file),
+        *_software_folder(booted, software_file, documents),
     ])
 
 
@@ -221,11 +221,13 @@ def _disk_folder(disks, here, booted):
     return [_folder("Disks", DISKS, FOLDER_ICON, found)] if found else []
 
 
-def _disc_folder(disks, inserted):
-    """The Discs folder, where somebody has put one there.
+def _disc_folder(disks, inserted, documents):
+    """The Discs folder, where somebody has put one there or the catalog has
+    downloaded one.
 
     @param disks - pathlib.Path the disk images live in, or None.
     @param inserted - What each SCSI slot holds, or None.
+    @param documents - pathlib.Path of the owner's documents folder, or None.
     @returns list holding one folder, or an empty one.
 
     Beside Disks rather than inside it, because these are not systems and
@@ -234,7 +236,7 @@ def _disc_folder(disks, inserted):
     """
     if disks is None:
         return []
-    found = [_disc(path, inserted) for path in discs.here(disks)]
+    found = [_disc(path, inserted) for path in discs.here(disks, documents)]
     return [_folder("Discs", DISCS_AT, FOLDER_ICON, found)] if found else []
 
 
@@ -270,13 +272,15 @@ def _disc(path, inserted):
     }
 
 
-def _software_folder(booted, software_file):
+def _software_folder(booted, software_file, documents):
     """The Software folder, where the catalog offers anything for the system
     the machine boots.
 
     @param booted - The identifier of that system, or None.
     @param software_file - pathlib.Path of the changes made on this Pi to the
       catalog, or None.
+    @param documents - pathlib.Path of the owner's documents folder, where the
+      catalog's downloads are, or None.
     @returns list holding one folder, or an empty one.
 
     One folder per group with anything in it, in the catalog's order of
@@ -287,22 +291,26 @@ def _software_folder(booted, software_file):
     offered = software.for_system(booted, software_file)
     groups = [
         _folder(name, "%s/%s" % (SOFTWARE, name), FOLDER_ICON,
-                [_software(entry) for entry in offered if entry.group == group])
+                [_software(entry, documents) for entry in offered if entry.group == group])
         for group, name in software.FOLDERS.items()
         if any(entry.group == group for entry in offered)
     ]
     return [_folder("Software", SOFTWARE, FOLDER_ICON, groups)] if groups else []
 
 
-def _software(entry):
+def _software(entry, documents):
     """One piece of software as an entry of its group's folder.
 
     @param entry - A software.Entry.
-    @returns dict, with the whole entry under `package` for the Info window.
+    @param documents - pathlib.Path of the owner's documents folder, or None.
+    @returns dict, with the whole entry under `package` for the Info window,
+      and under `disc` the name of its downloaded image, which is what Insert
+      asks for, or None where it has not been downloaded.
 
     A CD image wears the compact disc a disc in Discs wears, and anything else
     the sheet the Workspace drew for a file it knew nothing about.
     """
+    image = downloads.downloaded(documents, entry) if documents is not None else None
     return {
         "id": entry.identifier,
         "name": entry.name,
@@ -310,6 +318,7 @@ def _software(entry):
         "path": "%s/%s/%s" % (SOFTWARE, software.FOLDERS[entry.group], entry.identifier),
         "kind": "software",
         "bytes": entry.size,
+        "disc": image.name if image else None,
         "package": software.described(entry),
     }
 

@@ -19,7 +19,7 @@ import urllib.request
 import pytest
 
 from conftest import settings_for
-from previously import files, machines, saved, server, software
+from previously import downloads, files, machines, saved, server, software
 from previously.password import COOKIE, Attempts, Password, Sessions
 
 #: What the machine in these tests has been given. Long enough to be a password
@@ -53,6 +53,12 @@ def service(tmp_path, readable_config, monkeypatch):
     server.Handler.password.set(PASSWORD)
     server.Handler.sessions = Sessions()
     server.Handler.attempts = Attempts()
+    # Downloads that never reach the network. A test about downloading puts
+    # its own in place.
+    server.Handler.downloads = downloads.Downloads(
+        server.Handler.settings.documents,
+        open_address=lambda url, hosts: pytest.fail("downloaded for real"),
+        begin=lambda work: None)
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -1771,8 +1777,7 @@ def a_disc(tmp_path, name="DeveloperTools.img"):
 
 
 def test_there_is_no_discs_folder_until_somebody_puts_one_there(service):
-    """They are files somebody puts on the Pi rather than anything this tool
-    fetches, so an empty folder would promise a place this tool fills."""
+    """An empty folder would promise a disc that is not there."""
     _, _, body = fetch(service + "/api/files")
 
     assert "Discs" not in [entry["name"]
@@ -1963,6 +1968,79 @@ def test_the_catalog_is_open_and_says_what_boots(service, tmp_path):
     # Every system an entry can be for, so the window that edits one can offer
     # them by name.
     assert {"identifier": "openstep-4.2", "name": "OPENSTEP 4.2"} in answer["systems"]
+
+
+def a_download(tmp_path, name="nextstep-3.3-developer.iso"):
+    """Puts an image where a download leaves one, and answers with it."""
+    where = tmp_path / "Previously" / downloads.FOLDER
+    where.mkdir(parents=True, exist_ok=True)
+    image = where / name
+    image.write_bytes(b"media")
+    return image
+
+
+def test_a_downloaded_disc_stands_in_the_discs_folder(service, tmp_path):
+    """Where Insert offers it, as it offers a disc somebody put there. Half an
+    image is not offered."""
+    a_download(tmp_path)
+    a_download(tmp_path, "another.iso.part")
+
+    _, _, body = fetch(service + "/api/files")
+    folder = next(entry for entry in json.loads(body)["entries"]
+                  if entry["name"] == "Discs")
+
+    assert [entry["id"] for entry in folder["entries"]] == ["nextstep-3.3-developer.iso"]
+
+
+def test_the_software_folder_says_which_disc_is_downloaded(service, tmp_path):
+    """The image's name, which is what Insert asks for, or nothing."""
+    a_disk(tmp_path, "nextstep-3.3", booting=True)
+
+    def offered():
+        group, = software_folder(service)["entries"]
+        return next(entry for entry in group["entries"]
+                    if entry["id"] == "nextstep-3.3-developer")
+
+    assert offered()["disc"] is None
+    a_download(tmp_path)
+    assert offered()["disc"] == "nextstep-3.3-developer.iso"
+
+
+def test_the_catalog_says_what_is_downloaded_and_what_the_download_does(service, tmp_path):
+    a_download(tmp_path)
+
+    _, _, body = fetch(service + "/api/software")
+    answer = json.loads(body)
+
+    assert answer["download"] is None
+    assert {entry["identifier"]: entry["downloaded"] for entry in answer["entries"]} == {
+        "nextstep-3.3-developer": True}
+
+
+def test_downloading_needs_a_session(service):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/software/download", {"entry": "nextstep-3.3-developer"},
+             signed_in=False)
+
+    assert refused.value.code == 403
+
+
+def test_downloading_an_entry_starts_it_and_answers_with_the_catalog(service):
+    answer = answer_of(tell(service, "/api/software/download",
+                            {"entry": "nextstep-3.3-developer"}))
+
+    assert answer["ok"] is True
+    assert answer["reason"] == "download.started"
+    assert answer["download"] == {"entry": "nextstep-3.3-developer", "done": 0,
+                                  "of": 403111936, "running": True, "outcome": None}
+
+
+def test_downloading_an_entry_the_catalog_does_not_hold_is_refused(service):
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        tell(service, "/api/software/download", {"entry": "nowhere"})
+
+    assert refused.value.code == 409
+    assert json.loads(refused.value.read())["reason"] == "download.no-such-entry"
 
 
 def a_package():

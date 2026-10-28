@@ -159,11 +159,12 @@ Anybody putting this anywhere less trusted needs more in front of it than a cert
 | `POST /api/pi/poweroff` | Shuts NeXTSTEP down, then switches the board off |
 | `GET /api/setup` | Which systems there are, which are here, how much room is left, and what is being installed |
 | `POST /api/setup` | Asks the privileged helper to install, update, remove or fetch something |
-| `GET /api/software` | The whole software catalog as this Pi has it, where each entry came from, the shipped ones removed, and which system the machine boots |
+| `GET /api/software` | The whole software catalog as this Pi has it, where each entry came from, whether its image is downloaded, the shipped ones removed, which system the machine boots, and what the download running or last run is doing |
 | `POST /api/software` | Adds an entry to the catalog, or writes over the one it replaces |
 | `POST /api/software/remove` | Takes an entry out of the catalog |
 | `POST /api/software/restore` | Brings a shipped entry back as it was shipped |
 | `POST /api/software/lookup` | Reads an archive.org address into the fields of an entry, or into the files of an item to choose from |
+| `POST /api/software/download` | Starts downloading the CD image of the entry it names into `~/Previously/Software`, one download at a time |
 | `GET /api/software/cover` | The cover of the entry `?entry=` names, fetched from archive.org once and kept after that |
 | `GET /api/update` | Which version of this tool is installed, which is published, and how a replacement of it is getting on |
 | `GET /api/update/notes` | What the published release says about itself, as the Markdown it was written in |

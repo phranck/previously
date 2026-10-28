@@ -484,6 +484,7 @@ export const sv = {
   "told.download.wrong-size": "För {name} kom {got} i stället för {size}, så inget sparades.",
   "told.download.wrong-digest": "Det som kom för {name} är inte filen som katalogen beskriver, så inget sparades.",
   "told.download.failed": "{name} kunde inte laddas ner. Servern svarade inte, eller kortet kunde inte ta emot filen.",
+  "told.download.no-such-entry": "Katalogen har ingen sådan post.",
   /* --- installing -------------------------------------------------------- */
   "app.installer": "Installer",
   "installer.emulator": "Emulator",

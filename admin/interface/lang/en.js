@@ -497,6 +497,7 @@ export const en = {
   "told.download.wrong-size": "{got} arrived for {name} rather than {size}, so nothing was kept.",
   "told.download.wrong-digest": "What arrived for {name} is not the file the catalog describes, so nothing was kept.",
   "told.download.failed": "{name} could not be downloaded. The host did not answer, or the card could not take the file.",
+  "told.download.no-such-entry": "The catalog holds no such entry.",
 
   /* --- installing -------------------------------------------------------- */
   "app.installer": "Installer",

@@ -5,11 +5,10 @@ whatever else somebody wants inside NeXTSTEP are media: they go on a free SCSI
 slot beside the disk that is running, write protected, and NeXTSTEP mounts them
 the way it mounted a CD on the bus.
 
-They are files somebody puts on the Pi rather than anything this tool fetches.
-The six systems are a known set with measured sizes and digests, and these are
-not: a NeXT CD is somebody's own copy of media they have, and a list of
-addresses for them would be a list this tool cannot stand behind. So the folder
-is shown, what is in it is offered, and what is not in it is said plainly.
+They come from two places. Somebody puts their own copy of a CD into the discs
+folder beside the disks, and the software catalog downloads the CDs it lists
+into the Software folder of the owner's documents, as `downloads.py` does.
+Both are offered alike, because a disc is a disc wherever it came from.
 
 **NeXT's own CDs are not ISO 9660.** They carry a variation of 4.3BSD FFS, so
 an ISO 9660 image mounts nowhere in NeXTSTEP however good it is. That one is
@@ -18,6 +17,8 @@ they try, and an image that is silently not mounted teaches nothing.
 """
 
 import pathlib
+
+from . import downloads
 
 #: Where they live, beside the disks in the same home. A folder of its own,
 #: because a disc and a disk are two kinds of thing and a folder holding both
@@ -46,34 +47,45 @@ def folder(disks):
     return pathlib.Path(disks) / DISCS
 
 
-def here(disks):
-    """Every disc somebody has put on this machine.
+def here(disks, documents=None):
+    """Every disc on this machine: the ones somebody put there, and the ones
+    the catalog downloaded.
 
     @param disks - pathlib.Path the disk images live in.
-    @returns list of pathlib.Path, by name, and empty where the folder is not
+    @param documents - pathlib.Path of the owner's documents folder, whose
+      `downloads.FOLDER` the catalog downloads into, or None for the discs
+      folder alone.
+    @returns list of pathlib.Path, by name, and empty where neither folder is
       there. A folder nobody has made is the ordinary state of a machine
       nobody has put a disc on.
     """
-    try:
-        found = [path for path in folder(disks).iterdir()
-                 if path.is_file() and path.suffix.lower() in SUFFIXES]
-    except OSError:
-        return []
+    folders = [folder(disks)]
+    if documents is not None:
+        folders.append(pathlib.Path(documents) / downloads.FOLDER)
+    found = []
+    for place in folders:
+        try:
+            found += [path for path in place.iterdir()
+                      if path.is_file() and path.suffix.lower() in SUFFIXES]
+        except OSError:
+            pass
     return sorted(found, key=lambda path: path.name.lower())
 
 
-def find(disks, name):
+def find(disks, name, documents=None):
     """The disc of that name.
 
     @param disks - pathlib.Path the disk images live in.
     @param name - What arrived in a request.
+    @param documents - pathlib.Path of the owner's documents folder, as `here`
+      takes it.
     @returns pathlib.Path, or None where nothing of that name is there.
 
     Matched against the listing rather than joined onto a path, so a name
     carrying separators asks for a file that is not in the answer. Nothing that
     arrives from a browser reaches the filesystem as a path.
     """
-    for path in here(disks):
+    for path in here(disks, documents):
         if path.name == name:
             return path
     return None

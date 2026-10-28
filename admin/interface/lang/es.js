@@ -484,6 +484,7 @@ export const es = {
   "told.download.wrong-size": "Para {name} llegaron {got} en lugar de {size}, así que no se guardó nada.",
   "told.download.wrong-digest": "Lo que llegó para {name} no es el archivo que describe el catálogo, así que no se guardó nada.",
   "told.download.failed": "{name} no se pudo descargar. El servidor no respondió, o la tarjeta no pudo recibir el archivo.",
+  "told.download.no-such-entry": "El catálogo no contiene esa entrada.",
   /* --- installing -------------------------------------------------------- */
   "app.installer": "Installer",
   "installer.emulator": "Emulador",

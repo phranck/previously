@@ -79,7 +79,8 @@ def test_a_disc_lands_in_the_software_folder_under_its_identifier(tmp_path):
                                "of": len(BODY), "running": False,
                                "outcome": {"reason": "download.finished",
                                            "name": "NeXTSTEP 3.3 Developer"}}
-    assert loading.downloaded(an_entry()) == tmp_path / "Software" / "nextstep-3.3-developer.iso"
+    assert downloads.downloaded(tmp_path, an_entry()) == (
+        tmp_path / "Software" / "nextstep-3.3-developer.iso")
 
 
 def test_the_name_is_the_entry_s_whatever_the_address_says(tmp_path):

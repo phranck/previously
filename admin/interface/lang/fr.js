@@ -484,6 +484,7 @@ export const fr = {
   "told.download.wrong-size": "Pour {name}, {got} sont arrivés au lieu de {size}, donc rien n'a été gardé.",
   "told.download.wrong-digest": "Ce qui est arrivé pour {name} n'est pas le fichier que décrit le catalogue, donc rien n'a été gardé.",
   "told.download.failed": "{name} n'a pas pu être téléchargé. Le serveur n'a pas répondu, ou la carte n'a pas pu recevoir le fichier.",
+  "told.download.no-such-entry": "Le catalogue ne contient pas cette entrée.",
   /* --- installing -------------------------------------------------------- */
   "app.installer": "Installer",
   "installer.emulator": "Émulateur",

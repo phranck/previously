@@ -74,12 +74,6 @@ class Downloads:
         """@returns pathlib.Path the downloads land in."""
         return self.documents / FOLDER
 
-    def downloaded(self, entry):
-        """@returns pathlib.Path of the entry's image where it has been
-        downloaded, or None."""
-        path = self._target(entry)
-        return path if path.is_file() else None
-
     def state(self):
         """What the download running or last run is doing.
 
@@ -102,7 +96,7 @@ class Downloads:
         hosts = _hosts_for(entry.address)
         if not fetching.allowed(entry.address, hosts):
             return told("download.not-allowed", name=entry.name)
-        if self.downloaded(entry):
+        if downloaded(self.documents, entry):
             return told("download.already-there", name=entry.name)
         room = self._room(self.folder())
         if room is not None and room < entry.size:
@@ -117,18 +111,13 @@ class Downloads:
         self._begin(lambda: self._download(entry, hosts))
         return told("download.started", name=entry.name)
 
-    def _target(self, entry):
-        """@returns pathlib.Path the entry's image is kept at, named by the
-        entry and never by the address or the answer."""
-        return self.folder() / (entry.identifier + DISC_SUFFIX)
-
     def _download(self, entry, hosts):
         """Downloads one image, and keeps it where it is whole.
 
         @param entry - software.Entry.
         @param hosts - The hosts the address and its redirects may reach.
         """
-        target = self._target(entry)
+        target = image_of(self.documents, entry)
         part = target.with_name(target.name + PART)
         outcome = told("download.failed", name=entry.name)
         try:
@@ -170,6 +159,19 @@ class Downloads:
         if digest.hexdigest() != entry.digest:
             return told("download.wrong-digest", name=entry.name)
         return None
+
+
+def image_of(documents, entry):
+    """@returns pathlib.Path an entry's image is kept at, named by the entry
+    and never by the address or the answer."""
+    return pathlib.Path(documents) / FOLDER / (entry.identifier + DISC_SUFFIX)
+
+
+def downloaded(documents, entry):
+    """@returns pathlib.Path of an entry's image where it has been downloaded,
+    or None."""
+    path = image_of(documents, entry)
+    return path if path.is_file() else None
 
 
 def _hosts_for(address):

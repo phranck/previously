@@ -21,9 +21,10 @@ import threading
 import time
 import urllib.parse
 
-from . import (activity, change, config, covers, files, grab, kiosk, lookup, machines,
-               notifications, pi, release, saved, setup, software, systems, terminal,
-               updates, websocket)
+from . import (activity, change, config, covers, downloads, files, grab, kiosk, lookup,
+               machines, notifications, pi, release, saved, setup, software, systems,
+               terminal, updates, websocket)
+from .answers import told
 from .password import (COOKIE, LARGEST, SESSION_SECONDS, SMALLEST, Attempts, Sessions,
                        acceptable)
 
@@ -162,6 +163,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
     password = None
     sessions = None
     attempts = None
+    #: The one download of the software catalog that may run, which outlives
+    #: the request that started it.
+    downloads = None
 
     #: Held while a shell session is open, so there is one at a time. A class
     #: attribute because there is one server, and http.server makes a handler
@@ -326,6 +330,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._change_software(software.restore)
         if route == "/api/software/lookup":
             return self._look_up_software()
+        if route == "/api/software/download":
+            return self._download_software()
         if route == "/api/setup":
             return self._ask_to_set_up()
         if route == "/api/update":
@@ -710,11 +716,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         whoever sits at the machine. All of it rather than what fits the booted
         system, with that system beside it, so a reader can pick what fits.
         Every entry says whether it is as shipped, changed or added here, and
-        the shipped ones removed here are listed so they can be brought back.
+        whether its image has been downloaded, and the shipped ones removed
+        here are listed so they can be brought back. `download` is what the
+        download running or last run is doing.
         """
         changes = self._software_changes()
         made = software.origins(changes)
         here = systems.here(self.settings.disks)
+        documents = self.settings.documents
         return {
             "booted": systems.booted(here, config.booting_from(self.settings.previous_config)),
             "groups": [{"identifier": group, "name": name}
@@ -722,9 +731,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "systems": [{"identifier": system.identifier, "name": system.name}
                         for system in systems.CATALOGUE],
             "entries": [{**software.described(entry),
-                         "origin": made.get(entry.identifier, "shipped")}
+                         "origin": made.get(entry.identifier, "shipped"),
+                         "downloaded": downloads.downloaded(documents, entry) is not None}
                         for entry in software.catalogue(changes)],
             "removed": [software.described(entry) for entry in software.removed(changes)],
+            "download": self.downloads.state(),
         }
 
     def _software_changes(self):
@@ -780,6 +791,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         finished, said = lookup.look_up(body.get("address"))
         return self._json({"ok": finished, **said}, status=200 if finished else 409)
+
+    def _download_software(self):
+        """Starts downloading the image of the entry the request names.
+
+        Behind the session like every POST, because it has the Pi ask a third
+        party and write to the card. Only the identifier arrives from the
+        request; the address, size and digest are the catalog's. The download
+        runs on in the service, and `/api/software` is where it is watched.
+        """
+        body = self._sent()
+        if body is None:
+            return self._json({"error": "unreadable request"}, status=400)
+
+        entry = software.find(body.get("entry"), self._software_changes())
+        said = (self.downloads.start(entry) if entry is not None
+                else told("download.no-such-entry"))
+        started = said["reason"] == "download.started"
+        return self._json({"ok": started, **said, **self._software()},
+                          status=200 if started else 409)
 
     def _cover(self):
         """Hands out the cover of a catalog entry, which `?entry=` names.
@@ -1528,6 +1558,7 @@ def serve(settings, password=None):
     Handler.password = password
     Handler.sessions = Sessions()
     Handler.attempts = Attempts()
+    Handler.downloads = downloads.Downloads(settings.documents)
     address = (settings.address, settings.port)
     updates.watch(settings.state_directory)
     with http.server.ThreadingHTTPServer(address, Handler) as httpd:
