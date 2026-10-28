@@ -64,10 +64,10 @@ class ArchiveOrg:
     HOSTS = systems.ARCHIVE_HOSTS
     METADATA = "https://archive.org/metadata/%s"
     DOWNLOAD = "https://archive.org/download/%s/%s"
-    DETAILS = "https://archive.org/details/%s"
 
-    #: What an item's identifier is made of.
-    ITEM = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
+    #: What an item's identifier is made of, which the catalog knows as well,
+    #: because it reads an entry's page out of its address.
+    ITEM = software.ARCHIVE_ITEM
 
     #: The kinds of file archive.org keeps about an item rather than in it.
     NOT_CONTENT = ("Metadata", "Archive BitTorrent", "Item Tile", "JPEG Thumb")
@@ -119,12 +119,15 @@ class ArchiveOrg:
             raise Refused("lookup.nothing-to-offer", item=item)
 
         fields = self._fields(item, chosen, answer.get("metadata"))
+        # The item's page rides along for the window, which shows View Origin
+        # before the entry is kept. Kept, the page follows from its address.
+        page = software.ARCHIVE_PAGE % item
         cover = self._cover(item, files, read)
         if cover is None:
-            return told("lookup.found", fields=fields)
+            return told("lookup.found", fields=fields, page=page)
         address, picture = cover
         return told("lookup.found", fields={**fields, "cover": address},
-                    picture=covers.data_address(picture))
+                    picture=covers.data_address(picture), page=page)
 
     def _cover(self, item, files, read):
         """The thumbnail of the item's cover, where it has one.
@@ -184,9 +187,6 @@ class ArchiveOrg:
         fields = {
             "name": _name_of(one["name"]),
             "address": self._address(item, one),
-            # The item's page, whichever address was dropped, because the page
-            # is where its pictures, its files and its reviews are.
-            "page": self.DETAILS % item,
             "kind": self._kind(one),
             "algorithm": "sha1",
         }

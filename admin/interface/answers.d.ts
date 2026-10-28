@@ -156,7 +156,9 @@ export interface ToldValues {
   /** `picture` is the cover's thumbnail as a data address, where `fields`
    *  carries a cover. */
   "lookup.found": {
-    fields: Partial<Omit<SoftwarePackage, "identifier" | "for" | "source" | "picture">>;
+    fields: Partial<Omit<SoftwarePackage, "identifier" | "for" | "source" | "picture" | "page">>;
+    /** The item's page on archive.org, which View Origin opens. */
+    page: string;
     picture?: string;
   };
   /** `files` are the files of the item worth having, to choose one from. */
@@ -627,7 +629,8 @@ export interface SoftwarePackage {
   /** The address of archive.org's thumbnail of its cover, or "" for none. */
   cover: string;
   /** The archive.org page of the item it came from, which View Origin
-   *  opens, or "" for none. */
+   *  opens. Read from `address` by software.page_of, so it is "" for an
+   *  address that is no download from archive.org. */
   page: string;
   /** Where the page gets that cover from the Pi, with a stamp of its address,
    *  or null where it has none, from software.picture_of. */

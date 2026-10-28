@@ -75,12 +75,10 @@ LARGEST_BYTES = 1_000_000_000
 #: `systems` are the identifiers of `systems.CATALOGUE` it runs on. `size`,
 #: `algorithm` and `digest` are what the file at `address` is, and a download
 #: refuses anything that arrives as something else. `cover` is the address of
-#: a thumbnail of its cover on archive.org, and `page` the page of the item it
-#: came from there, which View Origin opens, each or both empty.
+#: a thumbnail of its cover on archive.org, or empty.
 Entry = collections.namedtuple(
     "Entry",
-    "identifier name description group version systems address size algorithm digest kind"
-    " cover page")
+    "identifier name description group version systems address size algorithm digest kind cover")
 
 #: Every entry this project ships.
 CATALOGUE = (
@@ -91,17 +89,21 @@ CATALOGUE = (
           "developer", "3.3", ("nextstep-3.3",),
           "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP_3.3_Developer.iso",
           403111936, "sha1", "268c66059c3c48df3bb4d2498785f2459bfa73cd", "disc",
-          "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP%20CD%20Folio_thumb.jpg",
-          "https://archive.org/details/NeXTSTEP33CISC"),
+          "https://archive.org/download/NeXTSTEP33CISC/NeXTSTEP%20CD%20Folio_thumb.jpg"),
 )
 
 #: Where the page asks for an entry's cover, which the Pi fetches from
 #: archive.org once and hands out itself after that.
 COVER_ROUTE = "/api/software/cover"
 
-#: The hosts a cover may come from and a page may be on, which are the ones
-#: the adapter reads.
+#: The hosts a cover may come from, which are the ones the adapter reads.
 ARCHIVE_HOSTS = systems.ARCHIVE_HOSTS
+
+#: What an item's identifier on archive.org is made of, and where its page is.
+#: An item is downloaded from `/download/<item>/<file>` and described at
+#: `/details/<item>`, so the page of an entry follows from its address.
+ARCHIVE_ITEM = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
+ARCHIVE_PAGE = "https://archive.org/details/%s"
 
 #: By identifier, which is what a request carries.
 BY_IDENTIFIER = {entry.identifier: entry for entry in CATALOGUE}
@@ -194,8 +196,6 @@ def problems(entry):
         wrong.append("kind")
     if not (entry.cover == "" or _is_on_the_archive(entry.cover)):
         wrong.append("cover")
-    if not (entry.page == "" or _is_on_the_archive(entry.page)):
-        wrong.append("page")
     return wrong
 
 
@@ -211,8 +211,9 @@ def described(entry):
     @param entry - An Entry.
     @returns dict, every field of the entry, `source` as the Info window shows
       where it comes from, `for` as the names of the systems it is for, which
-      is how a person reads `systems`, and `picture` as where the page gets
-      its cover, or None where it has none.
+      is how a person reads `systems`, `picture` as where the page gets its
+      cover, or None where it has none, and `page` as the archive.org page
+      View Origin opens, or "" where it has none.
     """
     return {
         **entry._asdict(),
@@ -220,7 +221,26 @@ def described(entry):
         "for": [systems.find(system).name for system in entry.systems],
         "source": source(entry),
         "picture": picture_of(entry),
+        "page": page_of(entry.address),
     }
+
+
+def page_of(address):
+    """The archive.org page of the item a file is downloaded from.
+
+    @param address - Where an entry is downloaded from.
+    @returns str, `https://archive.org/details/<item>` for an address
+      `https://archive.org/download/<item>/<file>`, and "" for any other.
+
+    The item is part of the address, so every entry downloaded from
+    archive.org has its page, whether its address was dropped or typed in.
+    """
+    if not isinstance(address, str) or not fetching.allowed(address, ARCHIVE_HOSTS):
+        return ""
+    steps = urllib.parse.urlsplit(address).path.split("/")
+    if len(steps) < 4 or steps[1] != "download" or not ARCHIVE_ITEM.match(steps[2]):
+        return ""
+    return ARCHIVE_PAGE % steps[2]
 
 
 def picture_of(entry):
@@ -276,9 +296,12 @@ def read(path):
 
     kept = []
     for values in entries:
-        # An entry written before covers and pages existed has neither.
+        # An entry written before covers existed has none. One written by a
+        # build of 28 October 2026 carries a page, which is dropped, because
+        # the page follows from the address.
         if isinstance(values, dict):
-            values = {"cover": "", "page": "", **values}
+            values = {"cover": "", **values}
+            values.pop("page", None)
         if not isinstance(values, dict) or set(values) != set(Entry._fields):
             raise NotReadable("%s holds an entry with other fields than an entry has" % path)
         entry = _entry(values["identifier"], values)
@@ -538,6 +561,5 @@ def _is_address(value):
 
 def _is_on_the_archive(value):
     """@returns bool - Whether it is an address an entry may hold, on one of
-    ARCHIVE_HOSTS, which is where a cover is fetched from and a page is opened
-    at."""
+    ARCHIVE_HOSTS, which is where a cover is fetched from."""
     return _is_address(value) and fetching.allowed(value, ARCHIVE_HOSTS)

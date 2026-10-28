@@ -29,8 +29,19 @@ const CATALOG = {
   removed: [described("gone-one", "Gone One", "shipped")],
 };
 
-answering(async (route) => (String(route).startsWith("/api/software")
-  ? json(CATALOG) : never()));
+/** What archive.org's adapter answers for a dropped address: the fields of
+ *  one file, and the page of the item it is in. */
+const FOUND = {
+  ok: true, reason: "lookup.found",
+  fields: { name: "Nebula", address: "https://archive.org/download/nebula-se/NEBULA_SE.ISO",
+            kind: "disc", algorithm: "sha1", size: 1000, digest: "b".repeat(40) },
+  page: "https://archive.org/details/nebula-se",
+};
+
+answering(async (route) => {
+  if (String(route).startsWith("/api/software/lookup")) return json(FOUND);
+  return String(route).startsWith("/api/software") ? json(CATALOG) : never();
+});
 
 const system = await import("../../interface/app/system.js");
 const software = await import("../../interface/app/software.js");
@@ -80,6 +91,20 @@ test("View Origin opens the entry's page in a window of its own", async () => {
 
   /* noopener, so the page that opens cannot reach this one. */
   assert.deepEqual(opened, [["https://archive.org/details/added-one", "_blank", "noopener"]]);
+});
+
+test("an address dropped on the list opens the form with its item's page", async () => {
+  await theModule();
+  const drop = new Event("drop", { bubbles: true, cancelable: true });
+  Object.defineProperty(drop, "dataTransfer", {
+    value: { types: ["text/uri-list"], getData: () => "https://archive.org/details/nebula-se" },
+  });
+
+  document.querySelector("nx-scroller.packages").dispatchEvent(drop);
+  await settled();
+
+  assert.equal(document.getElementById("se-name").value, "Nebula");
+  assert.equal(document.getElementById("se-page").hidden, false);
 });
 
 test("double clicking a shipped entry removed here opens nothing", async () => {

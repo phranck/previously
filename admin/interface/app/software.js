@@ -18,6 +18,7 @@ import { NOTHING, say, sized } from "./words.js";
 /** @typedef {import("../answers.js").PostAnswers} PostAnswers */
 /** @typedef {import("../answers.js").PasswordNotGiven} PasswordNotGiven */
 /** @typedef {import("../answers.js").LookupFile} LookupFile */
+/** @typedef {import("../answers.js").ToldValues["lookup.found"]} LookupFound */
 
 /** The digests an entry can be checked with, as software.DIGEST_DIGITS names
  *  them, with what they are called. Technical names, read the same in every
@@ -64,7 +65,7 @@ let formCover = "";
 let formPicture = null;
 
 /** The archive.org page the entry in the form came from, or "" for none. The
- *  form keeps it as it is, because only a lookup writes it. */
+ *  service reads it from the download address, so the form only shows it. */
 let formPage = "";
 
 /** The page of the entry the Info window shows, or "" for none. */
@@ -281,25 +282,24 @@ async function restoreTheChosenEntry() {
 /**
  * Opens the form on an entry, or on a new one.
  * @param {SoftwareListed | null} entry - What to edit, or null to add one.
- * @param {Partial<SoftwarePackage> | null} [filled] - What a lookup filled in
- *   for a new one, or null to start empty.
+ * @param {LookupFound | null} [found] - What a lookup found for a new one: the
+ *   fields it fills, the item's page, and the cover shown before the entry is
+ *   kept. Null starts an empty one.
  * @param {LookupFile[] | null} [files] - The files of the item the lookup read,
  *   offered in the File row, or null where there is nothing to choose.
  * @param {string | null} [chosenFile] - The address of the file filled in.
- * @param {string | null} [picture] - The cover a lookup handed along, shown
- *   before the entry is kept.
  *
  * A new entry starts for the system the machine boots.
  */
-function openTheForm(entry, filled = null, files = null, chosenFile = null, picture = null) {
+function openTheForm(entry, found = null, files = null, chosenFile = null) {
   const window_ = theWindow("software-entry");
   if (!window_ || !catalog) return;
   editing = entry?.identifier ?? null;
 
   value("se-version", entry?.version ?? "");
-  fill(entry ?? filled ?? {});
-  showTheCover(entry ? entry.cover : filled?.cover, entry ? entry.picture : picture);
-  formPage = (entry ? entry.page : filled?.page) ?? "";
+  fill(entry ?? found?.fields ?? {});
+  showTheCover(entry ? entry.cover : found?.fields.cover, entry ? entry.picture : found?.picture);
+  formPage = (entry ? entry.page : found?.page) ?? "";
   byId("se-page").hidden = !formPage;
   byId("se-group", NxPopup).offer(
     catalog.groups.map((group) => ({ value: group.identifier, label: group.name })),
@@ -386,7 +386,7 @@ async function lookUp(address) {
     return;
   }
   if (answer.reason === "lookup.found") {
-    openTheForm(null, answer.fields, null, null, answer.picture);
+    openTheForm(null, answer);
     show("se-note", say(answer));
     return;
   }
@@ -398,7 +398,7 @@ async function lookUp(address) {
     show("software-note", found === null ? t("note.no-service") : say(found));
     return;
   }
-  openTheForm(null, found.fields, files, chosen.address, found.picture);
+  openTheForm(null, found, files, chosen.address);
   show("se-note", say(answer));
 }
 
@@ -522,7 +522,6 @@ function whatTheFormHolds() {
     algorithm: byId("se-algorithm", NxPopup).value,
     digest: typed("se-digest").trim().toLowerCase(),
     cover: byId("se-cover", HTMLInputElement).checked ? formCover : "",
-    page: formPage,
   };
 }
 

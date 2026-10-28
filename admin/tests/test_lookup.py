@@ -258,5 +258,5 @@ def test_the_page_is_the_item_s_whichever_address_was_dropped():
     _, from_the_item = lookup.look_up(
         "https://archive.org/download/nebula-se/NEBULA_SE.ISO", archive())
 
-    assert from_a_file["fields"]["page"] == "https://archive.org/details/NeXTSTEP33CISC"
-    assert from_the_item["fields"]["page"] == "https://archive.org/details/nebula-se"
+    assert from_a_file["page"] == "https://archive.org/details/NeXTSTEP33CISC"
+    assert from_the_item["page"] == "https://archive.org/details/nebula-se"
