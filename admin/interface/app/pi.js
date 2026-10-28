@@ -35,6 +35,34 @@ function showBoard(id, answer) {
   byId(id).style.backgroundImage = `var(--${boardArt(answer.board)})`;
 }
 
+/** The names of `vcgencmd get_throttled` that are about heat: the temperature
+ *  limit, and the capped clock and throttling the board uses to keep its
+ *  temperature down, which is the one cause Raspberry Pi's chapter on
+ *  frequency management gives for them. */
+const HEAT = ["frequency-capped", "throttled", "temperature-limit"];
+
+/** The one name that is about the power supply. */
+const POWER = ["under-voltage"];
+
+/**
+ * What the board did of some of the things `get_throttled` reports.
+ * @param {PiAnswer["throttling"]} throttling - What the service read, or null.
+ * @param {string[]} which - The names asked about.
+ * @returns {string | null} Those happening now, or else those that happened
+ *   since the start, in words, or null where none did.
+ *
+ * Two different things. Something happening now is a problem to act on, and
+ * something that happened once may have been the moment a drive was plugged
+ * in, which is worth knowing and not worth alarm.
+ */
+function happened(throttling, which) {
+  if (!throttling) return null;
+  const now = throttling.now.filter((name) => which.includes(name));
+  if (now.length) return t("pi.now", { what: named(now) });
+  const since = throttling.since_boot.filter((name) => which.includes(name));
+  return since.length ? t("pi.since-boot", { what: named(since) }) : null;
+}
+
 /**
  * Draws what the board underneath is doing.
  * @param {PiAnswer | null} pi - What /api/pi answered, or null.
@@ -50,24 +78,19 @@ function drawPi(pi) {
 
   /* Where the board begins to slow itself down the reading stops being a
      number and becomes a warning. The service sends that limit, so this
-     window marks the temperature a notification is raised for. */
+     window marks the temperature a notification is raised for. What the
+     board did about heat stands beside the reading. */
   const temperature = pi.temperature_c;
-  showState("pi-temp", temperature !== null && temperature < pi.temperature_limit_c,
-    temperature === null ? NOTHING : `${temperature.toFixed(1)} °C`);
+  const degrees = temperature === null ? NOTHING : `${temperature.toFixed(1)} °C`;
+  const heat = happened(pi.throttling, HEAT);
+  showState("pi-temp", temperature !== null && temperature < pi.temperature_limit_c && !heat,
+    heat ? t("pi.temperature.and", { temperature: degrees, what: heat }) : degrees);
 
-  /* Two different things. Something happening now is a problem to act on, and
-     something that happened once may have been the moment a drive was plugged
-     in, which is worth knowing and not worth alarm. */
-  const throttling = pi.throttling;
-  if (!throttling) {
+  if (!pi.throttling) {
     showState("pi-power", true, NOTHING);
-  } else if (throttling.now.length) {
-    showState("pi-power", false, t("pi.power.now", { what: named(throttling.now) }));
-  } else if (throttling.since_boot.length) {
-    showState("pi-power", false,
-      t("pi.power.since-boot", { what: named(throttling.since_boot) }));
   } else {
-    showState("pi-power", true, t("pi.power.fine"));
+    const power = happened(pi.throttling, POWER);
+    showState("pi-power", !power, power ?? t("pi.power.fine"));
   }
 
   show("pi-emulator", costOf(pi.emulator));
