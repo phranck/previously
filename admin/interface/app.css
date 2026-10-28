@@ -228,8 +228,9 @@ nx-scroller.packages[droppable] .options {
 /* The picture's column of the Software Entry window: a square the cover
    fills whole, and the switch that takes it off under it, at the column's
    left edge and in ordinary type rather than a label's bold. Without a cover
-   the icon of the entry's kind stands in the middle at its own size, because
-   it is a bitmap drawn for that size. */
+   the icon of the entry's kind stands in the middle at twice the size it was
+   drawn for, because a whole multiple keeps every pixel of the bitmap square,
+   and twice fills the square nearly as the cover does. */
 .software-side {
   display: grid;
   align-content: start;
@@ -244,6 +245,7 @@ nx-scroller.packages[droppable] .options {
 }
 /* Laid over the whole inside of the square rather than sized in the grid,
    where a height in percent finds nothing to be a percentage of. */
+.software-side nx-portrait .icon { width: 96px; height: 96px; }
 .software-side nx-portrait .art.picture {
   position: absolute;
   inset: 0;
