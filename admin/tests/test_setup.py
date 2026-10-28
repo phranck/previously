@@ -937,13 +937,25 @@ def test_cage_takes_its_pointer_from_the_packages_theme(tmp_path):
     assert "XCURSOR_PATH=" + setup.CURSORS in words[:words.index("cage")]
 
 
+def test_previous_takes_its_pointer_from_the_systems_theme(tmp_path):
+    """The invisible theme is cage's alone. Previous hides the pointer itself
+    while NeXTSTEP runs, and its own dialog shows the pointer SDL loads from
+    the theme its environment names, which must not be the invisible one."""
+    words = start_line(Nobody(tmp_path))
+    env = words.index("env")
+
+    assert words.index("cage") < env
+    assert words[env + 1:env + 3] == ["-u", "XCURSOR_PATH"]
+
+
 def test_previous_alone_starts_with_the_library_that_shows_it_sharp(tmp_path):
     """The library stands in front of SDL, so it means something only in the
     program that draws through SDL. cage and Xwayland start without it."""
     words = start_line(Nobody(tmp_path))
 
-    assert words[words.index("--") + 1:] == [
-        "env", "LD_PRELOAD=" + setup.SHARP_DISPLAY, "/usr/bin/previous"]
+    previous = words[words.index("--") + 1:]
+    assert previous[0] == "env" and previous[-1] == "/usr/bin/previous"
+    assert "LD_PRELOAD=" + setup.SHARP_DISPLAY in previous
     assert not any(word.startswith("LD_PRELOAD=") for word in words[:words.index("cage")])
 
 

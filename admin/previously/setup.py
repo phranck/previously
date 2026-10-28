@@ -319,9 +319,10 @@ CRASHES = RUNTIME + "/crashes"
 CRASH_PAUSE_SECONDS = 2
 
 #: Where the package keeps a cursor theme that shows nothing, which the console
-#: hands cage as its XCURSOR_PATH. cage sets its own pointer whenever a mouse
-#: arrives, and that pointer would then stand beside NeXTSTEP's, which the
-#: guest draws itself. `packaging/build.py` writes the theme to the same path.
+#: hands cage, and cage alone, as its XCURSOR_PATH. cage sets its own pointer
+#: whenever a mouse arrives, and that pointer would then stand beside
+#: NeXTSTEP's, which the guest draws itself. `packaging/build.py` writes the
+#: theme to the same path.
 CURSORS = "/usr/share/previously/cursors"
 
 #: The library that shows Previous's picture sharp on a monitor larger than
@@ -2439,6 +2440,9 @@ def _console_script(owner):
         "#\n"
         "# cage takes its own pointer from a theme that shows nothing. It sets that\n"
         "# pointer whenever a mouse is plugged in, and NeXTSTEP draws its own.\n"
+        "# Previous does not get that theme: it hides the pointer itself while\n"
+        "# NeXTSTEP runs, and its own dialog shows the pointer SDL loads from the\n"
+        "# system's theme.\n"
         "#\n"
         "# Previous alone starts with %s in front of SDL. On a monitor\n"
         "# larger than the 1120 by 832 of the real hardware it enlarges the picture to\n"
@@ -2447,7 +2451,8 @@ def _console_script(owner):
         "while [ -f %s ]; do sleep 2; done\n"
         "mkdir -p %s\n"
         "cd %s\n"
-        "SDL_VIDEO_DRIVER=x11,wayland XCURSOR_PATH=%s cage -- env LD_PRELOAD=%s /usr/bin/previous\n"
+        "SDL_VIDEO_DRIVER=x11,wayland XCURSOR_PATH=%s cage --"
+        " env -u XCURSOR_PATH LD_PRELOAD=%s /usr/bin/previous\n"
         "status=$?\n"
         'if [ "$status" -ne 0 ]; then\n'
         "  if [ -d %s ]; then\n"
