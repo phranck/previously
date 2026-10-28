@@ -1,0 +1,3 @@
+# Storage media, and where data lives
+
+Previously starts from an SD card, a USB stick or a USB SSD on a Pi 4 or 5, or from an NVMe SSD on a Pi 5. The boot medium is FAT32, because the Pi's firmware boots from FAT. Disk images, the software catalog's own entries and downloaded software live on the boot medium by default, or on an attached disk, which may use exFAT: FatFs supports it, and Circle's configuration has it switched off (`FF_FS_EXFAT`). The catalog's list ships with each release as a JSON file, and every entry carries its own source address, so it can point to a mirror instead of archive.org.

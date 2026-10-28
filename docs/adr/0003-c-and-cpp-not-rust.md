@@ -1,0 +1,3 @@
+# C and C++, not Rust
+
+Previously on bare metal is written in C and C++. Previous (163,671 lines of C) and Circle (766,393 lines of C++ in its libraries and in the FatFs, SD card and Wi-Fi addons) make up 97% of what runs, against 29,944 lines of BMNeXT's own code, counted at BMNeXT 5d529c4. Rust would mean rewriting both, since nothing in Rust replaces Circle on a Pi 4 or 5, or calling into them through `unsafe` code, which gives up the safety Rust is chosen for. The memory errors Rust prevents are caught instead by AddressSanitizer and UndefinedBehaviorSanitizer in the PC simulator ([0007](0007-test-loop-without-anybody-at-the-desk.md)).
