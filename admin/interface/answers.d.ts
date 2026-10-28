@@ -626,6 +626,9 @@ export interface SoftwarePackage {
   source: string;
   /** The address of archive.org's thumbnail of its cover, or "" for none. */
   cover: string;
+  /** The archive.org page of the item it came from, which View Origin
+   *  opens, or "" for none. */
+  page: string;
   /** Where the page gets that cover from the Pi, with a stamp of its address,
    *  or null where it has none, from software.picture_of. */
   picture: string | null;

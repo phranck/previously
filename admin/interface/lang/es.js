@@ -186,6 +186,7 @@ export const es = {
   "button.restore": "Restaurar",
   "button.edit": "Editar...",
   "button.add": "Añadir...",
+  "button.view-origin": "View Origin",
   "info.name": "Nombre",
   "info.description": "Descripción",
   "info.group": "Grupo",

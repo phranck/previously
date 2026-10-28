@@ -186,6 +186,7 @@ export const it = {
   "button.restore": "Ripristina",
   "button.edit": "Modifica...",
   "button.add": "Aggiungi...",
+  "button.view-origin": "View Origin",
   "info.name": "Nome",
   "info.description": "Descrizione",
   "info.group": "Gruppo",

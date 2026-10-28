@@ -186,6 +186,7 @@ export const sv = {
   "button.restore": "Återställ",
   "button.edit": "Redigera...",
   "button.add": "Lägg till...",
+  "button.view-origin": "View Origin",
   "info.name": "Namn",
   "info.description": "Beskrivning",
   "info.group": "Grupp",

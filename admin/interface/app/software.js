@@ -63,6 +63,23 @@ let formCover = "";
  *  @type {string | null} */
 let formPicture = null;
 
+/** The archive.org page the entry in the form came from, or "" for none. The
+ *  form keeps it as it is, because only a lookup writes it. */
+let formPage = "";
+
+/** The page of the entry the Info window shows, or "" for none. */
+let infoPage = "";
+
+/**
+ * Opens an entry's page on archive.org in a window of its own.
+ * @param {string} page - The page.
+ *
+ * With `noopener`, so the page that opens cannot reach back into this one.
+ */
+function viewOrigin(page) {
+  if (page) window.open(page, "_blank", "noopener");
+}
+
 /**
  * Shows what one piece of software is, in the window kept for that.
  * @param {SoftwareEntry} entry - What was double clicked in the Software folder.
@@ -90,6 +107,8 @@ function showSoftwareInfo(entry, asker) {
   show("si-size", sized(about.size));
   show("si-source", about.source);
   show("si-description", about.description);
+  infoPage = about.page;
+  byId("si-buttons").hidden = !infoPage;
 
   window_.open(asker);
 }
@@ -280,6 +299,8 @@ function openTheForm(entry, filled = null, files = null, chosenFile = null, pict
   value("se-version", entry?.version ?? "");
   fill(entry ?? filled ?? {});
   showTheCover(entry ? entry.cover : filled?.cover, entry ? entry.picture : picture);
+  formPage = (entry ? entry.page : filled?.page) ?? "";
+  byId("se-page").hidden = !formPage;
   byId("se-group", NxPopup).offer(
     catalog.groups.map((group) => ({ value: group.identifier, label: group.name })),
     entry?.group);
@@ -500,6 +521,7 @@ function whatTheFormHolds() {
     algorithm: byId("se-algorithm", NxPopup).value,
     digest: typed("se-digest").trim().toLowerCase(),
     cover: byId("se-cover", HTMLInputElement).checked ? formCover : "",
+    page: formPage,
   };
 }
 
@@ -568,6 +590,8 @@ function wireTheSoftware() {
   byId("software-restore").addEventListener("click", restoreTheChosenEntry);
   byId("se-save").addEventListener("click", saveTheForm);
   byId("se-cancel").addEventListener("click", () => theWindow("software-entry")?.close());
+  byId("se-page").addEventListener("click", () => viewOrigin(formPage));
+  byId("si-page").addEventListener("click", () => viewOrigin(infoPage));
   byId("se-file").addEventListener("nx-pick", (event) => {
     if (event instanceof CustomEvent) lookUpAnotherFile(event.detail.value);
   });

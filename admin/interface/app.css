@@ -235,9 +235,12 @@ nx-scroller.packages[droppable] .options {
    the gray a disabled menu entry wears: it is here and not for now. */
 .system.gone:not([chosen]) { color: var(--dark); }
 
-/* Restore undoes what the other three do, so it stands apart from them at the
-   left of the row. */
-.software-buttons > :first-child { margin-right: auto; }
+/* A row whose first button does something of another kind than the rest
+   stands that one apart at the left: Restore, which undoes what Remove, Edit
+   and Add do, and View Origin, which leaves the form for a page elsewhere
+   rather than doing anything to the entry. Hidden, it takes no room, and the
+   others stand at the right as in any row. */
+.buttons.parted > :first-child { margin-right: auto; }
 
 /* The form an entry is edited in: the labels right aligned in a column of
    their own, as every reading is, and each field to the right of its label,

@@ -203,6 +203,10 @@
     </div>
   </div>
   <p class="note" id="si-description"></p>
+
+  <div class="buttons" id="si-buttons" hidden>
+    <button id="si-page" data-t="button.view-origin"></button>
+  </div>
 </nx-window>
 
 <nx-window name="editor" data-t-title="app.config-editor" fixed drop
@@ -415,7 +419,7 @@
       <fieldset class="group">
         <legend data-t="preferences.software.packages"></legend>
         <nx-scroller class="packages"><div class="options" id="software-list"></div></nx-scroller>
-        <div class="buttons software-buttons">
+        <div class="buttons parted">
           <button id="software-restore" data-t="button.restore"></button>
           <button id="software-remove" data-t="button.remove"></button>
           <button id="software-edit" data-t="button.edit"></button>
@@ -451,7 +455,9 @@
       <div class="software-pair"><input class="entry" id="se-digest" spellcheck="false"><nx-popup id="se-algorithm"></nx-popup></div></nx-row>
   </div>
   <p class="note" id="se-note"></p>
-  <div class="buttons">
+
+  <div class="buttons parted">
+    <button id="se-page" data-t="button.view-origin" hidden></button>
     <button id="se-cancel" data-t="button.cancel"></button>
     <button id="se-save" data-t="button.save"></button>
   </div>

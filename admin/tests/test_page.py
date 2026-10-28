@@ -301,7 +301,8 @@ HELD = re.compile(r'\bhold\(\s*"#([^"]+)"')
 #: anything newer changes nothing on the machine either. Cancel in the window a
 #: software entry is edited in closes that window and nothing else, and it has
 #: to work whatever the machine is doing, or the window could not be closed.
-READING_BUTTONS = {"pi-notes", "updates-look", "se-cancel"}
+#: View Origin, in that window and in the Info window, opens a page elsewhere.
+READING_BUTTONS = {"pi-notes", "updates-look", "se-cancel", "se-page", "si-page"}
 
 
 def test_every_button_that_changes_something_follows_the_system(page, markup):
