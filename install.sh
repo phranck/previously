@@ -496,7 +496,7 @@ step_label() {
 # are filled with sizes.
 doing_label() {
   case "$1" in
-    fetching) echo "Fetching {done} of {of}." ;;
+    fetching) echo "Downloading {done} of {of}." ;;
     unpacking) echo "Unpacking {done} of {of}." ;;
     copying) echo "Copying {done} of {of}." ;;
     checking) echo "Checking what arrived." ;;

@@ -369,3 +369,41 @@ def test_every_menu_letter_is_in_the_word_beside_it(language):
             assert shown in words, shown
             assert words[key].lower() in words[shown].lower(), (
                 key, words[key], words[shown])
+
+
+#: The strings that speak of downloading a system, by key.
+DOWNLOAD_KEYS = [
+    "button.fetch",
+    "ask.fetch.title",
+    "installer.doing.fetching",
+    "told.setup.asked.fetch",
+    "told.setup.cannot-fetch",
+    "ask.forget.again",
+]
+
+#: What each language says for a download. The other three languages already
+#: say it, so only these three are held to it.
+DOWNLOAD_WORD = {
+    "en": r"download",
+    "de": r"download|herunter",
+    "sv": r"ladda|laddar|laddas|nedladdning",
+}
+
+#: What the same job was called before it was called a download.
+FETCH_WORD = {
+    "en": r"fetch",
+    "de": r"(?<!herunter)laden\b",
+    "sv": r"hämt",
+}
+
+
+@pytest.mark.parametrize("language", ["en", "de", "sv"])
+def test_a_download_is_called_a_download(language):
+    """The Installer's button, its question, its progress and its results say
+    download in each language's words, as the software directory's button
+    does."""
+    words = catalogue(language)
+
+    for key in DOWNLOAD_KEYS:
+        assert re.search(DOWNLOAD_WORD[language], words[key], re.I), (key, words[key])
+        assert not re.search(FETCH_WORD[language], words[key], re.I), (key, words[key])
