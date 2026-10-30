@@ -10,36 +10,29 @@ nx-window {
   min-height: var(--win-min-h);
 }
 
-/* The bar is 19 px tall and sits on a one-pixel gray ledge, with two pixels of
-   shadow beneath it. Drawing all three as one gradient keeps the three numbers
-   in one place instead of spread over a border, a margin and a pseudo-element. */
+/* The bar sits on the window's gray ledge with its shadow beneath it, all of
+   it measured in base.css's --title tokens, which the question and the
+   notification take as well. */
 nx-window .titlebar {
   height: var(--title-height);
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 0 2px 2px;
-  margin: 1px 1px 0;
+  gap: var(--title-gap);
+  padding: 0 var(--title-inset) var(--title-shadow);
+  margin: var(--title-ledge) var(--title-ledge) 0;
   color: var(--white);
   cursor: move;
-  background: linear-gradient(to bottom,
-    var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
+  background: var(--title-active);
 }
-/* The bar is 19 rows whether it is active or not, and the two rows under it
-   are the shadow. On an active bar the first of those reads as gray against
-   black; on an inactive one it would be the bar's own color and would simply
-   make the bar look a row taller, so it is black here. Measured off the real
-   File Viewer, whose gray bar ends after 19 rows with two black ones under it. */
 nx-window[inactive] .titlebar {
-  background: linear-gradient(to bottom,
-    var(--dark) 0 19px, var(--black) 19px 21px);
+  background: var(--title-inactive);
 }
 
-/* Both window buttons are the originals, 15 by 15, bevel and glyph in one
-   bitmap. The miniaturize one is a little window, not a filled square. */
+/* Both window buttons are the originals, bevel and glyph in one bitmap. The
+   miniaturize one is a little window, not a filled square. */
 nx-window .wbtn {
-  width: 15px; height: 15px;
+  width: var(--window-button); height: var(--window-button);
   flex: 0 0 auto;
   cursor: default;
 }

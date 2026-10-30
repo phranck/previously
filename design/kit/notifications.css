@@ -51,14 +51,13 @@ nx-notification .titlebar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 2px 2px;
-  margin: 1px 1px 0;
-  background: linear-gradient(to bottom,
-    var(--black) 0 19px, var(--dark) 19px 20px, var(--black) 20px 21px);
+  padding: 0 var(--title-inset) var(--title-shadow);
+  margin: var(--title-ledge) var(--title-ledge) 0;
+  background: var(--title-active);
 }
 nx-notification .close {
-  width: 15px;
-  height: 15px;
+  width: var(--window-button);
+  height: var(--window-button);
   background-image: var(--wbtn-close);
 }
 
