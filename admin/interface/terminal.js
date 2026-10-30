@@ -76,7 +76,7 @@ export class NxTerminal extends HTMLElement {
      *  view was built, in the order it said it. */
     this.waiting = [];
     document.fonts.load(`${this.token("--terminal-size")} `
-                        + this.token("--terminal-font"))
+                        + this.token("--mono"))
       .catch(() => undefined)
       .then(() => this.build());
   }
@@ -99,7 +99,7 @@ export class NxTerminal extends HTMLElement {
   build() {
     this.terminal = new Terminal({
       theme: NEXT_THEME,
-      fontFamily: this.token("--terminal-font"),
+      fontFamily: this.token("--mono"),
       fontSize: parseFloat(this.token("--terminal-size")),
       /* One, because the face carries its own line: design/fonts.py sets its
          ascent and descent to the 16 px a row of this interface is, in all

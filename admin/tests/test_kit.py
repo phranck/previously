@@ -65,6 +65,80 @@ def test_every_picture_the_kit_names_is_served(build):
     assert missing == []
 
 
+#: A face a stylesheet ships, by the family its `@font-face` rule gives it.
+SHIPPED_FAMILY = re.compile(r'@font-face\s*\{[^}]*font-family:\s*"([^"]+)"', re.S)
+
+#: A `@font-face` rule, which names the family it ships rather than one a rule
+#: draws in.
+FONT_FACE_RULE = re.compile(r"@font-face\s*\{[^}]*\}", re.S)
+
+#: Where a rule sets a face: a `font` shorthand or a `font-family`. The
+#: lookbehind keeps out a custom property such as `--font`, which is a token
+#: rather than a rule.
+SETS_A_FACE = re.compile(r"(?<![\w-])font(-family)?\s*:\s*([^;}]+)")
+
+#: A custom property and its value, as the stylesheets declare them.
+TOKEN = re.compile(r"(--[\w-]+)\s*:\s*([^;}]+)")
+
+#: A whole value that is one custom property and nothing else.
+ONE_TOKEN = re.compile(r"var\((--[\w-]+)\)")
+
+
+def stylesheets(build):
+    """@returns the kit's stylesheet and this interface's own, without comments."""
+    both = build.stylesheet() + (INTERFACE / "app.css").read_text(encoding="utf-8")
+    return re.sub(r"/\*.*?\*/", "", both, flags=re.S)
+
+
+def families(shorthand, value):
+    """The list of families a declaration sets, or None where it sets none.
+
+    @param shorthand - True for `font`, False for `font-family`.
+    @param value - What the declaration says.
+    @returns str or None.
+
+    The `font` shorthand ends in the families and states a size before them,
+    so they are what follows the first word that is a size. A shorthand with
+    no size, such as `font: inherit`, takes the face from elsewhere.
+    """
+    if not shorthand:
+        return value.strip()
+    words = value.split()
+    for index, word in enumerate(words):
+        if re.search(r"\d|var\(", word):
+            return " ".join(words[index + 1:])
+    return None
+
+
+def first_family(listed, tokens):
+    """@returns the family a list draws in, following a token to its value."""
+    first = listed.split(",")[0].strip()
+    while (token := ONE_TOKEN.fullmatch(first)):
+        first = tokens[token.group(1)].split(",")[0].strip()
+    return first.strip('"')
+
+
+def test_every_face_the_interface_draws_in_is_one_it_ships(build):
+    """A face named from the machine, such as Helvetica, is a different face on
+    every machine, and Arial or a browser's own sans stands in where there is
+    none. So the face a rule draws in, the first of its list, is one the
+    stylesheets ship themselves. What follows it in the list is there for a
+    file that failed to load."""
+    css = stylesheets(build)
+    shipped = set(SHIPPED_FAMILY.findall(css))
+    assert "Inconsolata" in shipped, "the stylesheets ship no face this can read"
+    tokens = dict(TOKEN.findall(css))
+
+    drawn = set()
+    for prefix, value in SETS_A_FACE.findall(FONT_FACE_RULE.sub("", css)):
+        listed = families(not prefix, value)
+        if listed:
+            drawn.add(first_family(listed, tokens))
+    assert len(drawn) > 1, "no rule sets a face this can read"
+
+    assert sorted(drawn - shipped) == []
+
+
 def test_every_part_of_the_kit_has_a_source(build):
     """A part named in the table with neither a stylesheet nor a script is a
     line nobody ever sees fail."""

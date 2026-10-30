@@ -655,7 +655,7 @@ nx-row.charted label {
    in the notes looks as it will once it is typed there. At that size its
    capitals are as tall as the prose's. */
 .document code,
-.document pre { font: var(--terminal-size)/1 var(--terminal-font); }
+.document pre { font: var(--terminal-size)/1 var(--mono); }
 
 /* Code inside a sentence stands on the pink a window gives what has to be
    noticed, so a command reads as apart from the words around it. phranck
