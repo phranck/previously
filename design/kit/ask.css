@@ -37,7 +37,7 @@ nx-ask .panel {
      thirteen pixels off the frame, which is what happened. The kit owns its
      own geometry. */
   padding: 0;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
   background: var(--light);
   box-shadow: 4px 4px 0 rgba(0,0,0,.35);
   display: flex;

@@ -15,7 +15,7 @@ nx-menu {
   min-width: var(--menu-width-min);
   width: max-content;
   z-index: 60;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
   background: var(--light);
 }
 

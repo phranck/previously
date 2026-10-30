@@ -166,6 +166,8 @@
   --lamps-height: 22px;
 
   --row: 20px;           /* the menu raster, and the height of one entry */
+  /* The black line round every window, panel, menu and pop-up list. */
+  --frame-line: 1px;
   /* A title bar, measured off the running system: 19 rows of bar and 2 of
      shadow under it. The bar sits one row of the window's gray inside the
      frame on the top and both sides, holds what stands in it 2 px from its
@@ -355,7 +357,7 @@ body {
   position: fixed;
   z-index: 85;
   pointer-events: none;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
 }
 
 /* --- the three edges everything in this interface is built from ---------- */
@@ -415,7 +417,7 @@ nx-tile {
 
 nx-window {
   position: absolute;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
   background: var(--light);
   display: flex;
   flex-direction: column;
@@ -523,7 +525,7 @@ nx-menu {
   min-width: var(--menu-width-min);
   width: max-content;
   z-index: 60;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
   background: var(--light);
 }
 
@@ -676,7 +678,7 @@ nx-popup .popup-button:disabled .popup-mark {
   position: absolute;
   z-index: 95;
   width: max-content;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
   background: var(--light);
 }
 
@@ -1137,7 +1139,7 @@ nx-ask .panel {
      thirteen pixels off the frame, which is what happened. The kit owns its
      own geometry. */
   padding: 0;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
   background: var(--light);
   box-shadow: 4px 4px 0 rgba(0,0,0,.35);
   display: flex;
@@ -1298,7 +1300,7 @@ nx-notifications[corner^="bottom"] {
 nx-notification {
   margin-bottom: var(--pane-pad);
   overflow: hidden;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
   background: var(--light);
   box-shadow: 4px 4px 0 rgba(0,0,0,.35);
   cursor: default;

@@ -164,6 +164,8 @@
   --lamps-height: 22px;
 
   --row: 20px;           /* the menu raster, and the height of one entry */
+  /* The black line round every window, panel, menu and pop-up list. */
+  --frame-line: 1px;
   /* A title bar, measured off the running system: 19 rows of bar and 2 of
      shadow under it. The bar sits one row of the window's gray inside the
      frame on the top and both sides, holds what stands in it 2 px from its
@@ -353,7 +355,7 @@ body {
   position: fixed;
   z-index: 85;
   pointer-events: none;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
 }
 
 /* --- the three edges everything in this interface is built from ---------- */

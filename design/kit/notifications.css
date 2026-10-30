@@ -37,7 +37,7 @@ nx-notifications[corner^="bottom"] {
 nx-notification {
   margin-bottom: var(--pane-pad);
   overflow: hidden;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
   background: var(--light);
   box-shadow: 4px 4px 0 rgba(0,0,0,.35);
   cursor: default;

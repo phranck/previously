@@ -2,7 +2,7 @@
 
 nx-window {
   position: absolute;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
   background: var(--light);
   display: flex;
   flex-direction: column;
