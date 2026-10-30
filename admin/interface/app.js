@@ -9,7 +9,7 @@
  */
 
 import { defineTheKit } from "./nextstep.js";
-import { translate } from "./strings.js";
+import { loadTheChosenLanguage, translate } from "./strings.js";
 import { defineTheTerminal } from "./terminal.js";
 import { greetTheFirstVisit } from "./app/about.js";
 import { wireActivity } from "./app/activity.js";
@@ -30,38 +30,50 @@ import { refresh, wireButtons } from "./app/status.js";
 import { wireTheUpdate } from "./app/update.js";
 import { drawMachines, wireOpening } from "./app/viewer.js";
 
-/* The words first, so every element is built around text it already has.
-   Then the elements, and only then this application's own wiring: a window
-   that does not exist yet cannot be wired to anything. */
-translate();
-defineTheKit();
-defineTheTerminal();
+/**
+ * Wakes the page, once the words of the language chosen are here.
+ *
+ * The words first, so every element is built around text it already has.
+ * Then the elements, and only then this application's own wiring: a window
+ * that does not exist yet cannot be wired to anything.
+ */
+function wake() {
+  translate();
+  defineTheKit();
+  defineTheTerminal();
 
-drawAtSize(chosenSize());
-wireButtons();
-wirePreferences();
-wireMachines();
-wireBoard();
-wireOpening();
-wireTerminal();
-wireGrab();
-wirePreview();
-wireEditor();
-wireTheInstaller();
-wireTheUpdate();
-wireActivity();
-wireTheNotifications();
-watchTheFrontWindow();
-greetTheFirstVisit();
-watchTheApplications();
-drawLanguages();
-/* Both before the editor is filled, because what it shows is the machine that is
-   set and which of the saved configurations that is, and neither is known until
-   the tree and the status are in. The menu is drawn again then as well,
-   because which application the window in front belongs to, and what that
-   application is called, arrive with the tree. */
-Promise.all([drawMachines(), refresh()]).then(() => {
-  fillTheEditorIfItCameBackOpen();
-  drawTheMenu();
-});
-setInterval(refresh, REFRESH_MS);
+  drawAtSize(chosenSize());
+  wireButtons();
+  wirePreferences();
+  wireMachines();
+  wireBoard();
+  wireOpening();
+  wireTerminal();
+  wireGrab();
+  wirePreview();
+  wireEditor();
+  wireTheInstaller();
+  wireTheUpdate();
+  wireActivity();
+  wireTheNotifications();
+  watchTheFrontWindow();
+  greetTheFirstVisit();
+  watchTheApplications();
+  drawLanguages();
+  /* Both before the editor is filled, because what it shows is the machine
+     that is set and which of the saved configurations that is, and neither is
+     known until the tree and the status are in. The menu is drawn again then
+     as well, because which application the window in front belongs to, and
+     what that application is called, arrive with the tree. */
+  Promise.all([drawMachines(), refresh()]).then(() => {
+    fillTheEditorIfItCameBackOpen();
+    drawTheMenu();
+  });
+  setInterval(refresh, REFRESH_MS);
+}
+
+/* Nothing happens before the catalog of the language chosen is here, because
+   the markup cannot be translated into words the page does not hold, and an
+   element the kit builds before then is built around none. English is part of
+   the script, so a browser reading English waits for nothing. */
+loadTheChosenLanguage().then(wake);

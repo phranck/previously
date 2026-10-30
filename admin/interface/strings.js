@@ -6,28 +6,39 @@
  * unfamiliar interface in a language one does not read is worse than one in
  * English.
  *
- * Every catalog is loaded with the page. All six together are smaller than
- * one of the pictures in the stylesheet, and loading them all is what makes a
- * change of language instant and the code that changes it three lines long.
- * Nothing is fetched, nothing waits, and nothing shows the wrong language
- * while the right one arrives.
+ * English is part of the script, and every other catalog is a file of its own
+ * that this browser fetches when its language is the one chosen. English is
+ * what every other language falls back to, entry by entry, so it is always
+ * here: a missing entry, or a catalog that cannot be fetched, shows an English
+ * sentence rather than a key. A browser reading German holds English and
+ * German, and a browser reading English holds English alone.
+ *
+ * `app.js` waits for the chosen catalog before it starts the page, so nothing
+ * is ever built around words that are not here.
  */
 
 import { en } from "./lang/en.js";
-import { de } from "./lang/de.js";
-import { fr } from "./lang/fr.js";
-import { it } from "./lang/it.js";
-import { es } from "./lang/es.js";
-import { sv } from "./lang/sv.js";
 
-/** Every catalog, by the code it answers to. Gathered here rather than
- *  written into by each of them, so that a catalog is a table and nothing
- *  else: what it is called, and when it is read, is this file's business.
- *  @type {Record<string, Record<string, string>>} */
-const NX_STRINGS = { en, de, fr, it, es, sv };
-
-/** The one that is always complete, and the one every other falls back to. */
+/** The one that is always complete, the one every other falls back to, and
+ *  the one the script carries rather than fetches. */
 const FALLBACK = "en";
+
+/** Where a catalog the script does not carry is fetched from, relative to the
+ *  page, so German is `lang/de.json`. `build_web.py` writes them there, and
+ *  the page's tests answer from what it wrote, which holds the two to each
+ *  other. */
+const CATALOG_FOLDER = "lang/";
+
+/** What the file of a fetched catalog is called after its language's code. */
+const CATALOG_SUFFIX = ".json";
+
+/** Every catalog this page holds, by the code it answers to: English from the
+ *  start, and each other language once it has been fetched. Gathered here
+ *  rather than written into by each of them, so that a catalog is a table and
+ *  nothing else: what it is called, and when it is read, is this file's
+ *  business.
+ *  @type {Record<string, Record<string, string>>} */
+const NX_STRINGS = { en };
 
 /** Where the choice is kept, beside the window positions. It belongs to the
  *  browser rather than to the Pi: which language one person reads is not a
@@ -60,9 +71,14 @@ const LOCALES = {
   sv: "sv-SE",
 };
 
-/** The language in force. Read once at the start and kept here, so the lookup
- *  costs nothing. */
-let language = readLanguage();
+/** The language in force, kept here so the lookup costs nothing. Always one
+ *  whose catalog this page holds, so English until the chosen one is here. */
+let language = FALLBACK;
+
+/** The language asked for last. A catalog that arrives after another
+ *  language was asked for is kept and not put in force, so the interface ends
+ *  in the language chosen last whatever order the answers come back in. */
+let asked = FALLBACK;
 
 /**
  * @returns {string} The language last chosen, or English where none was or
@@ -71,6 +87,45 @@ let language = readLanguage();
 function readLanguage() {
   const saved = localStorage.getItem(LANGUAGE_KEY);
   return saved && LANGUAGE_NAMES[saved] ? saved : FALLBACK;
+}
+
+/**
+ * Makes sure this page holds one language's catalog, fetching it where it
+ * does not hold it yet.
+ * @param {string} code - One of the six. English is part of the script and
+ *   is never fetched.
+ * @returns {Promise<boolean>} Whether the catalog is held now. False where it
+ *   could not be fetched, because the Pi did not answer or answered with
+ *   anything but the catalog, which leaves every catalog already held as it
+ *   was. A catalog that could not be fetched is asked for again the next time.
+ */
+async function holdCatalog(code) {
+  if (NX_STRINGS[code]) return true;
+  try {
+    const answer = await fetch(CATALOG_FOLDER + code + CATALOG_SUFFIX);
+    if (!answer.ok) return false;
+    NX_STRINGS[code] = await answer.json();
+    return true;
+  } catch {
+    /* The Pi went away, or what came back was not a catalog. Either way the
+       interface stays in the language it is in, which is the whole answer. */
+    return false;
+  }
+}
+
+/**
+ * Puts the language this browser chose in force, fetching its catalog first
+ * where it is not English.
+ * @returns {Promise<void>} Once the language is in force. It never rejects:
+ *   where the catalog cannot be fetched, the page speaks English for this
+ *   visit and the choice stays kept, so the next visit asks for it again.
+ *
+ * `app.js` waits for this before it translates the markup and before the kit
+ * defines anything, so the first element is built in the language chosen.
+ */
+async function loadTheChosenLanguage() {
+  const chosen = readLanguage();
+  if (await holdCatalog(chosen)) language = chosen;
 }
 
 /** @returns {string} Which language the interface is in. */
@@ -219,14 +274,22 @@ function writeKey(element, letter) {
 }
 
 /**
- * Changes the language the interface speaks.
- * @param {string} code - One of the six.
+ * Changes the language the interface speaks, fetching its catalog first where
+ * this page does not hold it yet.
+ * @param {string} code - One of the six: `en`, `de`, `fr`, `it`, `es` or `sv`.
  * @param {() => void} [redraw] - What to call so the parts the page writes
  *   itself are written again. The document's own strings are handled here.
- * @returns {boolean} Whether that language exists.
+ *   Called only where the interface speaks that language afterwards.
+ * @returns {Promise<boolean>} Whether the interface speaks that language now.
+ *   False for a code that is none of the six, for a catalog that could not be
+ *   fetched, and for one that arrived after another language was asked for.
+ *   In all three the interface, the language in force and the choice kept in
+ *   this browser stay as they were.
  */
-function setLanguage(code, redraw) {
+async function setLanguage(code, redraw) {
   if (!LANGUAGE_NAMES[code]) return false;
+  asked = code;
+  if (!(await holdCatalog(code)) || asked !== code) return false;
   language = code;
   try {
     localStorage.setItem(LANGUAGE_KEY, code);
@@ -239,9 +302,11 @@ function setLanguage(code, redraw) {
 }
 
 export {
+  LANGUAGE_KEY,
   LANGUAGE_NAMES,
   currentLanguage,
   currentLocale,
+  loadTheChosenLanguage,
   setLanguage,
   t,
   translate,

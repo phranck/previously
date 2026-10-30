@@ -1294,9 +1294,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         The pictures, the faces and the one library are given a day, because
         they change when a new package is installed and at no other time. The
-        page, the script and the stylesheet are given none: they change on
-        every build, and being told 304 costs a few bytes on a connection that
-        is already open.
+        page, the script, the stylesheet and the catalogs in `lang/` are given
+        none: they change on every build, and a catalog kept from an older
+        build would leave every sentence the newer script added in English.
+        Being told 304 costs a few bytes on a connection that is already open.
         """
         target = safe_path(WEB_ROOT, route)
         if target is None or not target.is_file():

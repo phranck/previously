@@ -158,15 +158,17 @@ function wirePreferences() {
 }
 
 /**
- * Changes the language the whole interface speaks.
+ * Changes the language the whole interface speaks, once its catalog is here.
  * @param {string} code - One of `en`, `de`, `fr`, `it`, `es` and `sv`.
- * @returns {boolean} Whether that language exists.
+ * @returns {Promise<boolean>} Whether the interface speaks it now. Where its
+ *   catalog could not be fetched it does not, and every window, this one's
+ *   list of languages included, stays in the language it was in.
  *
  * Everything the markup carries is written by `setLanguage` itself. What this
  * adds is the other half: every window the page fills in as it goes, which has
  * to be filled in again before any of it is read in the new language.
  *
- * The Preferences window offers it, and the console can call it directly.
+ * The Preferences window offers it.
  */
 function speak(code) {
   return setLanguage(code, () => {

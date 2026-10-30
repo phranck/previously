@@ -33,7 +33,7 @@ make check PYTHON=.venv/bin/python
 
 Pillow is for `measuring/boot.py`, which reads the pictures of a measured boot on the Mac. The service never imports it. The check workflow, which runs on every pull request and before every release, installs from the same file and runs `make check`, so a package added there reaches both.
 
-The interface is checked by Oxlint, by the rules in `.oxlintrc.json`, and by `tsc`, both from `package.json` beside it, and is built by `esbuild`. The kit's elements are tested in Node against happy-dom's document, from the same `package.json`: `tests/kit/` lays markup out with the kit's own stylesheet and reads back what the elements made of it. `tests/page/` does the same with the page's own markup and its modules, with the service answered by a `fetch` the test writes, for what the page does with an answer. `make test` runs both before the Python. None of it ever reaches the Pi: what ships is the built interface, and that is committed. `.nvmrc` at the root names the Node all of it runs on, here and in the check workflow.
+The interface is checked by Oxlint, by the rules in `.oxlintrc.json`, and by `tsc`, both from `package.json` beside it, and is built by `esbuild` and Node. The kit's elements are tested in Node against happy-dom's document, from the same `package.json`: `tests/kit/` lays markup out with the kit's own stylesheet and reads back what the elements made of it. `tests/page/` does the same with the page's own markup and its modules, with the service answered by a `fetch` the test writes, for what the page does with an answer. `make test` runs both before the Python. None of it ever reaches the Pi: what ships is the built interface, and that is committed. `.nvmrc` at the root names the Node all of it runs on, here and in the check workflow.
 
 ```bash
 npm install                                          # oxlint, tsc and happy-dom, into admin/node_modules
@@ -86,7 +86,7 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `interface/app.js` | Where the page starts, and the order everything in it is woken in |
 | `interface/app/` | One module per subject, which is what the interface is made of |
 | `interface/lang/` | One catalog of words per language |
-| `build_web.py` | What bundles that into the three files a browser is given |
+| `build_web.py` | What bundles that into the files a browser is given |
 | `web/` | What the browser gets, and nothing in it is written by hand |
 | `web/vendor/` | The one library this interface takes, with its license |
 | `web/fonts/` | The face the Terminal and the code in a document are set in, with its license |
@@ -175,7 +175,7 @@ Every POST is checked for a session before anything is done with what was sent, 
 
 The one route that asks for no session is the terminal, and the section below says why: what answers there is this machine's own SSH server, so whoever is connecting proves who they are to that. Its handshake still has to come from this service's own page.
 
-**Every answer from the API is `no-store`**, because each one is about right now and a kept copy is a wrong one. Files are the opposite and say so: each carries an `ETag` and a `Last-Modified`, and a browser that already has one is told `304` rather than sent it again. The pictures, the faces and the one vendor library also carry a day's `max-age`, since they change when a package is installed and at no other time. The page, the script and the stylesheet carry `no-cache`, which means the browser asks every time and is told `304` when nothing changed, so a new build is picked up at once.
+**Every answer from the API is `no-store`**, because each one is about right now and a kept copy is a wrong one. Files are the opposite and say so: each carries an `ETag` and a `Last-Modified`, and a browser that already has one is told `304` rather than sent it again. The pictures, the faces and the one vendor library also carry a day's `max-age`, since they change when a package is installed and at no other time. The page, the script, the stylesheet and the catalogs carry `no-cache`, which means the browser asks every time and is told `304` when nothing changed, so a new build is picked up at once.
 
 **The connection stays open.** `http.server` speaks HTTP/1.0 unless it is told otherwise, which closes the socket after every answer. That was costing a page load thirty connections, and on a Pi joined by Wi-Fi each of those took two seconds to open: measured on 2026-09-29, an icon of 1232 bytes arrived 8.7 seconds after it was asked for, of which 1 millisecond was the data. Every answer here carries a `Content-Length`, which is what lets the handler speak 1.1 and keep the socket. The stream of readings is the one answer without a length, and it closes its connection when it ends.
 
@@ -544,9 +544,13 @@ English, German, French, Italian, Spanish and Swedish, which are the six NeXTSTE
 
 Neither the markup nor the kit holds any words. `index.html` carries `data-t` keys and no text, which is why the page cannot show the wrong language for a moment while the right one arrives, and `nx-ask` is given the wording of its two buttons by whoever asks the question.
 
-The choice lives in this browser beside the window positions, and changing it writes the whole interface again without a reload. The Preferences window is where it is chosen.
+**A browser holds English and the language it reads, and nothing else.** English is part of the script, because it is what every other language falls back to. Each other catalog is a file of its own in `web/lang/`, such as `lang/de.json`, which the page fetches when that language is chosen. So a browser reading English fetches no catalog, and one reading German fetches one.
 
-Adding a string means adding it to all six catalogs. `tests/test_strings.py` fails when one of them is missing an entry, when a sentence loses a `{place}` that the others have, when the page asks for a key that is not there, and when the service can answer with a name that nothing can say.
+**The page waits for that file before it starts.** `app.js` fetches the chosen catalog, then translates the markup, and only then has the kit define its elements, so no element is built before its words are there. A catalog that cannot be fetched leaves the page in English for that visit and keeps the choice, so the next visit asks for it again.
+
+The choice lives in this browser beside the window positions, and changing it writes the whole interface again without a reload. The Preferences window is where it is chosen. A language chosen for the first time fetches its catalog first. Where the Pi does not answer, the interface stays in the language it was in.
+
+Adding a string means adding it to all six catalogs. `tests/test_strings.py` fails when one of them is missing an entry, when a sentence loses a `{place}` that the others have, when the page asks for a key that is not there, and when the service can answer with a name that nothing can say. It reads the sources in `interface/lang/`, and `tests/test_web.py` holds the files in `web/lang/` to them.
 
 ## Preferences
 
@@ -653,13 +657,13 @@ The third is for the type checker: which tag answers to which element, out of th
 
 ## What is written and what ships
 
-`interface/` is where the interface is written. `app.js` is the entry, which puts the words on the page, defines the elements and then wires them, and `app/` beside it holds one module per subject, each saying at its head what it is for. A module offers what somebody asks it for and keeps the rest, and every import names where it comes from: nothing here shares one scope any more, which is what makes it possible to see what depends on what. `web/` is what a browser is given, and nothing in it is written by hand.
+`interface/` is where the interface is written. `app.js` is the entry, which fetches the catalog of the language chosen, puts the words on the page, defines the elements and then wires them, and `app/` beside it holds one module per subject, each saying at its head what it is for. A module offers what somebody asks it for and keeps the rest, and every import names where it comes from: nothing here shares one scope any more, which is what makes it possible to see what depends on what. `web/` is what a browser is given, and nothing in it is written by hand.
 
-`make web` runs `build_web.py`, which puts the sources together in the order the page loads them, hands them to esbuild and writes three files: `web/index.html` with its comments gone and three tags where fourteen stood, `web/previously.js` with everything of ours inside one function and every name in it shortened, and `web/previously.css` with the vendor stylesheet, the kit and this application's own. `tests/test_web.py` builds them again and fails when what is committed is not what the sources say, so a source edited without `make web` is caught rather than shipped.
+`make web` runs `build_web.py`, which puts the sources together in the order the page loads them, hands them to esbuild and writes three files: `web/index.html` with its comments gone and three tags where fourteen stood, `web/previously.js` with everything of ours inside one function and every name in it shortened, and `web/previously.css` with the vendor stylesheet, the kit and this application's own. The script carries the English catalog, because `strings.js` imports it. Every other catalog goes into `web/lang/` as one line of JSON, which Node reads out of its source, since a catalog is JavaScript with comments in it. `tests/test_web.py` builds them again and fails when what is committed is not what the sources say, so a source edited without `make web` is caught rather than shipped.
 
 The vendor library keeps its own tag. It arrives minified from the people who wrote it, it is a third of a megabyte, and it never changes, so putting it in a file that is rewritten on every edit would cost a great deal and save one request on a local network.
 
-esbuild is needed here and on whatever runs the tests, and never on the Pi: what it writes is committed, so a package built from a checkout carries the same files as the published one.
+esbuild and Node are needed here and on whatever runs the tests, and never on the Pi: what they write is committed, so a package built from a checkout carries the same files as the published one. Node is the version `.nvmrc` at the root names, the one the checks run on.
 
 ```bash
 brew install esbuild                 # macOS
