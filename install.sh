@@ -350,8 +350,8 @@ fetch_admin_package() {
       || abort "Could not build the admin package."
   else
     ADMIN_PACKAGE="$(mktemp -d)/${PACKAGE_FILE}"
-    quietly "Fetching the admin tool" curl -fsSL -o "$ADMIN_PACKAGE" "$PACKAGE_URL" \
-      || abort "Could not fetch ${PACKAGE_URL}."
+    quietly "Downloading the admin tool" curl -fsSL -o "$ADMIN_PACKAGE" "$PACKAGE_URL" \
+      || abort "Could not download ${PACKAGE_URL}."
     undo "remove the downloaded package" "rm -f $(printf '%q' "$ADMIN_PACKAGE")"
   fi
 }

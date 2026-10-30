@@ -448,7 +448,7 @@ export const en = {
   "installer.emulator.in.version": "{version} installed",
   "installer.emulator.what.install": "Install puts the current Previous on this machine, with everything it needs around it.",
   "installer.emulator.what.remove": "Remove deletes the Previous emulator from the host system, along with everything it brought with it.",
-  "installer.emulator.what.update": "Update brings Previous {version} from the archive it comes from.",
+  "installer.emulator.what.update": "Update downloads Previous {version} from the archive it comes from.",
   "button.activate": "Activate",
   "installer.systems": "Systems",
   "installer.card": "Card",

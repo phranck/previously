@@ -434,7 +434,7 @@ export const de = {
   "installer.emulator.in.version": "{version} installiert",
   "installer.emulator.what.install": "Installieren bringt das aktuelle Previous auf diese Maschine, mit allem, was es drumherum braucht.",
   "installer.emulator.what.remove": "Entfernen löscht den Previous Emulator vom Host-System, samt all seiner Abhängigkeiten.",
-  "installer.emulator.what.update": "Aktualisieren bringt Previous {version} aus dem Archiv, aus dem es kommt.",
+  "installer.emulator.what.update": "Aktualisieren lädt Previous {version} aus dem Archiv herunter, aus dem es kommt.",
   "button.activate": "Aktivieren",
   "installer.systems": "Systeme",
   "installer.card": "Karte",
