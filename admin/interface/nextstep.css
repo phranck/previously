@@ -1901,13 +1901,18 @@ nx-slider .ticks {
 nx-slider .tick {
   position: absolute;
   top: 0;
-  /* Placed by its middle, so the figure stands under the knob rather than
-     starting there. */
-  transform: translateX(-50%);
   font-size: var(--status-size);
   line-height: var(--status-line);
   color: var(--dark);
   white-space: nowrap;
+}
+
+/* The figure placed by its middle, so it stands over the knob rather than
+   starting there. Only the figure moves: a transform is not put on pixels,
+   and the line under it would be drawn half a pixel along. */
+nx-slider .tick .figure {
+  display: block;
+  transform: translateX(-50%);
 }
 
 /* The step in force. Black against the gray of the others, which is the one
@@ -1920,7 +1925,7 @@ nx-slider .tick::before {
   content: "";
   position: absolute;
   top: 100%;
-  left: 50%;
+  left: 0;
   width: var(--tick-line);
   height: var(--tick-length);
   background: var(--dark);
