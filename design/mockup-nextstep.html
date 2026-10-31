@@ -4941,7 +4941,7 @@ class NxSlider extends HTMLElement {
         /* Under the middle of the knob when it stands on this step, which is
            half a knob in plus that step's share of the room it travels. */
         tick.style.left =
-          `calc(var(--knob-width) / 2 + (100% - var(--knob-width)) * ${at / last})`;
+          `calc(var(--slider-knob) / 2 + (100% - var(--slider-knob)) * ${at / last})`;
         return tick;
       })));
   }
@@ -4973,7 +4973,7 @@ class NxSlider extends HTMLElement {
        before the trough has been laid out and stays right when it changes
        width. */
     this.knob.style.transform =
-      `translateX(calc((100cqw - var(--knob-width)) * ${at / last}))`;
+      `translateX(calc((100cqw - var(--slider-knob)) * ${at / last}))`;
     this.setAttribute("aria-valuenow", String(at));
     this.setAttribute("aria-valuetext", this.steps[at]?.label ?? "");
 
