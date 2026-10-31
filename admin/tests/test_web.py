@@ -1,18 +1,21 @@
 """What ships is what the sources say, and nothing of the workshop.
 
-The three files in `web/` are generated, and a generated file that somebody
-edits by hand is a change the next build throws away without saying so. This is
-what says so, and it is also what holds the promise the whole arrangement is
-for: the comments stay in `interface/` and reach nobody's browser.
+The three files in `web/` and the catalogs in `web/lang/` are generated, and a
+generated file that somebody edits by hand is a change the next build throws
+away without saying so. This is what says so, and it is also what holds the
+promise the whole arrangement is for: the comments stay in `interface/` and
+reach nobody's browser.
 """
 
 import importlib.util
+import json
+import pathlib
 import re
 import shutil
 
 import pytest
 
-from conftest import INTERFACE
+from conftest import INTERFACE, LANGUAGES, catalogue
 from previously.server import WEB_ROOT
 
 #: The builder, loaded from where it lives rather than installed. It writes
@@ -32,12 +35,13 @@ def build():
 def built(build, tmp_path_factory):
     """What the sources produce now, written somewhere of its own.
 
-    Skipped where esbuild is absent, because then there is nothing to compare
-    with rather than something that differs. The workflow installs it, so the
-    comparison is made on every run that matters.
+    Skipped where esbuild or node is absent, because then there is nothing to
+    compare with rather than something that differs. The workflow installs
+    both, so the comparison is made on every run that matters.
     """
-    if shutil.which("esbuild") is None:
-        pytest.skip("esbuild is not on this machine")
+    for tool in ("esbuild", "node"):
+        if shutil.which(tool) is None:
+            pytest.skip(f"{tool} is not on this machine")
     return build.build(tmp_path_factory.mktemp("web"))
 
 
@@ -57,12 +61,61 @@ def test_what_is_served_is_what_the_sources_say(built, name):
     assert served == built[name], "run make web"
 
 
-def test_the_sources_are_not_served():
+def test_every_catalog_served_is_what_the_sources_say(build, built):
+    """And nothing else is in their folder, so a catalog that has gone into
+    the script is not left behind as a file nothing asks for."""
+    folder = WEB_ROOT / build.CATALOGS
+    served = {path.relative_to(WEB_ROOT).as_posix(): path.read_text(encoding="utf-8")
+              for path in sorted(folder.iterdir())}
+
+    assert served == {name: text for name, text in built.items()
+                      if name.startswith(build.CATALOGS + "/")}, "run make web"
+
+
+def test_the_sources_are_not_served(build):
     """The whole point. A comment here is a paragraph about a decision, and it
     belongs to whoever edits this rather than to whoever loads it."""
     for name in ["app.js", "strings.js", "terminal.js", "nextstep.js",
-                 "nextstep.css", "app.css", "lang"]:
+                 "nextstep.css", "app.css"]:
         assert not (WEB_ROOT / name).exists(), name
+    assert list((WEB_ROOT / build.CATALOGS).glob("*.js")) == []
+
+
+#: How long a sentence has to be before finding it in the script says which
+#: catalog it came from. Shorter ones, such as "OK" or "MHz", read the same in
+#: several languages or turn up inside the code itself.
+SENTENCE = 40
+
+
+def test_the_script_carries_english_and_no_other_language(built):
+    """English is what every other language falls back to, so it is always
+    there. Every other language is fetched by whoever reads it, and a script
+    carrying them would give every browser five languages nobody reads."""
+    script = built["previously.js"]
+    english = catalogue("en")
+
+    assert [line for line in english.values()
+            if len(line) >= SENTENCE and line not in script] == []
+    for language in LANGUAGES:
+        if language == "en":
+            continue
+        own = [line for line in catalogue(language).values()
+               if len(line) >= SENTENCE and line not in english.values()]
+        assert own, language
+        assert [line for line in own if line in script] == [], language
+
+
+def test_every_other_language_is_a_file_of_its_own(build, built):
+    """One file per language, saying exactly what its source says, on one
+    line, because a browser reads it and nobody else does."""
+    names = sorted(name for name in built if name.startswith(build.CATALOGS + "/"))
+
+    assert names == sorted(f"{build.CATALOGS}/{language}.json"
+                           for language in LANGUAGES if language != "en")
+    for name in names:
+        language = pathlib.PurePosixPath(name).stem
+        assert json.loads(built[name]) == catalogue(language), language
+        assert "\n" not in built[name], language
 
 
 def test_nothing_served_carries_a_comment_of_ours(built):
@@ -145,8 +198,8 @@ def test_the_library_is_loaded_before_what_uses_it(markup):
 
 
 def test_nothing_is_left_inline(markup):
-    """The `translate()` call the markup used to carry is in the bundle now,
-    between the catalogs and the kit, where it has to be."""
+    """`translate()` runs in the bundle, once the chosen catalog is here and
+    before the kit defines anything, which is the one place it can run."""
     assert "<script>" not in markup
 
 

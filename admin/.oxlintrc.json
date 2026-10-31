@@ -97,6 +97,8 @@
       "globals": {
         "window": "readonly",
         "document": "readonly",
+        "customElements": "readonly",
+        "Node": "readonly",
         "localStorage": "readonly",
         "dispatchEvent": "readonly",
         "PointerEvent": "readonly",

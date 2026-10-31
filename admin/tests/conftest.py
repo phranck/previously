@@ -7,6 +7,7 @@ what this helper is for.
 """
 
 import pathlib
+import re
 
 import pytest
 
@@ -16,6 +17,32 @@ from previously.settings import DEFAULTS, Settings
 #: tests read the sources, because that is what somebody edits; what ships is
 #: built out of them and is held to them by test_web.py.
 INTERFACE = pathlib.Path(__file__).resolve().parent.parent / "interface"
+
+#: Every language the interface speaks, by the name of its catalog, English
+#: first because it is the one the others are measured against.
+LANGUAGES = ["en", "de", "fr", "it", "es", "sv"]
+
+#: One entry of a catalog: a quoted key, a colon, a quoted sentence.
+ENTRY = re.compile(r'^\s*"([^"]+)":\s*"(.*)",\s*$')
+
+
+def catalogue(language):
+    """Every entry in one language, read out of its catalog in `interface/lang/`.
+
+    @param language - One of LANGUAGES.
+    @returns dict of each key to its sentence, in the order the catalog holds
+      them.
+
+    The catalogs are read as text rather than run, because this suite has no
+    JavaScript in it and one entry per line is all that needs to be understood.
+    """
+    text = (INTERFACE / "lang" / f"{language}.js").read_text(encoding="utf-8")
+    found = {}
+    for line in text.splitlines():
+        match = ENTRY.match(line)
+        if match:
+            found[match.group(1)] = match.group(2)
+    return found
 
 
 def page_source():

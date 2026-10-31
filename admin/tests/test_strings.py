@@ -5,22 +5,15 @@ invisible: a missing entry falls back to English, so the interface goes on
 working and one line of it is in the wrong language. Nothing on the screen says
 so. These tests are what says so.
 
-The catalogs are read as text rather than run, because this suite has no
-JavaScript in it and one entry per line is all that needs to be understood.
+They read the sources in `interface/lang/`, whatever shape the catalogs ship
+in, and `test_web.py` holds what ships to those sources.
 """
 
 import re
 
 import pytest
 
-from conftest import INTERFACE, page_source
-
-#: Where the catalogs live, English first because it is the one the others
-#: are measured against.
-LANGUAGES = ["en", "de", "fr", "it", "es", "sv"]
-
-#: One entry of a catalog: a quoted key, a colon, a quoted sentence.
-ENTRY = re.compile(r'^\s*"([^"]+)":\s*"(.*)",\s*$')
+from conftest import INTERFACE, LANGUAGES, catalogue, page_source
 
 #: What fills a place in a sentence, such as `{machine}`.
 PLACE = re.compile(r"\{(\w+)\}")
@@ -37,17 +30,6 @@ TOLD = re.compile(r'told\(\s*"([^"]+)"')
 #: Previous gives each type. The page keeps that table by hand, so it is read
 #: here rather than derived.
 KIND_NOTES = re.compile(r'^  (\d+): "(editor\.machine\.note\.[\w-]+)",$', re.M)
-
-
-def catalogue(language):
-    """@returns dict of every entry in one language."""
-    text = (INTERFACE / "lang" / f"{language}.js").read_text(encoding="utf-8")
-    found = {}
-    for line in text.splitlines():
-        match = ENTRY.match(line)
-        if match:
-            found[match.group(1)] = match.group(2)
-    return found
 
 
 @pytest.fixture(scope="module")

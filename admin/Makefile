@@ -32,9 +32,10 @@ help:
 kit:
 	$(PYTHON) ../design/build.py
 
-# What ships: one script, one stylesheet and a markup with no comments in it,
-# out of interface/. Needs esbuild, which the Pi never does, because what this
-# writes is committed.
+# What ships: one script, one stylesheet, a markup with no comments in it and a
+# catalog for each language the script does not carry, out of interface/.
+# Needs esbuild and node, which the Pi never does, because what this writes is
+# committed.
 web:
 	$(PYTHON) build_web.py
 
