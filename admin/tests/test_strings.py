@@ -369,3 +369,49 @@ def test_every_menu_letter_is_in_the_word_beside_it(language):
             assert shown in words, shown
             assert words[key].lower() in words[shown].lower(), (
                 key, words[key], words[shown])
+
+
+#: The strings that speak of downloading something, by key: a system, by
+#: the Installer, and Previous, by the Update.
+DOWNLOAD_KEYS = [
+    "button.fetch",
+    "ask.fetch.title",
+    "installer.doing.fetching",
+    "told.setup.asked.fetch",
+    "told.setup.cannot-fetch",
+    "ask.forget.again",
+    "ask.install.system",
+    "installer.emulator.what.update",
+]
+
+#: What each language says for a download.
+DOWNLOAD_WORD = {
+    "en": r"download",
+    "de": r"download|herunter",
+    "sv": r"ladda|laddar|laddas|nedladdning",
+    "fr": r"télécharg",
+    "it": r"scaric",
+    "es": r"descarg",
+}
+
+#: What the same job was called before it was called a download.
+FETCH_WORD = {
+    "en": r"fetch|\bbrings\b",
+    "de": r"(?<!herunter)(?<!herunterge)laden\b|\bbringt\b",
+    "sv": r"hämt",
+    "fr": r"\bapporte\b",
+    "it": r"\bporta\b",
+    "es": r"\btrae\b",
+}
+
+
+@pytest.mark.parametrize("language", sorted(DOWNLOAD_WORD))
+def test_a_download_is_called_a_download(language):
+    """Whatever the interface downloads, a system or Previous, it says
+    download in each language's words, as the software directory's button
+    does."""
+    words = catalogue(language)
+
+    for key in DOWNLOAD_KEYS:
+        assert re.search(DOWNLOAD_WORD[language], words[key], re.I), (key, words[key])
+        assert not re.search(FETCH_WORD[language], words[key], re.I), (key, words[key])

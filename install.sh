@@ -350,8 +350,8 @@ fetch_admin_package() {
       || abort "Could not build the admin package."
   else
     ADMIN_PACKAGE="$(mktemp -d)/${PACKAGE_FILE}"
-    quietly "Fetching the admin tool" curl -fsSL -o "$ADMIN_PACKAGE" "$PACKAGE_URL" \
-      || abort "Could not fetch ${PACKAGE_URL}."
+    quietly "Downloading the admin tool" curl -fsSL -o "$ADMIN_PACKAGE" "$PACKAGE_URL" \
+      || abort "Could not download ${PACKAGE_URL}."
     undo "remove the downloaded package" "rm -f $(printf '%q' "$ADMIN_PACKAGE")"
   fi
 }
@@ -496,7 +496,7 @@ step_label() {
 # are filled with sizes.
 doing_label() {
   case "$1" in
-    fetching) echo "Fetching {done} of {of}." ;;
+    fetching) echo "Downloading {done} of {of}." ;;
     unpacking) echo "Unpacking {done} of {of}." ;;
     copying) echo "Copying {done} of {of}." ;;
     checking) echo "Checking what arrived." ;;
