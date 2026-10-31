@@ -15,13 +15,7 @@ nx-slider {
   /* Lined up on the trough rather than on the whole scale, so the unit sits
      beside the knob and not beside the ticks above it. */
   align-items: end;
-  gap: 8px;
-}
-
-/* The trough with its ticks under it. The width is stated here so both take it
-   from one place and a tick stands under the knob rather than beside it. */
-nx-slider .scale {
-  --knob-width: 22px;
+  gap: var(--slider-gap);
 }
 
 /* The trough. Its checker of #555555 and #aaaaaa reads as a gray halfway
@@ -36,7 +30,7 @@ nx-slider .trough {
   height: var(--scroller);
   border: var(--edge-border) solid;
   border-image: var(--sunken);
-  background: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 2px 2px;
+  background: var(--trough);
   cursor: default;
 }
 
@@ -45,7 +39,7 @@ nx-slider .knob {
   top: 0;
   bottom: 0;
   left: 0;
-  width: var(--knob-width);
+  width: var(--slider-knob);
   background: var(--light);
   border: var(--edge-border) solid;
   border-image: var(--raised);
@@ -65,13 +59,10 @@ nx-slider .knob::after {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 5px;
-  height: 5px;
-  margin: -3px 0 0 -3px;
-  border-radius: 50%;
-  border: 1px solid var(--dark);
-  border-bottom-color: var(--white);
-  border-right-color: var(--white);
+  width: var(--dimple-size);
+  height: var(--dimple-size);
+  margin: calc(var(--dimple-size) / -2) 0 0 calc(var(--dimple-size) / -2);
+  background: var(--dimple);
 }
 
 /* The ticks, one over each step, saying what the scale is made of before
@@ -81,7 +72,7 @@ nx-slider .knob::after {
 nx-slider .ticks {
   position: relative;
   height: var(--status-line);
-  margin-bottom: 2px;
+  margin-bottom: var(--tick-gap);
 }
 
 nx-slider .tick {
@@ -107,8 +98,8 @@ nx-slider .tick::before {
   position: absolute;
   top: 100%;
   left: 50%;
-  width: 1px;
-  height: 3px;
+  width: var(--tick-line);
+  height: var(--tick-length);
   background: var(--dark);
 }
 
@@ -121,7 +112,7 @@ nx-slider[fixed] .knob::after { display: none; }
    what the whole control is, and as the ring a button and a text field wear
    rather than as a color of the trough's edge, which is a picture. */
 nx-slider:focus { outline: none; }
-nx-slider:focus-visible .trough { outline: 1px solid var(--black); outline-offset: 1px; }
+nx-slider:focus-visible .trough { outline: var(--focus-ring) solid var(--black); outline-offset: var(--focus-gap); }
 
 /* The unit, said once. The ticks carry figures alone, so this is what makes
    them megahertz rather than megabytes. Set in the smaller type the interface
