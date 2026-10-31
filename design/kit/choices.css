@@ -1,0 +1,32 @@
+/* --- a row of choice cells ----------------------------------------------- */
+
+/* The cells of one group, touching, in the middle of it. The chosen one is
+   white where the others are gray, as the Keyboard module draws it. */
+.choices {
+  display: flex;
+  justify-content: center;
+}
+
+/* One of them. The same raised cell as a Preferences module, which is the
+   one shape this interface gives anything that can be chosen.
+
+   As tall as what stands in it and its padding, rather than a height written
+   down: the letter is the size that button sets, so the tallest of them is
+   what the row is built from, and a number here would be that number plus
+   whatever air was left over. They are in a flex row, so all five take the
+   height of the tallest. */
+.choice {
+  min-width: var(--choice-min);
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  background: var(--light);
+  border: var(--edge-border) solid;
+  border-image: var(--raised);
+  cursor: default;
+  padding: var(--choice-pad-block) var(--choice-pad-inline);
+}
+.choice[chosen] { background: var(--white); }
+
+/* Where the keyboard is, as on a button. */
+.choice:focus-visible { outline: var(--focus-ring) solid var(--black); outline-offset: var(--focus-gap); }

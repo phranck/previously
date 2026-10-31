@@ -29,10 +29,7 @@ input.radio:checked { background-image: var(--radio-on); }
 
 /* Where the keyboard is, as a button shows it. */
 input.switch:focus-visible,
-input.radio:focus-visible {
-  outline: 1px solid var(--black);
-  outline-offset: 1px;
-}
+input.radio:focus-visible { outline: var(--focus-ring) solid var(--black); outline-offset: var(--focus-gap); }
 
 /* A button with its words beside it, in either order, and the words greyed
    with the button when it cannot be used: "Disabling greys the text and

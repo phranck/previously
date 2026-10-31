@@ -54,9 +54,9 @@ Every face the admin sets text in is served from `../admin/web/fonts/`, so the i
 
 The interface is set in [TeX Gyre Heros](https://www.gust.org.pl/projects/e-foundry/tex-gyre/heros), drawn smoothed. NeXT set its interface in Helvetica, and GUST, who make TeX Gyre Heros, offer it as a replacement for Helvetica. `fonts.py` takes the Regular and the Bold from GUST's 2.004 release, checks each against its sum, and writes them into `../admin/web/fonts/` as the release's OpenType files, unchanged. The two tables a browser reads the line from already agree in each face, so nothing in them needs to change. The license goes beside them as `GUST-FONT-LICENSE.txt`.
 
-NeXT's Terminal was set in Ohlfs, a face Keith Ohlfs drew for NeXTSTEP and only ever as bitmaps. The Terminal here, and the code in a document, are set in [Inconsolata](https://github.com/googlefonts/Inconsolata), the outline face closest to it. At 16 pixels its cell is Ohlfs's 8 by 16, its capitals are Ohlfs's 10 pixels, and its zero is slashed as Ohlfs's is. It carries hinting, so it is drawn sharp at every size the desk is drawn at.
+NeXT's Terminal was set in Ohlfs, a face Keith Ohlfs drew for NeXTSTEP and only ever as bitmaps. The Terminal here, a text field, and the code in a document are set in [Inconsolata](https://github.com/googlefonts/Inconsolata), the outline face closest to it. At 16 pixels its cell is Ohlfs's 8 by 16, its capitals are Ohlfs's 10 pixels, and its zero is slashed as Ohlfs's is. It carries hinting, so it is drawn sharp at every size the desk is drawn at.
 
-`fonts.py` takes Inconsolata's Regular and Bold from the 3.000 release, checks each against its sum, and writes them into `../admin/web/fonts/` as WOFF2. The license goes beside them as `OFL.txt`, because the SIL Open Font License lets the faces travel with software only together with it.
+`fonts.py` takes Inconsolata's Regular and Bold from the 3.000 release, checks each against its sum, and writes them into `../admin/web/fonts/` as TrueType, because the F12 menu outside a browser sets its text fields from the same files. The license goes beside them as `OFL.txt`, because the SIL Open Font License lets the faces travel with software only together with it.
 
 ```bash
 python3 fonts.py

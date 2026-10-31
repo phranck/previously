@@ -18,6 +18,10 @@
  *   nx-viewer                          the File Viewer, as four bands in one window
  *   panel                              nx-portrait, nx-row and nx-field, for an info panel
  *   switches                           the switch and the radio button, on the browser's own inputs
+ *   field                              a text field, white, sunken and a line tall
+ *   group                              a titled group, its name set into the groove round it
+ *   list                               a selection list in NeXT's white, the chosen row turned around
+ *   choices                            a row of raised cells, the chosen one white
  *   nx-slider                          a knob in a trough, moving between the steps it is given
  *   nx-chart                           a history of readings as columns of lamps, the newest on the right
  *   nx-leds                            a row of lamps lighting from the left, for a share of something
@@ -2184,7 +2188,7 @@ class NxAsk extends HTMLElement {
         </div>
         <div class="pane">
           <div class="lines"></div>
-          <input class="entry sunken" type="text" spellcheck="false" hidden>
+          <input class="entry" type="text" spellcheck="false" hidden>
           <div class="buttons" style="padding-right:0">
             <button data-answer="no"></button>
             <button data-answer="yes"></button>

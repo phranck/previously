@@ -58,13 +58,13 @@
 }
 @font-face {
   font-family: "Inconsolata";
-  src: url("fonts/Inconsolata-Regular.woff2") format("woff2");
+  src: url("fonts/Inconsolata-Regular.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
 @font-face {
   font-family: "Inconsolata";
-  src: url("fonts/Inconsolata-Bold.woff2") format("woff2");
+  src: url("fonts/Inconsolata-Bold.ttf") format("truetype");
   font-weight: bold;
   font-style: normal;
 }
@@ -213,6 +213,24 @@
      their line's middle, so its arrow meets the middle of their capitals. */
   --return-gap: 7px;
   --return-drop: 1px;
+  /* The ring round whatever the keyboard is at: a black line 1 px wide, 1 px
+     clear of it. */
+  --focus-ring: 1px;
+  --focus-gap: 1px;
+  /* A titled group: its parts 10 px under the middle of its name and 12 px in
+     from its groove, and the groove stopping 6 px short of the name. */
+  --group-air: 10px;
+  --group-pad: 12px;
+  --group-title-gap: 6px;
+  /* A choice cell: never narrower than 60, its words 4 px from its edge above
+     and below and 8 px either side. */
+  --choice-min: 60px;
+  --choice-pad-block: 4px;
+  --choice-pad-inline: 8px;
+  /* A text field: its words 3 px from its edge above and below and 5 px
+     either side. */
+  --field-pad-block: 3px;
+  --field-pad-inline: 5px;
   --dock-width: 68px;    /* 64 of tile and the two-pixel bevel on each side */
   --resize-bar: 8px;     /* 1 shadow, 1 light, 6 face */
   --resize-end: 29px;    /* where the upright divider sits, from either end */

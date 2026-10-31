@@ -39,7 +39,7 @@ INTERFACE = HERE.parent / "admin" / "interface"
 FONTS = HERE.parent / "admin" / "web" / "fonts"
 #: What a face in FONTS can be, by its file's suffix, and the media type it goes
 #: into the mockup as.
-FACE_KINDS = {".woff2": "font/woff2", ".otf": "font/otf"}
+FACE_KINDS = {".ttf": "font/ttf", ".otf": "font/otf"}
 
 #: The kit, in the order its parts go together. Each entry names a source in
 #: kit/, the custom elements that source defines, and what the part is for.
@@ -71,6 +71,10 @@ KIT_PARTS = (
      "the File Viewer, as four bands in one window"),
     ("panel", (), "nx-portrait, nx-row and nx-field, for an info panel"),
     ("switches", (), "the switch and the radio button, on the browser's own inputs"),
+    ("field", (), "a text field, white, sunken and a line tall"),
+    ("group", (), "a titled group, its name set into the groove round it"),
+    ("list", (), "a selection list in NeXT's white, the chosen row turned around"),
+    ("choices", (), "a row of raised cells, the chosen one white"),
     ("slider", (("nx-slider", "NxSlider"),),
      "a knob in a trough, moving between the steps it is given"),
     ("chart", (("nx-chart", "NxChart"),),

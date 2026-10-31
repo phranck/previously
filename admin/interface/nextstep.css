@@ -60,13 +60,13 @@
 }
 @font-face {
   font-family: "Inconsolata";
-  src: url("fonts/Inconsolata-Regular.woff2") format("woff2");
+  src: url("fonts/Inconsolata-Regular.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
 @font-face {
   font-family: "Inconsolata";
-  src: url("fonts/Inconsolata-Bold.woff2") format("woff2");
+  src: url("fonts/Inconsolata-Bold.ttf") format("truetype");
   font-weight: bold;
   font-style: normal;
 }
@@ -215,6 +215,24 @@
      their line's middle, so its arrow meets the middle of their capitals. */
   --return-gap: 7px;
   --return-drop: 1px;
+  /* The ring round whatever the keyboard is at: a black line 1 px wide, 1 px
+     clear of it. */
+  --focus-ring: 1px;
+  --focus-gap: 1px;
+  /* A titled group: its parts 10 px under the middle of its name and 12 px in
+     from its groove, and the groove stopping 6 px short of the name. */
+  --group-air: 10px;
+  --group-pad: 12px;
+  --group-title-gap: 6px;
+  /* A choice cell: never narrower than 60, its words 4 px from its edge above
+     and below and 8 px either side. */
+  --choice-min: 60px;
+  --choice-pad-block: 4px;
+  --choice-pad-inline: 8px;
+  /* A text field: its words 3 px from its edge above and below and 5 px
+     either side. */
+  --field-pad-block: 3px;
+  --field-pad-inline: 5px;
   --dock-width: 68px;    /* 64 of tile and the two-pixel bevel on each side */
   --resize-bar: 8px;     /* 1 shadow, 1 light, 6 face */
   --resize-end: 29px;    /* where the upright divider sits, from either end */
@@ -1243,19 +1261,11 @@ nx-ask .lines p:last-child { margin: 0; }
    the color of the sentence it stands in rather than taking one of its own. */
 nx-ask .lines a { color: inherit; }
 
-/* The line a panel takes an answer on, which is a name or a password. NeXT's
-   text fields are white, sunken and one line tall. Its edge is the `sunken`
-   class in base.css, the edge every sunken surface on the desk is drawn
-   with. */
+/* The question's field spans the panel, under the words. */
 nx-ask .entry {
   width: 100%;
   margin-top: 10px;
-  font: 12px var(--mono);
-  color: var(--black);
-  background: var(--white);
-  padding: 3px 5px;
 }
-nx-ask .entry:focus { outline: 1px solid var(--black); outline-offset: 1px; }
 
 /* The button Return presses carries the Return-key symbol, to the right of its
    label, and it carries it only while Return will press it, which here is
@@ -1550,7 +1560,7 @@ button:disabled { color: var(--dark); cursor: default; }
    focus-visible rather than focus, so a button that was clicked does not keep
    a ring round it: the browser draws one on a click too, and on a panel whose
    only other marking is position that ring reads as naming the default. */
-button:focus-visible { outline: 1px solid var(--black); outline-offset: 1px; }
+button:focus-visible { outline: var(--focus-ring) solid var(--black); outline-offset: var(--focus-gap); }
 
 /* The button carrying a block's purpose is the last one in the row and is
    marked by standing there, which is the only marking the Panels chapter gives
@@ -1652,10 +1662,7 @@ input.radio:checked { background-image: var(--radio-on); }
 
 /* Where the keyboard is, as a button shows it. */
 input.switch:focus-visible,
-input.radio:focus-visible {
-  outline: 1px solid var(--black);
-  outline-offset: 1px;
-}
+input.radio:focus-visible { outline: var(--focus-ring) solid var(--black); outline-offset: var(--focus-gap); }
 
 /* A button with its words beside it, in either order, and the words greyed
    with the button when it cannot be used: "Disabling greys the text and
@@ -1667,6 +1674,140 @@ label.two-state {
   cursor: default;
 }
 label.two-state:has(input:disabled) { color: var(--dark); }
+
+/* --- a text field -------------------------------------------------------- */
+
+/* The line a panel takes an answer on, which is a name or a password. NeXT's
+   text fields are white, sunken and one line tall, and its edge is the one
+   every sunken surface on the desk is drawn with. */
+input.entry {
+  font: var(--text-size) var(--mono);
+  color: var(--black);
+  background: var(--white);
+  padding: var(--field-pad-block) var(--field-pad-inline);
+  border: var(--edge-border) solid;
+  border-image: var(--sunken);
+}
+input.entry:focus { outline: var(--focus-ring) solid var(--black); outline-offset: var(--focus-gap); }
+
+/* --- a titled group ------------------------------------------------------ */
+
+/* What Preferences uses wherever it offers a choice of a few: a groove round
+   the group with its name set into the top of it. Measured off the Keyboard
+   module on the running system: the groove is one row of shadow with one of
+   light inside it. */
+.group {
+  position: relative;
+  margin: 0;
+  /* A fieldset will not go below its content's width without this, which is
+     the one thing about it that is not like any other box. */
+  min-width: 0;
+  /* The groove runs through the middle of the title, so the content begins
+     that half plus the air the original leaves under it. */
+  padding: calc(var(--line) / 2 + var(--group-air)) var(--group-pad) var(--group-pad);
+  border: 0;
+}
+
+/* The groove, drawn here rather than as the fieldset's own border.
+   A browser places that border itself, from the height of the legend, and
+   where its arithmetic falls on half a pixel the line comes out as a blend of
+   two grays across two rows. Measured in Chrome 152: sharp at a title height
+   of 17 and soft at 16, 18 and 20, which is a rule about the browser rather
+   than about this design. Drawn from a length this stylesheet states, it lands
+   where it is put, in every browser and at every size.
+
+   The kit's groove, as base.css states it: two rectangles lit against each
+   other, which is a notch cut into a surface that stays where it is. Not the
+   sunken edge, which says the surface inside it sits lower, and which this
+   group's does not. */
+.group::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--line) / 2) 0 0;
+  border: var(--edge-border) solid;
+  border-image: var(--groove);
+  pointer-events: none;
+}
+
+/* The title, centered, sitting over the groove and carrying the face color so
+   that both rows of it stop at the words. Its own padding is how far short of
+   them they stop. A fieldset cuts its border for a legend and leaves an inset
+   shadow alone, so the light row would otherwise run on behind the word.
+   Taken out of the flow as well, because a legend left in it puts the
+   fieldset's padding box underneath itself, and everything positioned against
+   that box then begins half a title too low. */
+.group legend {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin-inline: auto;
+  padding: 0 var(--group-title-gap);
+  font-size: var(--text-size);
+  line-height: var(--line);
+  background: var(--light);
+}
+
+/* --- a selection list ---------------------------------------------------- */
+
+/* A list of choices, in NeXT's white. One is in force, and the one in force is
+   drawn the way NeXTSTEP drew a selected row, which is the colors turned
+   around rather than a mark beside it. */
+.options {
+  background: var(--white);
+  min-height: 100%;
+}
+
+.option {
+  height: var(--row);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--entry-inset);
+  cursor: default;
+}
+
+.option[chosen] {
+  background: var(--black);
+  color: var(--white);
+}
+
+/* Where the keyboard is: a list takes the arrow keys while it has the focus,
+   which the F12 menu needs, having no pointer to rely on. */
+.options:focus-visible { outline: var(--focus-ring) solid var(--black); outline-offset: var(--focus-gap); }
+
+/* --- a row of choice cells ----------------------------------------------- */
+
+/* The cells of one group, touching, in the middle of it. The chosen one is
+   white where the others are gray, as the Keyboard module draws it. */
+.choices {
+  display: flex;
+  justify-content: center;
+}
+
+/* One of them. The same raised cell as a Preferences module, which is the
+   one shape this interface gives anything that can be chosen.
+
+   As tall as what stands in it and its padding, rather than a height written
+   down: the letter is the size that button sets, so the tallest of them is
+   what the row is built from, and a number here would be that number plus
+   whatever air was left over. They are in a flex row, so all five take the
+   height of the tallest. */
+.choice {
+  min-width: var(--choice-min);
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  background: var(--light);
+  border: var(--edge-border) solid;
+  border-image: var(--raised);
+  cursor: default;
+  padding: var(--choice-pad-block) var(--choice-pad-inline);
+}
+.choice[chosen] { background: var(--white); }
+
+/* Where the keyboard is, as on a button. */
+.choice:focus-visible { outline: var(--focus-ring) solid var(--black); outline-offset: var(--focus-gap); }
 
 /* --- nx-slider ----------------------------------------------------------- */
 

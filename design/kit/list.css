@@ -1,0 +1,26 @@
+/* --- a selection list ---------------------------------------------------- */
+
+/* A list of choices, in NeXT's white. One is in force, and the one in force is
+   drawn the way NeXTSTEP drew a selected row, which is the colors turned
+   around rather than a mark beside it. */
+.options {
+  background: var(--white);
+  min-height: 100%;
+}
+
+.option {
+  height: var(--row);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--entry-inset);
+  cursor: default;
+}
+
+.option[chosen] {
+  background: var(--black);
+  color: var(--white);
+}
+
+/* Where the keyboard is: a list takes the arrow keys while it has the focus,
+   which the F12 menu needs, having no pointer to rely on. */
+.options:focus-visible { outline: var(--focus-ring) solid var(--black); outline-offset: var(--focus-gap); }

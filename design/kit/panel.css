@@ -108,7 +108,7 @@ button:disabled { color: var(--dark); cursor: default; }
    focus-visible rather than focus, so a button that was clicked does not keep
    a ring round it: the browser draws one on a click too, and on a panel whose
    only other marking is position that ring reads as naming the default. */
-button:focus-visible { outline: 1px solid var(--black); outline-offset: 1px; }
+button:focus-visible { outline: var(--focus-ring) solid var(--black); outline-offset: var(--focus-gap); }
 
 /* The button carrying a block's purpose is the last one in the row and is
    marked by standing there, which is the only marking the Panels chapter gives
