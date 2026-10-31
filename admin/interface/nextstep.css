@@ -242,6 +242,9 @@
   --trough: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 2px 2px;
   /* A slider: its knob 22 wide, 8 px from the unit beside it, and the ticks
      over it 2 px above the trough, each a dark line 1 px wide and 3 long. */
+  /* The least a scroller's knob is, however much there is to scroll: below it
+     the knob is no longer a target. */
+  --smallest-knob: 16px;
   --slider-knob: 22px;
   --slider-gap: 8px;
   --tick-gap: 2px;

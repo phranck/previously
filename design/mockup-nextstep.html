@@ -250,6 +250,9 @@
   --trough: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 2px 2px;
   /* A slider: its knob 22 wide, 8 px from the unit beside it, and the ticks
      over it 2 px above the trough, each a dark line 1 px wide and 3 long. */
+  /* The least a scroller's knob is, however much there is to scroll: below it
+     the knob is no longer a target. */
+  --smallest-knob: 16px;
   --slider-knob: 22px;
   --slider-gap: 8px;
   --tick-gap: 2px;
@@ -4132,8 +4135,10 @@ class NxScroller extends HTMLElement {
 
     const overflow = view[how.length] - view[how.showing];
     const room = trough[how.room];
-    const size = Math.max(NxScroller.SMALLEST_KNOB,
-                          room * view[how.showing] / view[how.length]);
+    /* The least a knob is, which base.css states for every scroller, so the
+       F12 menu's scroller reads the same figure. */
+    const smallest = parseFloat(getComputedStyle(this).getPropertyValue("--smallest-knob")) || 0;
+    const size = Math.max(smallest, room * view[how.showing] / view[how.length]);
     knob.style[how.size] = size + "px";
     knob.style[how.edge] = (view[how.along] / overflow) * (room - size) + "px";
   }
@@ -4160,7 +4165,6 @@ class NxScroller extends HTMLElement {
   }
 }
 NxScroller.LINE = 18;            /* how far one press of an arrow moves the view */
-NxScroller.SMALLEST_KNOB = 16;   /* below this the knob is no longer a target */
 NxScroller.ROUNDING = 1;         /* what two sizes rounded to whole pixels can differ by */
 
 /* --- nx-shelf and nx-thing ---------------------------------------------- */

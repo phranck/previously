@@ -1968,8 +1968,10 @@ class NxScroller extends HTMLElement {
 
     const overflow = view[how.length] - view[how.showing];
     const room = trough[how.room];
-    const size = Math.max(NxScroller.SMALLEST_KNOB,
-                          room * view[how.showing] / view[how.length]);
+    /* The least a knob is, which base.css states for every scroller, so the
+       F12 menu's scroller reads the same figure. */
+    const smallest = parseFloat(getComputedStyle(this).getPropertyValue("--smallest-knob")) || 0;
+    const size = Math.max(smallest, room * view[how.showing] / view[how.length]);
     knob.style[how.size] = size + "px";
     knob.style[how.edge] = (view[how.along] / overflow) * (room - size) + "px";
   }
@@ -1996,7 +1998,6 @@ class NxScroller extends HTMLElement {
   }
 }
 NxScroller.LINE = 18;            /* how far one press of an arrow moves the view */
-NxScroller.SMALLEST_KNOB = 16;   /* below this the knob is no longer a target */
 NxScroller.ROUNDING = 1;         /* what two sizes rounded to whole pixels can differ by */
 
 /* --- nx-shelf and nx-thing ---------------------------------------------- */
