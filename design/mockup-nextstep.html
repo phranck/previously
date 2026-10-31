@@ -206,6 +206,10 @@
   --key-size: 11px;
   --mark-size: 16px;
   --mark-gap: 6px;
+  /* A menu entry's edges: a white line along its top, and a shadow along its
+     foot, dark gray with a frame line of black at the very bottom. */
+  --entry-highlight: 1px;
+  --entry-shadow: 2px;
   --dock-width: 68px;    /* 64 of tile and the two-pixel bevel on each side */
   --resize-bar: 8px;     /* 1 shadow, 1 light, 6 face */
   --resize-end: 29px;    /* where the upright divider sits, from either end */
@@ -549,10 +553,11 @@ nx-menu-item {
   /* One line each. An entry is one row tall, so a wrapped one writes over the
      entry below it. */
   white-space: nowrap;
-  border-top: 1px solid var(--white);
+  border-top: var(--entry-highlight) solid var(--white);
   /* One pixel of black at the very bottom, one of gray above it. The later
      shadow is painted under the earlier one, so black wins the last row. */
-  box-shadow: inset 0 -2px 0 var(--dark), inset 0 -1px 0 var(--black);
+  box-shadow: inset 0 calc(-1 * var(--entry-shadow)) 0 var(--dark),
+              inset 0 calc(-1 * var(--frame-line)) 0 var(--black);
   cursor: default;
 }
 nx-menu-item:last-child,

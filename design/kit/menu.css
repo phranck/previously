@@ -58,10 +58,11 @@ nx-menu-item {
   /* One line each. An entry is one row tall, so a wrapped one writes over the
      entry below it. */
   white-space: nowrap;
-  border-top: 1px solid var(--white);
+  border-top: var(--entry-highlight) solid var(--white);
   /* One pixel of black at the very bottom, one of gray above it. The later
      shadow is painted under the earlier one, so black wins the last row. */
-  box-shadow: inset 0 -2px 0 var(--dark), inset 0 -1px 0 var(--black);
+  box-shadow: inset 0 calc(-1 * var(--entry-shadow)) 0 var(--dark),
+              inset 0 calc(-1 * var(--frame-line)) 0 var(--black);
   cursor: default;
 }
 nx-menu-item:last-child,
