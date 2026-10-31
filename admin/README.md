@@ -89,7 +89,7 @@ Nothing is fetched at runtime. The service itself uses only the standard library
 | `build_web.py` | What bundles that into the files a browser is given |
 | `web/` | What the browser gets, and nothing in it is written by hand |
 | `web/vendor/` | The one library this interface takes, with its license |
-| `web/fonts/` | The face the Terminal and the code in a document are set in, with its license |
+| `web/fonts/` | Every face the interface sets text in, with their licenses |
 | `packaging/` | The unit and the default configuration |
 | `display/` | The library that shows Previous sharp on a large monitor |
 

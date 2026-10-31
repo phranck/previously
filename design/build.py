@@ -23,7 +23,7 @@ KIT = HERE / "kit"
 #: The pictures, in the one folder that holds them: the one the admin serves
 #: them from, because a package is built out of admin/ alone. extract.py,
 #: makepng.py and bootpicture.py write there, and the mockup is baked from
-#: there, as it is from the Terminal's face below.
+#: there, as it is from the faces below.
 PARTS = HERE.parent / "admin" / "web" / "parts"
 #: What a picture in PARTS can be, by its file's suffix, and the media type it
 #: goes into the mockup as.
@@ -33,10 +33,13 @@ MOCKUP = HERE / "mockup-nextstep.html"
 #: what is served, because admin/build_web.py is what puts the served files
 #: together out of these and everything else the interface is made of.
 INTERFACE = HERE.parent / "admin" / "interface"
-#: The Terminal's face, which fonts.py puts there. The admin serves these as
-#: files beside the built interface; the mockup carries them inside itself,
-#: like the pictures.
+#: The faces the interface is set in, which fonts.py puts there. The admin
+#: serves these as files beside the built interface; the mockup carries them
+#: inside itself, like the pictures.
 FONTS = HERE.parent / "admin" / "web" / "fonts"
+#: What a face in FONTS can be, by its file's suffix, and the media type it goes
+#: into the mockup as.
+FACE_KINDS = {".woff2": "font/woff2", ".otf": "font/otf"}
 
 #: The kit, in the order its parts go together. Each entry names a source in
 #: kit/, the custom elements that source defines, and what the part is for.
@@ -269,10 +272,10 @@ def properties():
 
 
 def faces(css):
-    """@returns the stylesheet carrying the Terminal's face rather than naming it.
+    """@returns the stylesheet carrying the faces rather than naming them.
 
-    The admin serves the two files out of web/fonts and the stylesheet points
-    at them. The mockup is one document that opens from anywhere, with nothing
+    The admin serves the files out of web/fonts and the stylesheet points at
+    them. The mockup is one document that opens from anywhere, with nothing
     beside it to point at, so there they travel inside it as the pictures do.
 
     @param css - The kit's stylesheet, as stylesheet() returns it.
@@ -281,9 +284,10 @@ def faces(css):
         path = FONTS / match.group(1)
         if not path.is_file():
             raise SystemExit("no %s: run fonts.py first" % path)
-        return data_uri(path, "font/woff2")
+        return data_uri(path, FACE_KINDS[path.suffix])
 
-    return re.sub(r'url\("fonts/([^"]+\.woff2)"\)', carried, css)
+    suffixes = "|".join(re.escape(suffix) for suffix in FACE_KINDS)
+    return re.sub(r'url\("fonts/([^"]+(?:%s))"\)' % suffixes, carried, css)
 
 
 def between(text, marks, block, what):
@@ -326,7 +330,8 @@ def main():
     print("wrote %d lines of stylesheet and %d of script from %d parts, "
           "and baked %d pictures and %d faces into %s"
           % (len(css.splitlines()), len(js.splitlines()), len(KIT_PARTS),
-             len(pictures()), len(list(FONTS.glob("*.woff2"))),
+             len(pictures()),
+             len([path for path in FONTS.iterdir() if path.suffix in FACE_KINDS]),
              MOCKUP.name))
 
 

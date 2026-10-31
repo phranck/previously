@@ -9,7 +9,7 @@
   /* The line is the face's own, which fonts.py sets to 16 px in all three of
      the tables a browser might read it from. Stating a number here would be a
      second answer to that, and the two would part company the day one moved. */
-  font: var(--terminal-size)/normal var(--terminal-font);
+  font: var(--terminal-size)/normal var(--mono);
   white-space: pre-wrap;
   -webkit-user-select: text;
   user-select: text;

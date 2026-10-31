@@ -24,10 +24,10 @@ Ten tools do that work:
 | `controls.py` | Cuts NeXTSTEP's switch and radio button, off and on, out of the two grabs of Preferences in `grabs/`, into `../admin/web/parts/`. |
 | `signs.py` | Draws the information sign and the warning triangle a notification wears beside the Workspace's stop sign. |
 | `mark.py` | Fetches the Previously mark, the icon of its tab and the pictures shown while the Pi starts and shuts down from the website, and writes the admin's copies into `../admin/web/parts/` and `../admin/packaging/`. |
-| `fonts.py` | Fetches Inconsolata and writes the two faces the Terminal is set in, with their license, into `../admin/web/fonts/`. |
+| `fonts.py` | Fetches TeX Gyre Heros, which the interface is set in, and Inconsolata, which code and the Terminal are set in, and writes them with their licenses into `../admin/web/fonts/`. |
 | `build.py` | Puts the kit together, writes the two files the admin serves, and bakes the pictures and those faces into the mockup as data URIs so it stays one file. |
 
-**Every picture the admin shows lives in `../admin/web/parts/`, and nowhere else.** That is the folder the admin serves them from, and a package is built out of `admin/` alone. Every tool here writes into it, apart from the boot picture `mark.py` puts beside the package build, and `build.py` bakes the mockup from it, as it bakes the Terminal's face from `../admin/web/fonts/`. The folder is committed, so the draft works without running any of this. Run it again when a picture needs to change:
+**Every picture the admin shows lives in `../admin/web/parts/`, and nowhere else.** That is the folder the admin serves them from, and a package is built out of `admin/` alone. Every tool here writes into it, apart from the boot picture `mark.py` puts beside the package build, and `build.py` bakes the mockup from it, as it bakes the faces from `../admin/web/fonts/`. The folder is committed, so the draft works without running any of this. Run it again when a picture needs to change:
 
 ```bash
 python3 extract.py ~/nextstep/NS33_2GB.dd screenshot.png
@@ -48,20 +48,24 @@ python3 bootpicture.py next_screen_021.png ../admin/web/parts/nextstation.png
 
 Nothing in it is fixed to one screenshot. The panel is found by its own gray, and the machine by the gap that separates it from the text, so the same call works for either.
 
-## The Terminal's face
+## The faces
 
-NeXT's Terminal was set in Ohlfs, a face Keith Ohlfs drew for NeXTSTEP and only ever as bitmaps. The Terminal here is set in [Inconsolata](https://github.com/googlefonts/Inconsolata), the outline face closest to it. At 16 pixels its cell is Ohlfs's 8 by 16, its capitals are Ohlfs's 10 pixels, and its zero is slashed as Ohlfs's is. It carries hinting, so it is drawn sharp at every size the desk is drawn at.
+Every face the admin sets text in is served from `../admin/web/fonts/`, so the interface looks the same in every browser on every machine. A face named from the machine, such as Helvetica, is a different face wherever the page is opened. `../admin/tests/test_kit.py` fails when a rule draws in a face the stylesheets do not ship.
 
-`fonts.py` takes the Regular and the Bold from the 3.000 release, checks each against its sum, and writes them into `../admin/web/fonts/` as WOFF2. The license goes beside them as `OFL.txt`, because the SIL Open Font License lets the faces travel with software only together with it.
+The interface is set in [TeX Gyre Heros](https://www.gust.org.pl/projects/e-foundry/tex-gyre/heros), drawn smoothed. NeXT set its interface in Helvetica, and GUST, who make TeX Gyre Heros, offer it as a replacement for Helvetica. `fonts.py` takes the Regular and the Bold from GUST's 2.004 release, checks each against its sum, and writes them into `../admin/web/fonts/` as the release's OpenType files, unchanged. The two tables a browser reads the line from already agree in each face, so nothing in them needs to change. The license goes beside them as `GUST-FONT-LICENSE.txt`.
+
+NeXT's Terminal was set in Ohlfs, a face Keith Ohlfs drew for NeXTSTEP and only ever as bitmaps. The Terminal here, and the code in a document, are set in [Inconsolata](https://github.com/googlefonts/Inconsolata), the outline face closest to it. At 16 pixels its cell is Ohlfs's 8 by 16, its capitals are Ohlfs's 10 pixels, and its zero is slashed as Ohlfs's is. It carries hinting, so it is drawn sharp at every size the desk is drawn at.
+
+`fonts.py` takes Inconsolata's Regular and Bold from the 3.000 release, checks each against its sum, and writes them into `../admin/web/fonts/` as WOFF2. The license goes beside them as `OFL.txt`, because the SIL Open Font License lets the faces travel with software only together with it.
 
 ```bash
 python3 fonts.py
 python3 build.py
 ```
 
-The two files are committed, so nothing has to run for the Terminal to be set in them. Run it again to move to a later release, which means changing `RELEASE` and the sums together.
+The files are committed, so nothing has to run for the interface to be set in them. Run it again to move to a later release, which means changing that family's archive and its sums together.
 
-It changes one thing on the way, in metrics rather than in outlines. A font states its line in three tables and a browser picks one of them by platform, and Inconsolata's three disagree: two give a line of 16.8 pixels at the Terminal's size and the third gives 23.3. All three are set to one em, which at 16 pixels is the 16 a row of this interface is. That is also why nothing states the cell: whatever needs it reads it off the face as `1ch` and `1lh`.
+It changes one thing in Inconsolata on the way, in metrics rather than in outlines. A font states its line in three tables and a browser picks one of them by platform, and Inconsolata's three disagree: two give a line of 16.8 pixels at the Terminal's size and the third gives 23.3. All three are set to one em, which at 16 pixels is the 16 a row of this interface is. That is also why nothing states the cell: whatever needs it reads it off the face as `1ch` and `1lh`.
 
 ## The board's picture
 
@@ -98,7 +102,7 @@ python3 build.py
 
 ## The mark
 
-The mark the About Previously panel shows is the website's, drawn by `site/logo.py` in phranck/previous.li: NeXT's cube with the circuit board in place of the N. `mark.py` fetches its `site/logo.png` from `main` and writes it 192 pixels tall into `../admin/web/parts/Previously.png`, four times the 48 an icon is drawn at. It also copies the website's `site/favicon.ico` into `../admin/web/parts/favicon.ico`, which the admin's page names as the icon of its tab, and its `site/splash-<board>.png` and `site/splash-shutdown-<board>.png` into `../admin/packaging/`, the pictures the package shows while the Pi starts and while it shuts down. There is a pair for every board in the admin's `hardware.BOARDS`, and `splash.stems()` names them. They sit beside the package build rather than among the parts, because the admin does not show them. `site/splash.py` draws them at the size and in the colours they are shown in, so they are copied byte for byte. Run it again whenever the website's mark or those pictures change:
+The mark the About Previously panel shows is the website's, drawn by `site/logo.py` in phranck/previous.li: NeXT's cube with the circuit board in place of the N. `mark.py` fetches its `site/logo.png` from `main` and writes it 192 pixels tall into `../admin/web/parts/Previously.png`, four times the 48 an icon is drawn at. It also copies the website's `site/favicon.ico` into `../admin/web/parts/favicon.ico`, which the admin's page names as the icon of its tab, and its `site/splash-<board>.png` and `site/splash-shutdown-<board>.png` into `../admin/packaging/`, the pictures the package shows while the Pi starts and while it shuts down. There is a pair for every board in the admin's `hardware.BOARDS`, and `splash.stems()` names them. They sit beside the package build rather than among the parts, because the admin does not show them. `site/splash.py` draws them at the size and in the colors they are shown in, so they are copied byte for byte. Run it again whenever the website's mark or those pictures change:
 
 ```bash
 python3 mark.py
@@ -157,7 +161,7 @@ An application joins the dock when its icon is dragged from the File Viewer, or 
 
 A tile leaves the dock when it is carried off the column and let go. While it is carried, a dimmed copy stands in its slot, and that copy goes the moment letting go would take the tile out. A tile whose application is running stays unless Command is held, and the Workspace tile never moves. The dock raises `nx-undock` for a tile that left. This is what the [NeXTSTEP User's Guide](https://bitsavers.org/pdf/next/NeXTSTEP_User_Guide_1994.pdf) describes on pages 60 and 61.
 
-## A note on the icons and the face
+## A note on the icons and the faces
 
 The pictures in `../admin/web/parts/` are NeXT's, and NeXT's assets belong to Apple. They stay, and this repository can carry them: that was weighed and decided in #8 on 14 September 2026.
 
@@ -167,4 +171,4 @@ The four circuit boards in `board-*.svg` are this repository's own, apart from t
 
 The tools are ours and hold none of it. `extract.py`, `bootpicture.py`, `ufs.py` and `nxtiff.py` know how to read a NeXT filesystem, a NeXT TIFF and a NeXT screen, which is a description of formats rather than a copy of anything.
 
-The face is not NeXT's. Inconsolata is published under the SIL Open Font License 1.1, which is in `../admin/web/fonts/OFL.txt` beside the two files.
+The faces are not NeXT's. TeX Gyre Heros is published under the GUST Font License, which is in `../admin/web/fonts/GUST-FONT-LICENSE.txt` beside its two files, and Inconsolata under the SIL Open Font License 1.1, which is in `../admin/web/fonts/OFL.txt` beside its two.

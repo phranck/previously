@@ -26,19 +26,38 @@
      Auswahl              eine weisse Flaeche hinter Icon und Namen, 5 px Radius
    --------------------------------------------------------------------------- */
 
-/* --- Inconsolata, which is what the Terminal is set in -------------------- */
+/* --- the faces, which the admin ships ------------------------------------ */
 
-/* NeXT's Terminal was set in Ohlfs, which was only ever drawn as bitmaps.
-   Inconsolata is the outline face closest to it: at 16 px its cell is
-   Ohlfs's 8 by 16, its capitals are Ohlfs's 10 px, and its zero is slashed as
-   Ohlfs's is. It carries hinting, so it is drawn sharp at whatever size the
-   desk is drawn at. design/fonts.py says where the two files come from, and
-   the license is beside them in fonts/.
+/* Every face this interface sets text in is served from beside it, so the
+   interface looks the same in every browser on every machine. A face named
+   from the machine is a different face wherever the page is opened, and
+   where a machine has none, whatever stands in for it is different again.
+   design/fonts.py says where the files come from, and the licenses are
+   beside them in fonts/.
 
-   It has no italic, so a shell's italic is drawn by the browser.
+   TeX Gyre Heros is what the interface is set in. NeXT's interface face was
+   Helvetica, and GUST, who make TeX Gyre Heros, offer it as a replacement for
+   Helvetica. It comes in Regular and Bold, which is all the interface sets,
+   so an italic in a document is slanted by the browser.
 
-   Everything else in this stylesheet is set in the host's own type, because
-   NeXT's interface face is Helvetica and every machine has one. */
+   Inconsolata is what code and the Terminal are set in. NeXT's Terminal was
+   set in Ohlfs, which was only ever drawn as bitmaps. Inconsolata is the
+   outline face closest to it: at 16 px its cell is Ohlfs's 8 by 16, its
+   capitals are Ohlfs's 10 px, and its zero is slashed as Ohlfs's is. It
+   carries hinting, so it is drawn sharp at whatever size the desk is drawn
+   at. It has no italic, so a shell's italic is drawn by the browser. */
+@font-face {
+  font-family: "TeX Gyre Heros";
+  src: url("fonts/texgyreheros-regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "TeX Gyre Heros";
+  src: url("fonts/texgyreheros-bold.otf") format("opentype");
+  font-weight: bold;
+  font-style: normal;
+}
 @font-face {
   font-family: "Inconsolata";
   src: url("fonts/Inconsolata-Regular.woff2") format("woff2");
@@ -107,11 +126,14 @@
   --slot-top: 2px;       /* air above the icon, inside the mark */
   --name-air: 3px;       /* air above and below a name, inside the mark */
 
-  --font: Helvetica, "Helvetica Neue", Arial, sans-serif;
-  --mono: Menlo, "DejaVu Sans Mono", monospace;
-  /* The Terminal's face, and the size at which its cell is 8 px across and
-     16 px down, so a window of 80 columns by 24 rows holds 640 by 384 of
-     text. The desk draws it larger by zooming, as it does everything else.
+  /* The two faces above. What follows each is what a browser draws where its
+     file failed to load, never what the interface is meant to be set in. */
+  --font: "TeX Gyre Heros", Helvetica, Arial, sans-serif;
+  --mono: "Inconsolata", Menlo, "DejaVu Sans Mono", monospace;
+  /* The size the Terminal is set at in --mono, at which its cell is 8 px
+     across and 16 px down, so a window of 80 columns by 24 rows holds 640 by
+     384 of text. The desk draws it larger by zooming, as it does everything
+     else.
 
      The cell is not stated anywhere, because the face already carries it:
      the width is half an em, and the line is the --line the rest of the
@@ -119,7 +141,6 @@
      as 1ch and 1lh, so there is no second copy of them to fall out of step.
      design/fonts.py is where the 16 is settled, and it says why it has to be
      settled there. */
-  --terminal-font: "Inconsolata", var(--mono);
   --terminal-size: 16px;
   /* What the interface is set at. NeXTSTEP put the names under its icons at
      this size too, and the menu entries and the window titles with them:
@@ -271,7 +292,12 @@ body {
      anyway. */
   -webkit-user-select: none;
   user-select: none;
-  -webkit-font-smoothing: none;
+  /* Smoothed at the pixel rather than at the subpixel, which is the look the
+     interface was chosen in, on 30 October 2026, over the same desk drawn
+     unsmoothed. Both properties act on macOS alone, where a browser would
+     otherwise use subpixel smoothing wherever it can. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* A custom element carries its own display, and that beats what the hidden
@@ -1878,7 +1904,7 @@ nx-leds .says::after {
   /* The line is the face's own, which fonts.py sets to 16 px in all three of
      the tables a browser might read it from. Stating a number here would be a
      second answer to that, and the two would part company the day one moved. */
-  font: var(--terminal-size)/normal var(--terminal-font);
+  font: var(--terminal-size)/normal var(--mono);
   white-space: pre-wrap;
   -webkit-user-select: text;
   user-select: text;
