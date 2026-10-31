@@ -31,7 +31,7 @@ nx-popup .popup-mark {
   height: 6px;
   margin: 0 2px 2px 0;
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   box-shadow: 2px 2px 0 var(--dark);
 }

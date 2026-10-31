@@ -20,7 +20,7 @@ nx-chart .field {
   padding: 6px;
   overflow: hidden;
   background: var(--black);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
 }
 

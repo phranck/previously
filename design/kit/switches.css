@@ -14,8 +14,8 @@ input.switch,
 input.radio {
   appearance: none;
   flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
+  width: var(--two-state);
+  height: var(--two-state);
   margin: 0;
   border: 0;
   background: var(--light) no-repeat;
@@ -40,7 +40,7 @@ input.radio:focus-visible {
 label.two-state {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--two-state-gap);
   cursor: default;
 }
 label.two-state:has(input:disabled) { color: var(--dark); }

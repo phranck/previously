@@ -202,6 +202,19 @@
      foot, dark gray with a frame line of black at the very bottom. */
   --entry-highlight: 1px;
   --entry-shadow: 2px;
+  /* A button: its words 3 px from its edge above and below and 14 px either
+     side, moved 1 px right and down while it is pressed. */
+  --button-pad-block: 3px;
+  --button-pad-inline: 14px;
+  --button-press: 1px;
+  /* A switch and a radio button, NeXTSTEP's 15 by 15 bitmaps, 7 px from the
+     words beside them. */
+  --two-state: 15px;
+  --two-state-gap: 7px;
+  /* The Return-key symbol, 7 px after a button's words and 1 px lower than
+     their line's middle, so its arrow meets the middle of their capitals. */
+  --return-gap: 7px;
+  --return-drop: 1px;
   --dock-width: 68px;    /* 64 of tile and the two-pixel bevel on each side */
   --resize-bar: 8px;     /* 1 shadow, 1 light, 6 face */
   --resize-end: 29px;    /* where the upright divider sits, from either end */
@@ -398,6 +411,9 @@ body {
    a pseudo-element and some surfaces are drawn as one. Whatever draws an edge
    reads it from here, after its own `border`, which would otherwise reset it. */
 :root {
+  /* The border an edge picture is laid over: 1 px, the room a box gives its
+     edge, under the picture's outer line; the inner one lies on the padding. */
+  --edge-border: 1px;
   --sunken: var(--edge-sunken) 2 / 2px / 0 stretch;
   --raised: var(--edge-raised) 2 / 2px / 0 stretch;
   --groove: var(--edge-groove) 2 / 2px / 0 stretch;
@@ -406,14 +422,14 @@ body {
 .sunken,
 nx-portrait,
 nx-scroller {
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
 }
 
 .raised,
 button,
 nx-tile {
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
 }
 
@@ -663,7 +679,7 @@ nx-popup .popup-mark {
   height: 6px;
   margin: 0 2px 2px 0;
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   box-shadow: 2px 2px 0 var(--dark);
 }
@@ -874,7 +890,7 @@ nx-scroller .knob {
   left: 0; right: 0;
   top: 0;
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   cursor: default;
 }
@@ -909,7 +925,7 @@ nx-scroller .step {
   display: grid;
   place-items: center;
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   cursor: default;
 }
@@ -1261,8 +1277,8 @@ nx-ask button.returns::after {
   display: inline-block;
   width: 15px;
   height: 10px;
-  margin-left: 7px;
-  transform: translateY(1px);
+  margin-left: var(--return-gap);
+  transform: translateY(var(--return-drop));
   background: var(--return-key) no-repeat;
 }
 
@@ -1513,13 +1529,14 @@ button {
   font: var(--text-size) var(--font);
   color: var(--black);
   background: var(--light);
-  padding: 3px 14px;
+  padding: var(--button-pad-block) var(--button-pad-inline);
   cursor: pointer;
 }
 /* Pressed, a button wears the sunken edge instead. */
 button:active {
   border-image: var(--sunken);
-  padding: 4px 13px 2px 15px;
+  padding: calc(var(--button-pad-block) + var(--button-press)) calc(var(--button-pad-inline) - var(--button-press))
+           calc(var(--button-pad-block) - var(--button-press)) calc(var(--button-pad-inline) + var(--button-press));
 }
 
 /* One that cannot be pressed, dimmed rather than taken away. The same gray a
@@ -1587,7 +1604,7 @@ nx-window:not([fixed]) .buttons:last-child { padding-bottom: var(--pane-pad); }
   gap: 7px;
   padding: 2px 6px;
   background: var(--notice);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
   font-weight: bold;
   text-align: center;
@@ -1620,8 +1637,8 @@ input.switch,
 input.radio {
   appearance: none;
   flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
+  width: var(--two-state);
+  height: var(--two-state);
   margin: 0;
   border: 0;
   background: var(--light) no-repeat;
@@ -1646,7 +1663,7 @@ input.radio:focus-visible {
 label.two-state {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--two-state-gap);
   cursor: default;
 }
 label.two-state:has(input:disabled) { color: var(--dark); }
@@ -1687,7 +1704,7 @@ nx-slider .trough {
      would run off the end. */
   container-type: inline-size;
   height: var(--scroller);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
   background: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 2px 2px;
   cursor: default;
@@ -1700,7 +1717,7 @@ nx-slider .knob {
   left: 0;
   width: var(--knob-width);
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   /* Moved with a transform, so traveling between two steps costs the
      compositor and nothing else. */
@@ -1814,7 +1831,7 @@ nx-chart .field {
   padding: 6px;
   overflow: hidden;
   background: var(--black);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
 }
 
@@ -1865,7 +1882,7 @@ nx-leds .lamps {
   gap: var(--led-gap);
   padding: calc((var(--lamps-height) - var(--led-height)) / 2 - 1px) 6px;
   background: var(--black);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
 }
 
