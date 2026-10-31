@@ -562,7 +562,7 @@ Localization and Monitor are two of NeXTSTEP's own fourteen modules. Localizatio
 
 **Updates** is this tool's own as well, and wears the open package with the globe that NeXT drew for `NetInstallHelper.app`, which `design/extract.py` takes out of the disk image. Two radio buttons say whether the Pi looks for updates automatically or manually, and beside the manual one stands a button that has the Pi look once, at once. The button is off while the Pi looks on its own. This setting belongs to the Pi rather than to a browser, because the Pi is what looks: `GET /api/updates` answers it, `POST /api/updates` changes it and needs the password, and `POST /api/updates/look` is the button. A choice the Pi refuses is drawn back to what it holds.
 
-The switches and radio buttons are the browser's own inputs wearing NeXTSTEP's own bitmaps, which `../design/kit/switches.css` lays on them. The Application Kit compiled `NXswitch` and `NXradio` into its library rather than shipping them as files, so `../design/controls.py` cuts all four out of two grabs of Preferences on the running system.
+The switches and radio buttons are the browser's own inputs wearing NeXTSTEP's own bitmaps, which `../design/kit/switches.css` lays on them. The Application Kit compiled `NXswitch` and `NXradio` into its library rather than shipping them as files, so `../design/controls.py` cuts all four out of two grabs of Preferences on the running system. The dimple on a scroller's and a slider's knob and the scroller's arrows come out of the same grabs the same way.
 
 ## Activity Monitor
 

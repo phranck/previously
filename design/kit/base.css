@@ -231,6 +231,23 @@
      either side. */
   --field-pad-block: 3px;
   --field-pad-inline: 5px;
+  /* A scroller's and a slider's parts: the dimple on a knob, NeXTSTEP's 6 by 6,
+     set a pixel short of the knob's middle as the original is; an arrow, 9 by
+     9; and the trough, a checker of the dark and the light gray two pixels on
+     a side, which reads as a gray halfway between them. */
+  --dimple-size: 6px;
+  --arrow-size: 9px;
+  --trough: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 2px 2px;
+  /* A slider: its knob 22 wide, 8 px from the unit beside it, and the ticks
+     over it 2 px above the trough, each a dark line 1 px wide and 3 long. */
+  /* The least a scroller's knob is, however much there is to scroll: below it
+     the knob is no longer a target. */
+  --smallest-knob: 16px;
+  --slider-knob: 22px;
+  --slider-gap: 8px;
+  --tick-gap: 2px;
+  --tick-line: 1px;
+  --tick-length: 3px;
   --dock-width: 68px;    /* 64 of tile and the two-pixel bevel on each side */
   --resize-bar: 8px;     /* 1 shadow, 1 light, 6 face */
   --resize-end: 29px;    /* where the upright divider sits, from either end */
@@ -299,6 +316,11 @@
      cuts out of two grabs of Preferences on the running system. */
   --switch: url("parts/switch.png");
   --switch-on: url("parts/switch-on.png");
+  --dimple: url("parts/dimple.png");
+  --arrow-up: url("parts/arrow-up.png");
+  --arrow-down: url("parts/arrow-down.png");
+  --arrow-left: url("parts/arrow-left.png");
+  --arrow-right: url("parts/arrow-right.png");
   --radio: url("parts/radio.png");
   --radio-on: url("parts/radio-on.png");
   /* The three edges below, which ../../design/edges.py draws in the grays

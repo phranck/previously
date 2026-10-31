@@ -1968,8 +1968,10 @@ class NxScroller extends HTMLElement {
 
     const overflow = view[how.length] - view[how.showing];
     const room = trough[how.room];
-    const size = Math.max(NxScroller.SMALLEST_KNOB,
-                          room * view[how.showing] / view[how.length]);
+    /* The least a knob is, which base.css states for every scroller, so the
+       F12 menu's scroller reads the same figure. */
+    const smallest = parseFloat(getComputedStyle(this).getPropertyValue("--smallest-knob")) || 0;
+    const size = Math.max(smallest, room * view[how.showing] / view[how.length]);
     knob.style[how.size] = size + "px";
     knob.style[how.edge] = (view[how.along] / overflow) * (room - size) + "px";
   }
@@ -1996,7 +1998,6 @@ class NxScroller extends HTMLElement {
   }
 }
 NxScroller.LINE = 18;            /* how far one press of an arrow moves the view */
-NxScroller.SMALLEST_KNOB = 16;   /* below this the knob is no longer a target */
 NxScroller.ROUNDING = 1;         /* what two sizes rounded to whole pixels can differ by */
 
 /* --- nx-shelf and nx-thing ---------------------------------------------- */
@@ -2773,11 +2774,17 @@ class NxSlider extends HTMLElement {
       this.steps.map((step, at) => {
         const tick = document.createElement("span");
         tick.className = "tick";
-        tick.textContent = step.tick ?? "";
+        /* The figure is centered on the tick by a transform of its own, so the
+           tick and its line stand where a box does, on a whole pixel, rather
+           than half a pixel along and drawn blurred across two. */
+        const figure = document.createElement("span");
+        figure.className = "figure";
+        figure.textContent = step.tick ?? "";
+        tick.append(figure);
         /* Under the middle of the knob when it stands on this step, which is
            half a knob in plus that step's share of the room it travels. */
         tick.style.left =
-          `calc(var(--knob-width) / 2 + (100% - var(--knob-width)) * ${at / last})`;
+          `calc(var(--slider-knob) / 2 + (100% - var(--slider-knob)) * ${at / last})`;
         return tick;
       })));
   }
@@ -2807,9 +2814,11 @@ class NxSlider extends HTMLElement {
     /* In per cent of the room the knob has to travel, which is the trough less
        the knob itself. Stated that way rather than in pixels, so it is right
        before the trough has been laid out and stays right when it changes
-       width. */
+       width. Rounded to a whole pixel, because a transform is not put on
+       pixels the way a box is, and a knob standing half a pixel along is
+       drawn blurred across two. */
     this.knob.style.transform =
-      `translateX(calc((100cqw - var(--knob-width)) * ${at / last}))`;
+      `translateX(round(nearest, calc((100cqw - var(--slider-knob)) * ${at / last}), 1px))`;
     this.setAttribute("aria-valuenow", String(at));
     this.setAttribute("aria-valuetext", this.steps[at]?.label ?? "");
 
