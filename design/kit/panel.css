@@ -87,13 +87,14 @@ button {
   font: var(--text-size) var(--font);
   color: var(--black);
   background: var(--light);
-  padding: 3px 14px;
+  padding: var(--button-pad-block) var(--button-pad-inline);
   cursor: pointer;
 }
 /* Pressed, a button wears the sunken edge instead. */
 button:active {
   border-image: var(--sunken);
-  padding: 4px 13px 2px 15px;
+  padding: calc(var(--button-pad-block) + var(--button-press)) calc(var(--button-pad-inline) - var(--button-press))
+           calc(var(--button-pad-block) - var(--button-press)) calc(var(--button-pad-inline) + var(--button-press));
 }
 
 /* One that cannot be pressed, dimmed rather than taken away. The same gray a

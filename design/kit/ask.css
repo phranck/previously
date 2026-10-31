@@ -154,8 +154,8 @@ nx-ask button.returns::after {
   display: inline-block;
   width: 15px;
   height: 10px;
-  margin-left: 7px;
-  transform: translateY(1px);
+  margin-left: var(--return-gap);
+  transform: translateY(var(--return-drop));
   background: var(--return-key) no-repeat;
 }
 
