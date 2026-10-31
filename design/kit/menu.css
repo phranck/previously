@@ -6,16 +6,16 @@
 nx-menu {
   position: absolute;
   display: block;
-  /* As wide as its longest entry, and never narrower than the 148 the
-     original's own menu measures. NeXTSTEP's menus were the width of what
-     was in them: the Workspace's holds ten entries and Preferences' five,
-     and neither wraps. An entry that wraps writes its second line over the
-     next one, which is what a fixed width does the first time a wording
-     runs long. */
-  min-width: 148px;
+  /* As wide as its longest entry, and never narrower than the original's own
+     menu (--menu-width-min). NeXTSTEP's menus were the width of what was in
+     them: the Workspace's holds ten entries and Preferences' five, and
+     neither wraps. An entry that wraps writes its second line over the next
+     one, which is what a fixed width does the first time a wording runs
+     long. */
+  min-width: var(--menu-width-min);
   width: max-content;
   z-index: 60;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
   background: var(--light);
 }
 
@@ -24,7 +24,7 @@ nx-menu-item {
   height: var(--row);
   display: flex;
   align-items: center;
-  padding: 0 6px;
+  padding: 0 var(--entry-inset);
 }
 
 nx-menu .title {
@@ -41,7 +41,7 @@ nx-menu .title {
   text-overflow: ellipsis;
   display: block;
   line-height: var(--row);
-  padding: 0 6px;
+  padding: 0 var(--entry-inset);
   /* And it has no say in how wide the menu is. A title is the name of a
      thing, which can be any length, while the entries are what the menu is
      for. Zero takes it out of the width the entries decide, and the minimum
@@ -58,10 +58,11 @@ nx-menu-item {
   /* One line each. An entry is one row tall, so a wrapped one writes over the
      entry below it. */
   white-space: nowrap;
-  border-top: 1px solid var(--white);
+  border-top: var(--entry-highlight) solid var(--white);
   /* One pixel of black at the very bottom, one of gray above it. The later
      shadow is painted under the earlier one, so black wins the last row. */
-  box-shadow: inset 0 -2px 0 var(--dark), inset 0 -1px 0 var(--black);
+  box-shadow: inset 0 calc(-1 * var(--entry-shadow)) 0 var(--dark),
+              inset 0 calc(-1 * var(--frame-line)) 0 var(--black);
   cursor: default;
 }
 nx-menu-item:last-child,
@@ -97,9 +98,9 @@ nx-menu-item[disabled]:active { background: none; color: var(--dark); }
 nx-menu-item .mark { display: none; }
 nx-menu[with-icons] nx-menu-item .mark {
   display: block;
-  width: 16px; height: 16px;
+  width: var(--mark-size); height: var(--mark-size);
   background-size: contain;
-  margin-right: 6px;
+  margin-right: var(--mark-gap);
   flex: 0 0 auto;
 }
 
@@ -113,5 +114,5 @@ nx-menu[context] .title { cursor: default; }
 
 /* Pushed to the right edge on its own, so an entry carrying a picture keeps
    the picture and its words together on the left. */
-nx-menu-item .key { font-size: 11px; margin-left: auto; }
+nx-menu-item .key { font-size: var(--key-size); margin-left: auto; }
 

@@ -51,6 +51,6 @@ nx-popup .popup-button:disabled .popup-mark {
   position: absolute;
   z-index: 95;
   width: max-content;
-  border: 1px solid var(--black);
+  border: var(--frame-line) solid var(--black);
   background: var(--light);
 }
