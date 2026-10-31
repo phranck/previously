@@ -10,8 +10,8 @@ there as the release's OpenType files, unchanged.
 Inconsolata, Regular and Bold, which code and the Terminal are set in. It is
 a monospaced outline face under the SIL Open Font License, and its release
 carries hinting, so it is drawn sharp at whatever size the desk is drawn at.
-It goes there as WOFF2, with one change in metrics rather than in outlines,
-and line() says why that change is needed.
+It goes there as TrueType, with one change in metrics rather than in
+outlines, and line() says why that change is needed.
 
     python3 fonts.py
 """
@@ -174,11 +174,10 @@ def main():
         # the same bytes and git sees nothing to commit.
         font = TTFont(io.BytesIO(body), recalcTimestamp=False)
         line(font)
-        # WOFF2, because these are served over a network to a browser and
-        # nothing else ever opens them. It keeps the hinting, which is a table
-        # like any other.
-        font.flavor = "woff2"
-        font.save(SERVED / (name + ".woff2"))
+        # TrueType rather than WOFF2, for the reason TeX Gyre Heros is
+        # OpenType: the F12 menu sets its text fields from these same files,
+        # and a browser reads either.
+        font.save(SERVED / (name + ".ttf"))
         font.close()
     (SERVED / INCONSOLATA_LICENSE).write_bytes(
         download(INCONSOLATA_RELEASE + INCONSOLATA_LICENSE, INCONSOLATA_LICENSE_SUM))

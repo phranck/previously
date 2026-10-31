@@ -1,0 +1,14 @@
+/* --- a text field -------------------------------------------------------- */
+
+/* The line a panel takes an answer on, which is a name or a password. NeXT's
+   text fields are white, sunken and one line tall, and its edge is the one
+   every sunken surface on the desk is drawn with. */
+input.entry {
+  font: var(--text-size) var(--mono);
+  color: var(--black);
+  background: var(--white);
+  padding: var(--field-pad-block) var(--field-pad-inline);
+  border: var(--edge-border) solid;
+  border-image: var(--sunken);
+}
+input.entry:focus { outline: var(--focus-ring) solid var(--black); outline-offset: var(--focus-gap); }

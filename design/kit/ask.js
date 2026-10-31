@@ -77,7 +77,7 @@ class NxAsk extends HTMLElement {
         </div>
         <div class="pane">
           <div class="lines"></div>
-          <input class="entry sunken" type="text" spellcheck="false" hidden>
+          <input class="entry" type="text" spellcheck="false" hidden>
           <div class="buttons" style="padding-right:0">
             <button data-answer="no"></button>
             <button data-answer="yes"></button>
