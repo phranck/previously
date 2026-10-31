@@ -139,6 +139,27 @@ def test_every_face_the_interface_draws_in_is_one_it_ships(build):
     assert sorted(drawn - shipped) == []
 
 
+#: A custom property a script names in a style it writes, without a fallback.
+NAMED_BY_A_SCRIPT = re.compile(r"var\((--[\w-]+)\)")
+
+#: A custom property a script sets on an element itself.
+SET_BY_A_SCRIPT = re.compile(r"setProperty\(\s*[\"'](--[\w-]+)[\"']")
+
+
+def test_every_property_a_script_names_is_declared(build):
+    """The kit's scripts write `var(--name)` into the styles they set, where the
+    stylesheets never see it. One that nothing declares makes the whole value
+    invalid and says nothing: the slider's knob and ticks stood at the start of
+    the trough while its script named `--knob-width` and the stylesheet had it
+    as `--slider-knob`."""
+    script = build.script()
+    named = set(NAMED_BY_A_SCRIPT.findall(script))
+    assert named, "the scripts name no property this can read"
+
+    declared = set(dict(TOKEN.findall(stylesheets(build)))) | set(SET_BY_A_SCRIPT.findall(script))
+    assert sorted(named - declared) == []
+
+
 def test_every_part_of_the_kit_has_a_source(build):
     """A part named in the table with neither a stylesheet nor a script is a
     line nobody ever sees fail."""
