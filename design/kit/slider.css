@@ -34,7 +34,7 @@ nx-slider .trough {
      would run off the end. */
   container-type: inline-size;
   height: var(--scroller);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
   background: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 2px 2px;
   cursor: default;
@@ -47,7 +47,7 @@ nx-slider .knob {
   left: 0;
   width: var(--knob-width);
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   /* Moved with a transform, so traveling between two steps costs the
      compositor and nothing else. */

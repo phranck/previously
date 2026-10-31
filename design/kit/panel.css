@@ -162,7 +162,7 @@ nx-window:not([fixed]) .buttons:last-child { padding-bottom: var(--pane-pad); }
   gap: 7px;
   padding: 2px 6px;
   background: var(--notice);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
   font-weight: bold;
   text-align: center;

@@ -411,6 +411,9 @@ body {
    a pseudo-element and some surfaces are drawn as one. Whatever draws an edge
    reads it from here, after its own `border`, which would otherwise reset it. */
 :root {
+  /* The border an edge picture is laid over: 1 px, the room a box gives its
+     edge, under the picture's outer line; the inner one lies on the padding. */
+  --edge-border: 1px;
   --sunken: var(--edge-sunken) 2 / 2px / 0 stretch;
   --raised: var(--edge-raised) 2 / 2px / 0 stretch;
   --groove: var(--edge-groove) 2 / 2px / 0 stretch;
@@ -419,14 +422,14 @@ body {
 .sunken,
 nx-portrait,
 nx-scroller {
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
 }
 
 .raised,
 button,
 nx-tile {
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
 }
 
@@ -676,7 +679,7 @@ nx-popup .popup-mark {
   height: 6px;
   margin: 0 2px 2px 0;
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   box-shadow: 2px 2px 0 var(--dark);
 }
@@ -887,7 +890,7 @@ nx-scroller .knob {
   left: 0; right: 0;
   top: 0;
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   cursor: default;
 }
@@ -922,7 +925,7 @@ nx-scroller .step {
   display: grid;
   place-items: center;
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   cursor: default;
 }
@@ -1601,7 +1604,7 @@ nx-window:not([fixed]) .buttons:last-child { padding-bottom: var(--pane-pad); }
   gap: 7px;
   padding: 2px 6px;
   background: var(--notice);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
   font-weight: bold;
   text-align: center;
@@ -1701,7 +1704,7 @@ nx-slider .trough {
      would run off the end. */
   container-type: inline-size;
   height: var(--scroller);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
   background: repeating-conic-gradient(var(--dark) 0 25%, var(--light) 0 50%) 0 0 / 2px 2px;
   cursor: default;
@@ -1714,7 +1717,7 @@ nx-slider .knob {
   left: 0;
   width: var(--knob-width);
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   /* Moved with a transform, so traveling between two steps costs the
      compositor and nothing else. */
@@ -1828,7 +1831,7 @@ nx-chart .field {
   padding: 6px;
   overflow: hidden;
   background: var(--black);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
 }
 
@@ -1879,7 +1882,7 @@ nx-leds .lamps {
   gap: var(--led-gap);
   padding: calc((var(--lamps-height) - var(--led-height)) / 2 - 1px) 6px;
   background: var(--black);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
 }
 

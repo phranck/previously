@@ -409,6 +409,9 @@ body {
    a pseudo-element and some surfaces are drawn as one. Whatever draws an edge
    reads it from here, after its own `border`, which would otherwise reset it. */
 :root {
+  /* The border an edge picture is laid over: 1 px, the room a box gives its
+     edge, under the picture's outer line; the inner one lies on the padding. */
+  --edge-border: 1px;
   --sunken: var(--edge-sunken) 2 / 2px / 0 stretch;
   --raised: var(--edge-raised) 2 / 2px / 0 stretch;
   --groove: var(--edge-groove) 2 / 2px / 0 stretch;
@@ -417,14 +420,14 @@ body {
 .sunken,
 nx-portrait,
 nx-scroller {
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
 }
 
 .raised,
 button,
 nx-tile {
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
 }
 

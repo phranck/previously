@@ -34,7 +34,7 @@ nx-leds .lamps {
   gap: var(--led-gap);
   padding: calc((var(--lamps-height) - var(--led-height)) / 2 - 1px) 6px;
   background: var(--black);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--sunken);
 }
 

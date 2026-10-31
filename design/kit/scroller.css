@@ -62,7 +62,7 @@ nx-scroller .knob {
   left: 0; right: 0;
   top: 0;
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   cursor: default;
 }
@@ -97,7 +97,7 @@ nx-scroller .step {
   display: grid;
   place-items: center;
   background: var(--light);
-  border: 1px solid;
+  border: var(--edge-border) solid;
   border-image: var(--raised);
   cursor: default;
 }
